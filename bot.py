@@ -34,7 +34,7 @@ async def load_cogs():
 # ─── Events
 @bot.event
 async def on_ready():
-    print(f"[INFO] Logged in as {bot.user} ({bot.user.id})")
+    print(f"[INFO] Logged in as {bot.user} ({bot.user.id})") # type: ignore
     print("[INFO] Bot is online and ready")
 
 
@@ -84,7 +84,7 @@ async def on_message(message: discord.Message):
 # ─── Entrypoint
 def main():
     try:
-        bot.run(TOKEN)
+        bot.run(TOKEN) # type: ignore
     except KeyboardInterrupt:
         print("[INFO] Shutdown requested")
 
