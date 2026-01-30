@@ -1,21 +1,31 @@
+import discord
 from discord.ext import commands
-from utils.embeds import basic_embed
+from discord import app_commands
+
+from utils.embeds import make_embed
 
 
 class Ping(commands.Cog):
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.command()
-    async def ping(self, ctx):
-        latency = round(self.bot.latency * 1000)
+    @app_commands.command(
+        name="ping", description="Check bot latency and connection status")
+    async def ping(self, interaction: discord.Interaction):
+        latency_ms = round(self.bot.latency * 1000)
 
-        embed = basic_embed(title="🏓 Pong!",
-                            description=f"Latency: **{latency}ms**")
+        embed = make_embed(title="Pong",
+                           description="Bot connection diagnostics",
+                           level="DEBUG",
+                           fields=[
+                               ("Gateway Latency", f"{latency_ms} ms", True),
+                               ("Status", "Online", True),
+                           ],
+                           footer=f"Requested by {interaction.user}")
 
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
 
-async def setup(bot):
+async def setup(bot: commands.Bot):
     await bot.add_cog(Ping(bot))
