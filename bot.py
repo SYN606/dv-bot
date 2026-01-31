@@ -10,6 +10,7 @@ from db.db_helpers.sticky import (
     increment_and_check,
     update_last_message,
 )
+from db.db_helpers.media_only import is_media_only
 
 from utils.embeds import make_embed
 from utils.interaction_check import command_toggle_check
@@ -36,7 +37,7 @@ async def load_cogs():
 
 @bot.event
 async def on_ready():
-    print(f"[INFO] Logged in as {bot.user} ({bot.user.id})") # type: ignore
+    print(f"[INFO] Logged in as {bot.user} ({bot.user.id})")
     print("[INFO] Bot is online and ready")
 
 
@@ -45,7 +46,7 @@ async def setup_hook():
     init_schema()
     print("[INFO] Database initialized")
 
-    # ATTACH GLOBAL INTERACTION CHECK BEFORE LOADING COGS
+    # Global command enable / disable check
     bot.tree.interaction_check = command_toggle_check
 
     await load_cogs()
@@ -58,7 +59,18 @@ async def on_message(message: discord.Message):
     if message.author.bot or message.guild is None:
         return
 
-    # Bot mention response (direct mention only)
+    # ── MEDIA-ONLY ENFORCEMENT
+    if is_media_only(message.guild.id, message.channel.id):
+        has_media = bool(message.attachments) or bool(message.embeds)
+
+        if not has_media:
+            try:
+                await message.delete()
+            except Exception:
+                pass
+            return
+
+    # ── Bot mention response (direct mention only)
     if bot.user and message.content.strip() == bot.user.mention:
         latency = round(bot.latency * 1000)
         embed = make_embed(
@@ -70,7 +82,7 @@ async def on_message(message: discord.Message):
         )
         await message.channel.send(embed=embed)
 
-    # Sticky message handling
+    # ── Sticky message handling
     content = get_sticky(message.guild.id, message.channel.id)
     if content:
         repost, last_id = increment_and_check(
@@ -93,7 +105,7 @@ async def on_message(message: discord.Message):
                 sent.id,
             )
 
-    # AFK mention notice
+    # ── AFK mention notice
     for user in message.mentions:
         afk = get_afk(message.guild.id, user.id)
         if afk:
@@ -106,7 +118,7 @@ async def on_message(message: discord.Message):
             )
             await message.channel.send(embed=embed)
 
-    # Remove AFK on first message
+    # ── Remove AFK on first message
     removed_afk = remove_afk(
         guild_id=message.guild.id,
         user_id=message.author.id,
@@ -126,7 +138,7 @@ async def on_message(message: discord.Message):
 
 def main():
     try:
-        bot.run(TOKEN) # type: ignore
+        bot.run(TOKEN)
     except KeyboardInterrupt:
         print("[INFO] Shutdown requested")
 

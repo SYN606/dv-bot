@@ -4,6 +4,7 @@ from discord import app_commands
 
 from utils.embeds import make_embed
 from utils.check_perms import is_bot_admin
+from utils.protected_commands import PROTECTED_COMMANDS
 from db.db_helpers.commands import (
     disable_command,
     enable_command,
@@ -18,13 +19,19 @@ class CommandControl(commands.Cog):
 
     def _command_exists(self, name: str) -> bool:
         """
-        Check if a slash command (or subcommand) exists in the app tree.
+        Check if a slash command or subcommand exists.
         """
-        name = name.lower()
+        name = name.lower().strip()
         for cmd in self.bot.tree.walk_commands():
             if cmd.qualified_name.lower() == name:
                 return True
         return False
+
+    def _is_protected(self, name: str) -> bool:
+        """
+        Check if command is protected from disabling.
+        """
+        return name in PROTECTED_COMMANDS
 
     @app_commands.command(
         name="command_disable",
@@ -65,19 +72,25 @@ class CommandControl(commands.Cog):
             )
             return
 
-        added = disable_command(
-            interaction.guild.id,
-            command_name,
-        )
+        if self._is_protected(command_name):
+            await interaction.response.send_message(
+                embed=make_embed(
+                    title="Protected Command",
+                    description=f"`/{command_name}` cannot be disabled.",
+                    level="WARNING",
+                ),
+                ephemeral=True,
+            )
+            return
 
-        embed = make_embed(
+        added = disable_command(interaction.guild.id, command_name)
+
+        await interaction.response.send_message(embed=make_embed(
             title="Command Disabled",
             description=(f"`/{command_name}` has been disabled." if added else
                          f"`/{command_name}` is already disabled."),
             level="SUCCESS" if added else "WARNING",
-        )
-
-        await interaction.response.send_message(embed=embed)
+        ))
 
     @app_commands.command(
         name="command_enable",
@@ -107,19 +120,14 @@ class CommandControl(commands.Cog):
 
         command_name = command_name.strip().lower()
 
-        removed = enable_command(
-            interaction.guild.id,
-            command_name,
-        )
+        removed = enable_command(interaction.guild.id, command_name)
 
-        embed = make_embed(
+        await interaction.response.send_message(embed=make_embed(
             title="Command Enabled",
             description=(f"`/{command_name}` has been enabled." if removed else
                          f"`/{command_name}` was not disabled."),
             level="SUCCESS" if removed else "WARNING",
-        )
-
-        await interaction.response.send_message(embed=embed)
+        ))
 
     @app_commands.command(
         name="command_status",
@@ -131,14 +139,13 @@ class CommandControl(commands.Cog):
 
         disabled = get_disabled_commands(interaction.guild.id)
 
-        embed = make_embed(
+        await interaction.response.send_message(embed=make_embed(
             title="Disabled Commands",
-            description=("\n".join(f"`/{c}`" for c in sorted(disabled))
-                         if disabled else "No commands are disabled."),
+            description=("\n".join(
+                f"`/{c}`" for c in sorted(disabled)
+            ) if disabled else "No commands are disabled."),
             level="INFO",
-        )
-
-        await interaction.response.send_message(embed=embed)
+        ))
 
 
 async def setup(bot: commands.Bot):

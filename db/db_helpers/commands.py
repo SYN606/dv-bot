@@ -1,6 +1,8 @@
 from typing import List
+
 from db.engine import SessionLocal
 from db.models import DisabledCommand
+from utils.protected_commands import PROTECTED_COMMANDS
 
 
 def _normalize(command_name: str) -> str:
@@ -12,6 +14,10 @@ def _normalize(command_name: str) -> str:
 
 def disable_command(guild_id: int, command_name: str) -> bool:
     command_name = _normalize(command_name)
+
+    # Protected commands can never be disabled
+    if command_name in PROTECTED_COMMANDS:
+        return False
 
     with SessionLocal() as session:
         exists = session.get(
@@ -49,11 +55,15 @@ def enable_command(guild_id: int, command_name: str) -> bool:
 def is_command_disabled(guild_id: int, command_name: str) -> bool:
     command_name = _normalize(command_name)
 
+    # Protected commands are always enabled
+    if command_name in PROTECTED_COMMANDS:
+        return False
+
     with SessionLocal() as session:
-        return (session.get(
+        return session.get(
             DisabledCommand,
             (guild_id, command_name),
-        ) is not None)
+        ) is not None
 
 
 def get_disabled_commands(guild_id: int) -> List[str]:
