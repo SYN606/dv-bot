@@ -96,3 +96,18 @@ class DisabledCommand(Base):
 
     def __repr__(self) -> str:
         return f"<DisabledCommand guild={self.guild_id} cmd={self.command_name}>"
+
+
+class BotInstance(Base):
+    __tablename__ = "bot_instances"
+
+    instance_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    priority: Mapped[int] = mapped_column(Integer)  # lower = higher priority
+    shard_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    shard_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    ping_ms: Mapped[int] = mapped_column(Integer)
+    uptime_seconds: Mapped[int] = mapped_column(Integer)
+
+    status: Mapped[str] = mapped_column(String(16))  # ready / dead
+    last_heartbeat: Mapped[datetime] = mapped_column(DateTime)
