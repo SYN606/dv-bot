@@ -4,16 +4,13 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from db.schema import init_schema
-from db.db_helpers.afk import get_afk, remove_afk
-from db.db_helpers.sticky import (
-    get_sticky,
-    increment_and_check,
-    update_last_message,
-)
-from db.db_helpers.media_only import is_media_only
-
-from utils.embeds import make_embed
+from utils.prefix import dv_prefix
 from utils.interaction_check import command_toggle_check
+
+from utils.media_only import enforce_media_only
+from utils.sticky_handler import handle_sticky
+from utils.afk_handler import handle_afk
+from utils.mention import handle_bot_mention
 
 # ─────────────────────────────
 # Environment
@@ -30,30 +27,13 @@ intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
-
-# ─────────────────────────────
-# Prefix handler (dv / DV / Dv / dV + spaces)
-# ─────────────────────────────
-def prefix(bot: commands.Bot, message: discord.Message):
-    if not message.content:
-        return "dv"
-
-    content = message.content.lstrip()
-
-    # Case-insensitive "dv"
-    if content[:2].lower() == "dv":
-        return content[:2]
-
-    return "dv"
-
-
 # ─────────────────────────────
 # Bot
 # ─────────────────────────────
 bot = commands.Bot(
-    command_prefix=prefix,
+    command_prefix=dv_prefix,
     intents=intents,
-    help_command=None,  # disable default help
+    help_command=None,
 )
 
 
@@ -68,17 +48,15 @@ async def load_cogs():
             if not file.endswith(".py") or file.startswith("__"):
                 continue
 
-            full_path = os.path.join(root, file)
-            rel_path = os.path.relpath(full_path, base_path)
-
-            module = rel_path.replace(os.sep, ".")[:-3]
-            extension = f"cmd.{module}"
+            rel = os.path.relpath(os.path.join(root, file), base_path)
+            module = rel.replace(os.sep, ".")[:-3]
+            ext = f"cmd.{module}"
 
             try:
-                await bot.load_extension(extension)
-                print(f"[INFO] Loaded {extension}")
+                await bot.load_extension(ext)
+                print(f"[INFO] Loaded {ext}")
             except Exception as e:
-                print(f"[ERROR] Failed to load {extension}: {e}")
+                print(f"[ERROR] Failed to load {ext}: {e}")
 
 
 # ─────────────────────────────
@@ -95,7 +73,6 @@ async def setup_hook():
     init_schema()
     print("[INFO] Database initialized")
 
-    # Global slash command enable/disable check
     bot.tree.interaction_check = command_toggle_check
 
     await load_cogs()
@@ -105,81 +82,21 @@ async def setup_hook():
 
 @bot.event
 async def on_message(message: discord.Message):
-    if message.author.bot or message.guild is None:
+    if message.guild is None:
         return
 
-    # ── MEDIA-ONLY ENFORCEMENT (members only, bots allowed)
-    if is_media_only(message.guild.id, message.channel.id):
-        has_media = bool(message.attachments) or bool(message.embeds)
-        if not has_media:
-            try:
-                await message.delete()
-            except Exception:
-                pass
-            return
+    # Media-only enforcement (members only)
+    if await enforce_media_only(message):
+        return
 
-    # ── Bot mention response
-    if bot.user and message.content.strip() == bot.user.mention:
-        latency = round(bot.latency * 1000)
-        embed = make_embed(
-            title="Hello!",
-            description=(f"Pong: **{latency}ms**\n"
-                         "Developed by **[SYN](https://syn606.pages.dev)**\n"
-                         "Use **/help** to know more"),
-            level="SYSTEM",
-        )
-        await message.channel.send(embed=embed)
+    # Sticky handler
+    await handle_sticky(message)
 
-    # ── Sticky message handling
-    sticky_content = get_sticky(message.guild.id, message.channel.id)
-    if sticky_content:
-        repost, last_id = increment_and_check(
-            message.guild.id,
-            message.channel.id,
-        )
+    # Bot mention response
+    await handle_bot_mention(bot, message)
 
-        if repost:
-            if last_id:
-                try:
-                    old = await message.channel.fetch_message(last_id)
-                    await old.delete()
-                except Exception:
-                    pass
-
-            sent = await message.channel.send(sticky_content)
-            update_last_message(
-                message.guild.id,
-                message.channel.id,
-                sent.id,
-            )
-
-    # ── AFK mention notice
-    for user in message.mentions:
-        afk = get_afk(message.guild.id, user.id)
-        if afk:
-            embed = make_embed(
-                title="User is AFK",
-                description=(f"{user.mention} is currently AFK.\n"
-                             f"Reason: {afk.reason}\n"
-                             f"Since: <t:{afk.since}:R>"),
-                level="INFO",
-            )
-            await message.channel.send(embed=embed)
-
-    # ── Remove AFK on first message
-    removed_afk = remove_afk(
-        guild_id=message.guild.id,
-        user_id=message.author.id,
-    )
-
-    if removed_afk:
-        embed = make_embed(
-            title="AFK Removed",
-            description=("Welcome back. You are no longer marked as AFK.\n"
-                         f"AFK duration: <t:{removed_afk.since}:R>"),
-            level="INFO",
-        )
-        await message.channel.send(embed=embed)
+    # AFK handler
+    await handle_afk(message)
 
     # Required for hybrid commands
     await bot.process_commands(message)
@@ -190,7 +107,7 @@ async def on_message(message: discord.Message):
 # ─────────────────────────────
 def main():
     try:
-        bot.run(TOKEN)
+        bot.run(TOKEN) # type: ignore
     except KeyboardInterrupt:
         print("[INFO] Shutdown requested")
 
