@@ -15,26 +15,51 @@ from db.db_helpers.media_only import is_media_only
 from utils.embeds import make_embed
 from utils.interaction_check import command_toggle_check
 
-# ─── Env
+# ─────────────────────────────
+# Environment
+# ─────────────────────────────
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-if TOKEN is None:
+if not TOKEN:
     raise RuntimeError("[ERROR] DISCORD_TOKEN not found in .env")
 
-# ─── Intents
+# ─────────────────────────────
+# Intents
+# ─────────────────────────────
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
-# ─── Bot (permanent prefix = dv)
+
+# ─────────────────────────────
+# Prefix handler (dv / DV / Dv / dV + spaces)
+# ─────────────────────────────
+def prefix(bot: commands.Bot, message: discord.Message):
+    if not message.content:
+        return "dv"
+
+    content = message.content.lstrip()
+
+    # Case-insensitive "dv"
+    if content[:2].lower() == "dv":
+        return content[:2]
+
+    return "dv"
+
+
+# ─────────────────────────────
+# Bot
+# ─────────────────────────────
 bot = commands.Bot(
-    command_prefix="dv",
+    command_prefix=prefix,
     intents=intents,
-    help_command=None,
+    help_command=None,  # disable default help
 )
 
 
-# ─── Load cogs (cmd/ + cmd/hybrid_cmd/)
+# ─────────────────────────────
+# Load cogs (cmd/ + subfolders)
+# ─────────────────────────────
 async def load_cogs():
     base_path = os.path.abspath("cmd")
 
@@ -49,11 +74,16 @@ async def load_cogs():
             module = rel_path.replace(os.sep, ".")[:-3]
             extension = f"cmd.{module}"
 
-            await bot.load_extension(extension)
-            print(f"[INFO] Loaded {extension}")
+            try:
+                await bot.load_extension(extension)
+                print(f"[INFO] Loaded {extension}")
+            except Exception as e:
+                print(f"[ERROR] Failed to load {extension}: {e}")
 
 
-# ─── Events
+# ─────────────────────────────
+# Events
+# ─────────────────────────────
 @bot.event
 async def on_ready():
     print(f"[INFO] Logged in as {bot.user} ({bot.user.id})")  # type: ignore
@@ -65,6 +95,7 @@ async def setup_hook():
     init_schema()
     print("[INFO] Database initialized")
 
+    # Global slash command enable/disable check
     bot.tree.interaction_check = command_toggle_check
 
     await load_cogs()
@@ -77,22 +108,9 @@ async def on_message(message: discord.Message):
     if message.author.bot or message.guild is None:
         return
 
-    # ── PREFIX NORMALIZATION (dv / Dv / DV / dV)
-    content = message.content
-    stripped = content.lstrip()
-    lower = stripped.lower()
-
-    if lower.startswith("dv"):
-        # find original dv length (preserve casing)
-        prefix_len = 2
-        rest = stripped[prefix_len:].lstrip()
-        message.content = f"dv{rest}"
-
     # ── MEDIA-ONLY ENFORCEMENT (members only, bots allowed)
-    if (not message.author.bot
-            and is_media_only(message.guild.id, message.channel.id)):
+    if is_media_only(message.guild.id, message.channel.id):
         has_media = bool(message.attachments) or bool(message.embeds)
-
         if not has_media:
             try:
                 await message.delete()
@@ -113,8 +131,8 @@ async def on_message(message: discord.Message):
         await message.channel.send(embed=embed)
 
     # ── Sticky message handling
-    content = get_sticky(message.guild.id, message.channel.id)
-    if content:
+    sticky_content = get_sticky(message.guild.id, message.channel.id)
+    if sticky_content:
         repost, last_id = increment_and_check(
             message.guild.id,
             message.channel.id,
@@ -128,7 +146,7 @@ async def on_message(message: discord.Message):
                 except Exception:
                     pass
 
-            sent = await message.channel.send(content)
+            sent = await message.channel.send(sticky_content)
             update_last_message(
                 message.guild.id,
                 message.channel.id,
@@ -163,13 +181,16 @@ async def on_message(message: discord.Message):
         )
         await message.channel.send(embed=embed)
 
+    # Required for hybrid commands
     await bot.process_commands(message)
 
 
-# ─── Entrypoint
+# ─────────────────────────────
+# Entrypoint
+# ─────────────────────────────
 def main():
     try:
-        bot.run(TOKEN)  # type: ignore
+        bot.run(TOKEN)
     except KeyboardInterrupt:
         print("[INFO] Shutdown requested")
 
