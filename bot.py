@@ -88,9 +88,11 @@ async def on_message(message: discord.Message):
         rest = stripped[prefix_len:].lstrip()
         message.content = f"dv{rest}"
 
-    # ── MEDIA-ONLY ENFORCEMENT
-    if is_media_only(message.guild.id, message.channel.id):
+    # ── MEDIA-ONLY ENFORCEMENT (members only, bots allowed)
+    if (not message.author.bot
+            and is_media_only(message.guild.id, message.channel.id)):
         has_media = bool(message.attachments) or bool(message.embeds)
+
         if not has_media:
             try:
                 await message.delete()
@@ -167,7 +169,7 @@ async def on_message(message: discord.Message):
 # ─── Entrypoint
 def main():
     try:
-        bot.run(TOKEN) # type: ignore
+        bot.run(TOKEN)  # type: ignore
     except KeyboardInterrupt:
         print("[INFO] Shutdown requested")
 
