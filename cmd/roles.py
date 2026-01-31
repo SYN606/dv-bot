@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 
 from utils.embeds import make_embed
+from utils.check_perms import is_bot_admin
 
 
 class Roles(commands.Cog):
@@ -10,99 +11,110 @@ class Roles(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # ─────────────────────────────────────
-    # ADD ROLE
-    # ─────────────────────────────────────
     @app_commands.command(name="addrole",
-                          description="Add a role to a user (admin only)")
-    @app_commands.describe(member="Member to assign the role to",
-                           role="Role to add")
+                          description="Add a role to a user (bot admin only)")
     async def addrole(self, interaction: discord.Interaction,
                       member: discord.Member, role: discord.Role):
-        # Permission check
-        if not interaction.permissions.manage_roles:
-            embed = make_embed(
+        guild = interaction.guild
+        if guild is None:
+            return await interaction.response.send_message(embed=make_embed(
+                title="Invalid Context",
+                description="This command can only be used in a server.",
+                level="ERROR"),
+                                                           ephemeral=True)
+
+        if not is_bot_admin(interaction):
+            return await interaction.response.send_message(embed=make_embed(
                 title="Permission Denied",
                 description="You do not have permission to manage roles.",
-                level="ERROR")
-            return await interaction.response.send_message(embed=embed,
+                level="ERROR"),
                                                            ephemeral=True)
 
-        # Role hierarchy check
-        if role >= interaction.user.top_role: # type: ignore
-            embed = make_embed(
+        bot_member = guild.me
+        actor = interaction.user
+
+        if not isinstance(actor, discord.Member) or bot_member is None:
+            return
+
+        if role >= actor.top_role:
+            return await interaction.response.send_message(embed=make_embed(
                 title="Role Hierarchy Error",
                 description=
-                "You cannot assign a role equal to or higher than your highest role.",
-                level="WARNING")
-            return await interaction.response.send_message(embed=embed,
+                ("You cannot assign a role equal to or higher than your highest role."
+                 ),
+                level="WARNING"),
                                                            ephemeral=True)
 
-        if role >= interaction.guild.me.top_role: # type: ignore
-            embed = make_embed(
+        if role >= bot_member.top_role:
+            return await interaction.response.send_message(embed=make_embed(
                 title="Role Hierarchy Error",
                 description=
-                "I cannot assign a role higher than my highest role.",
-                level="ERROR")
-            return await interaction.response.send_message(embed=embed,
+                ("I cannot assign a role equal to or higher than my highest role."
+                 ),
+                level="ERROR"),
                                                            ephemeral=True)
 
-        # Add role
         await member.add_roles(role, reason=f"Added by {interaction.user}")
 
         embed = make_embed(
             title="Role Added",
-            description=f"Role **{role.name}** has been added to **{member}**.",
+            description=f"{role.mention} has been added to {member.mention}.",
             level="SUCCESS",
             footer=f"Action by {interaction.user}")
 
         await interaction.response.send_message(embed=embed)
 
-    # ─────────────────────────────────────
-    # REMOVE ROLE
-    # ─────────────────────────────────────
-    @app_commands.command(name="removerole",
-                          description="Remove a role from a user (admin only)")
-    @app_commands.describe(member="Member to remove the role from",
-                           role="Role to remove")
+    @app_commands.command(
+        name="removerole",
+        description="Remove a role from a user (bot admin only)")
     async def removerole(self, interaction: discord.Interaction,
                          member: discord.Member, role: discord.Role):
-        # Permission check
-        if not interaction.permissions.manage_roles:
-            embed = make_embed(
+        guild = interaction.guild
+        if guild is None:
+            return await interaction.response.send_message(embed=make_embed(
+                title="Invalid Context",
+                description="This command can only be used in a server.",
+                level="ERROR"),
+                                                           ephemeral=True)
+
+        if not is_bot_admin(interaction):
+            return await interaction.response.send_message(embed=make_embed(
                 title="Permission Denied",
                 description="You do not have permission to manage roles.",
-                level="ERROR")
-            return await interaction.response.send_message(embed=embed,
+                level="ERROR"),
                                                            ephemeral=True)
 
-        # Role hierarchy check
-        if role >= interaction.user.top_role: # type: ignore
-            embed = make_embed(
+        bot_member = guild.me
+        actor = interaction.user
+
+        if not isinstance(actor, discord.Member) or bot_member is None:
+            return
+
+        if role >= actor.top_role:
+            return await interaction.response.send_message(embed=make_embed(
                 title="Role Hierarchy Error",
                 description=
-                "You cannot remove a role equal to or higher than your highest role.",
-                level="WARNING")
-            return await interaction.response.send_message(embed=embed,
+                ("You cannot remove a role equal to or higher than your highest role."
+                 ),
+                level="WARNING"),
                                                            ephemeral=True)
 
-        if role >= interaction.guild.me.top_role: # type: ignore
-            embed = make_embed(
+        if role >= bot_member.top_role:
+            return await interaction.response.send_message(embed=make_embed(
                 title="Role Hierarchy Error",
                 description=
-                "I cannot remove a role higher than my highest role.",
-                level="ERROR")
-            return await interaction.response.send_message(embed=embed,
+                ("I cannot remove a role equal to or higher than my highest role."
+                 ),
+                level="ERROR"),
                                                            ephemeral=True)
 
-        # Remove role
         await member.remove_roles(role,
                                   reason=f"Removed by {interaction.user}")
 
         embed = make_embed(
             title="Role Removed",
             description=
-            f"Role **{role.name}** has been removed from **{member}**.",
+            f"{role.mention} has been removed from {member.mention}.",
             level="SUCCESS",
             footer=f"Action by {interaction.user}")
 

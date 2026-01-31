@@ -4,7 +4,7 @@ from discord.ext import commands
 from discord import app_commands
 
 from utils.embeds import make_embed
-from db.afk import set_afk
+from db.db_helpers.afk import set_afk
 
 
 class AFK(commands.Cog):
