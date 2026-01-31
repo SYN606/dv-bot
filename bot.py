@@ -15,37 +15,25 @@ from db.db_helpers.media_only import is_media_only
 from utils.embeds import make_embed
 from utils.interaction_check import command_toggle_check
 
-# ─── ENV
+# ─── Env
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-if not TOKEN:
+if TOKEN is None:
     raise RuntimeError("[ERROR] DISCORD_TOKEN not found in .env")
 
-# ─── INTENTS
+# ─── Intents
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
-# ─── PREFIX HANDLER (dv, dvping, dv ping, dv    ping)
-def get_prefix(bot: commands.Bot, message: discord.Message):
-    if not message.content:
-        return "dv"
-
-    content = message.content.lower().lstrip()
-    if content.startswith("dv"):
-        return "dv"
-
-    return "dv"
-
-
-# ─── BOT
+# ─── Bot (permanent prefix = dv)
 bot = commands.Bot(
-    command_prefix=get_prefix,
+    command_prefix="dv",
     intents=intents,
-    help_command=None,  # we provide our own help
+    help_command=None,
 )
 
-# ─── LOAD COGS (supports subfolders like hybrid_cmd)
+# ─── Load cogs (cmd/ + cmd/hybrid_cmd/)
 async def load_cogs():
     base_path = os.path.abspath("cmd")
 
@@ -60,13 +48,10 @@ async def load_cogs():
             module = rel_path.replace(os.sep, ".")[:-3]
             extension = f"cmd.{module}"
 
-            if extension in bot.extensions:
-                continue
-
             await bot.load_extension(extension)
             print(f"[INFO] Loaded {extension}")
 
-# ─── EVENTS
+# ─── Events
 @bot.event
 async def on_ready():
     print(f"[INFO] Logged in as {bot.user} ({bot.user.id})")  # type: ignore
@@ -85,19 +70,31 @@ async def setup_hook():
 
 @bot.event
 async def on_message(message: discord.Message):
-    if message.author.bot or not message.guild:
+    if message.author.bot or message.guild is None:
         return
+
+    # ── PREFIX NORMALIZATION (dv / Dv / DV / dV)
+    content = message.content
+    stripped = content.lstrip()
+    lower = stripped.lower()
+
+    if lower.startswith("dv"):
+        # find original dv length (preserve casing)
+        prefix_len = 2
+        rest = stripped[prefix_len:].lstrip()
+        message.content = f"dv{rest}"
 
     # ── MEDIA-ONLY ENFORCEMENT
     if is_media_only(message.guild.id, message.channel.id):
-        if not message.attachments and not message.embeds:
+        has_media = bool(message.attachments) or bool(message.embeds)
+        if not has_media:
             try:
                 await message.delete()
             except Exception:
                 pass
             return
 
-    # ── BOT MENTION RESPONSE
+    # ── Bot mention response
     if bot.user and message.content.strip() == bot.user.mention:
         latency = round(bot.latency * 1000)
         embed = make_embed(
@@ -105,13 +102,13 @@ async def on_message(message: discord.Message):
             description=(
                 f"Pong: **{latency}ms**\n"
                 "Developed by **[SYN](https://syn606.pages.dev)**\n"
-                "Use **/help** or `dv help` to know more"
+                "Use **/help** to know more"
             ),
             level="SYSTEM",
         )
         await message.channel.send(embed=embed)
 
-    # ── STICKY MESSAGE
+    # ── Sticky message handling
     content = get_sticky(message.guild.id, message.channel.id)
     if content:
         repost, last_id = increment_and_check(
@@ -134,7 +131,7 @@ async def on_message(message: discord.Message):
                 sent.id,
             )
 
-    # ── AFK MENTION NOTICE
+    # ── AFK mention notice
     for user in message.mentions:
         afk = get_afk(message.guild.id, user.id)
         if afk:
@@ -149,7 +146,7 @@ async def on_message(message: discord.Message):
             )
             await message.channel.send(embed=embed)
 
-    # ── REMOVE AFK ON MESSAGE
+    # ── Remove AFK on first message
     removed_afk = remove_afk(
         guild_id=message.guild.id,
         user_id=message.author.id,
@@ -166,10 +163,9 @@ async def on_message(message: discord.Message):
         )
         await message.channel.send(embed=embed)
 
-    # REQUIRED FOR HYBRID COMMANDS
     await bot.process_commands(message)
 
-# ─── ENTRYPOINT
+# ─── Entrypoint
 def main():
     try:
         bot.run(TOKEN)
