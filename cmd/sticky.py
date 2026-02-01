@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 
 from utils.embeds import make_embed
+from utils.emojis import EMOJIS
 from utils.check_perms import is_bot_admin
 from db.db_helpers.sticky import (
     set_sticky,
@@ -38,7 +39,7 @@ class Sticky(commands.Cog):
                 embed=make_embed(
                     title="Permission Denied",
                     description=
-                    "You do not have permission to manage sticky messages.",
+                    "You are not allowed to manage sticky messages.",
                     level="ERROR",
                 ),
                 ephemeral=True,
@@ -47,11 +48,15 @@ class Sticky(commands.Cog):
 
         set_sticky(interaction.guild.id, channel.id, message)
 
-        await interaction.response.send_message(embed=make_embed(
-            title="Sticky Message Set",
-            description=f"Sticky message enabled in {channel.mention}.",
+        embed = make_embed(
+            title="Sticky Message Updated",
+            description=
+            (f"{EMOJIS['success']} Sticky message has been **enabled** in {channel.mention}."
+             ),
             level="SUCCESS",
-        ))
+        )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(
         name="sticky_disable",
@@ -72,7 +77,7 @@ class Sticky(commands.Cog):
                 embed=make_embed(
                     title="Permission Denied",
                     description=
-                    "You do not have permission to manage sticky messages.",
+                    "You are not allowed to manage sticky messages.",
                     level="ERROR",
                 ),
                 ephemeral=True,
@@ -81,13 +86,17 @@ class Sticky(commands.Cog):
 
         removed = remove_sticky(interaction.guild.id, channel.id)
 
-        await interaction.response.send_message(embed=make_embed(
-            title="Sticky Disabled",
-            description=(
-                f"Sticky message disabled in {channel.mention}." if removed
-                else f"No sticky message found for {channel.mention}."),
+        embed = make_embed(
+            title="Sticky Message Updated",
+            description=
+            (f"{EMOJIS['success']} Sticky message has been **disabled** in {channel.mention}."
+             if removed else
+             f"{EMOJIS['warning']} No sticky message was set for {channel.mention}."
+             ),
             level="SUCCESS" if removed else "WARNING",
-        ))
+        )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(
         name="sticky_status",
@@ -105,14 +114,17 @@ class Sticky(commands.Cog):
         content = get_sticky(interaction.guild.id, channel.id)
 
         embed = make_embed(
-            title="Sticky Status",
-            description=(f"Sticky is **enabled** in {channel.mention}.\n\n"
-                         f"Message:\n{content}" if content else
-                         f"No sticky message set in {channel.mention}."),
+            title="Sticky Message Status",
+            description=
+            (f"{EMOJIS['green_dot']} Sticky is **enabled** in {channel.mention}.\n\n"
+             f"{EMOJIS['arrow_point']} **Message:**\n{content}" if content else
+             f"{EMOJIS['red_dot']} No sticky message is set in {channel.mention}."
+             ),
             level="INFO",
+            footer="Sticky messages repost automatically after new messages",
         )
 
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

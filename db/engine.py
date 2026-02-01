@@ -19,7 +19,7 @@ if ENV == "prod":
         raise RuntimeError("Missing production DB env vars")
 
     DATABASE_URL = (
-        f"postgresql+psycopg2://{DB_USER}:{quote_plus(DB_PASS)}"
+        f"postgresql+psycopg2://{DB_USER}:{quote_plus(DB_PASS)}" # type: ignore
         f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
 

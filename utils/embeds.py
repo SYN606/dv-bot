@@ -1,31 +1,21 @@
 import discord
 from typing import Iterable
 
+from utils.emojis import EMOJIS
+
 # ─────────────────────────────────────
 # Color palette (visible on dark mode)
 # ─────────────────────────────────────
 COLORS = {
-    "INFO": 0x5865F2,  # Blurple
-    "SUCCESS": 0x57F287,  # Green
-    "WARNING": 0xFEE75C,  # Yellow
-    "ERROR": 0xED4245,  # Red
-    "DEBUG": 0x3498DB,  # Blue
-    "SYSTEM": 0x9B59B6  # Purple
+    "INFO": 0x5865F2,
+    "SUCCESS": 0x57F287,
+    "WARNING": 0xFEE75C,
+    "ERROR": 0xED4245,
+    "DEBUG": 0x3498DB,
+    "SYSTEM": 0x9B59B6,
 }
 
-# ─────────────────────────────────────
-# Custom animated emojis (support server)
-# ─────────────────────────────────────
-EMOJIS = {
-    "INFO": "<a:anouncement:1359629824192282759>",
-    "SUCCESS": "<a:okay:1359630397981331707>",
-    "WARNING": "<a:red_dot:1359633914112774406>",
-    "ERROR": "<a:fail:1359630009613947011>",
-    "DEBUG": "<a:developer:1359626493713453199>",
-    "SYSTEM": "<a:boost:1359631460398534796>",
-}
-
-# Fallback if emoji is not accessible
+# Emoji fallback if support-server emoji is unavailable
 FALLBACK = {
     "INFO": "[INFO]",
     "SUCCESS": "[SUCCESS]",
@@ -35,38 +25,66 @@ FALLBACK = {
     "SYSTEM": "[SYSTEM]",
 }
 
+# Alias support for semantic levels
+LEVEL_ALIASES = {
+    "OK": "SUCCESS",
+    "FAIL": "ERROR",
+    "WARN": "WARNING",
+}
 
-def make_embed(*,
-               title: str,
-               description: str | None = None,
-               level: str = "INFO",
-               fields: Iterable[tuple[str, str, bool]] | None = None,
-               author: str | None = None,
-               footer: str | None = None,
-               timestamp: bool = True) -> discord.Embed:
+
+def _safe(text: str | None, limit: int) -> str | None:
+    if not text:
+        return None
+    return text[:limit - 3] + "..." if len(text) > limit else text
+
+
+def make_embed(
+    *,
+    title: str,
+    description: str | None = None,
+    level: str = "INFO",
+    fields: Iterable[tuple[str, str, bool]] | None = None,
+    author: str | None = None,
+    footer: str | None = None,
+    timestamp: bool = True,
+    thumbnail: str | None = None,
+) -> discord.Embed:
     """
-    Standardized embed factory with custom support-server emojis.
+    Standardized embed factory.
 
     level: INFO | SUCCESS | WARNING | ERROR | DEBUG | SYSTEM
     """
 
-    level = level.upper()
-    color = COLORS.get(level, COLORS["INFO"])
-    emoji = EMOJIS.get(level) or FALLBACK.get(level, "")
+    level = LEVEL_ALIASES.get(level.upper(), level.upper())
 
-    embed = discord.Embed(title=f"{emoji} {title}",
-                          description=description,
-                          color=color)
+    color = COLORS.get(level, COLORS["INFO"])
+    emoji = EMOJIS.get(level.lower()) or FALLBACK.get(level, "")
+
+    embed = discord.Embed(
+        title=f"{emoji} {_safe(title, 256)}",
+        description=_safe(description, 4096),
+        color=color,
+    )
 
     if author:
-        embed.set_author(name=author)
+        embed.set_author(name=_safe(author, 256))
+
+    if thumbnail:
+        embed.set_thumbnail(url=thumbnail)
 
     if fields:
         for name, value, inline in fields:
-            embed.add_field(name=name, value=value, inline=inline)
+            embed.add_field(
+                name=_safe(name, 256),
+                value=_safe(value, 1024),
+                inline=inline,
+            )
 
     if footer:
-        embed.set_footer(text=footer)
+        embed.set_footer(text=_safe(footer, 2048))
+    else:
+        embed.set_footer(text="Digital Vigital")
 
     if timestamp:
         embed.timestamp = discord.utils.utcnow()

@@ -1,13 +1,13 @@
+from datetime import datetime
+
 from sqlalchemy import (
+    BigInteger,
+    DateTime,
     Integer,
     String,
     Text,
-    BigInteger,
-    DateTime,
-    Index,
 )
 from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime
 
 from db.base import Base
 
@@ -21,22 +21,12 @@ class AFK(Base):
     reason: Mapped[str] = mapped_column(String, nullable=False)
     since: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    __table_args__ = (Index("idx_afk_guild_user", "guild_id", "user_id"), )
-
-    def __repr__(self) -> str:
-        return f"<AFK guild={self.guild_id} user={self.user_id}>"
-
 
 class AdminRole(Base):
     __tablename__ = "admin_roles"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     role_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-
-    __table_args__ = (Index("idx_admin_roles_guild", "guild_id"), )
-
-    def __repr__(self) -> str:
-        return f"<AdminRole guild={self.guild_id} role={self.role_id}>"
 
 
 class MediaOnlyChannel(Base):
@@ -49,12 +39,6 @@ class MediaOnlyChannel(Base):
         DateTime,
         default=datetime.utcnow,
     )
-
-    __table_args__ = (Index("idx_media_only_guild_channel", "guild_id",
-                            "channel_id"), )
-
-    def __repr__(self) -> str:
-        return f"<MediaOnly guild={self.guild_id} channel={self.channel_id}>"
 
 
 class StickyMessage(Base):
@@ -74,12 +58,6 @@ class StickyMessage(Base):
         onupdate=datetime.utcnow,
     )
 
-    __table_args__ = (Index("idx_sticky_guild_channel", "guild_id",
-                            "channel_id"), )
-
-    def __repr__(self) -> str:
-        return f"<StickyMessage guild={self.guild_id} channel={self.channel_id}>"
-
 
 class DisabledCommand(Base):
     __tablename__ = "disabled_commands"
@@ -92,22 +70,17 @@ class DisabledCommand(Base):
         default=datetime.utcnow,
     )
 
-    __table_args__ = (Index("idx_disabled_cmd_guild", "guild_id"), )
 
-    def __repr__(self) -> str:
-        return f"<DisabledCommand guild={self.guild_id} cmd={self.command_name}>"
+class CountingChannel(Base):
+    __tablename__ = "counting_channels"
 
+    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
-class BotInstance(Base):
-    __tablename__ = "bot_instances"
+    current: Mapped[int] = mapped_column(Integer, default=0)
+    last_user_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
 
-    instance_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    priority: Mapped[int] = mapped_column(Integer)  # lower = higher priority
-    shard_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    shard_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-
-    ping_ms: Mapped[int] = mapped_column(Integer)
-    uptime_seconds: Mapped[int] = mapped_column(Integer)
-
-    status: Mapped[str] = mapped_column(String(16))  # ready / dead
-    last_heartbeat: Mapped[datetime] = mapped_column(DateTime)
+    best: Mapped[int] = mapped_column(Integer, default=0)

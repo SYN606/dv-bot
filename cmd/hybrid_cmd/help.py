@@ -3,6 +3,7 @@ from discord.ext import commands
 
 from utils.embeds import make_embed
 from utils.check_perms import is_bot_admin
+from utils.emojis import EMOJIS
 from db.db_helpers.commands import is_command_disabled
 
 
@@ -19,16 +20,16 @@ class Help(commands.Cog):
         # ── PREFIX HELP (dv help)
         if ctx.interaction is None:
             embed = make_embed(
-                title="Help",
-                description=(
-                    "<a:anouncement:1359629824192282759>This bot primarily uses **slash commands (`/`)**.\n"
-                    "Some basic commands also support the **`dv` prefix**.\n\n"
-                    "**Quick Commands:**\n"
-                    "`/ping` or `dv ping` – Check bot latency\n"
-                    "`/afk [reason]` or `dv afk` – Mark yourself as AFK\n"
-                    "`/help` or `dv help` – Show this menu\n\n"
-                    "<a:arrow_point:1359629780424851567> Use **`/`** to explore all commands with autocomplete."
-                ),
+                title="Help Menu",
+                description=
+                (f"{EMOJIS['announcement']} This bot primarily uses **slash commands (`/`)**.\n"
+                 f"{EMOJIS['arrow_point']} Some basic commands also support the **`dv` prefix**.\n\n"
+                 f"**Quick Commands**\n"
+                 f"{EMOJIS['ping']} `/ping` or `dv ping` – Check bot latency\n"
+                 f"{EMOJIS['okay']} `/afk [reason]` or `dv afk` – Mark yourself as AFK\n"
+                 f"{EMOJIS['announcement']} `/help` or `dv help` – Show this menu\n\n"
+                 f"{EMOJIS['arrow_point']} Tip: Type **`/`** to explore all commands with autocomplete."
+                 ),
                 level="INFO",
             )
             await ctx.reply(embed=embed, mention_author=False)
@@ -65,23 +66,23 @@ class Help(commands.Cog):
 
             group = command.parent.name if command.parent else "General"  # type: ignore
 
-            entry = (f"`/{name}` – "
+            entry = (f"{EMOJIS['arrow_point']} `/{name}` – "
                      f"{command.description or 'No description available'}")
 
             command_groups.setdefault(group, []).append(entry)
 
-        fields = [(group, "\n".join(sorted(cmds)), False)
-                  for group, cmds in sorted(command_groups.items())]
+        fields = [(f"{EMOJIS['green_dot']} {group}", "\n".join(sorted(cmds)),
+                   False) for group, cmds in sorted(command_groups.items())]
 
         embed = make_embed(
-            title="Help",
-            description=(
-                "This bot primarily uses **slash commands (`/`)**.\n"
-                "Some basic commands also support the **`dv` prefix**.\n\n"
-                "**Available Commands:**"),
+            title="Help Menu",
+            description=
+            (f"{EMOJIS['announcement']} This bot primarily uses **slash commands (`/`)**.\n"
+             f"{EMOJIS['arrow_point']} Some basic commands also support the **`dv` prefix**.\n\n"
+             f"{EMOJIS['developer']} **Available Commands**"),
             level="INFO",
             fields=fields,
-            footer="Tip: Type / and select a command to get autocomplete help",
+            footer="Tip: Use /command for autocomplete and parameter hints",
         )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)

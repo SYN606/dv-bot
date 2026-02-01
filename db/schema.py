@@ -1,23 +1,21 @@
-import os
-from db.engine import engine
+# db/schema.py
+from sqlalchemy import inspect, text
 from db.base import Base
-import db.models
-
-ENV = os.getenv("ENV", "test").lower()
+from db.engine import engine
 
 
 def init_schema() -> None:
-    """
-    Initialize database schema.
+    inspector = inspect(engine)
 
-    - In DEV/TEST: auto-create tables every startup
-    - In PROD: create tables only if they do not exist
-      (migrations should be used later)
-    """
+    existing_tables = set(inspector.get_table_names())
+    model_tables = set(Base.metadata.tables.keys())
 
-    if ENV == "prod":
-        # Safe for multi-instance production
-        Base.metadata.create_all(bind=engine, checkfirst=True)
-    else:
-        # Fast iteration for dev/testing
-        Base.metadata.create_all(bind=engine)
+    unused_tables = existing_tables - model_tables
+    if unused_tables:
+        print(f"[INFO] Dropping unused tables: {', '.join(unused_tables)}")
+
+        with engine.begin() as conn:
+            for table in unused_tables:
+                conn.execute(text(f'DROP TABLE IF EXISTS "{table}"'))
+
+    Base.metadata.create_all(engine)

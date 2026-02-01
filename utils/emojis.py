@@ -1,0 +1,17 @@
+EMOJIS = {
+    "announcement": "<a:anouncement:1359629824192282759>",
+    "arrow_point": "<a:arrow_point:1359629780424851567>",
+    "ban": "<a:ban:1359630227445256405>",
+    "boost": "<a:boost:1359631460398534796>",
+    "developer": "<a:developer:1359626493713453199>",
+    "enjoy": "<:enjoy:1359624502811689150>",
+    "fail": "<a:fail:1359630009613947011>",
+    "github": "<:github:1359630534195544224>",
+    "green_dot": "<a:green_dot:1359633941245722839>",
+    "red_dot": "<a:red_dot:1359633914112774406>",
+    "heart": "<❤️1357256039623295066>",
+    "success": "<a:success:1359630048302334145>",
+    "ping": "<a:ping:1359631105333919937>",
+    "okay": "<a:okay:1359630397981331707>",
+    "moderation": "<:moderation:1359630332747321585>",
+}

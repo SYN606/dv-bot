@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 
 from utils.embeds import make_embed
+from utils.emojis import EMOJIS
 from utils.check_perms import is_bot_admin
 from db.db_helpers.media_only import (
     enable_media_only,
@@ -32,8 +33,7 @@ class MediaOnly(commands.Cog):
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
-                    description=
-                    "You do not have permission to manage channels.",
+                    description="You are not allowed to manage channel modes.",
                     level="ERROR",
                 ),
                 ephemeral=True,
@@ -42,12 +42,17 @@ class MediaOnly(commands.Cog):
 
         added = enable_media_only(interaction.guild.id, channel.id)
 
-        await interaction.response.send_message(embed=make_embed(
-            title="Media-Only Enabled",
-            description=(f"{channel.mention} is now media-only." if added else
-                         f"{channel.mention} is already media-only."),
+        embed = make_embed(
+            title="Media-Only Mode",
+            description=(
+                f"{EMOJIS['success']} {channel.mention} is now **media-only**."
+                if added else
+                f"{EMOJIS['warning']} {channel.mention} is already media-only."
+            ),
             level="SUCCESS" if added else "WARNING",
-        ))
+        )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(
         name="media_only_disable",
@@ -65,8 +70,7 @@ class MediaOnly(commands.Cog):
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
-                    description=
-                    "You do not have permission to manage channels.",
+                    description="You are not allowed to manage channel modes.",
                     level="ERROR",
                 ),
                 ephemeral=True,
@@ -75,13 +79,16 @@ class MediaOnly(commands.Cog):
 
         removed = disable_media_only(interaction.guild.id, channel.id)
 
-        await interaction.response.send_message(embed=make_embed(
-            title="Media-Only Disabled",
-            description=(
-                f"Media-only disabled for {channel.mention}."
-                if removed else f"{channel.mention} was not media-only."),
+        embed = make_embed(
+            title="Media-Only Mode",
+            description=
+            (f"{EMOJIS['success']} Media-only has been **disabled** for {channel.mention}."
+             if removed else
+             f"{EMOJIS['warning']} {channel.mention} was not media-only."),
             level="SUCCESS" if removed else "WARNING",
-        ))
+        )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(
         name="media_only_status",
@@ -97,12 +104,17 @@ class MediaOnly(commands.Cog):
 
         enabled = is_media_only(interaction.guild.id, channel.id)
 
-        await interaction.response.send_message(embed=make_embed(
+        embed = make_embed(
             title="Media-Only Status",
-            description=(f"{channel.mention} is media-only." if enabled else
-                         f"{channel.mention} is not media-only."),
+            description=
+            (f"{EMOJIS['green_dot']} {channel.mention} is currently **media-only**."
+             if enabled else
+             f"{EMOJIS['red_dot']} {channel.mention} is **not** media-only."),
             level="INFO",
-        ))
+            footer="Only bot admins can change this setting",
+        )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

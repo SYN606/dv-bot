@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 
 from utils.embeds import make_embed
+from utils.emojis import EMOJIS
 from utils.check_perms import is_bot_admin
 from utils.protected_commands import PROTECTED_COMMANDS
 from db.db_helpers.commands import (
@@ -18,9 +19,6 @@ class CommandControl(commands.Cog):
         self.bot = bot
 
     def _command_exists(self, name: str) -> bool:
-        """
-        Check if a slash command or subcommand exists.
-        """
         name = name.lower().strip()
         for cmd in self.bot.tree.walk_commands():
             if cmd.qualified_name.lower() == name:
@@ -28,9 +26,6 @@ class CommandControl(commands.Cog):
         return False
 
     def _is_protected(self, name: str) -> bool:
-        """
-        Check if command is protected from disabling.
-        """
         return name in PROTECTED_COMMANDS
 
     @app_commands.command(
@@ -51,8 +46,7 @@ class CommandControl(commands.Cog):
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
-                    description=
-                    "You do not have permission to manage commands.",
+                    description="You are not allowed to manage bot commands.",
                     level="ERROR",
                 ),
                 ephemeral=True,
@@ -65,7 +59,8 @@ class CommandControl(commands.Cog):
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Unknown Command",
-                    description=f"`/{command_name}` is not a valid command.",
+                    description=
+                    f"{EMOJIS['fail']} `/{command_name}` does not exist.",
                     level="ERROR",
                 ),
                 ephemeral=True,
@@ -76,7 +71,9 @@ class CommandControl(commands.Cog):
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Protected Command",
-                    description=f"`/{command_name}` cannot be disabled.",
+                    description=
+                    (f"{EMOJIS['warning']} `/{command_name}` cannot be disabled."
+                     ),
                     level="WARNING",
                 ),
                 ephemeral=True,
@@ -85,12 +82,16 @@ class CommandControl(commands.Cog):
 
         added = disable_command(interaction.guild.id, command_name)
 
-        await interaction.response.send_message(embed=make_embed(
-            title="Command Disabled",
-            description=(f"`/{command_name}` has been disabled." if added else
-                         f"`/{command_name}` is already disabled."),
+        embed = make_embed(
+            title="Command Status Updated",
+            description=(
+                f"{EMOJIS['success']} `/{command_name}` has been disabled."
+                if added else
+                f"{EMOJIS['warning']} `/{command_name}` is already disabled."),
             level="SUCCESS" if added else "WARNING",
-        ))
+        )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(
         name="command_enable",
@@ -110,8 +111,7 @@ class CommandControl(commands.Cog):
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
-                    description=
-                    "You do not have permission to manage commands.",
+                    description="You are not allowed to manage bot commands.",
                     level="ERROR",
                 ),
                 ephemeral=True,
@@ -122,12 +122,16 @@ class CommandControl(commands.Cog):
 
         removed = enable_command(interaction.guild.id, command_name)
 
-        await interaction.response.send_message(embed=make_embed(
-            title="Command Enabled",
-            description=(f"`/{command_name}` has been enabled." if removed else
-                         f"`/{command_name}` was not disabled."),
+        embed = make_embed(
+            title="Command Status Updated",
+            description=(
+                f"{EMOJIS['success']} `/{command_name}` has been enabled."
+                if removed else
+                f"{EMOJIS['warning']} `/{command_name}` was not disabled."),
             level="SUCCESS" if removed else "WARNING",
-        ))
+        )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(
         name="command_status",
@@ -139,13 +143,17 @@ class CommandControl(commands.Cog):
 
         disabled = get_disabled_commands(interaction.guild.id)
 
-        await interaction.response.send_message(embed=make_embed(
+        embed = make_embed(
             title="Disabled Commands",
-            description=("\n".join(
-                f"`/{c}`" for c in sorted(disabled)
-            ) if disabled else "No commands are disabled."),
+            description=(
+                "\n".join(f"{EMOJIS['arrow_point']} `/{c}`"
+                          for c in sorted(disabled)) if disabled else
+                f"{EMOJIS['success']} No commands are currently disabled."),
             level="INFO",
-        ))
+            footer="Only bot admins can modify command availability",
+        )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

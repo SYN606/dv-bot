@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 from utils.embeds import make_embed
+from utils.emojis import EMOJIS
 
 
 class Ping(commands.Cog):
@@ -18,20 +19,31 @@ class Ping(commands.Cog):
 
         embed = make_embed(
             title="Pong",
-            description="Bot connection diagnostics",
+            description=(
+                f"{EMOJIS['ping']} Connection is stable and responsive.\n"
+                f"{EMOJIS['green_dot']} Bot is online."),
             level="INFO",
             fields=[
-                ("<a:green_dot:1359633941245722839> Gateway Latency", f"{latency_ms} ms", True),
+                ("Gateway latency", f"{latency_ms} ms", True),
                 ("Status", "Online", True),
             ],
-            footer=f"Requested by {ctx.author}",
+            footer="Digital Vigital diagnostics",
         )
 
-        # Works for BOTH slash & prefix
+        # Slash command path
         if ctx.interaction:
             await ctx.interaction.response.send_message(embed=embed)
-        else:
-            await ctx.reply(embed=embed, mention_author=False)
+            return
+
+        # Prefix command path
+        try:
+            await ctx.message.delete()
+        except discord.Forbidden:
+            pass
+        except discord.NotFound:
+            pass
+
+        await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot):
