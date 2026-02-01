@@ -3,7 +3,7 @@ from discord.ext import commands
 
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
-from db.db_helpers.admin_roles import get_admin_roles
+from utils.check_perms import is_bot_admin_ctx
 from db.db_helpers.tempban import (
     get_tempban_role,
     add_tempban,
@@ -11,32 +11,9 @@ from db.db_helpers.tempban import (
 
 
 # ─────────────────────────────────────
-# PREFIX-SAFE BOT ADMIN CHECK
+# SAFE PREFIX CLEANUP
 # ─────────────────────────────────────
-def is_bot_admin_prefix(ctx: commands.Context) -> bool:
-    if ctx.guild is None:
-        return False
-
-    author = ctx.author
-    if not isinstance(author, discord.Member):
-        return False
-
-    if ctx.guild.owner_id == author.id:
-        return True
-
-    if author.guild_permissions.administrator:
-        return True
-
-    admin_roles = set(get_admin_roles(ctx.guild.id))
-    member_roles = {role.id for role in author.roles}
-
-    return bool(admin_roles & member_roles)
-
-
 async def _cleanup(ctx: commands.Context) -> None:
-    """
-    Delete invoking prefix command safely.
-    """
     try:
         await ctx.message.delete()
     except (discord.Forbidden, discord.NotFound):
@@ -78,8 +55,8 @@ class Tempban(commands.Cog):
             await _cleanup(ctx)
             return
 
-        # ── Permission check
-        if not is_bot_admin_prefix(ctx):
+        # ── Permission check (BOT ADMIN ROLE SAFE)
+        if not is_bot_admin_ctx(ctx):
             await ctx.reply(
                 embed=make_embed(
                     title="Permission Denied",
@@ -120,6 +97,7 @@ class Tempban(commands.Cog):
             await _cleanup(ctx)
             return
 
+        # ── Resolve member
         member = ctx.guild.get_member(user.id)
         if not member:
             await ctx.reply(
@@ -133,6 +111,7 @@ class Tempban(commands.Cog):
             await _cleanup(ctx)
             return
 
+        # ── Already tempbanned?
         if role in member.roles:
             await ctx.reply(
                 embed=make_embed(
@@ -153,7 +132,7 @@ class Tempban(commands.Cog):
             reason=reason or f"Tempbanned by {ctx.author}",
         )
 
-        # ── Store record
+        # ── Store record (audit / expiry support later)
         add_tempban(
             guild_id=ctx.guild.id,
             user_id=member.id,

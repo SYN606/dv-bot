@@ -22,7 +22,7 @@ class TempbanList(commands.Cog):
         if guild is None:
             return
 
-        # ── Permission check
+        # ── Permission check (bot admin role OR admin OR owner)
         if not is_bot_admin(interaction):
             return await interaction.response.send_message(
                 embed=make_embed(
@@ -40,8 +40,7 @@ class TempbanList(commands.Cog):
             return await interaction.response.send_message(
                 embed=make_embed(
                     title="Active Tempbans",
-                    description=
-                    f"{EMOJIS['success']} No active tempbans in this server.",
+                    description=f"{EMOJIS['success']} No active tempbans in this server.",
                     level="INFO",
                 ),
                 ephemeral=True,
@@ -53,20 +52,30 @@ class TempbanList(commands.Cog):
             member = guild.get_member(row.user_id)
             moderator = guild.get_member(row.moderator_id)
 
-            user_display = (member.mention
-                            if member else f"`{row.user_id}` (left server)")
+            user_display = (
+                member.mention
+                if member
+                else f"`{row.user_id}` (left server)"
+            )
 
-            mod_display = (moderator.mention
-                           if moderator else f"`{row.moderator_id}`")
+            mod_display = (
+                moderator.mention
+                if moderator
+                else f"`{row.moderator_id}`"
+            )
 
-            expires = (row.expires_at.strftime("%d %b %Y, %H:%M")
-                       if row.expires_at else "Manual")
+            expires = (
+                row.expires_at.strftime("%d %b %Y, %H:%M")
+                if row.expires_at
+                else "Manual"
+            )
 
             entries.append(
                 f"{EMOJIS['red_dot']} **User:** {user_display}\n"
                 f"{EMOJIS['arrow_point']} **Moderator:** {mod_display}\n"
                 f"{EMOJIS['arrow_point']} **Reason:** {row.reason or 'No reason provided'}\n"
-                f"{EMOJIS['arrow_point']} **Expires:** {expires}")
+                f"{EMOJIS['arrow_point']} **Expires:** {expires}"
+            )
 
         embed = make_embed(
             title="Active Tempbans",

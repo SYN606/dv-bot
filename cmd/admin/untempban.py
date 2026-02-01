@@ -35,7 +35,9 @@ class UnTempban(commands.Cog):
         if guild is None:
             return
 
-        # ── Permission check
+        # ─────────────────────────
+        # PERMISSION CHECK
+        # ─────────────────────────
         if not is_bot_admin(interaction):
             return await interaction.response.send_message(
                 embed=make_embed(
@@ -46,28 +48,32 @@ class UnTempban(commands.Cog):
                 ephemeral=True,
             )
 
-        # ── Check tempban status
+        # ─────────────────────────
+        # TEMPBAN STATUS CHECK
+        # ─────────────────────────
         if not is_tempbanned(guild.id, member.id):
             return await interaction.response.send_message(
                 embed=make_embed(
                     title="Not Tempbanned",
                     description=
-                    (f"{EMOJIS['red_dot']} {member.mention} is not currently tempbanned."
+                    (f"{EMOJIS['warning']} {member.mention} is not currently tempbanned."
                      ),
                     level="WARNING",
                 ),
                 ephemeral=True,
             )
 
-        # ── Get configured tempban role
+        # ─────────────────────────
+        # TEMPBAN ROLE CONFIG
+        # ─────────────────────────
         role_id = get_tempban_role(guild.id)
         if role_id is None:
             return await interaction.response.send_message(
                 embed=make_embed(
                     title="Tempban Role Not Configured",
                     description=
-                    (f"{EMOJIS['red_dot']} No tempban role is configured for this server.\n"
-                     f"{EMOJIS['arrow_point']} Use `/tempban_role` to set one."
+                    (f"{EMOJIS['warning']} No tempban role is configured.\n"
+                     f"{EMOJIS['arrow_point']} Use `/tempban_role` to set one first."
                      ),
                     level="ERROR",
                 ),
@@ -75,9 +81,24 @@ class UnTempban(commands.Cog):
             )
 
         role = guild.get_role(role_id)
+        bot_member = guild.me
 
-        # ── Remove role if present
+        # ─────────────────────────
+        # ROLE REMOVAL
+        # ─────────────────────────
         if role and role in member.roles:
+            if bot_member and role >= bot_member.top_role:
+                return await interaction.response.send_message(
+                    embed=make_embed(
+                        title="Role Hierarchy Error",
+                        description=
+                        (f"{EMOJIS['fail']} I cannot remove {role.mention}.\n"
+                         f"{EMOJIS['arrow_point']} My role must be above it."),
+                        level="ERROR",
+                    ),
+                    ephemeral=True,
+                )
+
             try:
                 await member.remove_roles(
                     role,
@@ -88,22 +109,25 @@ class UnTempban(commands.Cog):
                     embed=make_embed(
                         title="Role Removal Failed",
                         description=
-                        (f"{EMOJIS['fail']} I don’t have permission to remove {role.mention}.\n"
-                         f"{EMOJIS['arrow_point']} Check my role position and permissions."
+                        (f"{EMOJIS['fail']} I don’t have permission to remove {role.mention}."
                          ),
                         level="ERROR",
                     ),
                     ephemeral=True,
                 )
 
-        # ── Update database (deactivate tempban)
+        # ─────────────────────────
+        # DATABASE UPDATE
+        # ─────────────────────────
         remove_tempban(
             guild_id=guild.id,
             user_id=member.id,
             moderator_id=interaction.user.id,
         )
 
-        # ── Public confirmation (moderation transparency)
+        # ─────────────────────────
+        # PUBLIC CONFIRMATION
+        # ─────────────────────────
         await interaction.response.send_message(embed=make_embed(
             title="Tempban Removed",
             description=

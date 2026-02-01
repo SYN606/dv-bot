@@ -26,9 +26,17 @@ class TempbanRole(commands.Cog):
     ):
         guild = interaction.guild
         if guild is None:
-            return
+            return await interaction.response.send_message(
+                embed=make_embed(
+                    title="Invalid Context",
+                    description=
+                    "This command can only be used inside a server.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
 
-        # ── Permission check
+        # ── Permission check (bot admin role / admin / owner)
         if not is_bot_admin(interaction):
             return await interaction.response.send_message(
                 embed=make_embed(
@@ -42,7 +50,14 @@ class TempbanRole(commands.Cog):
 
         bot_member = guild.me
         if bot_member is None:
-            return
+            return await interaction.response.send_message(
+                embed=make_embed(
+                    title="Bot Error",
+                    description="Unable to resolve my member instance.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
 
         # ── Managed / integration role check
         if role.managed:
@@ -64,7 +79,7 @@ class TempbanRole(commands.Cog):
                     description=
                     ("I cannot manage this role because it is **higher than or equal to** "
                      "my highest role.\n\n"
-                     f"{EMOJIS['arrow_point']} Move my role above `{role.name}` and try again."
+                     f"{EMOJIS['arrow_point']} Move my role above **{role.name}** and try again."
                      ),
                     level="ERROR",
                 ),
@@ -74,17 +89,18 @@ class TempbanRole(commands.Cog):
         # ── Save configuration
         set_tempban_role(guild.id, role.id)
 
-        embed = make_embed(
-            title="Tempban Role Configured",
-            description=
-            (f"{EMOJIS['success']} {role.mention} has been set as the **tempban role**.\n\n"
-             f"{EMOJIS['arrow_point']} This role will be assigned when a user is tempbanned."
-             ),
-            level="SUCCESS",
-            footer="Tempban system • Digital Vigital",
+        await interaction.response.send_message(
+            embed=make_embed(
+                title="Tempban Role Configured",
+                description=
+                (f"{EMOJIS['success']} {role.mention} has been set as the **tempban role**.\n\n"
+                 f"{EMOJIS['arrow_point']} This role will be automatically assigned on tempban."
+                 ),
+                level="SUCCESS",
+                footer="Tempban system • Digital Vigital",
+            ),
+            ephemeral=True,
         )
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
