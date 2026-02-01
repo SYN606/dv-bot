@@ -2,6 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     DateTime,
     Integer,
     String,
@@ -84,3 +85,35 @@ class CountingChannel(Base):
     )
 
     best: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class TempbanConfig(Base):
+    __tablename__ = "tempban_config"
+
+    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    role_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<TempbanConfig guild={self.guild_id} role={self.role_id}>"
+
+
+class TempbanRecord(Base):
+    __tablename__ = "tempban_records"
+
+    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+
+    moderator_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+
+    reason: Mapped[str | None] = mapped_column(String(512))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    def __repr__(self) -> str:
+        return (f"<TempbanRecord guild={self.guild_id} "
+                f"user={self.user_id} active={self.active}>")
