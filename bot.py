@@ -8,26 +8,25 @@ from db.schema import init_schema
 from utils.handlers.prefix import dv_prefix, normalize_dv_prefix
 from utils.interaction_check import command_toggle_check
 
-# Handlers
 from utils.handlers.counting_handler import handle_counting
 from utils.handlers.media_only import enforce_media_only
 from utils.handlers.sticky_handler import handle_sticky
 from utils.handlers.afk_handler import handle_afk
 from utils.handlers.mention import handle_bot_mention
 
-# Presence
 from utils.presence import SarcasticPresenceRotator
+from utils.startups.verification_startup import setup_verification_on_ready
 
 # ────────────────────────────────
-# Env & Token
+# ENV
 # ────────────────────────────────
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
-    raise RuntimeError("[ERROR] DISCORD_TOKEN not found in .env")
+    raise RuntimeError("DISCORD_TOKEN not found")
 
 # ────────────────────────────────
-# Intents
+# BOT SETUP
 # ────────────────────────────────
 intents = discord.Intents.default()
 intents.members = True
@@ -43,55 +42,49 @@ presence_rotator: SarcasticPresenceRotator | None = None
 
 
 # ────────────────────────────────
-# Cog Loader
+# COG LOADER
 # ────────────────────────────────
 async def load_cogs() -> None:
     base_path = os.path.abspath("cmd")
 
     for root, _, files in os.walk(base_path):
         for file in files:
-            if not file.endswith(".py") or file.startswith("__"):
-                continue
-
-            rel = os.path.relpath(os.path.join(root, file), base_path)
-            module = rel.replace(os.sep, ".")[:-3]
-            ext = f"cmd.{module}"
-
-            try:
-                await bot.load_extension(ext)
-                print(f"[INFO] Loaded {ext}")
-            except Exception as exc:
-                print(f"[ERROR] Failed to load {ext}: {exc}")
+            if file.endswith(".py") and not file.startswith("__"):
+                rel = os.path.relpath(os.path.join(root, file), base_path)
+                ext = f"cmd.{rel.replace(os.sep, '.')[:-3]}"
+                try:
+                    await bot.load_extension(ext)
+                    print(f"[INFO] Loaded {ext}")
+                except Exception as exc:
+                    print(f"[ERROR] Failed to load {ext}: {exc}")
 
 
 # ────────────────────────────────
-# Events
+# EVENTS
 # ────────────────────────────────
+@bot.event
+async def setup_hook() -> None:
+    init_schema()
+    bot.tree.interaction_check = command_toggle_check
+    await load_cogs()
+    await bot.tree.sync()
+    print("[INFO] Startup complete")
+
+
 @bot.event
 async def on_ready() -> None:
     global presence_rotator
 
     print(f"[INFO] Logged in as {bot.user} ({bot.user.id})")  # type: ignore
 
-    # Start sarcastic presence rotator once
+    await setup_verification_on_ready(bot)
+
     if presence_rotator is None:
         presence_rotator = SarcasticPresenceRotator(bot)
         await presence_rotator.start()
-        print("[INFO] Sarcastic presence rotator started")
+        print("[INFO] Presence rotator started")
 
-    print("[INFO] Bot is online and ready")
-
-
-@bot.event
-async def setup_hook() -> None:
-    init_schema()
-    print("[INFO] Database initialized")
-
-    bot.tree.interaction_check = command_toggle_check
-
-    await load_cogs()
-    await bot.tree.sync()
-    print("[INFO] Slash commands synced")
+    print("[INFO] Bot ready")
 
 
 @bot.event
@@ -99,32 +92,22 @@ async def on_message(message: discord.Message) -> None:
     if message.guild is None:
         return
 
-    # Normalize dv ping → dv prefix
     message.content = normalize_dv_prefix(message.content)
 
-    # 🧮 0️⃣ COUNTING HANDLER (highest priority)
     if await handle_counting(message):
         return
 
-    # 1️⃣ Media-only enforcement
     if await enforce_media_only(message):
         return
 
-    # 2️⃣ Sticky handler
     await handle_sticky(message)
-
-    # 3️⃣ Bot mention handler
     await handle_bot_mention(bot, message)
-
-    # 4️⃣ AFK system
     await handle_afk(message)
-
-    # 5️⃣ Commands
     await bot.process_commands(message)
 
 
 # ────────────────────────────────
-# Entrypoint
+# ENTRYPOINT
 # ────────────────────────────────
 def main() -> None:
     try:

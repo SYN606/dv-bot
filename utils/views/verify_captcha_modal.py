@@ -4,17 +4,13 @@ import discord
 
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
-from utils.handlers.verification_handler import handle_verification
+from utils.handlers.verify_handler import handle_verification
 
 
 # ─────────────────────────────────────
 # CAPTCHA TOKEN GENERATOR
 # ─────────────────────────────────────
 def generate_token(length: int = 6) -> str:
-    """
-    Generate a random captcha token.
-    Example: A9XQ2M
-    """
     chars = string.ascii_uppercase + string.digits
     return "".join(random.choice(chars) for _ in range(length))
 
@@ -26,9 +22,9 @@ class VerifyCaptchaModal(discord.ui.Modal):
     """
     Wick-style verification captcha modal.
 
-    • Captcha is shown in the MODAL TITLE
-    • Input box stays clean
-    • User must type the code exactly
+    • Captcha shown in modal title
+    • User types code exactly
+    • All verification logic happens here
     """
 
     def __init__(self, guild_id: int):
@@ -36,7 +32,7 @@ class VerifyCaptchaModal(discord.ui.Modal):
         self.token = generate_token()
 
         super().__init__(
-            title=f"Verification Required • Code: `{self.token}`",
+            title=f"Verification Required • Code: {self.token}",
             timeout=120,
         )
 
@@ -56,7 +52,7 @@ class VerifyCaptchaModal(discord.ui.Modal):
 
         member = guild.get_member(interaction.user.id)
         if member is None:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Verification Error",
                     description=
@@ -65,6 +61,7 @@ class VerifyCaptchaModal(discord.ui.Modal):
                 ),
                 ephemeral=True,
             )
+            return
 
         # ─────────────────────────
         # CAPTCHA VALIDATION
@@ -72,7 +69,7 @@ class VerifyCaptchaModal(discord.ui.Modal):
         user_input = self.code_input.value.strip().upper()
 
         if user_input != self.token:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Verification Failed",
                     description=
@@ -83,6 +80,7 @@ class VerifyCaptchaModal(discord.ui.Modal):
                 ),
                 ephemeral=True,
             )
+            return
 
         # ─────────────────────────
         # APPLY VERIFICATION
@@ -93,14 +91,20 @@ class VerifyCaptchaModal(discord.ui.Modal):
             interaction=interaction,
         )
 
-        if not success and not interaction.response.is_done():
-            await interaction.response.send_message(
-                embed=make_embed(
-                    title="Verification Error",
-                    description=(
-                        f"{EMOJIS['fail']} Something went wrong.\n"
-                        f"{EMOJIS['arrow_point']} Please contact staff."),
-                    level="ERROR",
-                ),
-                ephemeral=True,
-            )
+        if not success:
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    embed=make_embed(
+                        title="Verification Error",
+                        description=(
+                            f"{EMOJIS['fail']} Something went wrong.\n"
+                            f"{EMOJIS['arrow_point']} Please contact staff."),
+                        level="ERROR",
+                    ),
+                    ephemeral=True,
+                )
+
+    async def on_timeout(self):
+        # No interaction response allowed here
+        # Optional: log timeout or metrics
+        pass

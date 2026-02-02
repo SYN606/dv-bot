@@ -6,9 +6,6 @@ from utils.emojis import EMOJIS
 from db.db_helpers.verification import get_verification_config
 
 
-# ─────────────────────────────────────
-# CORE VERIFY ACTION
-# ─────────────────────────────────────
 async def handle_verification(
     *,
     guild: discord.Guild,
@@ -16,18 +13,11 @@ async def handle_verification(
     interaction: discord.Interaction | None = None,
 ) -> bool:
     """
-    Applies verification roles and sends logs.
-
-    This function assumes:
-    - Captcha (if any) is already validated
-    - Tempban checks are already done
-
-    Returns True if verification succeeded.
+    Apply verification roles and log the action.
+    Returns True if verification succeeds.
     """
 
-    # ─────────────────────────
-    # BASIC SAFETY
-    # ─────────────────────────
+    # Basic safety checks
     if not guild or not isinstance(member, discord.Member):
         return False
 
@@ -35,9 +25,7 @@ async def handle_verification(
     if bot_member is None:
         return False
 
-    # ─────────────────────────
-    # LOAD CONFIG
-    # ─────────────────────────
+    # Load verification config
     config = get_verification_config(guild.id)
     if not config:
         return False
@@ -49,18 +37,14 @@ async def handle_verification(
     if not verified_role:
         return False
 
-    # ─────────────────────────
-    # ROLE SAFETY
-    # ─────────────────────────
+    # Ensure bot can manage roles
     if verified_role >= bot_member.top_role:
         return False
 
     if unverified_role and unverified_role >= bot_member.top_role:
-        unverified_role = None  # silently ignore unsafe role
+        unverified_role = None
 
-    # ─────────────────────────
-    # APPLY ROLES
-    # ─────────────────────────
+    # Apply verification roles
     try:
         if unverified_role and unverified_role in member.roles:
             await member.remove_roles(
@@ -77,9 +61,7 @@ async def handle_verification(
     except discord.Forbidden:
         return False
 
-    # ─────────────────────────
-    # LOG VERIFICATION
-    # ─────────────────────────
+    # Log verification event
     log_channel = guild.get_channel(config.log_channel_id)
 
     if isinstance(log_channel, discord.TextChannel):
@@ -94,9 +76,7 @@ async def handle_verification(
             footer=f"Verification • {guild.name}",
         ))
 
-    # ─────────────────────────
-    # OPTIONAL USER ACK
-    # ─────────────────────────
+    # Optional user confirmation
     if interaction:
         try:
             await interaction.response.send_message(
