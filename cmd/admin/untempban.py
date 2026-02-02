@@ -10,8 +10,9 @@ from db.db_helpers.tempban import (
     remove_tempban,
     is_tempbanned,
 )
+from db.db_helpers.verification import get_verification_config
 from db.engine import SessionLocal
-from db.models import VerificationConfig, ModerationLogConfig
+from db.models import ModerationLogConfig
 
 
 # ─────────────────────────────────────
@@ -50,13 +51,15 @@ class UnTempban(commands.Cog):
         guild = ctx.guild
         author = ctx.author
 
-        # ── Missing user
+        # ─────────────────────────────
+        # VALIDATION
+        # ─────────────────────────────
         if user is None:
             await ctx.reply(
                 embed=make_embed(
                     title="Missing User",
                     description=
-                    (f"{EMOJIS['red_dot']} **User ID or mention is required.**\n\n"
+                    (f"{EMOJIS['red_dot']} **User mention or ID required.**\n\n"
                      f"{EMOJIS['arrow_point']} Usage: `dv untempban <user> [reason]`"
                      ),
                     level="WARNING",
@@ -66,7 +69,6 @@ class UnTempban(commands.Cog):
             await _cleanup(ctx)
             return
 
-        # ── Permission check
         if not is_bot_admin_ctx(ctx):
             await ctx.reply(
                 embed=make_embed(
@@ -79,7 +81,6 @@ class UnTempban(commands.Cog):
             await _cleanup(ctx)
             return
 
-        # ── Resolve member
         member = guild.get_member(user.id)
         if not member:
             await ctx.reply(
@@ -93,13 +94,12 @@ class UnTempban(commands.Cog):
             await _cleanup(ctx)
             return
 
-        # ── Tempban status check
         if not is_tempbanned(guild.id, member.id):
             await ctx.reply(
                 embed=make_embed(
                     title="Not Tempbanned",
                     description=
-                    f"{EMOJIS['warning']} {member.mention} is not currently tempbanned.",
+                    f"{EMOJIS['warning']} {member.mention} is not tempbanned.",
                     level="WARNING",
                 ),
                 mention_author=False,
@@ -114,8 +114,9 @@ class UnTempban(commands.Cog):
         # ─────────────────────────────
         # REMOVE TEMPBAN ROLE
         # ─────────────────────────────
-        role_id = get_tempban_role(guild.id)
-        tempban_role = guild.get_role(role_id) if role_id else None
+        tempban_role_id = get_tempban_role(guild.id)
+        tempban_role = guild.get_role(
+            tempban_role_id) if tempban_role_id else None
 
         if tempban_role and tempban_role in member.roles:
             if tempban_role >= bot_member.top_role:
@@ -124,7 +125,7 @@ class UnTempban(commands.Cog):
                         title="Role Hierarchy Error",
                         description=
                         (f"{EMOJIS['fail']} I cannot remove {tempban_role.mention}.\n"
-                         f"{EMOJIS['arrow_point']} My role must be above it."),
+                         f"{EMOJIS['arrow_point']} Move my role above it."),
                         level="ERROR",
                     ),
                     mention_author=False,
@@ -140,9 +141,9 @@ class UnTempban(commands.Cog):
             except discord.Forbidden:
                 await ctx.reply(
                     embed=make_embed(
-                        title="Role Removal Failed",
+                        title="Permission Error",
                         description=
-                        f"{EMOJIS['fail']} I don’t have permission to remove {tempban_role.mention}.",
+                        f"{EMOJIS['fail']} I cannot remove {tempban_role.mention}.",
                         level="ERROR",
                     ),
                     mention_author=False,
@@ -153,24 +154,19 @@ class UnTempban(commands.Cog):
         # ─────────────────────────────
         # RESTORE VERIFIED ROLE (IF CONFIGURED)
         # ─────────────────────────────
-        db = SessionLocal()
-        try:
-            verify_cfg = db.query(VerificationConfig).filter_by(
-                guild_id=guild.id).first()
-        finally:
-            db.close()
+        verify_cfg = get_verification_config(guild.id)
 
         if verify_cfg:
             verified_role = guild.get_role(verify_cfg.verified_role_id)
-            if verified_role and verified_role < bot_member.top_role:
-                if verified_role not in member.roles:
-                    try:
-                        await member.add_roles(
-                            verified_role,
-                            reason="Tempban lifted – verification restored",
-                        )
-                    except discord.Forbidden:
-                        pass
+            if (verified_role and verified_role < bot_member.top_role
+                    and verified_role not in member.roles):
+                try:
+                    await member.add_roles(
+                        verified_role,
+                        reason="Tempban lifted – verification restored",
+                    )
+                except discord.Forbidden:
+                    pass  # silently ignore
 
         # ─────────────────────────────
         # DATABASE UPDATE
@@ -182,7 +178,7 @@ class UnTempban(commands.Cog):
         )
 
         # ─────────────────────────────
-        # PUBLIC CONFIRMATION
+        # CONFIRMATION MESSAGE
         # ─────────────────────────────
         await ctx.reply(
             embed=make_embed(
@@ -198,7 +194,7 @@ class UnTempban(commands.Cog):
         )
 
         # ─────────────────────────────
-        # MOD LOGS
+        # MODERATION LOG
         # ─────────────────────────────
         db = SessionLocal()
         try:
