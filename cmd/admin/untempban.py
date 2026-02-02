@@ -1,142 +1,226 @@
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
-from utils.check_perms import is_bot_admin
+from utils.check_perms import is_bot_admin_ctx
+
 from db.db_helpers.tempban import (
     get_tempban_role,
     remove_tempban,
     is_tempbanned,
 )
+from db.engine import SessionLocal
+from db.models import VerificationConfig, ModerationLogConfig
+
+
+# ─────────────────────────────────────
+# SAFE PREFIX CLEANUP
+# ─────────────────────────────────────
+async def _cleanup(ctx: commands.Context) -> None:
+    try:
+        await ctx.message.delete()
+    except (discord.Forbidden, discord.NotFound):
+        pass
 
 
 class UnTempban(commands.Cog):
+    """
+    PREFIX ONLY:
+    dv untempban <user> [reason]
+    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(
+    @commands.command(
         name="untempban",
-        description="Remove a tempban from a user",
-    )
-    @app_commands.describe(
-        member="Member to remove tempban from",
-        reason="Reason for removing the tempban (optional)",
+        help="Remove a tempban from a user",
     )
     async def untempban(
         self,
-        interaction: discord.Interaction,
-        member: discord.Member,
+        ctx: commands.Context,
+        user: discord.Member | discord.User | None = None,
+        *,
         reason: str | None = None,
     ):
-        guild = interaction.guild
-        if guild is None:
+        if ctx.guild is None:
             return
 
-        # ─────────────────────────
-        # PERMISSION CHECK
-        # ─────────────────────────
-        if not is_bot_admin(interaction):
-            return await interaction.response.send_message(
+        guild = ctx.guild
+        author = ctx.author
+
+        # ── Missing user
+        if user is None:
+            await ctx.reply(
+                embed=make_embed(
+                    title="Missing User",
+                    description=
+                    (f"{EMOJIS['red_dot']} **User ID or mention is required.**\n\n"
+                     f"{EMOJIS['arrow_point']} Usage: `dv untempban <user> [reason]`"
+                     ),
+                    level="WARNING",
+                ),
+                mention_author=False,
+            )
+            await _cleanup(ctx)
+            return
+
+        # ── Permission check
+        if not is_bot_admin_ctx(ctx):
+            await ctx.reply(
                 embed=make_embed(
                     title="Permission Denied",
                     description="You are not allowed to manage tempbans.",
                     level="ERROR",
                 ),
-                ephemeral=True,
+                mention_author=False,
             )
+            await _cleanup(ctx)
+            return
 
-        # ─────────────────────────
-        # TEMPBAN STATUS CHECK
-        # ─────────────────────────
+        # ── Resolve member
+        member = guild.get_member(user.id)
+        if not member:
+            await ctx.reply(
+                embed=make_embed(
+                    title="User Not Found",
+                    description="That user is not in this server.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
+            await _cleanup(ctx)
+            return
+
+        # ── Tempban status check
         if not is_tempbanned(guild.id, member.id):
-            return await interaction.response.send_message(
+            await ctx.reply(
                 embed=make_embed(
                     title="Not Tempbanned",
                     description=
-                    (f"{EMOJIS['warning']} {member.mention} is not currently tempbanned."
-                     ),
+                    f"{EMOJIS['warning']} {member.mention} is not currently tempbanned.",
                     level="WARNING",
                 ),
-                ephemeral=True,
+                mention_author=False,
             )
+            await _cleanup(ctx)
+            return
 
-        # ─────────────────────────
-        # TEMPBAN ROLE CONFIG
-        # ─────────────────────────
-        role_id = get_tempban_role(guild.id)
-        if role_id is None:
-            return await interaction.response.send_message(
-                embed=make_embed(
-                    title="Tempban Role Not Configured",
-                    description=
-                    (f"{EMOJIS['warning']} No tempban role is configured.\n"
-                     f"{EMOJIS['arrow_point']} Use `/tempban_role` to set one first."
-                     ),
-                    level="ERROR",
-                ),
-                ephemeral=True,
-            )
-
-        role = guild.get_role(role_id)
         bot_member = guild.me
+        if bot_member is None:
+            return
 
-        # ─────────────────────────
-        # ROLE REMOVAL
-        # ─────────────────────────
-        if role and role in member.roles:
-            if bot_member and role >= bot_member.top_role:
-                return await interaction.response.send_message(
+        # ─────────────────────────────
+        # REMOVE TEMPBAN ROLE
+        # ─────────────────────────────
+        role_id = get_tempban_role(guild.id)
+        tempban_role = guild.get_role(role_id) if role_id else None
+
+        if tempban_role and tempban_role in member.roles:
+            if tempban_role >= bot_member.top_role:
+                await ctx.reply(
                     embed=make_embed(
                         title="Role Hierarchy Error",
                         description=
-                        (f"{EMOJIS['fail']} I cannot remove {role.mention}.\n"
+                        (f"{EMOJIS['fail']} I cannot remove {tempban_role.mention}.\n"
                          f"{EMOJIS['arrow_point']} My role must be above it."),
                         level="ERROR",
                     ),
-                    ephemeral=True,
+                    mention_author=False,
                 )
+                await _cleanup(ctx)
+                return
 
             try:
                 await member.remove_roles(
-                    role,
-                    reason=reason or f"Tempban removed by {interaction.user}",
+                    tempban_role,
+                    reason=reason or f"Tempban removed by {author}",
                 )
             except discord.Forbidden:
-                return await interaction.response.send_message(
+                await ctx.reply(
                     embed=make_embed(
                         title="Role Removal Failed",
                         description=
-                        (f"{EMOJIS['fail']} I don’t have permission to remove {role.mention}."
-                         ),
+                        f"{EMOJIS['fail']} I don’t have permission to remove {tempban_role.mention}.",
                         level="ERROR",
                     ),
-                    ephemeral=True,
+                    mention_author=False,
                 )
+                await _cleanup(ctx)
+                return
 
-        # ─────────────────────────
+        # ─────────────────────────────
+        # RESTORE VERIFIED ROLE (IF CONFIGURED)
+        # ─────────────────────────────
+        db = SessionLocal()
+        try:
+            verify_cfg = db.query(VerificationConfig).filter_by(
+                guild_id=guild.id).first()
+        finally:
+            db.close()
+
+        if verify_cfg:
+            verified_role = guild.get_role(verify_cfg.verified_role_id)
+            if verified_role and verified_role < bot_member.top_role:
+                if verified_role not in member.roles:
+                    try:
+                        await member.add_roles(
+                            verified_role,
+                            reason="Tempban lifted – verification restored",
+                        )
+                    except discord.Forbidden:
+                        pass
+
+        # ─────────────────────────────
         # DATABASE UPDATE
-        # ─────────────────────────
+        # ─────────────────────────────
         remove_tempban(
             guild_id=guild.id,
             user_id=member.id,
-            moderator_id=interaction.user.id,
+            moderator_id=author.id,
         )
 
-        # ─────────────────────────
+        # ─────────────────────────────
         # PUBLIC CONFIRMATION
-        # ─────────────────────────
-        await interaction.response.send_message(embed=make_embed(
-            title="Tempban Removed",
-            description=
-            (f"{EMOJIS['success']} {member.mention} has been **untempbanned**.\n\n"
-             f"{EMOJIS['arrow_point']} **Reason:** {reason or 'No reason provided'}"
-             ),
-            level="SUCCESS",
-            footer=f"Action by {interaction.user}",
-        ))
+        # ─────────────────────────────
+        await ctx.reply(
+            embed=make_embed(
+                title="Tempban Removed",
+                description=
+                (f"{EMOJIS['success']} {member.mention} has been **untempbanned**.\n\n"
+                 f"{EMOJIS['arrow_point']} **Reason:** {reason or 'No reason provided'}"
+                 ),
+                level="SUCCESS",
+                footer=f"Action by {author}",
+            ),
+            mention_author=False,
+        )
+
+        # ─────────────────────────────
+        # MOD LOGS
+        # ─────────────────────────────
+        db = SessionLocal()
+        try:
+            log_cfg = db.query(ModerationLogConfig).filter_by(
+                guild_id=guild.id).first()
+        finally:
+            db.close()
+
+        if log_cfg:
+            log_channel = guild.get_channel(log_cfg.channel_id)
+            if isinstance(log_channel, discord.TextChannel):
+                await log_channel.send(embed=make_embed(
+                    title="Tempban Lifted",
+                    description=
+                    (f"{EMOJIS['success']} **User:** {member.mention}\n"
+                     f"{EMOJIS['arrow_point']} **Moderator:** {author.mention}\n"
+                     f"{EMOJIS['arrow_point']} **Reason:** {reason or 'No reason provided'}"
+                     ),
+                    level="INFO",
+                ))
+
+        await _cleanup(ctx)
 
 
 async def setup(bot: commands.Bot):
