@@ -3,9 +3,7 @@ from discord.ext import commands
 from db.db_helpers.admin_roles import get_admin_roles
 
 
-# ─────────────────────────────────
 # CORE CHECK
-# ─────────────────────────────────
 def _member_is_bot_admin(member: discord.Member) -> bool:
     # Server owner
     if member.guild.owner_id == member.id:
@@ -22,9 +20,7 @@ def _member_is_bot_admin(member: discord.Member) -> bool:
     return bool(member_roles & admin_roles)
 
 
-# ─────────────────────────────────
 # SLASH COMMANDS
-# ─────────────────────────────────
 def is_bot_admin(interaction: discord.Interaction) -> bool:
     """
     Slash-command bot admin permission check.
@@ -32,7 +28,6 @@ def is_bot_admin(interaction: discord.Interaction) -> bool:
     if interaction.guild is None:
         return False
 
-    # 🔥 ALWAYS resolve Member from guild
     member = interaction.guild.get_member(interaction.user.id)
     if member is None:
         return False
@@ -40,9 +35,7 @@ def is_bot_admin(interaction: discord.Interaction) -> bool:
     return _member_is_bot_admin(member)
 
 
-# ─────────────────────────────────
 # PREFIX / HYBRID COMMANDS
-# ─────────────────────────────────
 def is_bot_admin_ctx(ctx: commands.Context) -> bool:
     """
     Prefix / hybrid command bot admin permission check.
