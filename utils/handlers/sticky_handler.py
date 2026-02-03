@@ -8,14 +8,21 @@ from db.db_helpers.sticky import (
 )
 
 
-async def handle_sticky(message: Message) -> None:
+async def handle_sticky(message: Message) -> bool:
+    """
+    Sticky message handler.
+
+    Returns True if a sticky was reposted
+    and the pipeline should stop.
+    """
+
     # ── Ignore bots
     if message.author.bot:
-        return
+        return False
 
     # ── Guild-only safety
     if message.guild is None:
-        return
+        return False
 
     # ── Run DB logic off the event loop
     result = await asyncio.to_thread(
@@ -25,7 +32,7 @@ async def handle_sticky(message: Message) -> None:
     )
 
     if not result:
-        return
+        return False
 
     content, last_id = result
 
@@ -48,6 +55,8 @@ async def handle_sticky(message: Message) -> None:
         message.channel.id,
         sent.id,
     )
+
+    return True
 
 
 # ─────────────────────────

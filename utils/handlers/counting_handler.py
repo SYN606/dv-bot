@@ -9,6 +9,14 @@ from utils.embeds import make_embed
 
 
 async def handle_counting(message: discord.Message) -> bool:
+    """
+    Counting game handler.
+
+    Returns True if the message was handled
+    (reaction added or reset triggered).
+    """
+
+    # ── Safety checks
     if message.guild is None or message.author.bot:
         return False
 
@@ -16,26 +24,38 @@ async def handle_counting(message: discord.Message) -> bool:
     if not content.isdigit():
         return False
 
-    # Run DB logic off the event loop
+    number = int(content)
+
+    # ── Run DB logic off the event loop
     result = await asyncio.to_thread(
         _process_counting_db,
         guild_id=message.guild.id,
         channel_id=message.channel.id,
         user_id=message.author.id,
-        number=int(content),
+        number=number,
     )
 
+    # ── Not a counting channel
     if result is None:
         return False
 
     action = result["action"]
 
+    # ── Correct count
     if action == "ok":
-        await message.add_reaction(EMOJIS["success"])
+        try:
+            await message.add_reaction(EMOJIS["success"])
+        except discord.HTTPException:
+            pass
         return True
 
+    # ── Reset case
     if action == "reset":
-        await message.add_reaction(EMOJIS["fail"])
+        try:
+            await message.add_reaction(EMOJIS["fail"])
+        except discord.HTTPException:
+            pass
+
         await message.channel.send(embed=make_embed(
             title="Counting Reset",
             description=
@@ -62,17 +82,27 @@ def _process_counting_db(
     user_id: int,
     number: int,
 ) -> dict | None:
+    """
+    Processes counting logic synchronously.
+    Returns:
+      - None → not a counting channel
+      - {"action": "ok"}
+      - {"action": "reset", "reason": str, "best": int}
+    """
+
     db: Session = SessionLocal()
     try:
         row = (db.query(CountingChannel).filter_by(
-            guild_id=guild_id, channel_id=channel_id).first())
+            guild_id=guild_id,
+            channel_id=channel_id,
+        ).first())
 
         if row is None:
             return None
 
         expected = row.current + 1
 
-        # Same user twice
+        # ❌ Same user counted twice
         if row.last_user_id == user_id:
             best = row.best
             row.current = 0
@@ -84,7 +114,7 @@ def _process_counting_db(
                 "best": best,
             }
 
-        # Wrong number
+        # ❌ Wrong number
         if number != expected:
             best = row.best
             row.current = 0
@@ -96,7 +126,7 @@ def _process_counting_db(
                 "best": best,
             }
 
-        # Correct count
+        # ✅ Correct count
         row.current = number
         row.last_user_id = user_id
         row.best = max(row.best, row.current)

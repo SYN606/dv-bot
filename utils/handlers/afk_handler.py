@@ -5,10 +5,19 @@ from utils.embeds import make_embed
 from db.db_helpers.afk import get_afk, remove_afk
 
 
-async def handle_afk(message: Message) -> None:
-    # Safety checks
+async def handle_afk(message: Message) -> bool:
+    """
+    AFK handler.
+
+    Returns True if the handler sent a message
+    and the pipeline should stop.
+    """
+
+    # ── Safety
     if message.guild is None or message.author.bot:
-        return
+        return False
+
+    handled = False
 
     # ─────────────────────────
     # AFK CHECK FOR MENTIONS
@@ -22,6 +31,8 @@ async def handle_afk(message: Message) -> None:
 
         if not afk:
             continue
+
+        handled = True
 
         embed = make_embed(
             title="User is AFK",
@@ -41,13 +52,15 @@ async def handle_afk(message: Message) -> None:
         user_id=message.author.id,
     )
 
-    if not removed:
-        return
+    if removed:
+        handled = True
 
-    embed = make_embed(
-        title="AFK Removed",
-        description=("Welcome back. You are no longer marked as AFK.\n"
-                     f"AFK duration: <t:{removed.since}:R>"),
-        level="INFO",
-    )
-    await message.channel.send(embed=embed)
+        embed = make_embed(
+            title="AFK Removed",
+            description=("Welcome back. You are no longer marked as AFK.\n"
+                         f"AFK duration: <t:{removed.since}:R>"),
+            level="INFO",
+        )
+        await message.channel.send(embed=embed)
+
+    return handled

@@ -13,7 +13,7 @@ class AddRoleSelect(RoleSelect):
 
     def __init__(self, manager: "RoleManagerView"):
         super().__init__(
-            placeholder=f"{EMOJIS['moderation']}Pick some shiny new roles",
+            placeholder="Select roles to add",
             min_values=1,
             max_values=10,
         )
@@ -21,8 +21,8 @@ class AddRoleSelect(RoleSelect):
 
     async def callback(self, interaction: discord.Interaction):
         if not self.manager.is_authorized(interaction):
-            await interaction.response.send_message(
-                f"{EMOJIS['warning']} Nope. This toy isn’t for you.",
+            await interaction.followup.send(
+                f"{EMOJIS['warning']} You are not authorized to use this menu.",
                 ephemeral=True,
             )
             return
@@ -31,8 +31,8 @@ class AddRoleSelect(RoleSelect):
             self.manager.to_add.add(role.id)
             self.manager.to_remove.discard(role.id)
 
-        await interaction.response.send_message(
-            f"{EMOJIS['success']} {len(self.values)} role(s) locked in for **addition** {EMOJIS['heart']}",
+        await interaction.followup.send(
+            f"{EMOJIS['success']} {len(self.values)} role(s) queued for addition.",
             ephemeral=True,
         )
 
@@ -59,11 +59,10 @@ class RemoveRoleSelect(Select):
                     discord.SelectOption(
                         label=role.name,
                         value=str(role.id),
-                        description=f"Yeet {role.name}",
                     ))
 
         super().__init__(
-            placeholder=f"{EMOJIS['enjoy']}Select roles to yeet into the void",
+            placeholder="Select roles to remove",
             min_values=1,
             max_values=min(10, len(options)) if options else 1,
             options=options,
@@ -72,8 +71,8 @@ class RemoveRoleSelect(Select):
 
     async def callback(self, interaction: discord.Interaction):
         if not self.manager.is_authorized(interaction):
-            await interaction.response.send_message(
-                f"{EMOJIS['warning']} Nice try. Permission denied.",
+            await interaction.followup.send(
+                f"{EMOJIS['warning']} You are not authorized to use this menu.",
                 ephemeral=True,
             )
             return
@@ -83,8 +82,8 @@ class RemoveRoleSelect(Select):
             self.manager.to_remove.add(role_id)
             self.manager.to_add.discard(role_id)
 
-        await interaction.response.send_message(
-            f"{EMOJIS['success']} {len(self.values)} role(s) marked for **removal** 🧹",
+        await interaction.followup.send(
+            f"{EMOJIS['success']} {len(self.values)} role(s) queued for removal.",
             ephemeral=True,
         )
 
@@ -112,25 +111,20 @@ class RoleManagerView(View):
         self.to_remove: set[int] = set()
 
     # ─────────────────────────────
-    # AUTH CHECK (BOT ADMIN ONLY)
+    # AUTH CHECK
     # ─────────────────────────────
     def is_authorized(self, interaction: discord.Interaction) -> bool:
-        if interaction.user != self.actor:
-            return False
-        return is_bot_admin(interaction)
+        return interaction.user == self.actor and is_bot_admin(interaction)
 
     # ─────────────────────────────
     # ADD ROLES BUTTON
     # ─────────────────────────────
-    @discord.ui.button(
-        label="Add Roles",
-        style=discord.ButtonStyle.success,
-    )
+    @discord.ui.button(label="Add Roles", style=discord.ButtonStyle.success)
     async def add_roles(self, interaction: discord.Interaction,
                         button: Button):
         if not self.is_authorized(interaction):
-            await interaction.response.send_message(
-                f"{EMOJIS['warning']} Hands off. This panel isn’t public property.",
+            await interaction.followup.send(
+                f"{EMOJIS['warning']} You do not have permission to do this.",
                 ephemeral=True,
             )
             return
@@ -138,14 +132,11 @@ class RoleManagerView(View):
         view = View(timeout=120)
         view.add_item(AddRoleSelect(self))
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=make_embed(
-                title=f"{EMOJIS['green_dot']} Add Some Power",
+                title="Add Roles",
                 description=
-                ("Choose roles to **grant**.\n\n"
-                 f"{EMOJIS['arrow_point']} Nothing is applied yet.\n"
-                 f"{EMOJIS['arrow_point']} Click **Done** when you’re satisfied."
-                 ),
+                "Select roles to grant. Changes apply after clicking **Done**.",
                 level="SYSTEM",
             ),
             view=view,
@@ -155,16 +146,12 @@ class RoleManagerView(View):
     # ─────────────────────────────
     # REMOVE ROLES BUTTON
     # ─────────────────────────────
-    @discord.ui.button(
-        label=f"{EMOJIS['pants']} Remove Roles",
-        style=discord.ButtonStyle.danger,
-        emoji="🧹",
-    )
+    @discord.ui.button(label="Remove Roles", style=discord.ButtonStyle.danger)
     async def remove_roles(self, interaction: discord.Interaction,
                            button: Button):
         if not self.is_authorized(interaction):
-            await interaction.response.send_message(
-                f"{EMOJIS['warning']} Sorry chief, not your controls.",
+            await interaction.followup.send(
+                f"{EMOJIS['warning']} You do not have permission to do this.",
                 ephemeral=True,
             )
             return
@@ -175,8 +162,8 @@ class RoleManagerView(View):
         ]
 
         if not removable:
-            await interaction.response.send_message(
-                f"{EMOJIS['warning']} Nothing to remove. They’re already innocent",
+            await interaction.followup.send(
+                f"{EMOJIS['warning']} No removable roles found.",
                 ephemeral=True,
             )
             return
@@ -184,14 +171,11 @@ class RoleManagerView(View):
         view = View(timeout=120)
         view.add_item(RemoveRoleSelect(self))
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=make_embed(
-                title=f"{EMOJIS['red_dot']} Remove Some Power",
-                description=(
-                    "Pick roles to **remove**.\n\n"
-                    f"{EMOJIS['arrow_point']} Changes are queued.\n"
-                    f"{EMOJIS['arrow_point']} Hit **Done** to make it official."
-                ),
+                title="Remove Roles",
+                description=
+                "Select roles to remove. Changes apply after clicking **Done**.",
                 level="SYSTEM",
             ),
             view=view,
@@ -201,15 +185,11 @@ class RoleManagerView(View):
     # ─────────────────────────────
     # DONE BUTTON
     # ─────────────────────────────
-    @discord.ui.button(
-        label="Done",
-        style=discord.ButtonStyle.primary,
-        emoji="✅",
-    )
+    @discord.ui.button(label="Done", style=discord.ButtonStyle.primary)
     async def done(self, interaction: discord.Interaction, button: Button):
         if not self.is_authorized(interaction):
-            await interaction.response.send_message(
-                f"{EMOJIS['warning']} You can’t finish what you didn’t start.",
+            await interaction.followup.send(
+                f"{EMOJIS['warning']} You are not allowed to complete this action.",
                 ephemeral=True,
             )
             return
@@ -220,56 +200,40 @@ class RoleManagerView(View):
         if bot_member is None:
             return
 
-        added: list[str] = []
-        removed: list[str] = []
-        skipped: list[str] = []
+        added, removed, skipped = [], [], []
 
         for role_id in self.to_add:
             role = self.guild.get_role(role_id)
-            if not role:
+            if not role or role >= bot_member.top_role:
+                skipped.append(role.mention if role else "Unknown role")
                 continue
-            if role >= bot_member.top_role:
-                skipped.append(f"{role.mention} (too powerful)")
-                continue
-
             try:
                 await self.target.add_roles(
-                    role,
-                    reason=f"Role manager by {self.actor}",
-                )
+                    role, reason=f"Role manager by {self.actor}")
                 added.append(role.mention)
-            except discord.Forbidden:
-                skipped.append(f"{role.mention} (forbidden)")
             except discord.HTTPException:
-                skipped.append(f"{role.mention} (error)")
+                skipped.append(role.mention)
 
         for role_id in self.to_remove:
             role = self.guild.get_role(role_id)
-            if not role:
+            if not role or role >= bot_member.top_role:
+                skipped.append(role.mention if role else "Unknown role")
                 continue
-            if role >= bot_member.top_role:
-                skipped.append(f"{role.mention} (too powerful)")
-                continue
-
             try:
                 await self.target.remove_roles(
-                    role,
-                    reason=f"Role manager by {self.actor}",
-                )
+                    role, reason=f"Role manager by {self.actor}")
                 removed.append(role.mention)
-            except discord.Forbidden:
-                skipped.append(f"{role.mention} (forbidden)")
             except discord.HTTPException:
-                skipped.append(f"{role.mention} (error)")
+                skipped.append(role.mention)
 
         if interaction.channel:
-            await interaction.channel.send(embed=make_embed(  # type: ignore
-                title=f"{EMOJIS['success']} Roles Updated",
+            await interaction.channel.send(embed=make_embed(
+                title="Roles Updated",
                 description=
-                (f"Target: {self.target.mention}\n\n"
-                 f"{EMOJIS['green_dot']} **Added:** {', '.join(added) or 'None'}\n"
-                 f"{EMOJIS['red_dot']} **Removed:** {', '.join(removed) or 'None'}\n"
-                 f"{EMOJIS['warning']} **Skipped:** {', '.join(skipped) or 'None'}"
+                (f"**Target:** {self.target.mention}\n\n"
+                 f"{EMOJIS['green_dot']} Added: {', '.join(added) or 'None'}\n"
+                 f"{EMOJIS['red_dot']} Removed: {', '.join(removed) or 'None'}\n"
+                 f"{EMOJIS['warning']} Skipped: {', '.join(skipped) or 'None'}"
                  ),
                 level="SUCCESS",
                 footer=f"Action by {interaction.user}",
@@ -279,8 +243,7 @@ class RoleManagerView(View):
             item.disabled = True  # type: ignore
 
         await interaction.edit_original_response(
-            content=
-            f"{EMOJIS['okay']} Role operation completed. Power redistributed.",
+            content="Role update completed successfully.",
             view=self,
         )
 

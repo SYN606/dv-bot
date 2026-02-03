@@ -18,10 +18,10 @@ class Ping(commands.Cog):
         latency_ms = round(self.bot.latency * 1000)
 
         embed = make_embed(
-            title="Pong",
+            title="Pong 🏓",
             description=(
-                f"{EMOJIS['ping']} Connection is stable and responsive.\n"
-                f"{EMOJIS['green_dot']} Bot is online."),
+                f"{EMOJIS['ping']} Connection stable hai, tension mat lo.\n"
+                f"{EMOJIS['green_dot']} Bot zinda hai, kaam pe laga hua hai."),
             level="INFO",
             fields=[
                 ("Gateway latency", f"{latency_ms} ms", True),
@@ -30,20 +30,15 @@ class Ping(commands.Cog):
             footer="Digital Vigital diagnostics",
         )
 
-        # Slash command path
-        if ctx.interaction:
-            await ctx.interaction.response.send_message(embed=embed)
-            return
-
-        # Prefix command path
-        try:
-            await ctx.message.delete()
-        except discord.Forbidden:
-            pass
-        except discord.NotFound:
-            pass
-
+        # ONE send path for both slash & prefix
         await ctx.send(embed=embed)
+
+        # Optional: delete prefix invocation message
+        if ctx.interaction is None:
+            try:
+                await ctx.message.delete()
+            except (discord.Forbidden, discord.NotFound):
+                pass
 
 
 async def setup(bot: commands.Bot):
