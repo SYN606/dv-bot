@@ -15,6 +15,7 @@ class Help(commands.Cog):
     @commands.hybrid_command(
         name="help",
         description="Show available bot commands",
+        with_app_command=True,
     )
     async def help(self, ctx: commands.Context):
         """
@@ -22,9 +23,9 @@ class Help(commands.Cog):
         /help    → slash help (permission-aware)
         """
 
-        # ─────────────────────────────
+        # ─────────────────────────
         # PREFIX HELP (dv help)
-        # ─────────────────────────────
+        # ─────────────────────────
         if ctx.interaction is None:
             embed = make_embed(
                 title="Help Menu",
@@ -44,12 +45,15 @@ class Help(commands.Cog):
             await ctx.reply(embed=embed, mention_author=False)
             return
 
-        # ─────────────────────────────
+        # ─────────────────────────
         # SLASH HELP (/help)
-        # ─────────────────────────────
+        # ─────────────────────────
         interaction = ctx.interaction
         guild = interaction.guild
         is_admin = is_bot_admin(interaction)
+
+        # ACK immediately
+        await interaction.response.defer(ephemeral=True)
 
         command_groups: dict[str, list[str]] = {}
 
@@ -58,27 +62,24 @@ class Help(commands.Cog):
             base_name = command.name.lower()
             description = command.description or "No description available"
 
-            # ── Disabled commands
+            # Disabled commands
             if guild and is_command_disabled(guild.id, base_name):
                 if not is_admin:
                     continue
 
-            # ── Protected / admin-only commands
+            # Protected / admin-only commands
             if qualified in PROTECTED_COMMANDS and not is_admin:
                 continue
 
-            # ── Grouping
-            group = (command.parent.name.capitalize()
-                     if command.parent else "General")
+            group = command.parent.name.capitalize(
+            ) if command.parent else "General"
 
-            entry = (
-                f"{EMOJIS['arrow_point']} `/{command.qualified_name}` – {description}"
-            )
-
+            # IMPORTANT: no animated emojis in lists
+            entry = f"• `/{command.qualified_name}` — {description}"
             command_groups.setdefault(group, []).append(entry)
 
         if not command_groups:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=make_embed(
                     title="Help Menu",
                     description=f"{EMOJIS['warning']} No commands available.",
@@ -105,7 +106,7 @@ class Help(commands.Cog):
             footer="Use /command for autocomplete & hints",
         )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

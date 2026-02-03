@@ -1,4 +1,6 @@
+import asyncio
 from discord import Message
+
 from db.db_helpers.sticky import (
     get_sticky,
     increment_and_check,
@@ -6,35 +8,31 @@ from db.db_helpers.sticky import (
 )
 
 
-async def handle_sticky(message: Message):
-    # ── Ignore bots completely (CRITICAL)
+async def handle_sticky(message: Message) -> None:
+    # ── Ignore bots
     if message.author.bot:
         return
 
-    # ── Safety: guild-only
-    if not message.guild:
+    # ── Guild-only safety
+    if message.guild is None:
         return
 
-    content = get_sticky(
-        message.guild.id,
-        message.channel.id,
-    )
-    if not content:
-        return
-
-    repost, last_id = increment_and_check(
-        message.guild.id,
-        message.channel.id,
+    # ── Run DB logic off the event loop
+    result = await asyncio.to_thread(
+        _sticky_db_step,
+        guild_id=message.guild.id,
+        channel_id=message.channel.id,
     )
 
-    if not repost:
+    if not result:
         return
+
+    content, last_id = result
 
     # ── Delete previous sticky (if exists)
     if last_id:
         try:
             old = await message.channel.fetch_message(last_id)
-            # Extra safety: only delete bot messages
             if old.author.bot:
                 await old.delete()
         except Exception:
@@ -43,8 +41,25 @@ async def handle_sticky(message: Message):
     # ── Send new sticky
     sent = await message.channel.send(content)
 
-    update_last_message(
+    # ── Update last message ID (DB, thread)
+    await asyncio.to_thread(
+        update_last_message,
         message.guild.id,
         message.channel.id,
         sent.id,
     )
+
+
+# ─────────────────────────
+# DB LOGIC (SYNC, THREAD)
+# ─────────────────────────
+def _sticky_db_step(*, guild_id: int, channel_id: int):
+    content = get_sticky(guild_id, channel_id)
+    if not content:
+        return None
+
+    repost, last_id = increment_and_check(guild_id, channel_id)
+    if not repost:
+        return None
+
+    return content, last_id

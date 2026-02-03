@@ -1,3 +1,4 @@
+import asyncio
 import discord
 from typing import Optional
 
@@ -18,16 +19,16 @@ async def send_mod_log(
     Send a moderation log embed to the configured log channel.
     """
 
-    db = SessionLocal()
-    try:
-        cfg = db.query(VerificationConfig).filter_by(guild_id=guild.id).first()
-    finally:
-        db.close()
+    # ── Load log channel ID from DB (off event loop)
+    log_channel_id = await asyncio.to_thread(
+        _get_log_channel_id,
+        guild.id,
+    )
 
-    if not cfg or not cfg.log_channel_id:
-        return  # logging not configured
+    if not log_channel_id:
+        return
 
-    channel = guild.get_channel(cfg.log_channel_id)
+    channel = guild.get_channel(log_channel_id)
     if not isinstance(channel, discord.TextChannel):
         return
 
@@ -42,3 +43,18 @@ async def send_mod_log(
         await channel.send(embed=embed)
     except discord.Forbidden:
         pass
+    except discord.NotFound:
+        pass
+
+
+# ─────────────────────────
+# DB LOGIC (SYNC, THREAD)
+# ─────────────────────────
+def _get_log_channel_id(guild_id: int) -> Optional[int]:
+    db = SessionLocal()
+    try:
+        cfg = (db.query(VerificationConfig).filter_by(
+            guild_id=guild_id).first())
+        return cfg.log_channel_id if cfg else None
+    finally:
+        db.close()

@@ -1,3 +1,4 @@
+import asyncio
 import discord
 from datetime import datetime
 
@@ -17,7 +18,7 @@ async def handle_verification(
     Returns True if verification succeeds.
     """
 
-    # Basic safety checks
+    # ── Basic safety
     if not guild or not isinstance(member, discord.Member):
         return False
 
@@ -25,8 +26,11 @@ async def handle_verification(
     if bot_member is None:
         return False
 
-    # Load verification config
-    config = get_verification_config(guild.id)
+    # ── Load verification config (DB → thread)
+    config = await asyncio.to_thread(
+        get_verification_config,
+        guild.id,
+    )
     if not config:
         return False
 
@@ -37,14 +41,14 @@ async def handle_verification(
     if not verified_role:
         return False
 
-    # Ensure bot can manage roles
+    # ── Role hierarchy safety
     if verified_role >= bot_member.top_role:
         return False
 
     if unverified_role and unverified_role >= bot_member.top_role:
         unverified_role = None
 
-    # Apply verification roles
+    # ── Apply roles (Discord API → async)
     try:
         if unverified_role and unverified_role in member.roles:
             await member.remove_roles(
@@ -61,7 +65,7 @@ async def handle_verification(
     except discord.Forbidden:
         return False
 
-    # Log verification event
+    # ── Log verification
     log_channel = guild.get_channel(config.log_channel_id)
 
     if isinstance(log_channel, discord.TextChannel):
@@ -76,7 +80,7 @@ async def handle_verification(
             footer=f"Verification • {guild.name}",
         ))
 
-    # Optional user confirmation
+    # ── Optional user confirmation
     if interaction:
         try:
             await interaction.response.send_message(

@@ -15,4 +15,5 @@ EMOJIS = {
     "okay": "<a:okay:1359630397981331707>",
     "moderation": "<:moderation:1359630332747321585>",
     "warning": "<a:warning:1467749209473159271>",
+    "pants": "<a:pants:1467748842207449181>",
 }
