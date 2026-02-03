@@ -21,7 +21,7 @@ class AddRoleSelect(RoleSelect):
 
     async def callback(self, interaction: discord.Interaction):
         if not self.manager.is_authorized(interaction):
-            await interaction.followup.send(
+            await interaction.response.send_message(
                 f"{EMOJIS['warning']} You are not authorized to use this menu.",
                 ephemeral=True,
             )
@@ -31,7 +31,7 @@ class AddRoleSelect(RoleSelect):
             self.manager.to_add.add(role.id)
             self.manager.to_remove.discard(role.id)
 
-        await interaction.followup.send(
+        await interaction.response.send_message(
             f"{EMOJIS['success']} {len(self.values)} role(s) queued for addition.",
             ephemeral=True,
         )
@@ -71,7 +71,7 @@ class RemoveRoleSelect(Select):
 
     async def callback(self, interaction: discord.Interaction):
         if not self.manager.is_authorized(interaction):
-            await interaction.followup.send(
+            await interaction.response.send_message(
                 f"{EMOJIS['warning']} You are not authorized to use this menu.",
                 ephemeral=True,
             )
@@ -82,7 +82,7 @@ class RemoveRoleSelect(Select):
             self.manager.to_remove.add(role_id)
             self.manager.to_add.discard(role_id)
 
-        await interaction.followup.send(
+        await interaction.response.send_message(
             f"{EMOJIS['success']} {len(self.values)} role(s) queued for removal.",
             ephemeral=True,
         )
@@ -120,10 +120,9 @@ class RoleManagerView(View):
     # ADD ROLES BUTTON
     # ─────────────────────────────
     @discord.ui.button(label="Add Roles", style=discord.ButtonStyle.success)
-    async def add_roles(self, interaction: discord.Interaction,
-                        button: Button):
+    async def add_roles(self, interaction: discord.Interaction, _: Button):
         if not self.is_authorized(interaction):
-            await interaction.followup.send(
+            await interaction.response.send_message(
                 f"{EMOJIS['warning']} You do not have permission to do this.",
                 ephemeral=True,
             )
@@ -132,11 +131,11 @@ class RoleManagerView(View):
         view = View(timeout=120)
         view.add_item(AddRoleSelect(self))
 
-        await interaction.followup.send(
+        await interaction.response.send_message(
             embed=make_embed(
                 title="Add Roles",
                 description=
-                "Select roles to grant. Changes apply after clicking **Done**.",
+                "Select roles to add. Changes apply after clicking **Done**.",
                 level="SYSTEM",
             ),
             view=view,
@@ -147,10 +146,9 @@ class RoleManagerView(View):
     # REMOVE ROLES BUTTON
     # ─────────────────────────────
     @discord.ui.button(label="Remove Roles", style=discord.ButtonStyle.danger)
-    async def remove_roles(self, interaction: discord.Interaction,
-                           button: Button):
+    async def remove_roles(self, interaction: discord.Interaction, _: Button):
         if not self.is_authorized(interaction):
-            await interaction.followup.send(
+            await interaction.response.send_message(
                 f"{EMOJIS['warning']} You do not have permission to do this.",
                 ephemeral=True,
             )
@@ -162,7 +160,7 @@ class RoleManagerView(View):
         ]
 
         if not removable:
-            await interaction.followup.send(
+            await interaction.response.send_message(
                 f"{EMOJIS['warning']} No removable roles found.",
                 ephemeral=True,
             )
@@ -171,7 +169,7 @@ class RoleManagerView(View):
         view = View(timeout=120)
         view.add_item(RemoveRoleSelect(self))
 
-        await interaction.followup.send(
+        await interaction.response.send_message(
             embed=make_embed(
                 title="Remove Roles",
                 description=
@@ -186,9 +184,9 @@ class RoleManagerView(View):
     # DONE BUTTON
     # ─────────────────────────────
     @discord.ui.button(label="Done", style=discord.ButtonStyle.primary)
-    async def done(self, interaction: discord.Interaction, button: Button):
+    async def done(self, interaction: discord.Interaction, _: Button):
         if not self.is_authorized(interaction):
-            await interaction.followup.send(
+            await interaction.response.send_message(
                 f"{EMOJIS['warning']} You are not allowed to complete this action.",
                 ephemeral=True,
             )
@@ -200,7 +198,9 @@ class RoleManagerView(View):
         if bot_member is None:
             return
 
-        added, removed, skipped = [], [], []
+        added: list[str] = []
+        removed: list[str] = []
+        skipped: list[str] = []
 
         for role_id in self.to_add:
             role = self.guild.get_role(role_id)
@@ -226,6 +226,7 @@ class RoleManagerView(View):
             except discord.HTTPException:
                 skipped.append(role.mention)
 
+        # Public log (non-interaction message)
         if interaction.channel:
             await interaction.channel.send(embed=make_embed(
                 title="Roles Updated",
@@ -239,6 +240,7 @@ class RoleManagerView(View):
                 footer=f"Action by {interaction.user}",
             ))
 
+        # Disable UI
         for item in self.children:
             item.disabled = True  # type: ignore
 
