@@ -15,11 +15,11 @@ def normalize_dv_prefix(content: str) -> str:
 
     stripped = content.lstrip()
 
-    if stripped[:2].lower() != "dv":
+    if stripped[:2].lower() != "ts":
         return content
 
     rest = stripped[2:].lstrip()
-    return f"dv{rest}"
+    return f"ts{rest}"
 
 
 def dv_prefix(bot: commands.Bot, message: discord.Message):
@@ -28,11 +28,11 @@ def dv_prefix(bot: commands.Bot, message: discord.Message):
     Allows: dv, DV, Dv, dV
     """
     if not message.content:
-        return "dv"
+        return "ts"
 
     content = message.content.lstrip()
 
-    if content[:2].lower() == "dv":
+    if content[:2].lower() == "ts":
         return content[:2]
 
-    return "dv"
+    return "ts"

@@ -2,16 +2,19 @@ import discord
 from discord.ui import View, Button, ChannelSelect, RoleSelect
 
 from utils.embeds import make_embed
-from utils.emojis import EMOJIS
 from utils.check_perms import is_bot_admin
 from db.db_helpers.verification import set_verification_config
-from utils.views.verify_button_view import VerifyButtonView
+from utils.views.verification_views.verify_button_view import VerifyButtonView
 
 
 class VerifySetupView(View):
     """
-    Admin-only interactive verification setup panel.
-    Uses native Discord selectors (Wick-style).
+    v2.4 Verification Setup View
+
+    - Single ephemeral message
+    - Self-updating UI
+    - Clean admin-panel UX
+    - Wick-style configuration flow
     """
 
     def __init__(self, guild: discord.Guild):
@@ -24,12 +27,66 @@ class VerifySetupView(View):
         self.verified_role_id: int | None = None
         self.unverified_role_id: int | None = None
 
+        self.notice: str | None = None
+
         # UI components
         self.add_item(VerifyChannelSelect(self))
         self.add_item(LogChannelSelect(self))
         self.add_item(VerifiedRoleSelect(self))
         self.add_item(UnverifiedRoleSelect(self))
         self.add_item(VerifySetupSaveButton())
+
+    # ─────────────────────────────
+    # EMBED BUILDER
+    # ─────────────────────────────
+    def build_embed(self) -> discord.Embed:
+
+        def fmt(value: int | None, kind: str) -> str:
+            if not value:
+                return "Not selected"
+            if kind == "channel":
+                return f"<#{value}>"
+            if kind == "role":
+                return f"<@&{value}>"
+            return "Unknown"
+
+        return make_embed(
+            title="Verification Setup",
+            description=
+            ("Configure the server verification system.\n\n"
+             f"Verification channel: {fmt(self.verify_channel_id, 'channel')}\n"
+             f"Log channel: {fmt(self.log_channel_id, 'channel')}\n"
+             f"Verified role: {fmt(self.verified_role_id, 'role')}\n"
+             f"Unverified role: {fmt(self.unverified_role_id, 'role')}"),
+            level="SYSTEM",
+            footer=self.notice or "Select options and click Save to apply",
+        )
+
+    async def refresh(self,
+                      interaction: discord.Interaction,
+                      notice: str | None = None):
+        if notice:
+            self.notice = notice
+
+        await interaction.response.edit_message(
+            embed=self.build_embed(),
+            view=self,
+        )
+
+    # ─────────────────────────────
+    # TIMEOUT
+    # ─────────────────────────────
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True  # type: ignore
+
+        try:
+            await self.message.edit(
+                content="Verification setup timed out.",
+                view=self,
+            )
+        except Exception:
+            pass
 
 
 # ─────────────────────────────────────
@@ -48,10 +105,8 @@ class VerifyChannelSelect(ChannelSelect):
 
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.verify_channel_id = self.values[0].id
-        await interaction.response.send_message(
-            f"{EMOJIS['success']} Verification channel selected.",
-            ephemeral=True,
-        )
+        await self.view_ref.refresh(interaction,
+                                    "Verification channel selected")
 
 
 class LogChannelSelect(ChannelSelect):
@@ -67,10 +122,7 @@ class LogChannelSelect(ChannelSelect):
 
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.log_channel_id = self.values[0].id
-        await interaction.response.send_message(
-            f"{EMOJIS['success']} Log channel selected.",
-            ephemeral=True,
-        )
+        await self.view_ref.refresh(interaction, "Log channel selected")
 
 
 # ─────────────────────────────────────
@@ -88,10 +140,7 @@ class VerifiedRoleSelect(RoleSelect):
 
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.verified_role_id = self.values[0].id
-        await interaction.response.send_message(
-            f"{EMOJIS['success']} Verified role selected.",
-            ephemeral=True,
-        )
+        await self.view_ref.refresh(interaction, "Verified role selected")
 
 
 class UnverifiedRoleSelect(RoleSelect):
@@ -105,29 +154,23 @@ class UnverifiedRoleSelect(RoleSelect):
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
-        if self.values:
-            self.view_ref.unverified_role_id = self.values[0].id
-            msg = "Unverified role selected."
-        else:
-            self.view_ref.unverified_role_id = None
-            msg = "Unverified role cleared."
-
-        await interaction.response.send_message(
-            f"{EMOJIS['success']} {msg}",
-            ephemeral=True,
+        self.view_ref.unverified_role_id = (self.values[0].id
+                                            if self.values else None)
+        await self.view_ref.refresh(
+            interaction,
+            "Unverified role updated",
         )
 
 
 # ─────────────────────────────────────
-# SAVE CONFIGURATION BUTTON
+# SAVE BUTTON
 # ─────────────────────────────────────
 class VerifySetupSaveButton(Button):
 
     def __init__(self):
         super().__init__(
-            label="Save & Post Verify Message",
+            label="Save & Post Verification Message",
             style=discord.ButtonStyle.success,
-            emoji="💾",
         )
 
     async def callback(self, interaction: discord.Interaction):
@@ -137,36 +180,29 @@ class VerifySetupSaveButton(Button):
         if guild is None:
             return
 
-        # ─────────────────────────
-        # PERMISSION CHECK
-        # ─────────────────────────
         if not is_bot_admin(interaction):
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
-                    description=
-                    "You are not allowed to configure verification.",
+                    description="Administrator access is required.",
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
+            return
 
-        # ─────────────────────────
-        # REQUIRED FIELDS CHECK
-        # ─────────────────────────
         if not all([
                 view.verify_channel_id,
                 view.log_channel_id,
                 view.verified_role_id,
         ]):
-            return await interaction.response.send_message(
-                f"{EMOJIS['warning']} Please select all required options before saving.",
-                ephemeral=True,
+            await view.refresh(
+                interaction,
+                "Please select all required options before saving",
             )
+            return
 
-        # ─────────────────────────
-        # SAVE TO DATABASE
-        # ─────────────────────────
+        # Save configuration
         set_verification_config(
             guild_id=guild.id,
             verify_channel_id=view.verify_channel_id,
@@ -175,27 +211,21 @@ class VerifySetupSaveButton(Button):
             unverified_role_id=view.unverified_role_id,
         )
 
-        # ─────────────────────────
-        # POST VERIFY MESSAGE
-        # ─────────────────────────
-        verify_channel = guild.get_channel(view.verify_channel_id)
-
-        if isinstance(verify_channel, discord.TextChannel):
-            await verify_channel.send(
+        # Post verify message
+        channel = guild.get_channel(view.verify_channel_id)
+        if isinstance(channel, discord.TextChannel):
+            await channel.send(
                 embed=make_embed(
                     title="Server Verification",
-                    description=
-                    (f"{EMOJIS['announcement']} Click the button below to verify.\n\n"
-                     f"{EMOJIS['arrow_point']} Verification is required to access the server."
-                     ),
+                    description=(
+                        "Verification is required to access the server.\n\n"
+                        "Click the button below to begin."),
                     level="SYSTEM",
                 ),
                 view=VerifyButtonView(),
             )
 
-        # ─────────────────────────
-        # DISABLE UI
-        # ─────────────────────────
+        # Disable UI
         for item in view.children:
             item.disabled = True  # type: ignore
 
@@ -203,9 +233,9 @@ class VerifySetupSaveButton(Button):
             embed=make_embed(
                 title="Verification Configured",
                 description=
-                (f"{EMOJIS['success']} Verification system is now active.\n\n"
-                 f"{EMOJIS['arrow_point']} Verify message posted\n"
-                 f"{EMOJIS['arrow_point']} Roles & logging enabled"),
+                ("The verification system is now active.\n\n"
+                 "Verification message has been posted and roles are configured."
+                 ),
                 level="SUCCESS",
             ),
             view=view,

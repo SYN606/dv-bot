@@ -10,23 +10,31 @@ from utils.emojis import EMOJIS
 
 
 class Counting(commands.Cog):
+    """
+    Counting Game Configuration (v2)
+
+    - Slash-command only
+    - Clean admin UX
+    - Public rule announcement
+    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     # ─────────────────────────────────────
-    # SET COUNTING
+    # ENABLE COUNTING
     # ─────────────────────────────────────
     @app_commands.command(
         name="set_counting",
-        description="Set a channel as a counting channel",
+        description="Enable counting game in a channel",
     )
-    @app_commands.describe(channel="Channel to enable counting in")
+    @app_commands.describe(channel="Channel where counting will be enabled", )
     async def set_counting(
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
-    ):
+    ) -> None:
+
         if interaction.guild is None:
             return
 
@@ -35,7 +43,9 @@ class Counting(commands.Cog):
                 embed=make_embed(
                     title="Permission Denied",
                     description=
-                    "You are not allowed to manage counting channels.",
+                    (f"{EMOJIS['fail']} You are not allowed to manage counting channels.\n"
+                     f"{EMOJIS['arrow_point']} Administrator permission required."
+                     ),
                     level="ERROR",
                 ),
                 ephemeral=True,
@@ -52,9 +62,10 @@ class Counting(commands.Cog):
             if exists:
                 await interaction.response.send_message(
                     embed=make_embed(
-                        title="Counting Channel",
+                        title="Already Enabled",
                         description=
-                        f"{EMOJIS['warning']} {channel.mention} is already a counting channel.",
+                        (f"{EMOJIS['warning']} {channel.mention} is already a counting channel."
+                         ),
                         level="WARNING",
                     ),
                     ephemeral=True,
@@ -68,48 +79,50 @@ class Counting(commands.Cog):
                 ))
             db.commit()
 
-            # Admin confirmation
+            # ── Admin confirmation
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Counting Enabled",
                     description=
-                    f"{EMOJIS['success']} {channel.mention} has been set as a counting channel.",
+                    (f"{EMOJIS['success']} Counting has been enabled in {channel.mention}."
+                     ),
                     level="SUCCESS",
                 ),
                 ephemeral=True,
             )
 
-            # Public rules message
+            # ── Public rules message
             await channel.send(embed=make_embed(
-                title="Counting Channel Activated",
+                title="Counting Game Started",
                 description=
                 (f"{EMOJIS['announcement']} This channel is now a **counting channel**.\n\n"
-                 f"{EMOJIS['arrow_point']} **Rules:**\n"
-                 f"{EMOJIS['green_dot']} Count numbers in order (1, 2, 3…)\n"
-                 f"{EMOJIS['green_dot']} Only one number per message\n"
-                 f"{EMOJIS['green_dot']} No consecutive counts by the same user\n"
+                 f"{EMOJIS['arrow_point']} **Rules**\n"
+                 f"{EMOJIS['green_dot']} Count numbers in order (1, 2, 3, …)\n"
+                 f"{EMOJIS['green_dot']} One number per message\n"
+                 f"{EMOJIS['green_dot']} No consecutive turns by the same user\n"
                  f"{EMOJIS['red_dot']} Wrong number resets the count\n\n"
                  f"{EMOJIS['ping']} Let the counting begin!"),
                 level="SYSTEM",
-                footer="Managed by Digital Vigital",
+                footer="Counting • Digital Vigital",
             ))
 
         finally:
             db.close()
 
     # ─────────────────────────────────────
-    # UNSET COUNTING
+    # DISABLE COUNTING
     # ─────────────────────────────────────
     @app_commands.command(
         name="unset_counting",
-        description="Disable counting in a channel",
+        description="Disable counting game in a channel",
     )
-    @app_commands.describe(channel="Channel to disable counting in")
+    @app_commands.describe(channel="Channel where counting will be disabled", )
     async def unset_counting(
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
-    ):
+    ) -> None:
+
         if interaction.guild is None:
             return
 
@@ -118,7 +131,9 @@ class Counting(commands.Cog):
                 embed=make_embed(
                     title="Permission Denied",
                     description=
-                    "You are not allowed to manage counting channels.",
+                    (f"{EMOJIS['fail']} You are not allowed to manage counting channels.\n"
+                     f"{EMOJIS['arrow_point']} Administrator permission required."
+                     ),
                     level="ERROR",
                 ),
                 ephemeral=True,
@@ -135,9 +150,10 @@ class Counting(commands.Cog):
             if not row:
                 await interaction.response.send_message(
                     embed=make_embed(
-                        title="Counting Channel",
+                        title="Not a Counting Channel",
                         description=
-                        f"{EMOJIS['warning']} {channel.mention} is not a counting channel.",
+                        (f"{EMOJIS['warning']} {channel.mention} is not configured for counting."
+                         ),
                         level="WARNING",
                     ),
                     ephemeral=True,
@@ -147,30 +163,31 @@ class Counting(commands.Cog):
             db.delete(row)
             db.commit()
 
-            # Admin confirmation
+            # ── Admin confirmation
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Counting Disabled",
                     description=
-                    f"{EMOJIS['success']} Counting has been disabled for {channel.mention}.",
+                    (f"{EMOJIS['success']} Counting has been disabled in {channel.mention}."
+                     ),
                     level="SUCCESS",
                 ),
                 ephemeral=True,
             )
 
-            # Public notice
+            # ── Public notice
             await channel.send(embed=make_embed(
-                title="Counting Disabled",
+                title="Counting Game Disabled",
                 description=
                 (f"{EMOJIS['fail']} This channel is no longer a counting channel.\n"
                  f"{EMOJIS['arrow_point']} Counting progress has been reset."),
                 level="SYSTEM",
-                footer="Managed by Digital Vigital",
+                footer="Counting • Digital Vigital",
             ))
 
         finally:
             db.close()
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Counting(bot))

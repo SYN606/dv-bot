@@ -1,6 +1,6 @@
 import discord
 
-from utils.views.verify_button_view import VerifyButtonView
+from utils.views.verification_views.verify_button_view import VerifyButtonView
 from db.db_helpers.verification import get_verification_config
 
 

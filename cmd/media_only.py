@@ -1,121 +1,86 @@
 import discord
-from discord.ext import commands
 from discord import app_commands
+from discord.ext import commands
 
+from utils.check_perms import is_bot_admin
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
-from utils.check_perms import is_bot_admin
-from db.db_helpers.media_only import (
-    enable_media_only,
-    disable_media_only,
-    is_media_only,
-)
+from utils.views.media_only_views import MediaOnlyView
 
 
 class MediaOnly(commands.Cog):
+    """
+    Media-only channel control panel.
+
+    Single-command, button-driven (v2 UX).
+    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     @app_commands.command(
-        name="media_only_enable",
-        description="Restrict a channel to media-only messages",
+        name="media_only",
+        description="Manage media-only mode for this channel",
     )
-    async def enable(
+    async def media_only(
         self,
         interaction: discord.Interaction,
-        channel: discord.TextChannel,
-    ):
-        if interaction.guild is None:
+    ) -> None:
+        # ─────────────────────────
+        # Context validation
+        # ─────────────────────────
+        guild = interaction.guild
+        channel = interaction.channel
+
+        if guild is None or not isinstance(channel, discord.TextChannel):
             return
 
+        # ─────────────────────────
+        # Permission check
+        # ─────────────────────────
         if not is_bot_admin(interaction):
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
-                    description="You are not allowed to manage channel modes.",
+                    description=
+                    (f"{EMOJIS['warning']} You do not have permission to manage channel modes.\n\n"
+                     f"{EMOJIS['arrow_point']} Administrator access is required."
+                     ),
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
             return
 
-        added = enable_media_only(interaction.guild.id, channel.id)
-
-        embed = make_embed(
-            title="Media-Only Mode",
-            description=(
-                f"{EMOJIS['success']} {channel.mention} is now **media-only**."
-                if added else
-                f"{EMOJIS['warning']} {channel.mention} is already media-only."
-            ),
-            level="SUCCESS" if added else "WARNING",
+        # ─────────────────────────
+        # Build media-only control panel
+        # ─────────────────────────
+        view = MediaOnlyView(
+            guild_id=guild.id,
+            channel=channel,
+            actor_id=interaction.user.id,
         )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    @app_commands.command(
-        name="media_only_disable",
-        description="Disable media-only mode for a channel",
-    )
-    async def disable(
-        self,
-        interaction: discord.Interaction,
-        channel: discord.TextChannel,
-    ):
-        if interaction.guild is None:
-            return
-
-        if not is_bot_admin(interaction):
-            await interaction.response.send_message(
-                embed=make_embed(
-                    title="Permission Denied",
-                    description="You are not allowed to manage channel modes.",
-                    level="ERROR",
-                ),
-                ephemeral=True,
-            )
-            return
-
-        removed = disable_media_only(interaction.guild.id, channel.id)
-
         embed = make_embed(
-            title="Media-Only Mode",
+            title="Media-Only Channel Control",
             description=
-            (f"{EMOJIS['success']} Media-only has been **disabled** for {channel.mention}."
-             if removed else
-             f"{EMOJIS['warning']} {channel.mention} was not media-only."),
-            level="SUCCESS" if removed else "WARNING",
+            (f"{EMOJIS['announcement']} Manage **media-only mode** for this channel.\n\n"
+             f"{EMOJIS['arrow_point']} **Available actions:**\n"
+             f"{EMOJIS['green_dot']} Enable media-only restrictions\n"
+             f"{EMOJIS['red_dot']} Disable media-only restrictions\n"
+             f"{EMOJIS['ping']} Check current status\n\n"
+             f"{EMOJIS['okay']} This control panel is visible **only to you**."
+             ),
+            level="SYSTEM",
+            footer=f"Channel • #{channel.name}",
         )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    @app_commands.command(
-        name="media_only_status",
-        description="Check if a channel is media-only",
-    )
-    async def status(
-        self,
-        interaction: discord.Interaction,
-        channel: discord.TextChannel,
-    ):
-        if interaction.guild is None:
-            return
-
-        enabled = is_media_only(interaction.guild.id, channel.id)
-
-        embed = make_embed(
-            title="Media-Only Status",
-            description=
-            (f"{EMOJIS['green_dot']} {channel.mention} is currently **media-only**."
-             if enabled else
-             f"{EMOJIS['red_dot']} {channel.mention} is **not** media-only."),
-            level="INFO",
-            footer="Only bot admins can change this setting",
+        await interaction.response.send_message(
+            embed=embed,
+            view=view,
+            ephemeral=True,
         )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
-
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(MediaOnly(bot))

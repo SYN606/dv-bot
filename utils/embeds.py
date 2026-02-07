@@ -1,78 +1,79 @@
 import discord
-from typing import Iterable
+from typing import Iterable, Optional
 
 from utils.emojis import EMOJIS
 
 # ─────────────────────────────────────
-# Color palette (visible on dark mode)
+# Modern dark-mode palette
 # ─────────────────────────────────────
-COLORS = {
-    "INFO": 0x5865F2,
-    "SUCCESS": 0x57F287,
-    "WARNING": 0xFEE75C,
-    "ERROR": 0xED4245,
-    "DEBUG": 0x3498DB,
-    "SYSTEM": 0x9B59B6,
-}
-
-# Emoji fallback if support-server emoji is unavailable
-FALLBACK = {
-    "INFO": "[INFO]",
-    "SUCCESS": "[SUCCESS]",
-    "WARNING": "[WARNING]",
-    "ERROR": "[ERROR]",
-    "DEBUG": "[DEBUG]",
-    "SYSTEM": "[SYSTEM]",
-}
-
-# Alias support for semantic levels
-LEVEL_ALIASES = {
-    "OK": "SUCCESS",
-    "FAIL": "ERROR",
-    "WARN": "WARNING",
+COLORS: dict[str, int] = {
+    "INFO": 0x2B2D31,  # Neutral dark
+    "SUCCESS": 0x1F8B4C,  # Soft green
+    "WARNING": 0xF0B232,  # Amber
+    "ERROR": 0xDA373C,  # Soft red
+    "DEBUG": 0x5865F2,  # Discord blurple
+    "SYSTEM": 0x8E44AD,  # Muted purple
 }
 
 
-def _safe(text: str | None, limit: int) -> str | None:
+# ─────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────
+def _safe(text: Optional[str], limit: int) -> Optional[str]:
+    """
+    Trim text safely to Discord limits.
+    """
     if not text:
         return None
-    return text[:limit - 3] + "..." if len(text) > limit else text
+    if len(text) <= limit:
+        return text
+    return text[:limit - 1] + "…"
 
 
+# ─────────────────────────────────────
+# Embed Factory (v2.2)
+# ─────────────────────────────────────
 def make_embed(
     *,
     title: str,
-    description: str | None = None,
+    description: Optional[str] = None,
     level: str = "INFO",
-    fields: Iterable[tuple[str, str, bool]] | None = None,
-    author: str | None = None,
-    footer: str | None = None,
+    fields: Optional[Iterable[tuple[str, str, bool]]] = None,
+    author: Optional[str] = None,
+    footer: Optional[str] = None,
     timestamp: bool = True,
-    thumbnail: str | None = None,
+    thumbnail: Optional[str] = None,
+    accent: bool = True,
 ) -> discord.Embed:
     """
-    Standardized embed factory.
+    Modern embed factory.
 
-    level: INFO | SUCCESS | WARNING | ERROR | DEBUG | SYSTEM
+    - Explicit severity levels only
+    - Dark-mode optimized
+    - Safe for dynamic updates
     """
 
-    level = LEVEL_ALIASES.get(level.upper(), level.upper())
-
+    level = level.upper()
     color = COLORS.get(level, COLORS["INFO"])
-    emoji = EMOJIS.get(level.lower()) or FALLBACK.get(level, "")
+
+    emoji = EMOJIS.get(level.lower())
+    title_text = f"{emoji} {title}" if emoji else title
 
     embed = discord.Embed(
-        title=f"{emoji} {_safe(title, 256)}",
+        title=_safe(title_text, 256),
         description=_safe(description, 4096),
-        color=color,
+        color=color if accent else None,
     )
 
+    # ── Author (top-left)
     if author:
         embed.set_author(name=_safe(author, 256))
 
+    # ── Thumbnail (right)
     if thumbnail:
         embed.set_thumbnail(url=thumbnail)
 
+    # ── Fields
     if fields:
         for name, value, inline in fields:
             embed.add_field(
@@ -81,10 +82,13 @@ def make_embed(
                 inline=inline,
             )
 
+    # ── Footer
+    footer_parts: list[str] = []
     if footer:
-        embed.set_footer(text=_safe(footer, 2048))
-    else:
-        embed.set_footer(text="Digital Vigital")
+        footer_parts.append(footer)
+    footer_parts.append(f"Digital Vigital • {level}")
+
+    embed.set_footer(text=" • ".join(footer_parts))
 
     if timestamp:
         embed.timestamp = discord.utils.utcnow()

@@ -4,16 +4,15 @@ from discord.ext import commands
 
 from utils.check_perms import is_bot_admin
 from utils.embeds import make_embed
-from utils.emojis import EMOJIS
-from utils.views.verify_setup_view import VerifySetupView
+from utils.views.verification_views.verify_setup_view import VerifySetupView
 
 
 class VerifySetup(commands.Cog):
     """
     /verify_setup
 
-    Opens the interactive verification setup panel
-    (Wick-style selectors).
+    Opens the interactive verification setup panel.
+    Single-message, self-updating v2 workflow.
     """
 
     def __init__(self, bot: commands.Bot):
@@ -21,51 +20,68 @@ class VerifySetup(commands.Cog):
 
     @app_commands.command(
         name="verify_setup",
-        description="Open the verification setup panel",
+        description="Configure the verification system",
     )
-    async def verify_setup(self, interaction: discord.Interaction):
+    async def verify_setup(
+        self,
+        interaction: discord.Interaction,
+    ) -> None:
+
         guild = interaction.guild
         if guild is None:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Context",
-                    description="This command can only be used in a server.",
+                    description=
+                    "This command can only be used inside a server.",
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
+            return
 
         if not is_bot_admin(interaction):
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
                     description=
-                    "You are not allowed to configure verification.",
+                    ("You do not have permission to configure verification.\n"
+                     "Administrator access is required."),
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
+            return
 
-        view = VerifySetupView(guild)
+        # Build setup view
+        view = VerifySetupView(guild=guild)
 
+        embed = make_embed(
+            title="Verification Setup",
+            description=
+            ("Configure the verification system using the controls below.\n\n"
+             "**You can configure:**\n"
+             "• Verification channel\n"
+             "• Log channel\n"
+             "• Verified role\n"
+             "• Optional unverified role\n\n"
+             "Changes are applied only after selecting "
+             "**Save & Post Verification Message**."),
+            level="SYSTEM",
+            footer=f"Action by {interaction.user}",
+        )
+
+        # Send SINGLE ephemeral message
         await interaction.response.send_message(
-            embed=make_embed(
-                title="Verification Setup",
-                description=
-                (f"{EMOJIS['announcement']} Configure the verification system below.\n\n"
-                 f"{EMOJIS['arrow_point']} Select:\n"
-                 f"• Verification channel\n"
-                 f"• Log channel\n"
-                 f"• Verified role\n"
-                 f"• Optional unverified role\n\n"
-                 f"{EMOJIS['warning']} Settings are saved only after clicking **Save & Post Verify Message**."
-                 ),
-                level="SYSTEM",
-            ),
+            embed=embed,
             view=view,
             ephemeral=True,
         )
 
+        # Attach message ownership to the view (CRITICAL)
+        view.message = await interaction.original_response()
 
-async def setup(bot: commands.Bot):
+
+# EXTENSION ENTRY POINT (REQUIRED)
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(VerifySetup(bot))

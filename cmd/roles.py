@@ -8,27 +8,40 @@ from utils.views.role_manager import RoleManagerView
 
 
 class Roles(commands.Cog):
+    """
+    Role management commands.
+
+    Provides an interactive UI for administrators
+    to add or remove roles from a member.
+    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     @app_commands.command(
         name="roles",
-        description="Manage roles for a user (interactive UI)",
+        description="Manage roles for a member using an interactive interface",
     )
     @app_commands.describe(member="Member whose roles you want to manage", )
     async def roles(
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-    ):
+    ) -> None:
+        """
+        Launch the interactive role manager for a member.
+        """
+
         # ─────────────────────────────
-        # Type narrowing (IMPORTANT)
+        # Context validation
         # ─────────────────────────────
-        if interaction.guild is None:
+        guild = interaction.guild
+        actor = interaction.user
+
+        if guild is None:
             return
 
-        if not isinstance(interaction.user, discord.Member):
+        if not isinstance(actor, discord.Member):
             return
 
         # ─────────────────────────────
@@ -38,7 +51,9 @@ class Roles(commands.Cog):
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
-                    description="You are not allowed to manage roles.",
+                    description=(
+                        "You do not have permission to manage roles.\n"
+                        "Administrator access is required."),
                     level="ERROR",
                 ),
                 ephemeral=True,
@@ -46,28 +61,37 @@ class Roles(commands.Cog):
             return
 
         # ─────────────────────────────
-        # Build interactive role manager
+        # Build interactive role manager view
         # ─────────────────────────────
         view = RoleManagerView(
             bot=self.bot,
-            actor=interaction.user,  # narrowed to Member
+            actor=actor,
             target=member,
-            guild=interaction.guild,  # narrowed to Guild
+            guild=guild,
         )
 
-        await interaction.response.send_message(
-            embed=make_embed(
-                title="Role Manager",
-                description=(
-                    f"Managing roles for {member.mention}\n\n"
-                    "Use the buttons below to **add** or **remove** roles.\n"
-                    "Changes will only be applied once you click **Done**."),
-                level="SYSTEM",
-            ),
+        embed = make_embed(
+            title="Role Manager",
+            description=(f"Managing roles for {member.mention}.\n\n"
+                         "Use the menus below to queue role changes.\n"
+                         "Click **Apply Changes** to confirm."),
+            level="SYSTEM",
+            footer=f"Action by {actor}",
+        )
+
+        # IMPORTANT:
+        # Capture the original message and attach it to the view
+        message = await interaction.response.send_message(
+            embed=embed,
             view=view,
             ephemeral=True,
         )
 
+        # discord.py quirk:
+        # interaction.response.send_message() returns None
+        # so we must fetch the original response
+        view.message = await interaction.original_response()
 
-async def setup(bot: commands.Bot):
+
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Roles(bot))

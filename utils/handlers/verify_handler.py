@@ -11,27 +11,42 @@ async def handle_verification(
     *,
     guild: discord.Guild,
     member: discord.Member,
-    interaction: discord.Interaction | None = None,
 ) -> bool:
     """
-    Apply verification roles and log the action.
-    Returns True if verification succeeds.
+    v2 Verification Handler
+
+    Responsibilities:
+    - Apply verification roles
+    - Remove unverified role (if configured)
+    - Log verification result
+    - NO interaction / UI responses
     """
 
-    # ── Basic safety
+    # ─────────────────────────
+    # Basic safety
+    # ─────────────────────────
     if not guild or not isinstance(member, discord.Member):
+        print(f"{EMOJIS['fail']} [VERIFY] Invalid guild or member")
         return False
 
     bot_member = guild.me
     if bot_member is None:
+        print(
+            f"{EMOJIS['fail']} [VERIFY] Bot member not resolved (guild.me is None)"
+        )
         return False
 
-    # ── Load verification config (DB → thread)
+    # ─────────────────────────
+    # Load verification config
+    # ─────────────────────────
     config = await asyncio.to_thread(
         get_verification_config,
         guild.id,
     )
+
     if not config:
+        print(f"{EMOJIS['warning']} [VERIFY] No verification config found "
+              f"for guild {guild.id}")
         return False
 
     verified_role = guild.get_role(config.verified_role_id)
@@ -39,16 +54,28 @@ async def handle_verification(
                        if config.unverified_role_id else None)
 
     if not verified_role:
+        print(f"{EMOJIS['fail']} [VERIFY] Verified role not found in guild")
         return False
 
-    # ── Role hierarchy safety
+    # ─────────────────────────
+    # Role hierarchy safety
+    # ─────────────────────────
     if verified_role >= bot_member.top_role:
+        print(
+            f"{EMOJIS['warning']} [VERIFY] Role hierarchy error\n"
+            f"    Bot top role : {bot_member.top_role} ({bot_member.top_role.id})\n"
+            f"    Verified role: {verified_role} ({verified_role.id})")
         return False
 
     if unverified_role and unverified_role >= bot_member.top_role:
+        print(
+            f"{EMOJIS['warning']} [VERIFY] Unverified role above bot role, ignoring\n"
+            f"    Unverified role: {unverified_role}")
         unverified_role = None
 
-    # ── Apply roles (Discord API → async)
+    # ─────────────────────────
+    # Apply roles
+    # ─────────────────────────
     try:
         if unverified_role and unverified_role in member.roles:
             await member.remove_roles(
@@ -63,11 +90,19 @@ async def handle_verification(
             )
 
     except discord.Forbidden:
+        print(f"{EMOJIS['fail']} [VERIFY] Missing permissions to manage roles")
         return False
 
-    # ── Log verification
-    log_channel = guild.get_channel(config.log_channel_id)
+    except discord.HTTPException as e:
+        print(
+            f"{EMOJIS['fail']} [VERIFY] Discord API error while managing roles: {e}"
+        )
+        return False
 
+    # ─────────────────────────
+    # Log verification (server-side)
+    # ─────────────────────────
+    log_channel = guild.get_channel(config.log_channel_id)
     if isinstance(log_channel, discord.TextChannel):
         await log_channel.send(embed=make_embed(
             title="User Verified",
@@ -80,20 +115,7 @@ async def handle_verification(
             footer=f"Verification • {guild.name}",
         ))
 
-    # ── Optional user confirmation
-    if interaction:
-        try:
-            await interaction.response.send_message(
-                embed=make_embed(
-                    title="Verification Complete",
-                    description=
-                    (f"{EMOJIS['success']} You have been successfully verified!\n\n"
-                     f"{EMOJIS['arrow_point']} Welcome to **{guild.name}** 🎉"),
-                    level="SUCCESS",
-                ),
-                ephemeral=True,
-            )
-        except discord.InteractionResponded:
-            pass
+    print(f"{EMOJIS['success']} [VERIFY] Verification successful "
+          f"for user {member.id} in guild {guild.id}")
 
     return True

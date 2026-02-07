@@ -7,25 +7,29 @@ from db.db_helpers.afk import get_afk, remove_afk
 
 async def handle_afk(message: Message) -> bool:
     """
-    AFK handler.
+    v2 AFK handler.
 
-    Returns True if the handler sent a message
-    and the pipeline should stop.
+    - Notifies when mentioned users are AFK
+    - Automatically removes AFK status when the author speaks
+
+    Returns:
+        True  -> handler sent at least one message
+        False -> no AFK-related action taken
     """
 
-    # ── Safety
     if message.guild is None or message.author.bot:
         return False
 
     handled = False
+    guild_id = message.guild.id
 
-    # ─────────────────────────
-    # AFK CHECK FOR MENTIONS
-    # ─────────────────────────
+    # ─────────────────────────────
+    # AFK CHECK FOR MENTIONED USERS
+    # ─────────────────────────────
     for user in message.mentions:
         afk = await asyncio.to_thread(
             get_afk,
-            message.guild.id,
+            guild_id,
             user.id,
         )
 
@@ -37,18 +41,19 @@ async def handle_afk(message: Message) -> bool:
         embed = make_embed(
             title="User is AFK",
             description=(f"{user.mention} is currently AFK.\n"
-                         f"Reason: {afk.reason}\n"
-                         f"Since: <t:{afk.since}:R>"),
+                         f"**Reason:** {afk.reason}\n"
+                         f"**Since:** <t:{afk.since}:R>"),
             level="INFO",
         )
+
         await message.channel.send(embed=embed)
 
-    # ─────────────────────────
+    # ─────────────────────────────
     # REMOVE AUTHOR AFK STATUS
-    # ─────────────────────────
+    # ─────────────────────────────
     removed = await asyncio.to_thread(
         remove_afk,
-        guild_id=message.guild.id,
+        guild_id=guild_id,
         user_id=message.author.id,
     )
 
@@ -61,6 +66,7 @@ async def handle_afk(message: Message) -> bool:
                          f"AFK duration: <t:{removed.since}:R>"),
             level="INFO",
         )
+
         await message.channel.send(embed=embed)
 
     return handled

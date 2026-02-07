@@ -30,6 +30,12 @@ def format_time(value: str) -> str:
 
 
 class Weather(commands.Cog):
+    """
+    Weather information commands.
+
+    Provides real-time weather, air quality, and solar data
+    using the Open-Meteo API.
+    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -38,19 +44,30 @@ class Weather(commands.Cog):
         name="weather",
         description="Get detailed weather information for a city",
     )
-    async def weather(self, ctx: commands.Context, location: str):
+    async def weather(
+        self,
+        ctx: commands.Context,
+        *,
+        location: str,
+    ) -> None:
+
+        # ── Slash-safe defer
         if ctx.interaction:
             await ctx.interaction.response.defer()
 
         try:
             async with aiohttp.ClientSession() as session:
+
+                # ─────────────────────────────
+                # Geocoding
+                # ─────────────────────────────
                 async with session.get(
                         GEOCODE_URL,
                         params={
                             "name": location,
                             "count": 1
                         },
-                        timeout=10,  # type: ignore
+                        timeout=aiohttp.ClientTimeout(total=10),
                 ) as r:
                     geo = await r.json()
 
@@ -58,21 +75,25 @@ class Weather(commands.Cog):
                     raise ValueError("Location not found")
 
                 place = geo["results"][0]
-                lat, lon = place["latitude"], place["longitude"]
+                lat = place["latitude"]
+                lon = place["longitude"]
                 city = place["name"]
                 country = place.get("country", "")
 
+                # ─────────────────────────────
+                # Weather data
+                # ─────────────────────────────
                 async with session.get(
-                        WEATHER_URL,
-                        params={
-                            "latitude": lat,
-                            "longitude": lon,
-                            "current_weather": "true",
-                            "hourly": "relativehumidity_2m,uv_index",
-                            "daily": "sunrise,sunset",
-                            "timezone": "auto",
-                        },
-                        timeout=10,  # type: ignore
+                    WEATHER_URL,
+                    params={
+                        "latitude": lat,
+                        "longitude": lon,
+                        "current_weather": "true",
+                        "hourly": "relativehumidity_2m,uv_index",
+                        "daily": "sunrise,sunset",
+                        "timezone": "auto",
+                    },
+                    timeout=aiohttp.ClientTimeout(total=10),
                 ) as r:
                     weather = await r.json()
 
@@ -86,14 +107,17 @@ class Weather(commands.Cog):
                 condition = WEATHER_CODES.get(current["weathercode"],
                                               "Unknown")
 
+                # ─────────────────────────────
+                # Air quality
+                # ─────────────────────────────
                 async with session.get(
-                        AIR_URL,
-                        params={
-                            "latitude": lat,
-                            "longitude": lon,
-                            "hourly": "us_aqi",
-                        },
-                        timeout=10,  # type: ignore
+                    AIR_URL,
+                    params={
+                        "latitude": lat,
+                        "longitude": lon,
+                        "hourly": "us_aqi",
+                    },
+                    timeout=aiohttp.ClientTimeout(total=10),
                 ) as r:
                     air = await r.json()
 
@@ -101,47 +125,61 @@ class Weather(commands.Cog):
 
         except ValueError:
             embed = make_embed(
-                title=f"{EMOJIS['fail']} Location not found",
-                description=
-                "I couldn’t find that place. Please try a valid city name.",
+                title="Location not found",
+                description=("I couldn’t find that location.\n"
+                             "Please provide a valid city name."),
                 level="WARNING",
             )
-            return await ctx.reply(embed=embed, mention_author=False)
+            await self._respond(ctx, embed)
+            return
 
         except Exception:
             embed = make_embed(
-                title=f"{EMOJIS['fail']} Weather service error",
-                description=
-                "Something went wrong while fetching weather data. Please try again later.",
+                title="Weather service error",
+                description=("An error occurred while fetching weather data.\n"
+                             "Please try again later."),
                 level="ERROR",
             )
-            return await ctx.reply(embed=embed, mention_author=False)
+            await self._respond(ctx, embed)
+            return
 
+        # ─────────────────────────────
+        # Success embed
+        # ─────────────────────────────
         embed = make_embed(
-            title=f"{EMOJIS['success']} Weather Update",
+            title="Weather Update",
             description=(
                 f"{EMOJIS['arrow_point']} **Location:** {city}, {country}\n"
                 f"{EMOJIS['green_dot']} Live conditions overview"),
             level="INFO",
             fields=[
-                ("🌤️ Condition", condition, True),
-                ("🌡️ Temperature", f"{current['temperature']} °C", True),
-                ("💨 Wind", f"{current['windspeed']} km/h", True),
-                ("💧 Humidity", f"{humidity} %", True),
-                ("☀️ UV (Max Today)", str(uv), True),
-                ("🏭 Air Quality", f"AQI {aqi}", True),
-                ("🌅 Sunrise", sunrise, True),
-                ("🌇 Sunset", sunset, True),
+                ("Condition", condition, True),
+                ("Temperature", f"{current['temperature']} °C", True),
+                ("Wind Speed", f"{current['windspeed']} km/h", True),
+                ("Humidity", f"{humidity} %", True),
+                ("UV Index (Max)", str(uv), True),
+                ("Air Quality", f"AQI {aqi}", True),
+                ("Sunrise", sunrise, True),
+                ("Sunset", sunset, True),
             ],
             footer=f"Requested by {ctx.author}",
         )
 
-        # Slash command response
+        await self._respond(ctx, embed)
+
+    # ─────────────────────────────
+    # Unified response helper
+    # ─────────────────────────────
+    async def _respond(
+        self,
+        ctx: commands.Context,
+        embed: discord.Embed,
+    ) -> None:
+
         if ctx.interaction:
             await ctx.reply(embed=embed)
             return
 
-        # Prefix command cleanup
         try:
             await ctx.message.delete()
         except (discord.Forbidden, discord.NotFound):
@@ -150,5 +188,5 @@ class Weather(commands.Cog):
         await ctx.send(embed=embed)
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Weather(bot))
