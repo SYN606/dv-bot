@@ -13,6 +13,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 from db.base import Base
 
 
+# ─────────────────────────────────────
+# AFK
+# ─────────────────────────────────────
 class AFK(Base):
     __tablename__ = "afk"
 
@@ -23,6 +26,9 @@ class AFK(Base):
     since: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
+# ─────────────────────────────────────
+# BOT ADMIN ROLES
+# ─────────────────────────────────────
 class AdminRole(Base):
     __tablename__ = "admin_roles"
 
@@ -30,6 +36,9 @@ class AdminRole(Base):
     role_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
 
+# ─────────────────────────────────────
+# MEDIA ONLY CHANNELS
+# ─────────────────────────────────────
 class MediaOnlyChannel(Base):
     __tablename__ = "media_only_channels"
 
@@ -42,6 +51,9 @@ class MediaOnlyChannel(Base):
     )
 
 
+# ─────────────────────────────────────
+# STICKY MESSAGES
+# ─────────────────────────────────────
 class StickyMessage(Base):
     __tablename__ = "sticky_messages"
 
@@ -60,6 +72,9 @@ class StickyMessage(Base):
     )
 
 
+# ─────────────────────────────────────
+# SERVER-WIDE DISABLED COMMANDS (LEGACY)
+# ─────────────────────────────────────
 class DisabledCommand(Base):
     __tablename__ = "disabled_commands"
 
@@ -72,6 +87,39 @@ class DisabledCommand(Base):
     )
 
 
+# ─────────────────────────────────────
+# CHANNEL-BASED COMMAND RESTRICTIONS (v2)
+# ─────────────────────────────────────
+class RestrictedCommand(Base):
+    """
+    Channel-based command restriction.
+
+    scope:
+      - "prefix"
+      - "slash"
+      - "both"
+    """
+
+    __tablename__ = "restricted_commands"
+
+    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    command_name: Mapped[str] = mapped_column(String(64), primary_key=True)
+
+    scope: Mapped[str] = mapped_column(
+        String(16),
+        default="both",
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
+
+
+# ─────────────────────────────────────
+# COUNTING CHANNELS
+# ─────────────────────────────────────
 class CountingChannel(Base):
     __tablename__ = "counting_channels"
 
@@ -87,6 +135,9 @@ class CountingChannel(Base):
     best: Mapped[int] = mapped_column(Integer, default=0)
 
 
+# ─────────────────────────────────────
+# TEMPBAN CONFIG
+# ─────────────────────────────────────
 class TempbanConfig(Base):
     __tablename__ = "tempban_config"
 
@@ -97,6 +148,9 @@ class TempbanConfig(Base):
         return f"<TempbanConfig guild={self.guild_id} role={self.role_id}>"
 
 
+# ─────────────────────────────────────
+# TEMPBAN RECORDS
+# ─────────────────────────────────────
 class TempbanRecord(Base):
     __tablename__ = "tempban_records"
 
@@ -119,18 +173,24 @@ class TempbanRecord(Base):
                 f"user={self.user_id} active={self.active}>")
 
 
+# ─────────────────────────────────────
+# VERIFICATION CONFIG
+# ─────────────────────────────────────
 class VerificationConfig(Base):
     __tablename__ = "verification_config"
 
-    guild_id = mapped_column(BigInteger, primary_key=True)
+    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
-    verify_channel_id = mapped_column(BigInteger)
-    log_channel_id = mapped_column(BigInteger)
+    verify_channel_id: Mapped[int] = mapped_column(BigInteger)
+    log_channel_id: Mapped[int] = mapped_column(BigInteger)
 
-    verified_role_id = mapped_column(BigInteger)
-    unverified_role_id = mapped_column(BigInteger)
+    verified_role_id: Mapped[int] = mapped_column(BigInteger)
+    unverified_role_id: Mapped[int] = mapped_column(BigInteger)
 
 
+# ─────────────────────────────────────
+# MODERATION LOG CONFIG
+# ─────────────────────────────────────
 class ModerationLogConfig(Base):
     __tablename__ = "moderation_log_config"
 
@@ -138,4 +198,5 @@ class ModerationLogConfig(Base):
     channel_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
     def __repr__(self) -> str:
-        return f"<ModerationLogConfig guild={self.guild_id} channel={self.channel_id}>"
+        return (f"<ModerationLogConfig guild={self.guild_id} "
+                f"channel={self.channel_id}>")

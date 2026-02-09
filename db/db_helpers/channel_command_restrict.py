@@ -3,17 +3,26 @@ from db.engine import SessionLocal
 from db.models import RestrictedCommand
 
 
+# ─────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────
 def _normalize(command_name: str) -> str:
+    """
+    Normalize command names for consistent storage.
+    """
     return command_name.strip().lower()
 
 
+# ─────────────────────────────────────
+# Restrict command in channel
+# ─────────────────────────────────────
 def restrict_command(
     guild_id: int,
     channel_id: int,
     command_name: str,
 ) -> bool:
     """
-    Restrict a prefix command in a specific channel.
+    Restrict a command in a specific channel.
     """
     command_name = _normalize(command_name)
 
@@ -35,13 +44,16 @@ def restrict_command(
         return True
 
 
+# ─────────────────────────────────────
+# Unrestrict command in channel
+# ─────────────────────────────────────
 def unrestrict_command(
     guild_id: int,
     channel_id: int,
     command_name: str,
 ) -> bool:
     """
-    Remove command restriction from a channel.
+    Remove a command restriction from a channel.
     """
     command_name = _normalize(command_name)
 
@@ -58,13 +70,16 @@ def unrestrict_command(
         return True
 
 
+# ─────────────────────────────────────
+# Core check (CANONICAL)
+# ─────────────────────────────────────
 def is_command_restricted(
     guild_id: int,
     channel_id: int,
     command_name: str,
 ) -> bool:
     """
-    Check if a command is blocked in a channel.
+    Check if a command is restricted in a channel.
     """
     command_name = _normalize(command_name)
 
@@ -75,6 +90,28 @@ def is_command_restricted(
         ) is not None
 
 
+# ─────────────────────────────────────
+# Compatibility alias (DO NOT REMOVE)
+# ─────────────────────────────────────
+def is_command_disabled(
+    guild_id: int,
+    channel_id: int,
+    command_name: str,
+) -> bool:
+    """
+    Alias for is_command_restricted.
+    Exists for backward compatibility.
+    """
+    return is_command_restricted(
+        guild_id,
+        channel_id,
+        command_name,
+    )
+
+
+# ─────────────────────────────────────
+# List restricted commands for channel
+# ─────────────────────────────────────
 def get_restricted_commands(
     guild_id: int,
     channel_id: int,
@@ -87,4 +124,5 @@ def get_restricted_commands(
             guild_id=guild_id,
             channel_id=channel_id,
         ).all())
+
         return [name for (name, ) in rows]

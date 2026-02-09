@@ -7,48 +7,58 @@ from db.db_helpers.channel_command_restrict import is_command_disabled
 
 async def command_toggle_check(interaction: discord.Interaction) -> bool:
     """
-    v2 Command toggle check
+    v2 Command toggle check (CHANNEL-BASED)
 
-    - Blocks disabled commands
+    - Blocks restricted commands per channel
     - Sends a clean ephemeral notice
-    - Safe for both initial & followup responses
+    - Safe for first response or follow-up
     """
 
     # ─────────────────────────
     # Safety
     # ─────────────────────────
-    if interaction.guild is None or interaction.command is None:
+    if (
+        interaction.guild is None
+        or interaction.channel is None
+        or interaction.command is None
+    ):
         return True
 
     command_name = interaction.command.qualified_name.lower()
 
     # ─────────────────────────
-    # Disabled command check
+    # Channel restriction check
     # ─────────────────────────
-    if is_command_disabled(interaction.guild.id, command_name):
-        embed = make_embed(
-            title="Command Disabled",
-            description=
-            (f"{EMOJIS['warning']} This command has been disabled by server administrators.\n\n"
-             f"{EMOJIS['arrow_point']} Please contact staff if you believe this is a mistake."
-             ),
-            level="WARNING",
-        )
+    restricted = is_command_disabled(
+        interaction.guild.id,
+        interaction.channel.id,
+        command_name,
+    )
 
-        try:
-            if interaction.response.is_done():
-                await interaction.followup.send(
-                    embed=embed,
-                    ephemeral=True,
-                )
-            else:
-                await interaction.response.send_message(
-                    embed=embed,
-                    ephemeral=True,
-                )
-        except discord.HTTPException:
-            pass
+    if not restricted:
+        return True
 
-        return False
+    embed = make_embed(
+        title="Command Restricted",
+        description=(
+            f"{EMOJIS['warning']} This command is **not allowed in this channel**.\n\n"
+            f"{EMOJIS['arrow_point']} Try using it in another channel or contact staff."
+        ),
+        level="WARNING",
+    )
 
-    return True
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send(
+                embed=embed,
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                embed=embed,
+                ephemeral=True,
+            )
+    except discord.HTTPException:
+        pass
+
+    return False
