@@ -1,11 +1,17 @@
-from typing import Optional
-from db.engine import SessionLocal
+from sqlalchemy import select
+from db.engine import AsyncSessionLocal
 from db.models import MediaOnlyChannel
 
 
-def enable_media_only(guild_id: int, channel_id: int) -> bool:
-    with SessionLocal() as session:
-        exists = session.get(MediaOnlyChannel, (guild_id, channel_id))
+async def enable_media_only(guild_id: int, channel_id: int) -> bool:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(MediaOnlyChannel).where(
+                MediaOnlyChannel.guild_id == guild_id,
+                MediaOnlyChannel.channel_id == channel_id,
+            ))
+
+        exists = result.scalar_one_or_none()
         if exists:
             return False
 
@@ -14,24 +20,34 @@ def enable_media_only(guild_id: int, channel_id: int) -> bool:
                 guild_id=guild_id,
                 channel_id=channel_id,
             ))
-        session.commit()
+
+        await session.commit()
         return True
 
 
-def disable_media_only(guild_id: int, channel_id: int) -> bool:
-    with SessionLocal() as session:
-        row = session.get(MediaOnlyChannel, (guild_id, channel_id))
+async def disable_media_only(guild_id: int, channel_id: int) -> bool:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(MediaOnlyChannel).where(
+                MediaOnlyChannel.guild_id == guild_id,
+                MediaOnlyChannel.channel_id == channel_id,
+            ))
+
+        row = result.scalar_one_or_none()
         if not row:
             return False
 
-        session.delete(row)
-        session.commit()
+        await session.delete(row)
+        await session.commit()
         return True
 
 
-def is_media_only(guild_id: int, channel_id: int) -> bool:
-    with SessionLocal() as session:
-        return session.get(
-            MediaOnlyChannel,
-            (guild_id, channel_id),
-        ) is not None
+async def is_media_only(guild_id: int, channel_id: int) -> bool:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(MediaOnlyChannel).where(
+                MediaOnlyChannel.guild_id == guild_id,
+                MediaOnlyChannel.channel_id == channel_id,
+            ))
+
+        return result.scalar_one_or_none() is not None

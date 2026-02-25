@@ -1,4 +1,3 @@
-import asyncio
 from discord import Message
 
 from utils.embeds import make_embed
@@ -7,14 +6,12 @@ from db.db_helpers.afk import get_afk, remove_afk
 
 async def handle_afk(message: Message) -> bool:
     """
-    v2 AFK handler.
+    Fully async AFK handler.
 
     - Notifies when mentioned users are AFK
-    - Automatically removes AFK status when the author speaks
-
-    Returns:
-        True  -> handler sent at least one message
-        False -> no AFK-related action taken
+    - Removes AFK when author speaks
+    - Zero thread wrappers
+    - Non-blocking
     """
 
     if message.guild is None or message.author.bot:
@@ -24,49 +21,38 @@ async def handle_afk(message: Message) -> bool:
     guild_id = message.guild.id
 
     # ─────────────────────────────
-    # AFK CHECK FOR MENTIONED USERS
+    # Check mentioned users
     # ─────────────────────────────
     for user in message.mentions:
-        afk = await asyncio.to_thread(
-            get_afk,
-            guild_id,
-            user.id,
-        )
+
+        afk = await get_afk(guild_id, user.id)
 
         if not afk:
             continue
 
         handled = True
 
-        embed = make_embed(
+        await message.channel.send(embed=make_embed(
             title="User is AFK",
             description=(f"{user.mention} is currently AFK.\n"
                          f"**Reason:** {afk.reason}\n"
                          f"**Since:** <t:{afk.since}:R>"),
             level="INFO",
-        )
-
-        await message.channel.send(embed=embed)
+        ))
 
     # ─────────────────────────────
-    # REMOVE AUTHOR AFK STATUS
+    # Remove author AFK
     # ─────────────────────────────
-    removed = await asyncio.to_thread(
-        remove_afk,
-        guild_id=guild_id,
-        user_id=message.author.id,
-    )
+    removed = await remove_afk(guild_id, message.author.id)
 
     if removed:
         handled = True
 
-        embed = make_embed(
+        await message.channel.send(embed=make_embed(
             title="AFK Removed",
             description=("Welcome back. You are no longer marked as AFK.\n"
                          f"AFK duration: <t:{removed.since}:R>"),
             level="INFO",
-        )
-
-        await message.channel.send(embed=embed)
+        ))
 
     return handled

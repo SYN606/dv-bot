@@ -1,5 +1,6 @@
 from typing import List
-from db.engine import SessionLocal
+from sqlalchemy import select, delete
+from db.engine import AsyncSessionLocal
 from db.models import RestrictedCommand
 
 
@@ -13,7 +14,7 @@ def _normalize(command_name: str) -> str:
 # ─────────────────────────────────────
 # Core restriction logic (channel-based)
 # ─────────────────────────────────────
-def restrict_command(
+async def restrict_command(
     guild_id: int,
     channel_id: int,
     command_name: str,
@@ -23,11 +24,15 @@ def restrict_command(
     """
     command_name = _normalize(command_name)
 
-    with SessionLocal() as session:
-        exists = session.get(
-            RestrictedCommand,
-            (guild_id, channel_id, command_name),
-        )
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(RestrictedCommand).where(
+                RestrictedCommand.guild_id == guild_id,
+                RestrictedCommand.channel_id == channel_id,
+                RestrictedCommand.command_name == command_name,
+            ))
+
+        exists = result.scalar_one_or_none()
         if exists:
             return False
 
@@ -37,11 +42,12 @@ def restrict_command(
                 channel_id=channel_id,
                 command_name=command_name,
             ))
-        session.commit()
+
+        await session.commit()
         return True
 
 
-def unrestrict_command(
+async def unrestrict_command(
     guild_id: int,
     channel_id: int,
     command_name: str,
@@ -51,20 +57,24 @@ def unrestrict_command(
     """
     command_name = _normalize(command_name)
 
-    with SessionLocal() as session:
-        row = session.get(
-            RestrictedCommand,
-            (guild_id, channel_id, command_name),
-        )
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(RestrictedCommand).where(
+                RestrictedCommand.guild_id == guild_id,
+                RestrictedCommand.channel_id == channel_id,
+                RestrictedCommand.command_name == command_name,
+            ))
+
+        row = result.scalar_one_or_none()
         if not row:
             return False
 
-        session.delete(row)
-        session.commit()
+        await session.delete(row)
+        await session.commit()
         return True
 
 
-def is_command_restricted(
+async def is_command_restricted(
     guild_id: int,
     channel_id: int,
     command_name: str,
@@ -74,61 +84,55 @@ def is_command_restricted(
     """
     command_name = _normalize(command_name)
 
-    with SessionLocal() as session:
-        return session.get(
-            RestrictedCommand,
-            (guild_id, channel_id, command_name),
-        ) is not None
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(RestrictedCommand).where(
+                RestrictedCommand.guild_id == guild_id,
+                RestrictedCommand.channel_id == channel_id,
+                RestrictedCommand.command_name == command_name,
+            ))
+
+        return result.scalar_one_or_none() is not None
 
 
-def get_restricted_commands(
+async def get_restricted_commands(
     guild_id: int,
     channel_id: int,
 ) -> List[str]:
     """
     List restricted commands for a channel.
     """
-    with SessionLocal() as session:
-        rows = (session.query(RestrictedCommand.command_name).filter_by(
-            guild_id=guild_id,
-            channel_id=channel_id,
-        ).all())
-        return [name for (name, ) in rows]
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(RestrictedCommand.command_name).where(
+                RestrictedCommand.guild_id == guild_id,
+                RestrictedCommand.channel_id == channel_id,
+            ))
+
+        return [row[0] for row in result.all()]
 
 
-# ─────────────────────────────────────
-# 🔁 COMPATIBILITY ALIASES (IMPORTANT)
-# These keep older UI / views working
-# ─────────────────────────────────────
+# region: COMPATIBILITY ALIASES
 
 
-def disable_command(
+async def disable_command(
     guild_id: int,
     channel_id: int,
     command_name: str,
 ) -> bool:
-    """
-    Alias for restrict_command (UI compatibility).
-    """
-    return restrict_command(guild_id, channel_id, command_name)
+    return await restrict_command(guild_id, channel_id, command_name)
 
 
-def enable_command(
+async def enable_command(
     guild_id: int,
     channel_id: int,
     command_name: str,
 ) -> bool:
-    """
-    Alias for unrestrict_command (UI compatibility).
-    """
-    return unrestrict_command(guild_id, channel_id, command_name)
+    return await unrestrict_command(guild_id, channel_id, command_name)
 
 
-def get_disabled_commands(
+async def get_disabled_commands(
     guild_id: int,
     channel_id: int,
 ) -> List[str]:
-    """
-    Alias for get_restricted_commands (UI compatibility).
-    """
-    return get_restricted_commands(guild_id, channel_id)
+    return await get_restricted_commands(guild_id, channel_id)

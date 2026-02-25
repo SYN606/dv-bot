@@ -4,18 +4,24 @@ from db.base import Base
 from db.engine import engine
 
 
-def init_schema() -> None:
-    inspector = inspect(engine)
+async def init_schema() -> None:
+    async with engine.begin() as conn:
 
-    existing_tables = set(inspector.get_table_names())
-    model_tables = set(Base.metadata.tables.keys())
+        # Get existing tables
+        def get_tables(sync_conn):
+            inspector = inspect(sync_conn)
+            return set(inspector.get_table_names())
 
-    unused_tables = existing_tables - model_tables
-    if unused_tables:
-        print(f"[INFO] Dropping unused tables: {', '.join(unused_tables)}")
+        existing_tables = await conn.run_sync(get_tables)
+        model_tables = set(Base.metadata.tables.keys())
 
-        with engine.begin() as conn:
+        unused_tables = existing_tables - model_tables
+
+        if unused_tables:
+            print(f"[INFO] Dropping unused tables: {', '.join(unused_tables)}")
+
             for table in unused_tables:
-                conn.execute(text(f'DROP TABLE IF EXISTS "{table}"'))
+                await conn.execute(text(f'DROP TABLE IF EXISTS "{table}"'))
 
-    Base.metadata.create_all(engine)
+        # Create missing tables
+        await conn.run_sync(Base.metadata.create_all)

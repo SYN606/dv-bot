@@ -1,8 +1,8 @@
-import asyncio
 import discord
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.engine import SessionLocal
+from db.engine import AsyncSessionLocal
 from db.models import CountingChannel
 from utils.emojis import EMOJIS
 from utils.embeds import make_embed
@@ -10,13 +10,10 @@ from utils.embeds import make_embed
 
 async def handle_counting(message: discord.Message) -> bool:
     """
-    Counting game handler.
-
-    Returns True if the message was handled
-    (reaction added or reset triggered).
+    Fully async counting game handler.
+    Safe for concurrency.
     """
 
-    # ── Safety checks
     if message.guild is None or message.author.bot:
         return False
 
@@ -26,113 +23,77 @@ async def handle_counting(message: discord.Message) -> bool:
 
     number = int(content)
 
-    # ── Run DB logic off the event loop
-    result = await asyncio.to_thread(
-        _process_counting_db,
-        guild_id=message.guild.id,
-        channel_id=message.channel.id,
-        user_id=message.author.id,
-        number=number,
-    )
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(CountingChannel).where(
+                CountingChannel.guild_id == message.guild.id,
+                CountingChannel.channel_id == message.channel.id,
+            ))
 
-    # ── Not a counting channel
-    if result is None:
-        return False
-
-    action = result["action"]
-
-    # ── Correct count
-    if action == "ok":
-        try:
-            await message.add_reaction(EMOJIS["success"])
-        except discord.HTTPException:
-            pass
-        return True
-
-    # ── Reset case
-    if action == "reset":
-        try:
-            await message.add_reaction(EMOJIS["fail"])
-        except discord.HTTPException:
-            pass
-
-        await message.channel.send(embed=make_embed(
-            title="Counting Reset",
-            description=
-            (f"{EMOJIS['fail']} The counting chain has been **broken**.\n\n"
-             f"{EMOJIS['arrow_point']} **Broken by:** {message.author.mention}\n"
-             f"{EMOJIS['red_dot']} **Reason:** {result['reason']}\n"
-             f"{EMOJIS['green_dot']} **Best streak:** {result['best']}\n\n"
-             f"{EMOJIS['ping']} Start again from **1**"),
-            level="SYSTEM",
-            footer="Counting system • Digital Vigital",
-        ))
-        return True
-
-    return False
-
-
-# ─────────────────────────
-# DB LOGIC (SYNC, THREAD)
-# ─────────────────────────
-def _process_counting_db(
-    *,
-    guild_id: int,
-    channel_id: int,
-    user_id: int,
-    number: int,
-) -> dict | None:
-    """
-    Processes counting logic synchronously.
-    Returns:
-      - None → not a counting channel
-      - {"action": "ok"}
-      - {"action": "reset", "reason": str, "best": int}
-    """
-
-    db: Session = SessionLocal()
-    try:
-        row = (db.query(CountingChannel).filter_by(
-            guild_id=guild_id,
-            channel_id=channel_id,
-        ).first())
+        row = result.scalar_one_or_none()
 
         if row is None:
-            return None
+            return False
 
         expected = row.current + 1
 
-        # ❌ Same user counted twice
-        if row.last_user_id == user_id:
+        # Same user counted twice
+        if row.last_user_id == message.author.id:
             best = row.best
             row.current = 0
             row.last_user_id = None
-            db.commit()
-            return {
-                "action": "reset",
-                "reason": "Same user counted twice",
-                "best": best,
-            }
+            await session.commit()
 
-        # ❌ Wrong number
+            await _reset_message(message, "Same user counted twice", best)
+            return True
+
+        # Wrong number
         if number != expected:
             best = row.best
             row.current = 0
             row.last_user_id = None
-            db.commit()
-            return {
-                "action": "reset",
-                "reason": f"Expected {expected}, got {number}",
-                "best": best,
-            }
+            await session.commit()
+
+            await _reset_message(
+                message,
+                f"Expected {expected}, got {number}",
+                best,
+            )
+            return True
 
         # ✅ Correct count
         row.current = number
-        row.last_user_id = user_id
+        row.last_user_id = message.author.id
         row.best = max(row.best, row.current)
-        db.commit()
 
-        return {"action": "ok"}
+        await session.commit()
 
-    finally:
-        db.close()
+    try:
+        await message.add_reaction(EMOJIS["success"])
+    except discord.HTTPException:
+        pass
+
+    return True
+
+
+async def _reset_message(
+    message: discord.Message,
+    reason: str,
+    best: int,
+):
+    try:
+        await message.add_reaction(EMOJIS["fail"])
+    except discord.HTTPException:
+        pass
+
+    await message.channel.send(embed=make_embed(
+        title="Counting Reset",
+        description=(
+            f"{EMOJIS['fail']} The counting chain has been broken.\n\n"
+            f"{EMOJIS['arrow_point']} Broken by: {message.author.mention}\n"
+            f"{EMOJIS['red_dot']} Reason: {reason}\n"
+            f"{EMOJIS['green_dot']} Best streak: {best}\n\n"
+            f"{EMOJIS['ping']} Start again from 1"),
+        level="SYSTEM",
+        footer="Counting system • Digital Vigital",
+    ))
