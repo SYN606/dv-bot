@@ -1,30 +1,45 @@
 import discord
 from discord.ext import commands
+
 from db.db_helpers.admin_roles import get_admin_roles
 
 
-# CORE CHECK
-def _member_is_bot_admin(member: discord.Member) -> bool:
-    # Server owner
+# region CORE CHECK
+async def _member_is_bot_admin(member: discord.Member) -> bool:
+    """
+    Core permission resolver.
+
+    Priority:
+    1. Guild owner
+    2. Discord administrator permission
+    3. Custom bot-admin role
+    """
+
+    # Guild owner
     if member.guild.owner_id == member.id:
         return True
 
-    # Discord administrator
+    # Discord administrator permission
     if member.guild_permissions.administrator:
         return True
 
-    # Bot-admin roles
-    admin_roles = set(get_admin_roles(member.guild.id))
-    member_roles = {role.id for role in member.roles}
+    # Custom bot-admin roles
+    admin_role_ids = set(await get_admin_roles(member.guild.id))
+    member_role_ids = {role.id for role in member.roles}
 
-    return bool(member_roles & admin_roles)
+    return bool(admin_role_ids & member_role_ids)
 
 
-# SLASH COMMANDS
-def is_bot_admin(interaction: discord.Interaction) -> bool:
+# endregion
+
+# region SLASH COMMANDS
+
+
+async def is_bot_admin(interaction: discord.Interaction) -> bool:
     """
     Slash-command bot admin permission check.
     """
+
     if interaction.guild is None:
         return False
 
@@ -32,18 +47,26 @@ def is_bot_admin(interaction: discord.Interaction) -> bool:
     if member is None:
         return False
 
-    return _member_is_bot_admin(member)
+    return await _member_is_bot_admin(member)
 
 
-# PREFIX / HYBRID COMMANDS
-def is_bot_admin_ctx(ctx: commands.Context) -> bool:
+# endregion
+
+# region PREFIX / HYBRID COMMANDS
+
+
+async def is_bot_admin_ctx(ctx: commands.Context) -> bool:
     """
     Prefix / hybrid command bot admin permission check.
     """
+
     if ctx.guild is None:
         return False
 
     if not isinstance(ctx.author, discord.Member):
         return False
 
-    return _member_is_bot_admin(ctx.author)
+    return await _member_is_bot_admin(ctx.author)
+
+
+# endregion

@@ -11,10 +11,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
 
+# region AFK
 
-# ─────────────────────────────────────
-# AFK
-# ─────────────────────────────────────
+
 class AFK(Base):
     __tablename__ = "afk"
 
@@ -25,9 +24,11 @@ class AFK(Base):
     since: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
-# ─────────────────────────────────────
-# BOT ADMIN ROLES
-# ─────────────────────────────────────
+# endregion
+
+# region BOT ADMIN ROLES
+
+
 class AdminRole(Base):
     __tablename__ = "admin_roles"
 
@@ -35,9 +36,11 @@ class AdminRole(Base):
     role_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
 
-# ─────────────────────────────────────
-# MEDIA ONLY CHANNELS
-# ─────────────────────────────────────
+# endregion
+
+# region MEDIA ONLY CHANNELS
+
+
 class MediaOnlyChannel(Base):
     __tablename__ = "media_only_channels"
 
@@ -47,12 +50,15 @@ class MediaOnlyChannel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
+        nullable=False,
     )
 
 
-# ─────────────────────────────────────
-# STICKY MESSAGES
-# ─────────────────────────────────────
+# endregion
+
+# region STICKY MESSAGES
+
+
 class StickyMessage(Base):
     __tablename__ = "sticky_messages"
 
@@ -61,82 +67,105 @@ class StickyMessage(Base):
 
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
-    last_message_id: Mapped[int | None] = mapped_column(BigInteger)
-    counter: Mapped[int] = mapped_column(Integer, default=0)
+    last_message_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
+
+    counter: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
+        nullable=False,
     )
 
 
-# ─────────────────────────────────────
-# SERVER-WIDE DISABLED COMMANDS (LEGACY)
-# ─────────────────────────────────────
+# endregion
+
+# region SERVER-WIDE DISABLED COMMANDS
+
+
 class DisabledCommand(Base):
     __tablename__ = "disabled_commands"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    command_name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    command_name: Mapped[str] = mapped_column(
+        String(64),
+        primary_key=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
+        nullable=False,
     )
 
 
-# ─────────────────────────────────────
-# CHANNEL-BASED COMMAND RESTRICTIONS (v2)
-# ─────────────────────────────────────
+# endregion
+
+# region CHANNEL-BASED COMMAND RESTRICTIONS
+
+
 class RestrictedCommand(Base):
     """
     Channel-based command restriction.
 
     scope:
-      - "prefix"
-      - "slash"
-      - "both"
+        - "prefix"
+        - "slash"
+        - "both"
     """
 
     __tablename__ = "restricted_commands"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    command_name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    command_name: Mapped[str] = mapped_column(
+        String(64),
+        primary_key=True,
+    )
 
     scope: Mapped[str] = mapped_column(
         String(16),
         default="both",
+        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
+        nullable=False,
     )
 
 
-# ─────────────────────────────────────
-# COUNTING CHANNELS
-# ─────────────────────────────────────
+# endregion
+
+# region COUNTING CHANNELS
+
+
 class CountingChannel(Base):
     __tablename__ = "counting_channels"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
-    current: Mapped[int] = mapped_column(Integer, default=0)
+    current: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
     last_user_id: Mapped[int | None] = mapped_column(
         BigInteger,
         nullable=True,
     )
 
-    best: Mapped[int] = mapped_column(Integer, default=0)
+    best: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
 
-# ─────────────────────────────────────
-# TEMPBAN CONFIG
-# ─────────────────────────────────────
+# endregion
+
+# region TEMPBAN CONFIG
+
+
 class TempbanConfig(Base):
     __tablename__ = "tempban_config"
 
@@ -147,9 +176,11 @@ class TempbanConfig(Base):
         return f"<TempbanConfig guild={self.guild_id} role={self.role_id}>"
 
 
-# ─────────────────────────────────────
-# TEMPBAN RECORDS
-# ─────────────────────────────────────
+# endregion
+
+# region TEMPBAN RECORDS
+
+
 class TempbanRecord(Base):
     __tablename__ = "tempban_records"
 
@@ -158,38 +189,70 @@ class TempbanRecord(Base):
 
     moderator_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
-    reason: Mapped[str | None] = mapped_column(String(512))
-    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    reason: Mapped[str | None] = mapped_column(
+        String(512),
+        nullable=True,
+    )
+
+    active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
+        nullable=False,
     )
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
 
     def __repr__(self) -> str:
         return (f"<TempbanRecord guild={self.guild_id} "
                 f"user={self.user_id} active={self.active}>")
 
 
-# ─────────────────────────────────────
-# VERIFICATION CONFIG
-# ─────────────────────────────────────
+# endregion
+
+# region VERIFICATION CONFIG
+
+
 class VerificationConfig(Base):
     __tablename__ = "verification_config"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
-    verify_channel_id: Mapped[int] = mapped_column(BigInteger)
-    log_channel_id: Mapped[int] = mapped_column(BigInteger)
+    verify_channel_id: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
 
-    verified_role_id: Mapped[int] = mapped_column(BigInteger)
-    unverified_role_id: Mapped[int] = mapped_column(BigInteger)
+    log_channel_id: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+
+    verified_role_id: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+
+    # ✅ FIXED: Now optional
+    unverified_role_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
 
 
-# ─────────────────────────────────────
-# MODERATION LOG CONFIG
-# ─────────────────────────────────────
+# endregion
+
+# region MODERATION LOG CONFIG
+
+
 class ModerationLogConfig(Base):
     __tablename__ = "moderation_log_config"
 
@@ -199,3 +262,6 @@ class ModerationLogConfig(Base):
     def __repr__(self) -> str:
         return (f"<ModerationLogConfig guild={self.guild_id} "
                 f"channel={self.channel_id}>")
+
+
+# endregion

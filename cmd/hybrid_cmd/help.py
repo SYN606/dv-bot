@@ -1,54 +1,86 @@
+from __future__ import annotations
 from discord.ext import commands
+from discord import app_commands
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
 from utils.check_perms import is_bot_admin
 from utils.protected_commands import PROTECTED_COMMANDS
 from db.db_helpers.channel_command_restrict import get_restricted_commands
 
+# region COMMAND CATEGORY MAP
+COMMAND_CATEGORIES: dict[str, str] = {
+
+    # Moderation
+    "tempban_role": "Moderation",
+    "tempban_list": "Moderation",
+    "setup_log": "Moderation",
+    "reset_verification": "Moderation",
+
+    # Verification
+    "verify_setup": "Verification",
+
+    # Channel Management
+    "media_only": "Channel",
+    "sticky_set": "Channel",
+    "sticky_disable": "Channel",
+    "sticky_status": "Channel",
+    "set_counting": "Channel",
+    "unset_counting": "Channel",
+
+    # Role Management
+    "roles": "Roles",
+    "adminrole": "Roles",
+
+    # System
+    "command": "System",
+    "help": "System",
+
+    # Utility
+    "weather": "Utility",
+}
+
+CATEGORY_EMOJIS = {
+    "Moderation": EMOJIS["moderation"],
+    "Verification": EMOJIS["okay"],
+    "Channel": EMOJIS["announcement"],
+    "Roles": EMOJIS["green_dot"],
+    "System": EMOJIS["developer"],
+    "Utility": EMOJIS["ping"],
+    "General": EMOJIS["arrow_point"],
+}
+
 
 class Help(commands.Cog):
-    """
-    v3 Intelligent Help System
-
-    - Slash-first design
-    - Channel restriction aware
-    - Permission aware
-    - Cached command tree
-    - Clean grouped layout
-    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._cached_commands: list[dict] = []
         self._cache_ready = False
 
-    # ─────────────────────────────
-    # CACHE BUILDER
-    # ─────────────────────────────
+    # region CACHE BUILDER
     def _build_cache(self) -> None:
+
         cache: list[dict] = []
 
         for cmd in self.bot.tree.walk_commands():
-            if cmd.hidden:
+
+            if not isinstance(cmd, app_commands.Command):
                 continue
 
+            base = cmd.name.lower()
+            category = COMMAND_CATEGORIES.get(base, "General")
+
             cache.append({
-                "qualified":
-                cmd.qualified_name.lower(),
-                "base":
-                cmd.name.lower(),
-                "description":
-                cmd.description or "No description provided",
-                "group":
-                cmd.parent.name.capitalize() if cmd.parent else "General",
+                "qualified": cmd.qualified_name.lower(),
+                "base": base,
+                "description": cmd.description or "No description provided",
+                "category": category,
             })
 
         self._cached_commands = cache
         self._cache_ready = True
 
-    # ─────────────────────────────
-    # HELP COMMAND
-    # ─────────────────────────────
+    # region HELP COMMAND
     @commands.hybrid_command(
         name="help",
         description="Show available bot commands",
@@ -56,29 +88,24 @@ class Help(commands.Cog):
     )
     async def help(self, ctx: commands.Context) -> None:
 
-        # ─────────────────────────────
-        # PREFIX HELP (quick overview)
-        # ─────────────────────────────
+        # region PREFIX HELP
         if ctx.interaction is None:
 
             embed = make_embed(
                 title="Digital Vigital Help",
                 description=
-                (f"{EMOJIS['announcement']} This bot uses **slash commands** primarily.\n\n"
-                 f"{EMOJIS['arrow_point']} Type `/` to explore all commands.\n"
-                 f"{EMOJIS['arrow_point']} Use `dv help` for quick prefix support.\n\n"
-                 f"{EMOJIS['green_dot']} Recommended: `/help` for full command list."
-                 ),
+                (f"{EMOJIS['announcement']} This bot primarily uses **slash commands**.\n\n"
+                 f"{EMOJIS['arrow_point']} Type `/` to explore commands.\n"
+                 f"{EMOJIS['arrow_point']} Use `/help` for a full categorised list.\n\n"
+                 f"{EMOJIS['green_dot']} Fast • Channel-aware • Modern"),
                 level="INFO",
-                footer="Slash-first architecture • Fast & Modern",
+                footer="Digital Vigital • Slash-first architecture",
             )
 
             await ctx.reply(embed=embed, mention_author=False)
             return
 
-        # ─────────────────────────────
-        # SLASH HELP (full system)
-        # ─────────────────────────────
+        # region SLASH HELP
         interaction = ctx.interaction
         guild = interaction.guild
         channel = interaction.channel
@@ -89,57 +116,52 @@ class Help(commands.Cog):
         if not self._cache_ready:
             self._build_cache()
 
-        # ─────────────────────────────
-        # Channel-based restrictions (async)
-        # ─────────────────────────────
         restricted: set[str] = set()
 
         if guild and channel:
-            restricted = set(await get_restricted_commands(
-                guild.id,
-                channel.id,
-            ))
+            try:
+                restricted = set(await get_restricted_commands(
+                    guild.id,
+                    channel.id,
+                ))
+            except Exception:
+                pass
 
-        # ─────────────────────────────
-        # Filter & Group Commands
-        # ─────────────────────────────
         grouped: dict[str, list[str]] = {}
 
         for cmd in self._cached_commands:
-            base = cmd["base"]
-            qualified = cmd["qualified"]
 
-            # Channel restriction
-            if base in restricted and not is_admin:
+            if cmd["base"] in restricted and not is_admin:
                 continue
 
-            # Protected commands
-            if qualified in PROTECTED_COMMANDS and not is_admin:
+            if cmd["qualified"] in PROTECTED_COMMANDS and not is_admin:
                 continue
 
-            entry = f"• `/{qualified}` — {cmd['description']}"
-            grouped.setdefault(cmd["group"], []).append(entry)
+            entry = (f"{EMOJIS['arrow_point']} "
+                     f"`/{cmd['qualified']}` — {cmd['description']}")
+
+            grouped.setdefault(cmd["category"], []).append(entry)
 
         if not grouped:
             await interaction.followup.send(
                 embed=make_embed(
                     title="Help",
                     description=
-                    f"{EMOJIS['warning']} No commands available in this channel.",
+                    (f"{EMOJIS['warning']} No commands available in this channel."
+                     ),
                     level="WARNING",
                 ),
                 ephemeral=True,
             )
             return
 
-        # ─────────────────────────────
-        # Build Embed Fields
-        # ─────────────────────────────
         fields = []
 
-        for group, entries in sorted(grouped.items()):
+        for category, entries in sorted(grouped.items()):
+            emoji = CATEGORY_EMOJIS.get(category, EMOJIS["arrow_point"])
+
             fields.append((
-                f"{EMOJIS['green_dot']} {group}",
+                f"{emoji} {category}",
                 "\n".join(sorted(entries)),
                 False,
             ))
@@ -148,12 +170,12 @@ class Help(commands.Cog):
             title="Available Commands",
             description=
             ("Commands you can use **in this channel**.\n"
-             "Restricted or protected commands are hidden automatically.\n\n"
+             "Restricted and protected commands are hidden automatically.\n\n"
              f"{EMOJIS['arrow_point']} Use slash autocomplete for argument hints."
              ),
             level="INFO",
             fields=fields,
-            footer="Digital Vigital • Smart help system",
+            footer="Digital Vigital • Categorised Help System",
         )
 
         await interaction.followup.send(embed=embed, ephemeral=True)

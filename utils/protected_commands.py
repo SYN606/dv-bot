@@ -12,9 +12,7 @@ PROTECTED_COMMANDS: set[str] = {
     "help",
 
     # Bot admin role management
-    "adminrole add",
-    "adminrole remove",
-    "adminrole list",
+    "adminrole",
 
     # Command control
     "command disable",

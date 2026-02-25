@@ -20,7 +20,7 @@ class SarcasticPresenceRotator:
         self.bot = bot
         self.started_at = time.time()
 
-        # 🔥 Your original sarcastic lines (restored)
+        # Your original sarcastic lines (restored)
         self.sarcastic_messages = [
             ("watching", "kaa pehni ho aaj 👀"),
             ("watching", "biyah hogya hai tumhara?"),
