@@ -16,102 +16,123 @@ from utils.handlers.mention import handle_bot_mention
 
 from utils.presence import SarcasticPresenceRotator
 from utils.startups.verification_startup import setup_verification_on_ready
+from utils.views.verification_views.verify_button_view import VerifyButtonView
 
-# ────────────────────────────────
-# ENV
-# ────────────────────────────────
+# region ENV
 load_dotenv()
+
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN not found")
 
-# ────────────────────────────────
-# BOT SETUP
-# ────────────────────────────────
+# region INTENTS
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
-bot = commands.Bot(
-    command_prefix=dv_prefix,
-    intents=intents,
-    help_command=None,
-)
 
-presence_rotator: SarcasticPresenceRotator | None = None
+# region BOT CLASS
+class DigitalVigilBot(commands.Bot):
+
+    def __init__(self) -> None:
+        super().__init__(
+            command_prefix=dv_prefix,
+            intents=intents,
+            help_command=None,
+        )
+        self.presence_rotator: SarcasticPresenceRotator | None = None
+
+    # region SETUP HOOK
+    async def setup_hook(self) -> None:
+
+        # ✅ Initialize database schema (async safe)
+        await init_schema()
+
+        # ✅ Global slash interaction check
+        self.tree.interaction_check = command_toggle_check
+
+        # ✅ Load all extensions
+        await self.load_all_extensions()
+
+        # ✅ Sync slash commands
+        await self.tree.sync()
+
+        # ✅ Register persistent verification view
+        self.add_view(VerifyButtonView())
+
+        print("[SYSTEM] Startup complete")
+
+    # region EXTENSION LOADER
+    async def load_all_extensions(self) -> None:
+        base_path = os.path.abspath("cmd")
+
+        for root, _, files in os.walk(base_path):
+            for file in files:
+                if file.endswith(".py") and not file.startswith("__"):
+                    rel = os.path.relpath(
+                        os.path.join(root, file),
+                        base_path,
+                    )
+                    ext = f"cmd.{rel.replace(os.sep, '.')[:-3]}"
+
+                    try:
+                        await self.load_extension(ext)
+                        print(f"[INFO] Loaded {ext}")
+                    except Exception as exc:
+                        print(f"[ERROR] Failed to load {ext}: {exc}")
+
+    # region READY EVENT
+    async def on_ready(self) -> None:
+
+        print(f"[INFO] Logged in as {self.user} ({self.user.id})")
+
+        # Setup verification messages on startup
+        await setup_verification_on_ready(self)
+
+        # Start presence rotator once
+        if self.presence_rotator is None:
+            self.presence_rotator = SarcasticPresenceRotator(self)
+            await self.presence_rotator.start()
+            print("[INFO] Presence rotator started")
+
+        print("[INFO] Bot ready")
+
+    # region MESSAGE PIPELINE
+    async def on_message(self, message: discord.Message) -> None:
+
+        if message.guild is None:
+            return
+
+        # Normalize custom prefix
+        message.content = normalize_dv_prefix(message.content)
+
+        # Counting game
+        if await handle_counting(message):
+            return
+
+        # Media-only enforcement
+        if await enforce_media_only(message):
+            return
+
+        # Sticky messages
+        await handle_sticky(message)
+
+        # Bot mention reply
+        await handle_bot_mention(self, message)
+
+        # AFK system
+        await handle_afk(message)
+
+        # Process prefix commands
+        await self.process_commands(message)
 
 
-# ────────────────────────────────
-# COG LOADER
-# ────────────────────────────────
-async def load_cogs() -> None:
-    base_path = os.path.abspath("cmd")
-
-    for root, _, files in os.walk(base_path):
-        for file in files:
-            if file.endswith(".py") and not file.startswith("__"):
-                rel = os.path.relpath(os.path.join(root, file), base_path)
-                ext = f"cmd.{rel.replace(os.sep, '.')[:-3]}"
-                try:
-                    await bot.load_extension(ext)
-                    print(f"[INFO] Loaded {ext}")
-                except Exception as exc:
-                    print(f"[ERROR] Failed to load {ext}: {exc}")
-
-
-# ────────────────────────────────
-# EVENTS
-# ────────────────────────────────
-@bot.event
-async def setup_hook() -> None:
-    init_schema()
-    bot.tree.interaction_check = command_toggle_check
-    await load_cogs()
-    await bot.tree.sync()
-    print("[INFO] Startup complete")
-
-
-@bot.event
-async def on_ready() -> None:
-    global presence_rotator
-
-    print(f"[INFO] Logged in as {bot.user} ({bot.user.id})")  # type: ignore
-
-    await setup_verification_on_ready(bot)
-
-    if presence_rotator is None:
-        presence_rotator = SarcasticPresenceRotator(bot)
-        await presence_rotator.start()
-        print("[INFO] Presence rotator started")
-
-    print("[INFO] Bot ready")
-
-
-@bot.event
-async def on_message(message: discord.Message) -> None:
-    if message.guild is None:
-        return
-
-    message.content = normalize_dv_prefix(message.content)
-
-    if await handle_counting(message):
-        return
-
-    if await enforce_media_only(message):
-        return
-
-    await handle_sticky(message)
-    await handle_bot_mention(bot, message)
-    await handle_afk(message)
-    await bot.process_commands(message)
-
-
-# ────────────────────────────────
-# ENTRYPOINT
-# ────────────────────────────────
+# region ENTRYPOINT
 def main() -> None:
+    bot = DigitalVigilBot()
+
     try:
-        bot.run(TOKEN)  # type: ignore
+        bot.run(TOKEN)
     except KeyboardInterrupt:
         print("[INFO] Shutdown requested")
 

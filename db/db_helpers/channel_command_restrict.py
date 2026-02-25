@@ -4,16 +4,12 @@ from db.engine import AsyncSessionLocal
 from db.models import RestrictedCommand
 
 
-# ─────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────
+# region: Helpers
 def _normalize(command_name: str) -> str:
     return command_name.strip().lower()
 
 
-# ─────────────────────────────────────
-# Core restriction logic (channel-based)
-# ─────────────────────────────────────
+# region:  Core restriction logic
 async def restrict_command(
     guild_id: int,
     channel_id: int,

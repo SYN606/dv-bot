@@ -1,13 +1,10 @@
-from sqlalchemy.orm import Session
-
-from db.engine import SessionLocal
+from sqlalchemy import select, delete
+from db.engine import AsyncSessionLocal
 from db.models import VerificationConfig
 
 
-# ─────────────────────────────────────
-# CONFIG MANAGEMENT
-# ─────────────────────────────────────
-def set_verification_config(
+# region: SET CONFIG
+async def set_verification_config(
     *,
     guild_id: int,
     verify_channel_id: int,
@@ -15,9 +12,13 @@ def set_verification_config(
     verified_role_id: int,
     unverified_role_id: int | None,
 ) -> None:
-    db: Session = SessionLocal()
-    try:
-        row = db.query(VerificationConfig).filter_by(guild_id=guild_id).first()
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(VerificationConfig).where(
+                VerificationConfig.guild_id == guild_id))
+
+        row = result.scalar_one_or_none()
 
         if row:
             row.verify_channel_id = verify_channel_id
@@ -25,7 +26,7 @@ def set_verification_config(
             row.verified_role_id = verified_role_id
             row.unverified_role_id = unverified_role_id
         else:
-            db.add(
+            session.add(
                 VerificationConfig(
                     guild_id=guild_id,
                     verify_channel_id=verify_channel_id,
@@ -34,39 +35,43 @@ def set_verification_config(
                     unverified_role_id=unverified_role_id,
                 ))
 
-        db.commit()
-    finally:
-        db.close()
+        await session.commit()
 
 
-def get_verification_config(guild_id: int) -> VerificationConfig | None:
-    db: Session = SessionLocal()
-    try:
-        return db.query(VerificationConfig).filter_by(
-            guild_id=guild_id).first()
-    finally:
-        db.close()
+# region : GET CONFIG
+async def get_verification_config(
+    guild_id: int, ) -> VerificationConfig | None:
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(VerificationConfig).where(
+                VerificationConfig.guild_id == guild_id))
+        return result.scalar_one_or_none()
 
 
-def is_verification_configured(guild_id: int) -> bool:
-    db: Session = SessionLocal()
-    try:
-        return db.query(VerificationConfig).filter_by(
-            guild_id=guild_id).count() > 0
-    finally:
-        db.close()
+# region: CHECK IF CONFIGURED
+async def is_verification_configured(guild_id: int, ) -> bool:
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(VerificationConfig.guild_id).where(
+                VerificationConfig.guild_id == guild_id))
+        return result.first() is not None
 
 
-def delete_verification_config(guild_id: int) -> bool:
-    db: Session = SessionLocal()
-    try:
-        row = db.query(VerificationConfig).filter_by(guild_id=guild_id).first()
+# region: DELETE CONFIG
+async def delete_verification_config(guild_id: int, ) -> bool:
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(VerificationConfig).where(
+                VerificationConfig.guild_id == guild_id))
+
+        row = result.scalar_one_or_none()
 
         if not row:
             return False
 
-        db.delete(row)
-        db.commit()
+        await session.delete(row)
+        await session.commit()
         return True
-    finally:
-        db.close()

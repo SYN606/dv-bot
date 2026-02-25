@@ -1,5 +1,7 @@
 import asyncio
 import re
+from io import BytesIO
+
 import aiohttp
 import discord
 from discord.ext import commands
@@ -13,7 +15,7 @@ EMOJI_REGEX = re.compile(r"<(a?):(\w+):(\d+)>")
 
 class EmojiSteal(commands.Cog):
     """
-    Emoji & sticker steal command.
+    Emoji & Sticker steal command.
     Fast, parallel, production-ready.
     """
 
@@ -74,21 +76,18 @@ class EmojiSteal(commands.Cog):
             )
             return
 
-        added = []
-        failed = []
+        added: list[str] = []
+        failed: list[str] = []
 
         async with aiohttp.ClientSession() as session:
 
-            # ─────────────────────────
-            # Handle Emojis
-            # ─────────────────────────
+            # region Handle Emojis
             emoji_tasks = []
 
             for animated, name, emoji_id in matches:
 
-                # Skip if emoji limit reached
                 if len(ctx.guild.emojis) >= ctx.guild.emoji_limit:
-                    failed.append(f"{name} (limit reached)")
+                    failed.append(f"{name} (emoji limit reached)")
                     continue
 
                 ext = "gif" if animated == "a" else "png"
@@ -103,25 +102,24 @@ class EmojiSteal(commands.Cog):
                         ctx.author,
                     ))
 
-            results = await asyncio.gather(*emoji_tasks,
-                                           return_exceptions=True)
+            emoji_results = await asyncio.gather(
+                *emoji_tasks,
+                return_exceptions=True,
+            )
 
-            for result in results:
+            for result in emoji_results:
                 if isinstance(result, str):
                     added.append(result)
-                elif isinstance(result, Exception):
+                else:
                     failed.append("emoji")
 
-            # ─────────────────────────
-            # Handle Stickers
-            # ─────────────────────────
+            # region Handle Stickers
             sticker_tasks = []
 
             for sticker in stickers:
 
-                # Skip if sticker limit reached
                 if len(ctx.guild.stickers) >= ctx.guild.sticker_limit:
-                    failed.append(f"{sticker.name} (limit reached)")
+                    failed.append(f"{sticker.name} (sticker limit reached)")
                     continue
 
                 if sticker.format not in (
@@ -147,7 +145,7 @@ class EmojiSteal(commands.Cog):
             for result in sticker_results:
                 if isinstance(result, str):
                     added.append(result)
-                elif isinstance(result, Exception):
+                else:
                     failed.append("sticker")
 
         embed = make_embed(
@@ -162,15 +160,13 @@ class EmojiSteal(commands.Cog):
 
         await ctx.send(embed=embed)
 
-        # Non-blocking delete
+        # Non-blocking delete of invoking message
         try:
-            ctx.bot.loop.create_task(ctx.message.delete())
+            asyncio.create_task(ctx.message.delete())
         except Exception:
             pass
 
-    # ─────────────────────────
-    # Emoji creation helper
-    # ─────────────────────────
+    # region Emoji creation 
     async def _create_emoji(
         self,
         guild: discord.Guild,
@@ -181,6 +177,8 @@ class EmojiSteal(commands.Cog):
     ) -> str:
 
         async with session.get(url) as resp:
+            if resp.status != 200:
+                raise Exception("Failed to fetch emoji")
             image = await resp.read()
 
         emoji = await guild.create_custom_emoji(
@@ -191,9 +189,7 @@ class EmojiSteal(commands.Cog):
 
         return str(emoji)
 
-    # ─────────────────────────
-    # Sticker creation helper
-    # ─────────────────────────
+    # region Sticker creation 
     async def _create_sticker(
         self,
         guild: discord.Guild,
@@ -203,6 +199,8 @@ class EmojiSteal(commands.Cog):
     ) -> str:
 
         async with session.get(sticker.url) as resp:
+            if resp.status != 200:
+                raise Exception("Failed to fetch sticker")
             image = await resp.read()
 
         new_sticker = await guild.create_sticker(
@@ -210,10 +208,15 @@ class EmojiSteal(commands.Cog):
             description="Stolen sticker",
             emoji="🙂",
             file=discord.File(
-                fp=discord.BytesIO(image),
+                fp=BytesIO(image),
                 filename="sticker.png",
             ),
             reason=f"Sticker stolen by {author}",
         )
 
         return new_sticker.name
+
+
+# region EXTENSION ENTRYPOINT
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(EmojiSteal(bot))
