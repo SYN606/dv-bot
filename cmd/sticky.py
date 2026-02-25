@@ -17,25 +17,21 @@ class Sticky(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(
-        name="sticky_set",
-        description="Set a sticky message for a channel",
-    )
-    @app_commands.describe(
-        channel="Channel where the sticky message will be posted",
-        message="The sticky message content",
-    )
+    @app_commands.command(name="sticky_set")
     async def sticky_set(
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
         message: str,
     ):
+
+        await interaction.response.defer(ephemeral=True)
+
         if interaction.guild is None:
             return
 
         if not is_bot_admin(interaction):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=make_embed(
                     title="Permission Denied",
                     description=
@@ -46,34 +42,32 @@ class Sticky(commands.Cog):
             )
             return
 
-        set_sticky(interaction.guild.id, channel.id, message)
+        await set_sticky(interaction.guild.id, channel.id, message)
 
-        embed = make_embed(
-            title="Sticky Message Updated",
-            description=
-            (f"{EMOJIS['success']} Sticky message has been **enabled** in {channel.mention}."
-             ),
-            level="SUCCESS",
+        await interaction.followup.send(
+            embed=make_embed(
+                title="Sticky Enabled",
+                description=
+                f"{EMOJIS['success']} Enabled in {channel.mention}.",
+                level="SUCCESS",
+            ),
+            ephemeral=True,
         )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    @app_commands.command(
-        name="sticky_disable",
-        description="Disable sticky message in a channel",
-    )
-    @app_commands.describe(
-        channel="Channel to disable the sticky message in", )
+    @app_commands.command(name="sticky_disable")
     async def sticky_disable(
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
     ):
+
+        await interaction.response.defer(ephemeral=True)
+
         if interaction.guild is None:
             return
 
         if not is_bot_admin(interaction):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=make_embed(
                     title="Permission Denied",
                     description=
@@ -84,47 +78,40 @@ class Sticky(commands.Cog):
             )
             return
 
-        removed = remove_sticky(interaction.guild.id, channel.id)
+        removed = await remove_sticky(interaction.guild.id, channel.id)
 
-        embed = make_embed(
-            title="Sticky Message Updated",
-            description=
-            (f"{EMOJIS['success']} Sticky message has been **disabled** in {channel.mention}."
-             if removed else
-             f"{EMOJIS['warning']} No sticky message was set for {channel.mention}."
-             ),
-            level="SUCCESS" if removed else "WARNING",
+        await interaction.followup.send(
+            embed=make_embed(
+                title="Sticky Updated",
+                description=(
+                    f"{EMOJIS['success']} Disabled in {channel.mention}."
+                    if removed else f"{EMOJIS['warning']} No sticky set."),
+                level="SUCCESS" if removed else "WARNING",
+            ),
+            ephemeral=True,
         )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    @app_commands.command(
-        name="sticky_status",
-        description="Check sticky message status for a channel",
-    )
-    @app_commands.describe(channel="Channel to check sticky status for", )
+    @app_commands.command(name="sticky_status")
     async def sticky_status(
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
     ):
-        if interaction.guild is None:
-            return
 
-        content = get_sticky(interaction.guild.id, channel.id)
+        await interaction.response.defer(ephemeral=True)
 
-        embed = make_embed(
-            title="Sticky Message Status",
-            description=
-            (f"{EMOJIS['green_dot']} Sticky is **enabled** in {channel.mention}.\n\n"
-             f"{EMOJIS['arrow_point']} **Message:**\n{content}" if content else
-             f"{EMOJIS['red_dot']} No sticky message is set in {channel.mention}."
-             ),
-            level="INFO",
-            footer="Sticky messages repost automatically after new messages",
+        content = await get_sticky(interaction.guild.id, channel.id)
+
+        await interaction.followup.send(
+            embed=make_embed(
+                title="Sticky Status",
+                description=
+                (f"{EMOJIS['green_dot']} Enabled in {channel.mention}\n\n{content}"
+                 if content else f"{EMOJIS['red_dot']} Not enabled."),
+                level="INFO",
+            ),
+            ephemeral=True,
         )
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

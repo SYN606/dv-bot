@@ -5,10 +5,12 @@ from utils.embeds import make_embed
 
 class AvatarView(discord.ui.View):
     """
-    v2.3 Avatar View
+    v3 Avatar View
 
-    Allows switching between server and global avatars
-    by updating the same message embed.
+    - Switch between server and global avatar
+    - Single-message updates
+    - Interaction-locked to requester
+    - Non-blocking timeout
     """
 
     def __init__(
@@ -25,11 +27,12 @@ class AvatarView(discord.ui.View):
         self.global_url = global_url
         self.server_url = server_url
         self.active = active
+        self.message: discord.Message | None = None
 
         self._sync_buttons()
 
     # ─────────────────────────────
-    # Button setup
+    # Button sync
     # ─────────────────────────────
     def _sync_buttons(self) -> None:
         self.clear_items()
@@ -41,7 +44,7 @@ class AvatarView(discord.ui.View):
             self.add_item(GlobalAvatarButton(disabled=self.active == "global"))
 
     # ─────────────────────────────
-    # Interaction guard
+    # Restrict interaction
     # ─────────────────────────────
     async def interaction_check(
         self,
@@ -52,7 +55,7 @@ class AvatarView(discord.ui.View):
     # ─────────────────────────────
     # Embed builder
     # ─────────────────────────────
-    def _build_embed(self) -> discord.Embed:
+    def build_embed(self) -> discord.Embed:
         embed = make_embed(
             title="User Avatar",
             description="Switch between available avatars.",
@@ -67,18 +70,22 @@ class AvatarView(discord.ui.View):
         return embed
 
     # ─────────────────────────────
-    # Timeout handling
+    # Timeout
     # ─────────────────────────────
     async def on_timeout(self) -> None:
         for item in self.children:
             item.disabled = True
 
         try:
-            await self.message.edit(view=self)
-        except discord.NotFound:
+            if self.message:
+                await self.message.edit(view=self)
+        except (discord.NotFound, discord.HTTPException):
             pass
 
 
+# ─────────────────────────────
+# BUTTONS
+# ─────────────────────────────
 class ServerAvatarButton(discord.ui.Button):
 
     def __init__(self, *, disabled: bool):
@@ -94,10 +101,16 @@ class ServerAvatarButton(discord.ui.Button):
         view.active = "server"
         view._sync_buttons()
 
-        await interaction.response.edit_message(
-            embed=view._build_embed(),
-            view=view,
-        )
+        if interaction.response.is_done():
+            await interaction.edit_original_response(
+                embed=view.build_embed(),
+                view=view,
+            )
+        else:
+            await interaction.response.edit_message(
+                embed=view.build_embed(),
+                view=view,
+            )
 
 
 class GlobalAvatarButton(discord.ui.Button):
@@ -115,7 +128,13 @@ class GlobalAvatarButton(discord.ui.Button):
         view.active = "global"
         view._sync_buttons()
 
-        await interaction.response.edit_message(
-            embed=view._build_embed(),
-            view=view,
-        )
+        if interaction.response.is_done():
+            await interaction.edit_original_response(
+                embed=view.build_embed(),
+                view=view,
+            )
+        else:
+            await interaction.response.edit_message(
+                embed=view.build_embed(),
+                view=view,
+            )

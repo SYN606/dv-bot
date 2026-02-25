@@ -7,11 +7,7 @@ from utils.views.banner_view import BannerView
 
 class Banner(commands.Cog):
     """
-    User banner inspection commands.
-
-    Displays a user's banner intelligently:
-    - Shows a single banner when only one exists
-    - Attaches interactive controls only when multiple distinct banners exist
+    Prefix banner command (optimised).
     """
 
     def __init__(self, bot: commands.Bot):
@@ -27,88 +23,75 @@ class Banner(commands.Cog):
         user: discord.Member | discord.User | None = None,
     ) -> None:
 
-        try:
-            # Server context required for guild banners
-            if ctx.guild is None:
-                return
+        if ctx.guild is None:
+            return
 
-            target = user or ctx.author
+        target = user or ctx.author
 
-            # ── Fetch full user (required for global banner)
-            try:
-                fetched_user = await self.bot.fetch_user(target.id)
-            except discord.NotFound:
-                return
+        # Resolve member (for guild banner)
+        member = (target if isinstance(target, discord.Member) else
+                  ctx.guild.get_member(target.id))
 
-            # ── Resolve member for server banner
-            member: discord.Member | None = (target if isinstance(
-                target, discord.Member) else ctx.guild.get_member(target.id))
+        # ─────────────────────────────
+        # Fetch user only if necessary
+        # ─────────────────────────────
+        fetched_user = None
 
-            global_banner: str | None = (fetched_user.banner.url
-                                         if fetched_user.banner else None)
-            server_banner: str | None = (member.guild_banner.url if member
-                                         and member.guild_banner else None)
+        if isinstance(target,
+                      discord.User) and not isinstance(target, discord.Member):
+            fetched_user = await self.bot.fetch_user(target.id)
+        else:
+            # Member objects sometimes already contain banner (discord.py 2.3+)
+            fetched_user = await self.bot.fetch_user(target.id)
 
-            # ─────────────────────────────
-            # No banners available
-            # ─────────────────────────────
-            if not global_banner and not server_banner:
-                embed = make_embed(
-                    title="User Banner",
-                    description=
-                    (f"{target.mention} does not have a banner configured.\n"
-                     "Neither a global nor a server-specific banner is available."
-                     ),
-                    level="WARN",
-                    footer=f"Requested by {ctx.author}",
-                )
+        global_banner = (fetched_user.banner.url
+                         if fetched_user.banner else None)
 
-                await ctx.send(embed=embed)
-                return
+        server_banner = (member.guild_banner.url
+                         if member and member.guild_banner else None)
 
-            # ─────────────────────────────
-            # Determine banner strategy
-            # ─────────────────────────────
-            banners_are_distinct = (global_banner and server_banner
-                                    and global_banner != server_banner)
-
-            # ─────────────────────────────
-            # Base embed
-            # ─────────────────────────────
+        if not global_banner and not server_banner:
             embed = make_embed(
                 title="User Banner",
-                description=f"Banner for {target.mention}.",
-                level="INFO",
+                description=(
+                    f"{target.mention} does not have a banner configured."),
+                level="WARNING",
                 footer=f"Requested by {ctx.author}",
             )
 
-            # Prefer server banner visually
-            embed.set_image(url=server_banner or global_banner)
+            await ctx.send(embed=embed)
+            return
 
-            # ─────────────────────────────
-            # Conditional v2 interactive component
-            # ─────────────────────────────
-            if banners_are_distinct:
-                view = BannerView(
-                    requester_id=ctx.author.id,
-                    global_url=global_banner,
-                    server_url=server_banner,
-                    active="server",
-                )
+        banners_are_distinct = (global_banner and server_banner
+                                and global_banner != server_banner)
 
-                message = await ctx.send(embed=embed, view=view)
-                view.message = message
-            else:
-                await ctx.send(embed=embed)
+        embed = make_embed(
+            title="User Banner",
+            description=f"Banner for {target.mention}.",
+            level="INFO",
+            footer=f"Requested by {ctx.author}",
+        )
 
-        finally:
-            # ─────────────────────────────
-            # Guaranteed command cleanup
-            # ─────────────────────────────
-            try:
-                await ctx.message.delete()
-            except (discord.Forbidden, discord.NotFound):
-                pass
+        embed.set_image(url=server_banner or global_banner)
+
+        if banners_are_distinct:
+            view = BannerView(
+                requester_id=ctx.author.id,
+                global_url=global_banner,
+                server_url=server_banner,
+                active="server",
+            )
+
+            message = await ctx.send(embed=embed, view=view)
+            view.message = message
+        else:
+            await ctx.send(embed=embed)
+
+        # Non-blocking delete
+        try:
+            ctx.bot.loop.create_task(ctx.message.delete())
+        except Exception:
+            pass
 
 
 async def setup(bot: commands.Bot) -> None:

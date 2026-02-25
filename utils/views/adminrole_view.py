@@ -11,28 +11,14 @@ from db.db_helpers.admin_roles import (
 
 
 class AdminRoleView(discord.ui.View):
-    """
-    v2 Admin Role Control Panel
 
-    - Single ephemeral message
-    - Button-driven actions
-    - Clean UX
-    """
-
-    def __init__(
-        self,
-        *,
-        guild: discord.Guild,
-        actor_id: int,
-    ):
+    def __init__(self, *, guild: discord.Guild, actor_id: int):
         super().__init__(timeout=180)
 
         self.guild = guild
         self.actor_id = actor_id
+        self.message: discord.Message | None = None
 
-    # ─────────────────────────
-    # Interaction guard
-    # ─────────────────────────
     async def interaction_check(self,
                                 interaction: discord.Interaction) -> bool:
         return interaction.user.id == self.actor_id and is_bot_admin(
@@ -46,22 +32,16 @@ class AdminRoleView(discord.ui.View):
         emoji=EMOJIS["green_dot"],
         style=discord.ButtonStyle.success,
     )
-    async def add_role(
-        self,
-        interaction: discord.Interaction,
-        _: discord.ui.Button,
-    ):
+    async def add_role(self, interaction: discord.Interaction, _):
         await interaction.response.send_message(
             embed=make_embed(
                 title="Add Bot Admin Role",
-                description=
-                f"{EMOJIS['arrow_point']} Select a role to add as bot admin.",
+                description=f"{EMOJIS['arrow_point']} Select a role to add.",
                 level="INFO",
             ),
             view=AdminRoleSelectView(
                 guild=self.guild,
                 mode="add",
-                parent=self,
             ),
             ephemeral=True,
         )
@@ -74,11 +54,7 @@ class AdminRoleView(discord.ui.View):
         emoji=EMOJIS["red_dot"],
         style=discord.ButtonStyle.danger,
     )
-    async def remove_role(
-        self,
-        interaction: discord.Interaction,
-        _: discord.ui.Button,
-    ):
+    async def remove_role(self, interaction: discord.Interaction, _):
         await interaction.response.send_message(
             embed=make_embed(
                 title="Remove Bot Admin Role",
@@ -88,7 +64,6 @@ class AdminRoleView(discord.ui.View):
             view=AdminRoleSelectView(
                 guild=self.guild,
                 mode="remove",
-                parent=self,
             ),
             ephemeral=True,
         )
@@ -101,68 +76,53 @@ class AdminRoleView(discord.ui.View):
         emoji=EMOJIS["pants"],
         style=discord.ButtonStyle.secondary,
     )
-    async def list_roles(
-        self,
-        interaction: discord.Interaction,
-        _: discord.ui.Button,
-    ):
-        role_ids = get_admin_roles(self.guild.id)
+    async def list_roles(self, interaction: discord.Interaction, _):
 
-        roles: list[str] = []
-        for role_id in role_ids:
-            role = self.guild.get_role(role_id)
-            if role:
-                roles.append(role.mention)
+        await interaction.response.defer()
 
-        await interaction.response.edit_message(
+        role_ids = await get_admin_roles(self.guild.id)
+
+        roles = [
+            self.guild.get_role(role_id).mention for role_id in role_ids
+            if self.guild.get_role(role_id)
+        ]
+
+        await interaction.edit_original_response(
             embed=make_embed(
                 title="Configured Bot Admin Roles",
-                description=(
-                    "\n".join(roles) if roles else
-                    f"{EMOJIS['warning']} No bot admin roles configured."),
+                description=("\n".join(roles) if roles else
+                             f"{EMOJIS['warning']} No roles configured."),
                 level="INFO",
             ),
             view=self,
         )
 
-    # ─────────────────────────
-    # TIMEOUT
-    # ─────────────────────────
     async def on_timeout(self):
         for item in self.children:
-            item.disabled = True  # type: ignore
+            item.disabled = True
 
         try:
-            await self.message.edit(
-                embed=make_embed(
-                    title="Admin Role Panel Expired",
-                    description=f"{EMOJIS['warning']} This panel has expired.",
-                    level="WARNING",
-                ),
-                view=self,
-            )
+            if self.message:
+                await self.message.edit(
+                    embed=make_embed(
+                        title="Panel Expired",
+                        description=
+                        f"{EMOJIS['warning']} This panel has expired.",
+                        level="WARNING",
+                    ),
+                    view=self,
+                )
         except Exception:
             pass
 
 
-# ─────────────────────────────────────
-# ROLE SELECT VIEW
-# ─────────────────────────────────────
 class AdminRoleSelectView(discord.ui.View):
 
-    def __init__(
-        self,
-        *,
-        guild: discord.Guild,
-        mode: str,  # "add" | "remove"
-        parent: AdminRoleView,
-    ):
+    def __init__(self, *, guild: discord.Guild, mode: str):
         super().__init__(timeout=60)
 
         self.guild = guild
         self.mode = mode
-        self.parent = parent
-
         self.add_item(AdminRoleSelect(self))
 
 
@@ -177,27 +137,23 @@ class AdminRoleSelect(discord.ui.RoleSelect):
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
+
+        await interaction.response.defer()
+
         role = self.values[0]
 
         if self.view_ref.mode == "add":
-            added = add_admin_role(self.view_ref.guild.id, role.id)
-            msg = (
-                f"{EMOJIS['success']} {role.mention} added as bot admin role."
-                if added else
-                f"{EMOJIS['warning']} {role.mention} is already a bot admin role."
-            )
+            added = await add_admin_role(self.view_ref.guild.id, role.id)
+            msg = (f"{EMOJIS['success']} {role.mention} added."
+                   if added else f"{EMOJIS['warning']} Already configured.")
             level = "SUCCESS" if added else "WARNING"
-
         else:
-            removed = remove_admin_role(self.view_ref.guild.id, role.id)
-            msg = (
-                f"{EMOJIS['success']} {role.mention} removed from bot admin roles."
-                if removed else
-                f"{EMOJIS['warning']} {role.mention} was not a bot admin role."
-            )
+            removed = await remove_admin_role(self.view_ref.guild.id, role.id)
+            msg = (f"{EMOJIS['success']} {role.mention} removed."
+                   if removed else f"{EMOJIS['warning']} Not configured.")
             level = "SUCCESS" if removed else "WARNING"
 
-        await interaction.response.edit_message(
+        await interaction.edit_original_response(
             embed=make_embed(
                 title="Bot Admin Roles Updated",
                 description=msg,

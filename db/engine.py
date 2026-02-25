@@ -1,8 +1,12 @@
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
+
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 load_dotenv()
 
@@ -18,36 +22,27 @@ if ENV == "prod":
     if not all([DB_USER, DB_PASS, DB_HOST, DB_NAME]):
         raise RuntimeError("Missing production DB env vars")
 
-    DATABASE_URL = (
-        f"postgresql+psycopg2://{DB_USER}:{quote_plus(DB_PASS)}" 
-        f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    )
+    DATABASE_URL = (f"postgresql+asyncpg://{DB_USER}:{quote_plus(DB_PASS)}"
+                    f"@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
-    engine = create_engine(
+    engine = create_async_engine(
         DATABASE_URL,
-        future=True,
-        echo=False,
+        pool_size=10,
+        max_overflow=20,
         pool_pre_ping=True,
-        pool_size=5,
-        max_overflow=10,
-        connect_args={
-            "sslmode": "require",
-        },
+        echo=False,
     )
 
 else:
-    DATABASE_URL = "sqlite:///db/bot.db"
+    DATABASE_URL = "sqlite+aiosqlite:///db/bot.db"
 
-    engine = create_engine(
+    engine = create_async_engine(
         DATABASE_URL,
-        future=True,
-        echo=True,
-        connect_args={"check_same_thread": False},
+        echo=False,
     )
 
-SessionLocal = sessionmaker(
+AsyncSessionLocal = async_sessionmaker(
     bind=engine,
-    autoflush=False,
-    autocommit=False,
-    future=True,
+    expire_on_commit=False,
+    class_=AsyncSession,
 )

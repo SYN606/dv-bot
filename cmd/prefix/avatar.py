@@ -7,11 +7,7 @@ from utils.views.avatar_view import AvatarView
 
 class Avatar(commands.Cog):
     """
-    User avatar inspection commands.
-
-    Displays a user's avatar intelligently:
-    - Shows a single avatar when only one exists
-    - Attaches interactive controls only when multiple distinct avatars exist
+    Prefix avatar command (snappy + optimised).
     """
 
     def __init__(self, bot: commands.Bot):
@@ -28,80 +24,50 @@ class Avatar(commands.Cog):
         user: discord.Member | discord.User | None = None,
     ) -> None:
 
-        try:
-            if ctx.guild is None:
-                return
+        if ctx.guild is None:
+            return
 
-            target = user or ctx.author
+        target = user or ctx.author
 
-            # ── Resolve member for guild avatar
-            member: discord.Member | None = (target if isinstance(
-                target, discord.Member) else ctx.guild.get_member(target.id))
+        # Resolve member for guild avatar
+        member = (target if isinstance(target, discord.Member) else
+                  ctx.guild.get_member(target.id))
 
-            global_avatar: str | None = (target.avatar.url
-                                         if target.avatar else None)
-            server_avatar: str | None = (member.guild_avatar.url if member
-                                         and member.guild_avatar else None)
+        # Use display_avatar for speed & fallback safety
+        global_avatar = target.display_avatar.url
+        server_avatar = (member.guild_avatar.url
+                         if member and member.guild_avatar else None)
 
-            # ─────────────────────────────
-            # No avatars available
-            # ─────────────────────────────
-            if not global_avatar and not server_avatar:
-                embed = make_embed(
-                    title="User Avatar",
-                    description=(
-                        f"{target.mention} does not have an avatar configured."
-                    ),
-                    level="WARNING",
-                    footer=f"Requested by {ctx.author}",
-                )
+        avatars_are_distinct = (server_avatar and global_avatar
+                                and server_avatar != global_avatar)
 
-                await ctx.send(embed=embed)
-                return
+        embed = make_embed(
+            title="User Avatar",
+            description=f"Avatar for {target.mention}.",
+            level="INFO",
+            footer=f"Requested by {ctx.author}",
+        )
 
-            # ─────────────────────────────
-            # Determine avatar strategy
-            # ─────────────────────────────
-            avatars_are_distinct = (global_avatar and server_avatar
-                                    and global_avatar != server_avatar)
+        embed.set_image(url=server_avatar or global_avatar)
 
-            # ─────────────────────────────
-            # Base embed
-            # ─────────────────────────────
-            embed = make_embed(
-                title="User Avatar",
-                description=f"Avatar for {target.mention}.",
-                level="INFO",
-                footer=f"Requested by {ctx.author}",
+        # SEND IMMEDIATELY (no blocking logic before)
+        if avatars_are_distinct:
+            view = AvatarView(
+                requester_id=ctx.author.id,
+                global_url=global_avatar,
+                server_url=server_avatar,
+                active="server",
             )
+            message = await ctx.send(embed=embed, view=view)
+            view.message = message
+        else:
+            await ctx.send(embed=embed)
 
-            # Prefer server avatar visually
-            embed.set_image(url=server_avatar or global_avatar)
-
-            # ─────────────────────────────
-            # Conditional v2 interactive component
-            # ─────────────────────────────
-            if avatars_are_distinct:
-                view = AvatarView(
-                    requester_id=ctx.author.id,
-                    global_url=global_avatar,
-                    server_url=server_avatar,
-                    active="server",
-                )
-
-                message = await ctx.send(embed=embed, view=view)
-                view.message = message
-            else:
-                await ctx.send(embed=embed)
-
-        finally:
-            # ─────────────────────────────
-            # Guaranteed command cleanup
-            # ─────────────────────────────
-            try:
-                await ctx.message.delete()
-            except (discord.Forbidden, discord.NotFound):
-                pass
+        # Delete command message in background (non-blocking)
+        try:
+            ctx.bot.loop.create_task(ctx.message.delete())
+        except Exception:
+            pass
 
 
 async def setup(bot: commands.Bot) -> None:

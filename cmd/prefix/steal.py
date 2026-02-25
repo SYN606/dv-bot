@@ -1,4 +1,6 @@
+import asyncio
 import re
+import aiohttp
 import discord
 from discord.ext import commands
 
@@ -6,16 +8,13 @@ from utils.embeds import make_embed
 from utils.emojis import EMOJIS
 from utils.check_perms import is_bot_admin_ctx
 
-# Matches <:name:id> and <a:name:id>
 EMOJI_REGEX = re.compile(r"<(a?):(\w+):(\d+)>")
 
 
 class EmojiSteal(commands.Cog):
     """
-    Emoji management commands.
-
-    Allows bot administrators to steal custom emojis
-    by replying to a message that contains them.
+    Emoji & sticker steal command.
+    Fast, parallel, production-ready.
     """
 
     def __init__(self, bot: commands.Bot):
@@ -23,137 +22,198 @@ class EmojiSteal(commands.Cog):
 
     @commands.command(
         name="steal",
-        help="Steal custom emojis by replying to a message (admin only)",
+        help="Steal custom emojis or stickers by replying (admin only)",
     )
-    async def steal(self, ctx: commands.Context) -> None:
+    async def steal(self, ctx: commands.Context):
+
+        if ctx.guild is None:
+            return
+
+        if not is_bot_admin_ctx(ctx):
+            await ctx.reply(
+                embed=make_embed(
+                    title="Permission Denied",
+                    description=
+                    f"{EMOJIS['fail']} Administrator access required.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
+            return
+
+        ref = ctx.message.reference
+        if not ref or not ref.message_id:
+            await ctx.reply(
+                embed=make_embed(
+                    title="Reply Required",
+                    description=
+                    f"{EMOJIS['warning']} Reply to a message containing emojis or stickers.",
+                    level="WARNING",
+                ),
+                mention_author=False,
+            )
+            return
 
         try:
-            # ─────────────────────────
-            # Context & permission checks
-            # ─────────────────────────
-            if ctx.guild is None:
-                return
+            replied_msg = await ctx.channel.fetch_message(ref.message_id)
+        except discord.NotFound:
+            return
 
-            if not is_bot_admin_ctx(ctx):
-                await ctx.reply(
-                    embed=make_embed(
-                        title="Permission Denied",
-                        description=
-                        (f"{EMOJIS['fail']} You do not have permission to use this command."
-                         ),
-                        level="ERROR",
-                    ),
-                    mention_author=False,
-                )
-                return
+        matches = EMOJI_REGEX.findall(replied_msg.content)
+        stickers = replied_msg.stickers
 
-            # ─────────────────────────
-            # Must be a reply
-            # ─────────────────────────
-            ref = ctx.message.reference
-            if not ref or not ref.message_id:
-                await ctx.reply(
-                    embed=make_embed(
-                        title="Reply Required",
-                        description=
-                        (f"{EMOJIS['warning']} Reply to a message that contains custom emojis.\n\n"
-                         f"{EMOJIS['arrow_point']} Usage: **reply → `dv steal`**"
-                         ),
-                        level="WARNING",
-                    ),
-                    mention_author=False,
-                )
-                return
+        if not matches and not stickers:
+            await ctx.reply(
+                embed=make_embed(
+                    title="Nothing Found",
+                    description=
+                    f"{EMOJIS['warning']} No custom emojis or stickers detected.",
+                    level="WARNING",
+                ),
+                mention_author=False,
+            )
+            return
+
+        added = []
+        failed = []
+
+        async with aiohttp.ClientSession() as session:
 
             # ─────────────────────────
-            # Fetch replied message
+            # Handle Emojis
             # ─────────────────────────
-            try:
-                replied_msg = await ctx.channel.fetch_message(ref.message_id)
-            except discord.NotFound:
-                await ctx.reply(
-                    embed=make_embed(
-                        title="Message Not Found",
-                        description=
-                        (f"{EMOJIS['fail']} The referenced message no longer exists."
-                         ),
-                        level="ERROR",
-                    ),
-                    mention_author=False,
-                )
-                return
-
-            matches = EMOJI_REGEX.findall(replied_msg.content)
-
-            if not matches:
-                await ctx.reply(
-                    embed=make_embed(
-                        title="No Custom Emojis Found",
-                        description=
-                        (f"{EMOJIS['warning']} The replied message does not contain any custom emojis."
-                         ),
-                        level="WARNING",
-                    ),
-                    mention_author=False,
-                )
-                return
-
-            # ─────────────────────────
-            # Steal emojis
-            # ─────────────────────────
-            added: list[str] = []
-            failed: list[str] = []
+            emoji_tasks = []
 
             for animated, name, emoji_id in matches:
+
+                # Skip if emoji limit reached
+                if len(ctx.guild.emojis) >= ctx.guild.emoji_limit:
+                    failed.append(f"{name} (limit reached)")
+                    continue
+
                 ext = "gif" if animated == "a" else "png"
                 url = f"https://cdn.discordapp.com/emojis/{emoji_id}.{ext}"
 
-                try:
-                    image_bytes = await self._fetch_bytes(url)
-                    emoji = await ctx.guild.create_custom_emoji(
-                        name=name,
-                        image=image_bytes,
-                        reason=f"Emoji stolen by {ctx.author}",
-                    )
-                    added.append(str(emoji))
-                except discord.HTTPException:
-                    failed.append(name)
+                emoji_tasks.append(
+                    self._create_emoji(
+                        ctx.guild,
+                        session,
+                        url,
+                        name,
+                        ctx.author,
+                    ))
+
+            results = await asyncio.gather(*emoji_tasks,
+                                           return_exceptions=True)
+
+            for result in results:
+                if isinstance(result, str):
+                    added.append(result)
+                elif isinstance(result, Exception):
+                    failed.append("emoji")
 
             # ─────────────────────────
-            # Result embed
+            # Handle Stickers
             # ─────────────────────────
-            embed = make_embed(
-                title="Emoji Steal Result",
-                description=
-                (f"{EMOJIS['success']} **Added:** { ' '.join(added) if added else 'None' }\n\n"
-                 f"{EMOJIS['red_dot']} **Failed:** { ', '.join(failed) if failed else 'None' }"
-                 ),
-                level="SUCCESS" if added else "WARNING",
-                footer=f"Action by {ctx.author}",
+            sticker_tasks = []
+
+            for sticker in stickers:
+
+                # Skip if sticker limit reached
+                if len(ctx.guild.stickers) >= ctx.guild.sticker_limit:
+                    failed.append(f"{sticker.name} (limit reached)")
+                    continue
+
+                if sticker.format not in (
+                        discord.StickerFormatType.png,
+                        discord.StickerFormatType.apng,
+                ):
+                    failed.append(f"{sticker.name} (unsupported format)")
+                    continue
+
+                sticker_tasks.append(
+                    self._create_sticker(
+                        ctx.guild,
+                        session,
+                        sticker,
+                        ctx.author,
+                    ))
+
+            sticker_results = await asyncio.gather(
+                *sticker_tasks,
+                return_exceptions=True,
             )
 
-            await ctx.send(embed=embed)
+            for result in sticker_results:
+                if isinstance(result, str):
+                    added.append(result)
+                elif isinstance(result, Exception):
+                    failed.append("sticker")
 
-        finally:
-            # ─────────────────────────
-            # Guaranteed cleanup
-            # ─────────────────────────
-            try:
-                await ctx.message.delete()
-            except (discord.Forbidden, discord.NotFound):
-                pass
+        embed = make_embed(
+            title="Steal Result",
+            description=
+            (f"{EMOJIS['success']} **Added:** { ' '.join(added) if added else 'None' }\n\n"
+             f"{EMOJIS['red_dot']} **Failed:** { ', '.join(failed) if failed else 'None' }"
+             ),
+            level="SUCCESS" if added else "WARNING",
+            footer=f"Action by {ctx.author}",
+        )
+
+        await ctx.send(embed=embed)
+
+        # Non-blocking delete
+        try:
+            ctx.bot.loop.create_task(ctx.message.delete())
+        except Exception:
+            pass
 
     # ─────────────────────────
-    # Helpers
+    # Emoji creation helper
     # ─────────────────────────
-    async def _fetch_bytes(self, url: str) -> bytes:
-        """
-        Fetch raw bytes from a URL using the bot's HTTP session.
-        """
-        session = self.bot.http._HTTPClient__session  # type: ignore
+    async def _create_emoji(
+        self,
+        guild: discord.Guild,
+        session: aiohttp.ClientSession,
+        url: str,
+        name: str,
+        author: discord.Member,
+    ) -> str:
+
         async with session.get(url) as resp:
-            return await resp.read()
+            image = await resp.read()
 
+        emoji = await guild.create_custom_emoji(
+            name=name,
+            image=image,
+            reason=f"Emoji stolen by {author}",
+        )
 
-async def setup(bot: commands.Bot) -> None:
-    await bot.add_cog(EmojiSteal(bot))
+        return str(emoji)
+
+    # ─────────────────────────
+    # Sticker creation helper
+    # ─────────────────────────
+    async def _create_sticker(
+        self,
+        guild: discord.Guild,
+        session: aiohttp.ClientSession,
+        sticker: discord.StickerItem,
+        author: discord.Member,
+    ) -> str:
+
+        async with session.get(sticker.url) as resp:
+            image = await resp.read()
+
+        new_sticker = await guild.create_sticker(
+            name=sticker.name,
+            description="Stolen sticker",
+            emoji="🙂",
+            file=discord.File(
+                fp=discord.BytesIO(image),
+                filename="sticker.png",
+            ),
+            reason=f"Sticker stolen by {author}",
+        )
+
+        return new_sticker.name

@@ -9,12 +9,6 @@ from utils.views.adminrole_view import AdminRoleView
 
 
 class AdminRole(commands.Cog):
-    """
-    Bot admin role management (v2).
-
-    Uses a single interactive control panel instead
-    of multiple commands.
-    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -26,15 +20,16 @@ class AdminRole(commands.Cog):
     async def adminrole(
         self,
         interaction: discord.Interaction,
-    ) -> None:
+    ):
+
+        await interaction.response.defer(ephemeral=True)
 
         guild = interaction.guild
         if guild is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=make_embed(
                     title="Invalid Context",
-                    description=
-                    f"{EMOJIS['fail']} This command can only be used in a server.",
+                    description=f"{EMOJIS['fail']} Server only command.",
                     level="ERROR",
                 ),
                 ephemeral=True,
@@ -42,7 +37,7 @@ class AdminRole(commands.Cog):
             return
 
         if not is_bot_admin(interaction):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=make_embed(
                     title="Permission Denied",
                     description=
@@ -61,14 +56,13 @@ class AdminRole(commands.Cog):
         embed = make_embed(
             title="Bot Admin Role Panel",
             description=
-            (f"{EMOJIS['announcement']} Manage **bot admin roles** below.\n\n"
-             f"{EMOJIS['arrow_point']} Bot admins can use bot features\n"
-             f"{EMOJIS['arrow_point']} Discord administrator permission is **not required**"
+            (f"{EMOJIS['announcement']} Manage bot admin roles.\n\n"
+             f"{EMOJIS['arrow_point']} Discord administrator permission is not required."
              ),
             level="SYSTEM",
         )
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=embed,
             view=view,
             ephemeral=True,
@@ -77,5 +71,5 @@ class AdminRole(commands.Cog):
         view.message = await interaction.original_response()
 
 
-async def setup(bot: commands.Bot) -> None:
+async def setup(bot: commands.Bot):
     await bot.add_cog(AdminRole(bot))

@@ -1,50 +1,64 @@
 import time
 from typing import Optional
 
-from db.engine import SessionLocal
+from sqlalchemy import select, delete
+from db.engine import AsyncSessionLocal
 from db.models import AFK
 
 
-def set_afk(guild_id: int, user_id: int, reason: str) -> None:
-    """
-    Set or update AFK status for a user in a guild.
-    """
+async def set_afk(guild_id: int, user_id: int, reason: str) -> None:
     now = int(time.time())
 
-    with SessionLocal() as session:
-        afk = session.get(AFK, (guild_id, user_id))
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(AFK).where(
+                AFK.guild_id == guild_id,
+                AFK.user_id == user_id,
+            ))
+
+        afk = result.scalar_one_or_none()
 
         if afk:
             afk.reason = reason
             afk.since = now
         else:
             session.add(
-                AFK(guild_id=guild_id,
+                AFK(
+                    guild_id=guild_id,
                     user_id=user_id,
                     reason=reason,
-                    since=now))
+                    since=now,
+                ))
 
-        session.commit()
+        await session.commit()
 
 
-def remove_afk(guild_id: int, user_id: int) -> Optional[AFK]:
-    """
-    Remove AFK status and return the AFK record if it existed.
-    """
-    with SessionLocal() as session:
-        afk = session.get(AFK, (guild_id, user_id))
+async def remove_afk(guild_id: int, user_id: int) -> Optional[AFK]:
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(AFK).where(
+                AFK.guild_id == guild_id,
+                AFK.user_id == user_id,
+            ))
+
+        afk = result.scalar_one_or_none()
 
         if not afk:
             return None
 
-        session.delete(afk)
-        session.commit()
+        await session.delete(afk)
+        await session.commit()
         return afk
 
 
-def get_afk(guild_id: int, user_id: int) -> Optional[AFK]:
-    """
-    Get AFK status for a user in a guild.
-    """
-    with SessionLocal() as session:
-        return session.get(AFK, (guild_id, user_id))
+async def get_afk(guild_id: int, user_id: int) -> Optional[AFK]:
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(AFK).where(
+                AFK.guild_id == guild_id,
+                AFK.user_id == user_id,
+            ))
+
+        return result.scalar_one_or_none()

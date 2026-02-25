@@ -10,9 +10,6 @@ from utils.views.role_manager import RoleManagerView
 class Roles(commands.Cog):
     """
     Role management commands.
-
-    Provides an interactive UI for administrators
-    to add or remove roles from a member.
     """
 
     def __init__(self, bot: commands.Bot):
@@ -22,33 +19,23 @@ class Roles(commands.Cog):
         name="roles",
         description="Manage roles for a member using an interactive interface",
     )
-    @app_commands.describe(member="Member whose roles you want to manage", )
+    @app_commands.describe(member="Member whose roles you want to manage")
     async def roles(
         self,
         interaction: discord.Interaction,
         member: discord.Member,
     ) -> None:
-        """
-        Launch the interactive role manager for a member.
-        """
 
-        # ─────────────────────────────
-        # Context validation
-        # ─────────────────────────────
+        await interaction.response.defer(ephemeral=True)
+
         guild = interaction.guild
         actor = interaction.user
 
-        if guild is None:
+        if guild is None or not isinstance(actor, discord.Member):
             return
 
-        if not isinstance(actor, discord.Member):
-            return
-
-        # ─────────────────────────────
-        # Permission check
-        # ─────────────────────────────
         if not is_bot_admin(interaction):
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=make_embed(
                     title="Permission Denied",
                     description=(
@@ -60,9 +47,6 @@ class Roles(commands.Cog):
             )
             return
 
-        # ─────────────────────────────
-        # Build interactive role manager view
-        # ─────────────────────────────
         view = RoleManagerView(
             bot=self.bot,
             actor=actor,
@@ -79,17 +63,12 @@ class Roles(commands.Cog):
             footer=f"Action by {actor}",
         )
 
-        # IMPORTANT:
-        # Capture the original message and attach it to the view
-        message = await interaction.response.send_message(
+        await interaction.followup.send(
             embed=embed,
             view=view,
             ephemeral=True,
         )
 
-        # discord.py quirk:
-        # interaction.response.send_message() returns None
-        # so we must fetch the original response
         view.message = await interaction.original_response()
 
 
