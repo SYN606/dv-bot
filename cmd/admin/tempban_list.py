@@ -18,73 +18,73 @@ class TempbanList(commands.Cog):
         description="List all active tempbanned members in this server",
     )
     async def tempban_list(self, interaction: discord.Interaction):
+
         guild = interaction.guild
         if guild is None:
             return
 
-        # ── Permission check (bot admin role OR admin OR owner)
-        if not is_bot_admin(interaction):
-            return await interaction.response.send_message(
-                embed=make_embed(
-                    title="Permission Denied",
-                    description="You are not allowed to view tempban records.",
-                    level="ERROR",
-                ),
-                ephemeral=True,
-            )
+        # 🚀 Instant interaction acknowledgement
+        await interaction.response.defer(ephemeral=True)
 
-        records = get_active_tempbans(guild.id)
+        # ─────────────────────────
+        # Permission check (async)
+        # ─────────────────────────
+        if not await is_bot_admin(interaction):
+            await interaction.followup.send(embed=make_embed(
+                title="Permission Denied",
+                description="You are not allowed to view tempban records.",
+                level="ERROR",
+            ), )
+            return
 
-        # ── No active tempbans
+        # ─────────────────────────
+        # Fetch records (async)
+        # ─────────────────────────
+        records = await get_active_tempbans(guild.id)
+
         if not records:
-            return await interaction.response.send_message(
-                embed=make_embed(
-                    title="Active Tempbans",
-                    description=f"{EMOJIS['success']} No active tempbans in this server.",
-                    level="INFO",
-                ),
-                ephemeral=True,
-            )
+            await interaction.followup.send(embed=make_embed(
+                title="Active Tempbans",
+                description=
+                f"{EMOJIS['success']} No active tempbans in this server.",
+                level="INFO",
+            ), )
+            return
 
+        # ─────────────────────────
+        # Build entries (limit to 10 for speed)
+        # ─────────────────────────
         entries: list[str] = []
 
-        for row in records:
+        for row in records[:10]:  # Hard cap for speed & safety
+
             member = guild.get_member(row.user_id)
             moderator = guild.get_member(row.moderator_id)
 
-            user_display = (
-                member.mention
-                if member
-                else f"`{row.user_id}` (left server)"
-            )
+            user_display = (member.mention
+                            if member else f"`{row.user_id}` (left server)")
 
-            mod_display = (
-                moderator.mention
-                if moderator
-                else f"`{row.moderator_id}`"
-            )
+            mod_display = (moderator.mention
+                           if moderator else f"`{row.moderator_id}`")
 
-            expires = (
-                row.expires_at.strftime("%d %b %Y, %H:%M")
-                if row.expires_at
-                else "Manual"
-            )
+            expires = (f"<t:{int(row.expires_at.timestamp())}:R>"
+                       if row.expires_at else "Manual")
 
             entries.append(
                 f"{EMOJIS['red_dot']} **User:** {user_display}\n"
                 f"{EMOJIS['arrow_point']} **Moderator:** {mod_display}\n"
                 f"{EMOJIS['arrow_point']} **Reason:** {row.reason or 'No reason provided'}\n"
-                f"{EMOJIS['arrow_point']} **Expires:** {expires}"
-            )
+                f"{EMOJIS['arrow_point']} **Expires:** {expires}")
 
         embed = make_embed(
             title="Active Tempbans",
             description="\n\n".join(entries),
             level="INFO",
-            footer=f"Total active tempbans: {len(records)}",
+            footer=
+            f"Showing {min(len(records), 10)} of {len(records)} active tempbans",
         )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed)
 
 
 async def setup(bot: commands.Bot):

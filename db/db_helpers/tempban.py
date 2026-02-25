@@ -1,12 +1,14 @@
 from datetime import datetime
 from typing import Optional, List
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from db.engine import AsyncSessionLocal
 from db.models import TempbanConfig, TempbanRecord
 
 
-# region CONFIG
+# ─────────────────────────────────────
+# CONFIG
+# ─────────────────────────────────────
 async def set_tempban_role(guild_id: int, role_id: int) -> None:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
@@ -32,7 +34,9 @@ async def get_tempban_role(guild_id: int) -> Optional[int]:
         return result.scalar_one_or_none()
 
 
-# region TEMPBAN ACTIONS
+# ─────────────────────────────────────
+# TEMPBAN ACTIONS
+# ─────────────────────────────────────
 async def add_tempban(
     *,
     guild_id: int,
@@ -48,6 +52,7 @@ async def add_tempban(
                 TempbanRecord.guild_id == guild_id,
                 TempbanRecord.user_id == user_id,
             ))
+
         record = result.scalar_one_or_none()
 
         if record:
@@ -82,8 +87,9 @@ async def remove_tempban(
             select(TempbanRecord).where(
                 TempbanRecord.guild_id == guild_id,
                 TempbanRecord.user_id == user_id,
-                TempbanRecord.active == True,
+                TempbanRecord.active.is_(True),
             ))
+
         record = result.scalar_one_or_none()
 
         if not record:
@@ -94,22 +100,28 @@ async def remove_tempban(
         return True
 
 
+# ─────────────────────────────────────
+# CHECK STATUS
+# ─────────────────────────────────────
 async def is_tempbanned(guild_id: int, user_id: int) -> bool:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            select(TempbanRecord.id).where(
+            select(TempbanRecord.guild_id).where(
                 TempbanRecord.guild_id == guild_id,
                 TempbanRecord.user_id == user_id,
-                TempbanRecord.active == True,
+                TempbanRecord.active.is_(True),
             ))
-        return result.scalar_one_or_none() is not None
+        return result.first() is not None
 
 
+# ─────────────────────────────────────
+# FETCH ACTIVE TEMPBANS
+# ─────────────────────────────────────
 async def get_active_tempbans(guild_id: int) -> List[TempbanRecord]:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(TempbanRecord).where(
                 TempbanRecord.guild_id == guild_id,
-                TempbanRecord.active == True,
+                TempbanRecord.active.is_(True),
             ))
         return result.scalars().all()

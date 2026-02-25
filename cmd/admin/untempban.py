@@ -14,7 +14,7 @@ from db.db_helpers.verification import get_verification_config
 from db.db_helpers.mod_logs import get_log_channel
 
 
-# region SAFE PREFIX CLEANUP
+# SAFE PREFIX CLEANUP
 async def _cleanup(ctx: commands.Context) -> None:
     try:
         await ctx.message.delete()
@@ -23,12 +23,6 @@ async def _cleanup(ctx: commands.Context) -> None:
 
 
 class UnTempban(commands.Cog):
-    """
-    PREFIX ONLY:
-    dv untempban <user> [reason]
-
-    Fully async (v2 architecture)
-    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -44,13 +38,13 @@ class UnTempban(commands.Cog):
         *,
         reason: str | None = None,
     ):
-        if ctx.guild is None:
+        guild = ctx.guild
+        if guild is None:
             return
 
-        guild = ctx.guild
         author = ctx.author
 
-        # region VALIDATION
+        # Validate user
         if user is None:
             await ctx.reply(
                 embed=make_embed(
@@ -66,7 +60,8 @@ class UnTempban(commands.Cog):
             await _cleanup(ctx)
             return
 
-        if not is_bot_admin_ctx(ctx):
+        # Permission check 
+        if not await is_bot_admin_ctx(ctx):
             await ctx.reply(
                 embed=make_embed(
                     title="Permission Denied",
@@ -91,14 +86,13 @@ class UnTempban(commands.Cog):
             await _cleanup(ctx)
             return
 
-        # region CHECK TEMPBAN
+        # Check DB first 
         if not await is_tempbanned(guild.id, member.id):
             await ctx.reply(
                 embed=make_embed(
                     title="Not Tempbanned",
                     description=
-                    (f"{EMOJIS['warning']} {member.mention} is not tempbanned."
-                     ),
+                    f"{EMOJIS['warning']} {member.mention} is not tempbanned.",
                     level="WARNING",
                 ),
                 mention_author=False,
@@ -110,7 +104,7 @@ class UnTempban(commands.Cog):
         if bot_member is None:
             return
 
-        # region REMOVE TEMPBAN ROLE
+        # Remove tempban role
         tempban_role_id = await get_tempban_role(guild.id)
         tempban_role = guild.get_role(
             tempban_role_id) if tempban_role_id else None
@@ -141,8 +135,7 @@ class UnTempban(commands.Cog):
                     embed=make_embed(
                         title="Permission Error",
                         description=
-                        (f"{EMOJIS['fail']} I cannot remove {tempban_role.mention}."
-                         ),
+                        f"{EMOJIS['fail']} I cannot remove {tempban_role.mention}.",
                         level="ERROR",
                     ),
                     mention_author=False,
@@ -150,7 +143,7 @@ class UnTempban(commands.Cog):
                 await _cleanup(ctx)
                 return
 
-        # region RESTORE VERIFIED ROLE
+        # Restore verified role 
         verify_cfg = await get_verification_config(guild.id)
 
         if verify_cfg:
@@ -166,14 +159,14 @@ class UnTempban(commands.Cog):
                 except discord.Forbidden:
                     pass
 
-        # region DATABASE UPDATE
+        # DB Update 
         await remove_tempban(
             guild_id=guild.id,
             user_id=member.id,
             moderator_id=author.id,
         )
 
-        # region CONFIRMATION
+        # Confirmation
         await ctx.reply(
             embed=make_embed(
                 title="Tempban Removed",
@@ -187,7 +180,7 @@ class UnTempban(commands.Cog):
             mention_author=False,
         )
 
-        # region MODERATION LOG
+        # Moderation log
         log_channel_id = await get_log_channel(guild.id)
 
         if log_channel_id:
