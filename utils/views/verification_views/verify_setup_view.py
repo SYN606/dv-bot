@@ -1,5 +1,6 @@
 import discord
 from discord.ui import View, Button, ChannelSelect, RoleSelect
+
 from utils.embeds import make_embed
 from utils.check_perms import is_bot_admin
 from db.db_helpers.verification import set_verification_config
@@ -8,20 +9,20 @@ from utils.views.verification_views.verify_button_view import VerifyButtonView
 
 class VerifySetupView(View):
     """
-    v3 Verification Setup View
+    v4 Verification Setup View
 
     - Fully async-safe
-    - Self-updating admin panel
-    - Clean UX
+    - Proper permission awaiting
+    - Role hierarchy validation
     - Production ready
     """
 
     def __init__(self, guild: discord.Guild):
         super().__init__(timeout=300)
+
         self.guild = guild
         self.message: discord.Message | None = None
 
-        # Selected values
         self.verify_channel_id: int | None = None
         self.log_channel_id: int | None = None
         self.verified_role_id: int | None = None
@@ -29,14 +30,15 @@ class VerifySetupView(View):
 
         self.notice: str | None = None
 
-        # UI Components
         self.add_item(VerifyChannelSelect(self))
         self.add_item(LogChannelSelect(self))
         self.add_item(VerifiedRoleSelect(self))
         self.add_item(UnverifiedRoleSelect(self))
         self.add_item(VerifySetupSaveButton())
 
-    # region EMBED BUILDER
+    # ─────────────────────────────────────
+    # EMBED BUILDER
+    # ─────────────────────────────────────
     def build_embed(self) -> discord.Embed:
 
         def fmt(value: int | None, kind: str) -> str:
@@ -73,7 +75,9 @@ class VerifySetupView(View):
             view=self,
         )
 
-    # region TIMEOUT HANDLING
+    # ─────────────────────────────────────
+    # TIMEOUT HANDLING
+    # ─────────────────────────────────────
     async def on_timeout(self):
         for item in self.children:
             item.disabled = True  # type: ignore
@@ -88,7 +92,9 @@ class VerifySetupView(View):
                 pass
 
 
-# region CHANNEL SELECTORS
+# ─────────────────────────────────────
+# CHANNEL SELECTORS
+# ─────────────────────────────────────
 class VerifyChannelSelect(ChannelSelect):
 
     def __init__(self, view: VerifySetupView):
@@ -127,7 +133,9 @@ class LogChannelSelect(ChannelSelect):
         )
 
 
-# region ROLE SELECTORS
+# ─────────────────────────────────────
+# ROLE SELECTORS
+# ─────────────────────────────────────
 class VerifiedRoleSelect(RoleSelect):
 
     def __init__(self, view: VerifySetupView):
@@ -165,7 +173,9 @@ class UnverifiedRoleSelect(RoleSelect):
         )
 
 
-# region SAVE BUTTON
+# ─────────────────────────────────────
+# SAVE BUTTON
+# ─────────────────────────────────────
 class VerifySetupSaveButton(Button):
 
     def __init__(self):
@@ -182,9 +192,9 @@ class VerifySetupSaveButton(Button):
         if guild is None:
             return
 
-        # Permission check
-        if not is_bot_admin(interaction):
-            await interaction.response.send_message(
+        # 🔥 FIXED: properly awaited permission check
+        if not await is_bot_admin(interaction):
+            return await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
                     description="Administrator access is required.",
@@ -192,21 +202,41 @@ class VerifySetupSaveButton(Button):
                 ),
                 ephemeral=True,
             )
-            return
 
-        # Required fields check
+        # Required selections
         if not all([
                 view.verify_channel_id,
                 view.log_channel_id,
                 view.verified_role_id,
         ]):
-            await view.refresh(
+            return await view.refresh(
                 interaction,
                 "Please select all required options before saving",
             )
+
+        bot_member = guild.me
+        if bot_member is None:
             return
 
-        # region SAVE CONFIG
+        verified_role = guild.get_role(view.verified_role_id)
+        unverified_role = (guild.get_role(view.unverified_role_id)
+                           if view.unverified_role_id else None)
+
+        # 🔥 Role hierarchy validation
+        for role in [verified_role, unverified_role]:
+            if role and role >= bot_member.top_role:
+                return await interaction.response.send_message(
+                    embed=make_embed(
+                        title="Role Hierarchy Error",
+                        description=(
+                            f"I cannot manage **{role.name}**.\n\n"
+                            "Move my role above this role and try again."),
+                        level="ERROR",
+                    ),
+                    ephemeral=True,
+                )
+
+        # Save configuration
         await set_verification_config(
             guild_id=guild.id,
             verify_channel_id=view.verify_channel_id,
@@ -236,10 +266,8 @@ class VerifySetupSaveButton(Button):
         await interaction.response.edit_message(
             embed=make_embed(
                 title="Verification Configured",
-                description=(
-                    "The verification system is now active.\n\n"
-                    "Verification message has been posted and roles configured."
-                ),
+                description=("The verification system is now active.\n\n"
+                             "Verification message has been posted."),
                 level="SUCCESS",
             ),
             view=view,

@@ -23,7 +23,7 @@ class TempbanList(commands.Cog):
         if guild is None:
             return
 
-        # 🚀 Instant interaction acknowledgement
+        #  Instant interaction acknowledgement
         await interaction.response.defer(ephemeral=True)
 
         # ─────────────────────────

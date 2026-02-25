@@ -12,7 +12,10 @@ class VerifySetup(commands.Cog):
     /verify_setup
 
     Opens the interactive verification setup panel.
-    Single-message, self-updating v2 workflow.
+    Only usable by:
+    • Guild owner
+    • Discord administrator
+    • Bot admin role
     """
 
     def __init__(self, bot: commands.Bot):
@@ -40,20 +43,21 @@ class VerifySetup(commands.Cog):
             )
             return
 
-        if not is_bot_admin(interaction):
+        # Permission Check 
+        if not await is_bot_admin(interaction):
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
-                    description=
-                    ("You do not have permission to configure verification.\n"
-                     "Administrator access is required."),
+                    description=(
+                        "You must be a **Server Administrator** or have the "
+                        "**Bot Admin role** to configure verification."),
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
             return
 
-        # Build setup view
+        # Build Setup View
         view = VerifySetupView(guild=guild)
 
         embed = make_embed(
@@ -71,17 +75,16 @@ class VerifySetup(commands.Cog):
             footer=f"Action by {interaction.user}",
         )
 
-        # Send SINGLE ephemeral message
         await interaction.response.send_message(
             embed=embed,
             view=view,
             ephemeral=True,
         )
 
-        # Attach message ownership to the view (CRITICAL)
+        # Attach message reference to view
         view.message = await interaction.original_response()
 
 
-# EXTENSION ENTRY POINT (REQUIRED)
+# EXTENSION ENTRY POINT
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(VerifySetup(bot))
