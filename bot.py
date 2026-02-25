@@ -1,11 +1,10 @@
-# bot.py
 import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
 from db.schema import init_schema
-from utils.handlers.prefix import dv_prefix, normalize_dv_prefix
+from utils.handlers.prefix import dynamic_prefix, normalize_prefix
 from utils.interaction_check import command_toggle_check
 
 from utils.handlers.counting_handler import handle_counting
@@ -23,7 +22,7 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
-    raise RuntimeError("DISCORD_TOKEN not found")
+    raise RuntimeError("DISCORD_TOKEN not found in .env")
 
 # region INTENTS
 intents = discord.Intents.default()
@@ -36,31 +35,32 @@ class DigitalVigilBot(commands.Bot):
 
     def __init__(self) -> None:
         super().__init__(
-            command_prefix=dv_prefix,
+            command_prefix=dynamic_prefix,
             intents=intents,
             help_command=None,
         )
+
         self.presence_rotator: SarcasticPresenceRotator | None = None
 
     # region SETUP HOOK
     async def setup_hook(self) -> None:
 
-        # ✅ Initialize database schema (async safe)
+        # Initialize DB schema (async)
         await init_schema()
 
-        # ✅ Global slash interaction check
+        # Global slash interaction guard
         self.tree.interaction_check = command_toggle_check
 
-        # ✅ Load all extensions
+        # Load all extensions
         await self.load_all_extensions()
 
-        # ✅ Sync slash commands
+        # Sync slash commands
         await self.tree.sync()
 
-        # ✅ Register persistent verification view
+        # Register persistent views (verification button)
         self.add_view(VerifyButtonView())
 
-        print("[SYSTEM] Startup complete")
+        print("[SYSTEM] Setup hook completed")
 
     # region EXTENSION LOADER
     async def load_all_extensions(self) -> None:
@@ -86,7 +86,7 @@ class DigitalVigilBot(commands.Bot):
 
         print(f"[INFO] Logged in as {self.user} ({self.user.id})")
 
-        # Setup verification messages on startup
+        # Restore verification state
         await setup_verification_on_ready(self)
 
         # Start presence rotator once
@@ -104,7 +104,7 @@ class DigitalVigilBot(commands.Bot):
             return
 
         # Normalize custom prefix
-        message.content = normalize_dv_prefix(message.content)
+        message.content = normalize_prefix(message.content)
 
         # Counting game
         if await handle_counting(message):
@@ -114,10 +114,10 @@ class DigitalVigilBot(commands.Bot):
         if await enforce_media_only(message):
             return
 
-        # Sticky messages
+        # Sticky system
         await handle_sticky(message)
 
-        # Bot mention reply
+        # Bot mention response
         await handle_bot_mention(self, message)
 
         # AFK system

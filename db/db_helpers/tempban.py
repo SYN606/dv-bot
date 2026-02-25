@@ -1,74 +1,63 @@
 from datetime import datetime
-from sqlalchemy.orm import Session
+from typing import Optional, List
 
-from db.engine import SessionLocal
+from sqlalchemy import select, update
+from db.engine import AsyncSessionLocal
 from db.models import TempbanConfig, TempbanRecord
 
 
-# ───────────────────────────────
-# CONFIG (TEMPBAN ROLE)
-# ───────────────────────────────
-def set_tempban_role(guild_id: int, role_id: int) -> None:
-    db: Session = SessionLocal()
-    try:
-        row = db.query(TempbanConfig).filter_by(guild_id=guild_id).first()
+# region CONFIG
+async def set_tempban_role(guild_id: int, role_id: int) -> None:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(TempbanConfig).where(TempbanConfig.guild_id == guild_id))
+        row = result.scalar_one_or_none()
+
         if row:
             row.role_id = role_id
         else:
-            db.add(TempbanConfig(
+            session.add(TempbanConfig(
                 guild_id=guild_id,
                 role_id=role_id,
             ))
-        db.commit()
-    finally:
-        db.close()
+
+        await session.commit()
 
 
-def get_tempban_role(guild_id: int) -> int | None:
-    db: Session = SessionLocal()
-    try:
-        row = db.query(TempbanConfig).filter_by(guild_id=guild_id).first()
-        return row.role_id if row else None
-    finally:
-        db.close()
+async def get_tempban_role(guild_id: int) -> Optional[int]:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(TempbanConfig.role_id).where(
+                TempbanConfig.guild_id == guild_id))
+        return result.scalar_one_or_none()
 
 
-# ───────────────────────────────
-# TEMPBAN ACTIONS
-# ───────────────────────────────
-def add_tempban(
+# region TEMPBAN ACTIONS
+async def add_tempban(
     *,
     guild_id: int,
     user_id: int,
     moderator_id: int,
-    reason: str | None = None,
-    expires_at: datetime | None = None,
+    reason: Optional[str] = None,
+    expires_at: Optional[datetime] = None,
 ) -> None:
-    """
-    Add or re-apply a tempban.
 
-    Design:
-    - ONE row per (guild_id, user_id)
-    - Re-tempban = UPDATE existing row
-    - Never violates primary key
-    """
-    db: Session = SessionLocal()
-    try:
-        record = db.query(TempbanRecord).filter_by(
-            guild_id=guild_id,
-            user_id=user_id,
-        ).first()
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(TempbanRecord).where(
+                TempbanRecord.guild_id == guild_id,
+                TempbanRecord.user_id == user_id,
+            ))
+        record = result.scalar_one_or_none()
 
         if record:
-            # 🔁 Re-apply / extend existing tempban
             record.moderator_id = moderator_id
             record.reason = reason
             record.expires_at = expires_at
             record.active = True
             record.created_at = datetime.utcnow()
         else:
-            # 🆕 First-time tempban
-            db.add(
+            session.add(
                 TempbanRecord(
                     guild_id=guild_id,
                     user_id=user_id,
@@ -78,62 +67,49 @@ def add_tempban(
                     active=True,
                 ))
 
-        db.commit()
-    finally:
-        db.close()
+        await session.commit()
 
 
-def remove_tempban(
+async def remove_tempban(
     *,
     guild_id: int,
     user_id: int,
     moderator_id: int,
 ) -> bool:
-    """
-    Deactivate an active tempban.
-    """
-    db: Session = SessionLocal()
-    try:
-        record = db.query(TempbanRecord).filter_by(
-            guild_id=guild_id,
-            user_id=user_id,
-            active=True,
-        ).first()
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(TempbanRecord).where(
+                TempbanRecord.guild_id == guild_id,
+                TempbanRecord.user_id == user_id,
+                TempbanRecord.active == True,
+            ))
+        record = result.scalar_one_or_none()
 
         if not record:
             return False
 
         record.active = False
-        db.commit()
+        await session.commit()
         return True
-    finally:
-        db.close()
 
 
-def is_tempbanned(guild_id: int, user_id: int) -> bool:
-    """
-    Check if user is currently tempbanned.
-    """
-    db: Session = SessionLocal()
-    try:
-        return (db.query(TempbanRecord).filter_by(
-            guild_id=guild_id,
-            user_id=user_id,
-            active=True,
-        ).count() > 0)
-    finally:
-        db.close()
+async def is_tempbanned(guild_id: int, user_id: int) -> bool:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(TempbanRecord.id).where(
+                TempbanRecord.guild_id == guild_id,
+                TempbanRecord.user_id == user_id,
+                TempbanRecord.active == True,
+            ))
+        return result.scalar_one_or_none() is not None
 
 
-def get_active_tempbans(guild_id: int) -> list[TempbanRecord]:
-    """
-    Fetch all active tempbans for a guild.
-    """
-    db: Session = SessionLocal()
-    try:
-        return db.query(TempbanRecord).filter_by(
-            guild_id=guild_id,
-            active=True,
-        ).all()
-    finally:
-        db.close()
+async def get_active_tempbans(guild_id: int) -> List[TempbanRecord]:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(TempbanRecord).where(
+                TempbanRecord.guild_id == guild_id,
+                TempbanRecord.active == True,
+            ))
+        return result.scalars().all()

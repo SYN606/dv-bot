@@ -1,5 +1,4 @@
 import discord
-
 from utils.views.verification_views.verify_button_view import VerifyButtonView
 from db.db_helpers.verification import get_verification_config
 
@@ -8,25 +7,22 @@ async def setup_verification_on_ready(bot: discord.Client) -> None:
     """
     Registers persistent verification components on bot startup.
 
-    MUST be called inside on_ready().
-    Safe to call multiple times (reconnect / resume safe).
+    Must be called inside on_ready().
+    Safe for reconnect / resume.
     """
 
-    # ─────────────────────────────
-    # REGISTER PERSISTENT UI VIEWS
-    # ─────────────────────────────
+    # region REGISTER PERSISTENT UI VIEWS
     try:
         bot.add_view(VerifyButtonView())
         print("[SYSTEM] VerifyButtonView registered (persistent)")
     except Exception as exc:
         print(f"[SYSTEM] Failed to register VerifyButtonView: {exc}")
 
-    # ─────────────────────────────
-    # VERIFICATION CONFIG SANITY LOG
-    # ─────────────────────────────
+    # region VERIFICATION CONFIG SANITY LOG
     for guild in bot.guilds:
         try:
-            config = get_verification_config(guild.id)
+            config = await get_verification_config(guild.id)
+
         except Exception as exc:
             print(f"[SYSTEM] Failed to load verification config for "
                   f"{guild.name} ({guild.id}): {exc}")

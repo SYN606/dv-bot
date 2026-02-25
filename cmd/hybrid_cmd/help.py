@@ -1,5 +1,4 @@
 from discord.ext import commands
-
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
 from utils.check_perms import is_bot_admin
@@ -9,11 +8,13 @@ from db.db_helpers.channel_command_restrict import get_restricted_commands
 
 class Help(commands.Cog):
     """
-    v2 Help Command
+    v3 Intelligent Help System
 
-    - Prefix help: quick overview
-    - Slash help: cached, permission-aware, FAST
-    - Channel-based command restriction aware
+    - Slash-first design
+    - Channel restriction aware
+    - Permission aware
+    - Cached command tree
+    - Clean grouped layout
     """
 
     def __init__(self, bot: commands.Bot):
@@ -22,22 +23,22 @@ class Help(commands.Cog):
         self._cache_ready = False
 
     # ─────────────────────────────
-    # CACHE BUILDER (RUNS ONCE)
+    # CACHE BUILDER
     # ─────────────────────────────
     def _build_cache(self) -> None:
-        if self._cache_ready:
-            return
-
         cache: list[dict] = []
 
         for cmd in self.bot.tree.walk_commands():
+            if cmd.hidden:
+                continue
+
             cache.append({
                 "qualified":
                 cmd.qualified_name.lower(),
                 "base":
                 cmd.name.lower(),
                 "description":
-                cmd.description or "No description available",
+                cmd.description or "No description provided",
                 "group":
                 cmd.parent.name.capitalize() if cmd.parent else "General",
             })
@@ -54,35 +55,29 @@ class Help(commands.Cog):
         with_app_command=True,
     )
     async def help(self, ctx: commands.Context) -> None:
-        """
-        dv help → prefix help
-        /help   → slash help (fast, cached)
-        """
 
         # ─────────────────────────────
-        # PREFIX HELP
+        # PREFIX HELP (quick overview)
         # ─────────────────────────────
         if ctx.interaction is None:
+
             embed = make_embed(
-                title="Help",
-                description=(
-                    "This bot primarily uses **slash commands (`/`)**.\n"
-                    "Prefix commands are available for quick actions.\n\n"
-                    "**Quick Commands**\n"
-                    f"{EMOJIS['ping']} `/ping` or `dv ping`\n"
-                    f"{EMOJIS['okay']} `dv afk [reason]`\n"
-                    f"{EMOJIS['enjoy']} `dv avatar [user]`\n"
-                    f"{EMOJIS['announcement']} `/help` or `dv help`\n\n"
-                    "Tip: Type **`/`** to explore all available commands."),
+                title="Digital Vigital Help",
+                description=
+                (f"{EMOJIS['announcement']} This bot uses **slash commands** primarily.\n\n"
+                 f"{EMOJIS['arrow_point']} Type `/` to explore all commands.\n"
+                 f"{EMOJIS['arrow_point']} Use `dv help` for quick prefix support.\n\n"
+                 f"{EMOJIS['green_dot']} Recommended: `/help` for full command list."
+                 ),
                 level="INFO",
-                footer="Digital Vigital • Slash-first bot",
+                footer="Slash-first architecture • Fast & Modern",
             )
 
             await ctx.reply(embed=embed, mention_author=False)
             return
 
         # ─────────────────────────────
-        # SLASH HELP
+        # SLASH HELP (full system)
         # ─────────────────────────────
         interaction = ctx.interaction
         guild = interaction.guild
@@ -91,61 +86,74 @@ class Help(commands.Cog):
 
         await interaction.response.defer(ephemeral=True)
 
-        self._build_cache()
+        if not self._cache_ready:
+            self._build_cache()
 
-        # Channel-based restrictions
+        # ─────────────────────────────
+        # Channel-based restrictions (async)
+        # ─────────────────────────────
         restricted: set[str] = set()
+
         if guild and channel:
-            restricted = set(get_restricted_commands(
+            restricted = set(await get_restricted_commands(
                 guild.id,
                 channel.id,
             ))
 
-        command_groups: dict[str, list[str]] = {}
+        # ─────────────────────────────
+        # Filter & Group Commands
+        # ─────────────────────────────
+        grouped: dict[str, list[str]] = {}
 
         for cmd in self._cached_commands:
             base = cmd["base"]
             qualified = cmd["qualified"]
 
-            # Channel-restricted commands (non-admins)
+            # Channel restriction
             if base in restricted and not is_admin:
                 continue
 
-            # Protected commands (non-admins)
+            # Protected commands
             if qualified in PROTECTED_COMMANDS and not is_admin:
                 continue
 
             entry = f"• `/{qualified}` — {cmd['description']}"
-            command_groups.setdefault(cmd["group"], []).append(entry)
+            grouped.setdefault(cmd["group"], []).append(entry)
 
-        if not command_groups:
+        if not grouped:
             await interaction.followup.send(
                 embed=make_embed(
                     title="Help",
                     description=
-                    (f"{EMOJIS['warning']} No commands are available in this channel."
-                     ),
+                    f"{EMOJIS['warning']} No commands available in this channel.",
                     level="WARNING",
                 ),
                 ephemeral=True,
             )
             return
 
-        fields = [(
-            f"{EMOJIS['green_dot']} {group}",
-            "\n".join(sorted(entries)),
-            False,
-        ) for group, entries in sorted(command_groups.items())]
+        # ─────────────────────────────
+        # Build Embed Fields
+        # ─────────────────────────────
+        fields = []
+
+        for group, entries in sorted(grouped.items()):
+            fields.append((
+                f"{EMOJIS['green_dot']} {group}",
+                "\n".join(sorted(entries)),
+                False,
+            ))
 
         embed = make_embed(
-            title="Help",
+            title="Available Commands",
             description=
-            ("Below is a list of commands you can use **in this channel**.\n"
-             "Commands restricted by channel or permissions are hidden automatically.\n\n"
-             "**Available Commands**"),
+            ("Commands you can use **in this channel**.\n"
+             "Restricted or protected commands are hidden automatically.\n\n"
+             f"{EMOJIS['arrow_point']} Use slash autocomplete for argument hints."
+             ),
             level="INFO",
             fields=fields,
-            footer="Use slash command autocomplete for usage hints",
+            footer="Digital Vigital • Smart help system",
         )
 
         await interaction.followup.send(embed=embed, ephemeral=True)

@@ -9,6 +9,12 @@ from db.db_helpers.tempban import set_tempban_role
 
 
 class TempbanRole(commands.Cog):
+    """
+    /tempban_role
+
+    Configure the role used for tempbanned members.
+    Fully async (v2 architecture).
+    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -25,8 +31,10 @@ class TempbanRole(commands.Cog):
         role: discord.Role,
     ):
         guild = interaction.guild
+
+        # region Context validation
         if guild is None:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Context",
                     description=
@@ -35,10 +43,11 @@ class TempbanRole(commands.Cog):
                 ),
                 ephemeral=True,
             )
+            return
 
-        # ── Permission check (bot admin role / admin / owner)
+        # region Permission check
         if not is_bot_admin(interaction):
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
                     description=
@@ -47,10 +56,11 @@ class TempbanRole(commands.Cog):
                 ),
                 ephemeral=True,
             )
+            return
 
         bot_member = guild.me
         if bot_member is None:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Bot Error",
                     description="Unable to resolve my member instance.",
@@ -58,22 +68,25 @@ class TempbanRole(commands.Cog):
                 ),
                 ephemeral=True,
             )
+            return
 
-        # ── Managed / integration role check
+        # region Managed role check
         if role.managed:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Role",
                     description=
-                    "This role is managed by an integration and cannot be assigned.",
+                    ("This role is managed by an integration and cannot be assigned."
+                     ),
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
+            return
 
-        # ── Role hierarchy check
+        # region Role hierarchy check
         if role >= bot_member.top_role:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Role Hierarchy Error",
                     description=
@@ -85,10 +98,12 @@ class TempbanRole(commands.Cog):
                 ),
                 ephemeral=True,
             )
+            return
 
-        # ── Save configuration
-        set_tempban_role(guild.id, role.id)
+        # region Save config
+        await set_tempban_role(guild.id, role.id)
 
+        # region Confirmation
         await interaction.response.send_message(
             embed=make_embed(
                 title="Tempban Role Configured",

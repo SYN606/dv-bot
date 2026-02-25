@@ -1,53 +1,79 @@
 import discord
 import time
+import random
 from discord.ext import tasks
 from itertools import cycle
+from datetime import timedelta
 
 
 class SarcasticPresenceRotator:
     """
-    v2 Presence Rotator
+    v4 Presence Rotator
 
-    - Clean single-line statuses
-    - Rotating activity types
-    - Safer public-facing sarcasm
-    - Discord-friendly formatting
+    - Original sarcastic lines restored
+    - Dynamic stats mixed in
+    - Cleaner rotation logic
+    - Optional streaming trick support
     """
 
     def __init__(self, bot: discord.Client):
         self.bot = bot
-        self.started_at = int(time.time())
+        self.started_at = time.time()
 
-        # ── Activity messages (single-line, readable)
-        self.messages = cycle([
-            "kaa pehni ho aaj 👀",
-            "biyah hogya hai tumhara?",
-            "bhai mujhe nahi pata, syn se puch lo",
-            "kartikey mera dusra papa hai",
-            "putli ka naam mat lo mere saamne",
-            "debugging human emotions",
-        ])
+        # 🔥 Your original sarcastic lines (restored)
+        self.sarcastic_messages = [
+            ("watching", "kaa pehni ho aaj 👀"),
+            ("watching", "biyah hogya hai tumhara?"),
+            ("listening", "bhai mujhe nahi pata, syn se puch lo"),
+            ("playing", "kartikey mera dusra papa hai"),
+            ("watching", "putli ka naam mat lo mere saamne"),
+            ("playing", "debugging human emotions"),
+        ]
 
-        # ── Rotate activity types for variety
-        self.activity_types = cycle([
-            discord.ActivityType.watching,
-            discord.ActivityType.listening,
-            discord.ActivityType.playing,
-        ])
+        self.sarcastic_cycle = cycle(self.sarcastic_messages)
 
+    # ─────────────────────────────
+    # Utility: formatted uptime
+    # ─────────────────────────────
+    def get_uptime(self) -> str:
+        seconds = int(time.time() - self.started_at)
+        return str(timedelta(seconds=seconds)).split(".")[0]
+
+    # ─────────────────────────────
+    # Presence loop
+    # ─────────────────────────────
     @tasks.loop(seconds=45)
     async def rotate(self):
-        # Safety: bot must be ready
+
         if not self.bot.is_ready():
             return
 
-        message = next(self.messages)
-        activity_type = next(self.activity_types)
+        latency = round(self.bot.latency * 1000)
+        guild_count = len(self.bot.guilds)
+        user_count = sum(g.member_count or 0 for g in self.bot.guilds)
+
+        dynamic_states = [
+            ("watching", f"{guild_count} servers"),
+            ("watching", f"{user_count:,} members"),
+            ("playing", f"Latency: {latency}ms"),
+            ("playing", f"Uptime: {self.get_uptime()}"),
+        ]
+
+        # 🔀 Randomly choose between dynamic and sarcastic
+        if random.random() < 0.5:
+            activity_type_str, message = random.choice(dynamic_states)
+        else:
+            activity_type_str, message = next(self.sarcastic_cycle)
+
+        activity_type = {
+            "watching": discord.ActivityType.watching,
+            "listening": discord.ActivityType.listening,
+            "playing": discord.ActivityType.playing,
+        }[activity_type_str]
 
         activity = discord.Activity(
             type=activity_type,
             name=message,
-            start=self.started_at,
         )
 
         await self.bot.change_presence(

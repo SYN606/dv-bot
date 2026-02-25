@@ -1,38 +1,47 @@
-# utils/prefix.py
 from discord.ext import commands
 import discord
+import os
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv()
+
+# Get prefix (fallback to "dv" if missing)
+PREFIX = os.getenv("PREFIX", "dv").strip()
 
 
-def normalize_dv_prefix(content: str) -> str:
+def normalize_prefix(content: str) -> str:
     """
     Normalizes:
     dv ping   -> dvping
     DV   ping -> dvping
     dVping    -> dvping
     """
+
     if not content:
         return content
 
     stripped = content.lstrip()
 
-    if stripped[:2].lower() != "dv":
+    if not stripped.lower().startswith(PREFIX.lower()):
         return content
 
-    rest = stripped[2:].lstrip()
-    return f"dv{rest}"
+    rest = stripped[len(PREFIX):].lstrip()
+    return f"{PREFIX}{rest}"
 
 
-def dv_prefix(bot: commands.Bot, message: discord.Message):
+def dynamic_prefix(bot: commands.Bot, message: discord.Message):
     """
-    Prefix resolver for discord.py
-    Allows: dv, DV, Dv, dV
+    Case-insensitive prefix resolver.
+    Allows: dv, DV, Dv, dV (or whatever is in .env)
     """
+
     if not message.content:
-        return "dv"
+        return PREFIX
 
     content = message.content.lstrip()
 
-    if content[:2].lower() == "dv":
-        return content[:2]
+    if content.lower().startswith(PREFIX.lower()):
+        return content[:len(PREFIX)]
 
-    return "dv"
+    return PREFIX

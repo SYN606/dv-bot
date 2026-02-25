@@ -1,4 +1,3 @@
-# db/schema.py
 from sqlalchemy import inspect, text
 from db.base import Base
 from db.engine import engine

@@ -1,5 +1,4 @@
 import discord
-
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
 from db.db_helpers.channel_command_restrict import is_command_restricted
@@ -11,12 +10,10 @@ async def command_toggle_check(interaction: discord.Interaction) -> bool:
 
     - Blocks restricted commands per channel
     - Sends a clean ephemeral notice
-    - Safe for first response or follow-up
+    - Fully async-safe
     """
 
-    # ─────────────────────────
-    # Safety
-    # ─────────────────────────
+    # region Safety
     if (interaction.guild is None or interaction.channel is None
             or interaction.command is None):
         return True
@@ -25,8 +22,8 @@ async def command_toggle_check(interaction: discord.Interaction) -> bool:
     channel_id = interaction.channel.id  # type: ignore
     command_name = interaction.command.qualified_name.lower()
 
-    # Channel restriction check
-    restricted = is_command_restricted(
+    # MUST await async DB call
+    restricted = await is_command_restricted(
         guild_id=guild_id,
         channel_id=channel_id,
         command_name=command_name,
