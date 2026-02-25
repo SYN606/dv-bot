@@ -36,9 +36,7 @@ class SetupLog(commands.Cog):
                 ephemeral=True,
             )
 
-        # ─────────────────────────
         # PERMISSION CHECK
-        # ─────────────────────────
         if not is_bot_admin(interaction):
             return await interaction.response.send_message(
                 embed=make_embed(

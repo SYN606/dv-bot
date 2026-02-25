@@ -6,14 +6,14 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Index,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
 
-# region AFK
 
-
+# AFK
 class AFK(Base):
     __tablename__ = "afk"
 
@@ -24,11 +24,7 @@ class AFK(Base):
     since: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
-# endregion
-
-# region BOT ADMIN ROLES
-
-
+# BOT ADMIN ROLES
 class AdminRole(Base):
     __tablename__ = "admin_roles"
 
@@ -36,11 +32,7 @@ class AdminRole(Base):
     role_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
 
-# endregion
-
-# region MEDIA ONLY CHANNELS
-
-
+# MEDIA ONLY CHANNELS
 class MediaOnlyChannel(Base):
     __tablename__ = "media_only_channels"
 
@@ -54,11 +46,7 @@ class MediaOnlyChannel(Base):
     )
 
 
-# endregion
-
-# region STICKY MESSAGES
-
-
+# STICKY MESSAGES
 class StickyMessage(Base):
     __tablename__ = "sticky_messages"
 
@@ -72,7 +60,11 @@ class StickyMessage(Base):
         nullable=True,
     )
 
-    counter: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    counter: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -82,11 +74,7 @@ class StickyMessage(Base):
     )
 
 
-# endregion
-
-# region SERVER-WIDE DISABLED COMMANDS
-
-
+# SERVER-WIDE DISABLED COMMANDS
 class DisabledCommand(Base):
     __tablename__ = "disabled_commands"
 
@@ -103,21 +91,8 @@ class DisabledCommand(Base):
     )
 
 
-# endregion
-
-# region CHANNEL-BASED COMMAND RESTRICTIONS
-
-
+# CHANNEL-BASED COMMAND RESTRICTIONS
 class RestrictedCommand(Base):
-    """
-    Channel-based command restriction.
-
-    scope:
-        - "prefix"
-        - "slash"
-        - "both"
-    """
-
     __tablename__ = "restricted_commands"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -140,32 +115,32 @@ class RestrictedCommand(Base):
     )
 
 
-# endregion
-
-# region COUNTING CHANNELS
-
-
+# COUNTING CHANNELS
 class CountingChannel(Base):
     __tablename__ = "counting_channels"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
-    current: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    current: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
 
     last_user_id: Mapped[int | None] = mapped_column(
         BigInteger,
         nullable=True,
     )
 
-    best: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    best: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
 
 
-# endregion
-
-# region TEMPBAN CONFIG
-
-
+# TEMPBAN CONFIG
 class TempbanConfig(Base):
     __tablename__ = "tempban_config"
 
@@ -176,11 +151,7 @@ class TempbanConfig(Base):
         return f"<TempbanConfig guild={self.guild_id} role={self.role_id}>"
 
 
-# endregion
-
-# region TEMPBAN RECORDS
-
-
+# TEMPBAN RECORDS
 class TempbanRecord(Base):
     __tablename__ = "tempban_records"
 
@@ -211,20 +182,21 @@ class TempbanRecord(Base):
         nullable=True,
     )
 
+    __table_args__ = (Index("idx_tempban_active", "guild_id", "active"), )
+
     def __repr__(self) -> str:
         return (f"<TempbanRecord guild={self.guild_id} "
                 f"user={self.user_id} active={self.active}>")
 
 
-# endregion
-
-# region VERIFICATION CONFIG
-
-
+# VERIFICATION CONFIG (UPDATED)
 class VerificationConfig(Base):
     __tablename__ = "verification_config"
 
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    guild_id: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+    )
 
     verify_channel_id: Mapped[int] = mapped_column(
         BigInteger,
@@ -241,18 +213,19 @@ class VerificationConfig(Base):
         nullable=False,
     )
 
-    # ✅ FIXED: Now optional
     unverified_role_id: Mapped[int | None] = mapped_column(
         BigInteger,
         nullable=True,
     )
 
+    # 🔥 NEW: Stored verification message ID
+    verification_message_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
 
-# endregion
 
-# region MODERATION LOG CONFIG
-
-
+# MODERATION LOG CONFIG
 class ModerationLogConfig(Base):
     __tablename__ = "moderation_log_config"
 
@@ -262,6 +235,3 @@ class ModerationLogConfig(Base):
     def __repr__(self) -> str:
         return (f"<ModerationLogConfig guild={self.guild_id} "
                 f"channel={self.channel_id}>")
-
-
-# endregion

@@ -7,46 +7,35 @@ from utils.embeds import make_embed
 from utils.emojis import EMOJIS
 
 from db.db_helpers.verification import (
-    is_verification_configured,
+    get_verification_config,
     delete_verification_config,
 )
 
 
 class ResetVerification(commands.Cog):
-    """
-    Slash command:
-    /reset_verification
-
-    Completely disables the verification system for this server.
-    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     @app_commands.command(
         name="reset_verification",
-        description="Reset and disable the verification system for this server",
+        description="Reset and disable the verification system",
     )
-    async def reset_verification(
-        self,
-        interaction: discord.Interaction,
-    ):
+    async def reset_verification(self, interaction: discord.Interaction):
+
         guild = interaction.guild
         if guild is None:
             return await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Context",
-                    description=
-                    "This command can only be used inside a server.",
+                    description="This command can only be used in a server.",
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
 
-        # ─────────────────────────
-        # PERMISSION CHECK
-        # ─────────────────────────
-        if not is_bot_admin(interaction):
+        # Permission check
+        if not await is_bot_admin(interaction):
             return await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
@@ -56,46 +45,42 @@ class ResetVerification(commands.Cog):
                 ephemeral=True,
             )
 
-        # ─────────────────────────
-        # CHECK IF CONFIGURED
-        # ─────────────────────────
-        if not is_verification_configured(guild.id):
+        # Get existing config
+        config = await get_verification_config(guild.id)
+
+        if not config:
             return await interaction.response.send_message(
                 embed=make_embed(
                     title="Verification Not Configured",
-                    description=
-                    f"{EMOJIS['warning']} Verification is already disabled for this server.",
+                    description="Verification is already disabled.",
                     level="INFO",
                 ),
                 ephemeral=True,
             )
 
-        # ─────────────────────────
-        # DELETE CONFIG
-        # ─────────────────────────
-        deleted = delete_verification_config(guild.id)
+        # Delete verification message if exists
+        if config.verification_message_id:
+            channel = guild.get_channel(config.verify_channel_id)
 
-        if not deleted:
-            return await interaction.response.send_message(
-                embed=make_embed(
-                    title="Reset Failed",
-                    description=
-                    f"{EMOJIS['fail']} Unable to reset verification. Try again.",
-                    level="ERROR",
-                ),
-                ephemeral=True,
-            )
+            if isinstance(channel, discord.TextChannel):
+                try:
+                    message = await channel.fetch_message(
+                        config.verification_message_id)
+                    await message.delete()
+                except discord.NotFound:
+                    pass
+                except discord.Forbidden:
+                    pass
 
-        # ─────────────────────────
-        # CONFIRMATION
-        # ─────────────────────────
+        # Delete DB config
+        await delete_verification_config(guild.id)
+
         await interaction.response.send_message(
             embed=make_embed(
                 title="Verification Reset",
-                description=
-                (f"{EMOJIS['success']} Verification system has been **disabled**.\n\n"
-                 f"{EMOJIS['arrow_point']} You can run `/verify_setup` to configure it again."
-                 ),
+                description=(
+                    f"{EMOJIS['success']} Verification system disabled.\n\n"
+                    f"{EMOJIS['arrow_point']} Verification message removed."),
                 level="SUCCESS",
                 footer=f"Action by {interaction.user}",
             ),

@@ -26,7 +26,7 @@ class AdminRole(commands.Cog):
 
         guild = interaction.guild
         if guild is None:
-            await interaction.followup.send(
+            return await interaction.followup.send(
                 embed=make_embed(
                     title="Invalid Context",
                     description=f"{EMOJIS['fail']} Server only command.",
@@ -34,19 +34,19 @@ class AdminRole(commands.Cog):
                 ),
                 ephemeral=True,
             )
-            return
 
-        if not is_bot_admin(interaction):
-            await interaction.followup.send(
+        # FIXED: awaited permission check
+        if not await is_bot_admin(interaction):
+            return await interaction.followup.send(
                 embed=make_embed(
                     title="Permission Denied",
                     description=
-                    f"{EMOJIS['fail']} You are not allowed to manage bot admin roles.",
+                    (f"{EMOJIS['fail']} You are not allowed to manage bot admin roles."
+                     ),
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
-            return
 
         view = AdminRoleView(
             guild=guild,
