@@ -34,7 +34,7 @@ class Roles(commands.Cog):
         if guild is None or not isinstance(actor, discord.Member):
             return
 
-        if not is_bot_admin(interaction):
+        if not await is_bot_admin(interaction):
             await interaction.followup.send(
                 embed=make_embed(
                     title="Permission Denied",

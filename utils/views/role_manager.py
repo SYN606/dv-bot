@@ -144,7 +144,7 @@ class RoleManagerView(View):
         if interaction.user != self.actor:
             return False
 
-        if not is_bot_admin(interaction):
+        if not await is_bot_admin(interaction): # type: ignore
             return False
 
         # Prevent managing users above actor
