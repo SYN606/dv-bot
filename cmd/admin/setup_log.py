@@ -37,7 +37,7 @@ class SetupLog(commands.Cog):
             )
 
         # PERMISSION CHECK
-        if not is_bot_admin(interaction):
+        if not await is_bot_admin(interaction):
             return await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
@@ -48,14 +48,10 @@ class SetupLog(commands.Cog):
                 ephemeral=True,
             )
 
-        # ─────────────────────────
         # SAVE CONFIG
-        # ─────────────────────────
-        set_log_channel(guild.id, channel.id)
+        await set_log_channel(guild.id, channel.id)
 
-        # ─────────────────────────
         # CONFIRMATION
-        # ─────────────────────────
         await interaction.response.send_message(
             embed=make_embed(
                 title="Log Channel Configured",
