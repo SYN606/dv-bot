@@ -40,7 +40,7 @@ class Counting(commands.Cog):
         if interaction.guild is None:
             return
 
-        if not is_bot_admin(interaction):
+        if not await is_bot_admin(interaction):
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
