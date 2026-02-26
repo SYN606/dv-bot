@@ -13,9 +13,10 @@ from utils.views.verification_views.verify_button_view import VerifyButtonView
 
 class VerifySetupView(View):
     """
-    v5 Verification Setup View
+    v6 Verification Setup View
 
     - Fully async-safe
+    - Interaction lifecycle safe
     - Stores verification message ID
     - Deletes old verification message if exists
     - Role hierarchy validation
@@ -67,6 +68,9 @@ class VerifySetupView(View):
             footer=self.notice or "Select options and click Save to apply",
         )
 
+    # ─────────────────────────────────────
+    # SAFE REFRESH METHOD
+    # ─────────────────────────────────────
     async def refresh(
         self,
         interaction: discord.Interaction,
@@ -75,10 +79,23 @@ class VerifySetupView(View):
         if notice:
             self.notice = notice
 
-        await interaction.response.edit_message(
-            embed=self.build_embed(),
-            view=self,
-        )
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.edit_message(
+                    embed=self.build_embed(),
+                    view=self,
+                )
+            else:
+                await interaction.followup.edit_message(
+                    interaction.message.id,
+                    embed=self.build_embed(),
+                    view=self,
+                )
+        except discord.NotFound:
+            # Interaction expired
+            pass
+        except Exception:
+            pass
 
     # ─────────────────────────────────────
     # TIMEOUT HANDLING
@@ -239,7 +256,7 @@ class VerifySetupSaveButton(Button):
         channel = guild.get_channel(view.verify_channel_id)
         if isinstance(channel, discord.TextChannel):
 
-            # Delete old verification message if exists
+            # Delete old verification message
             async with AsyncSessionLocal() as session:
                 result = await session.execute(
                     select(VerificationConfig).where(
@@ -254,7 +271,7 @@ class VerifySetupSaveButton(Button):
                     except Exception:
                         pass
 
-            # Post new verification message
+            # Post new message
             msg = await channel.send(
                 embed=make_embed(
                     title="Server Verification",
@@ -266,13 +283,12 @@ class VerifySetupSaveButton(Button):
                 view=VerifyButtonView(),
             )
 
-            # Store new message ID
+            # Store message ID
             async with AsyncSessionLocal() as session:
                 result = await session.execute(
                     select(VerificationConfig).where(
                         VerificationConfig.guild_id == guild.id))
                 row = result.scalar_one_or_none()
-
                 if row:
                     row.verification_message_id = msg.id
                     await session.commit()
@@ -280,14 +296,31 @@ class VerifySetupSaveButton(Button):
         for item in view.children:
             item.disabled = True  # type: ignore
 
-        await interaction.response.edit_message(
-            embed=make_embed(
-                title="Verification Configured",
-                description=("The verification system is now active.\n\n"
-                             "Verification message has been posted."),
-                level="SUCCESS",
-            ),
-            view=view,
-        )
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.edit_message(
+                    embed=make_embed(
+                        title="Verification Configured",
+                        description=(
+                            "The verification system is now active.\n\n"
+                            "Verification message has been posted."),
+                        level="SUCCESS",
+                    ),
+                    view=view,
+                )
+            else:
+                await interaction.followup.edit_message(
+                    interaction.message.id,
+                    embed=make_embed(
+                        title="Verification Configured",
+                        description=(
+                            "The verification system is now active.\n\n"
+                            "Verification message has been posted."),
+                        level="SUCCESS",
+                    ),
+                    view=view,
+                )
+        except discord.NotFound:
+            pass
 
         view.stop()

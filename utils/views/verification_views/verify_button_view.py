@@ -7,8 +7,9 @@ class VerifyButtonView(discord.ui.View):
     """
     Persistent verification button view.
 
-    - Publicly accessible (no admin checks)
+    - Publicly accessible
     - Safe interaction handling
+    - Restart-safe (requires add_view in setup_hook)
     - Production ready
     """
 
@@ -28,20 +29,32 @@ class VerifyButtonView(discord.ui.View):
     ) -> None:
 
         guild = interaction.guild
-        if guild is None:
-            # Should never happen, but safe guard
-            return await interaction.response.send_message(
-                "This button can only be used inside a server.",
-                ephemeral=True,
-            )
 
-        try:
-            await interaction.response.send_modal(
-                VerifyCaptchaModal(guild_id=guild.id))
-        except Exception:
-            # Safety fallback (rare interaction edge case)
+        if guild is None:
             if not interaction.response.is_done():
                 await interaction.response.send_message(
-                    "Something went wrong. Please try again.",
+                    "This button can only be used inside a server.",
                     ephemeral=True,
                 )
+            return
+
+        try:
+            modal = VerifyCaptchaModal(guild_id=guild.id)
+
+            if not interaction.response.is_done():
+                await interaction.response.send_modal(modal)
+
+        except discord.NotFound:
+            # Interaction expired (user waited too long)
+            pass
+
+        except Exception:
+            # Fallback protection
+            try:
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(
+                        "Verification failed. Please click the button again.",
+                        ephemeral=True,
+                    )
+            except Exception:
+                pass
