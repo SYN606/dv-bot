@@ -79,7 +79,7 @@ class Tempban(commands.Cog):
             return
 
         # region PERMISSION CHECK
-        if not is_bot_admin_ctx(ctx):
+        if not await is_bot_admin_ctx(ctx):
             await ctx.reply(
                 embed=make_embed(
                     title="Permission Denied",
