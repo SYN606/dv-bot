@@ -26,11 +26,17 @@ class TempbanRole(commands.Cog):
     ):
         guild = interaction.guild
 
-        # ─────────────────────────
+        # Immediate safe defer
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.defer(ephemeral=True)
+        except discord.NotFound:
+            # Interaction already expired
+            return
+
         # Context validation
-        # ─────────────────────────
         if guild is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=make_embed(
                     title="Invalid Context",
                     description=
@@ -41,63 +47,76 @@ class TempbanRole(commands.Cog):
             )
             return
 
-        # 🚀 Immediate defer (fast UI response)
-        await interaction.response.defer(ephemeral=True)
-
-        # ─────────────────────────
         # Permission check
-        # ─────────────────────────
         if not await is_bot_admin(interaction):
-            await interaction.followup.send(embed=make_embed(
-                title="Permission Denied",
-                description="You are not allowed to configure tempban roles.",
-                level="ERROR",
-            ), )
+            await interaction.followup.send(
+                embed=make_embed(
+                    title="Permission Denied",
+                    description=
+                    "You are not allowed to configure tempban roles.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
             return
 
         bot_member = guild.me
         if bot_member is None:
-            await interaction.followup.send(embed=make_embed(
-                title="Bot Error",
-                description="Unable to resolve my member instance.",
-                level="ERROR",
-            ), )
+            await interaction.followup.send(
+                embed=make_embed(
+                    title="Bot Error",
+                    description="Unable to resolve my member instance.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
             return
+
+        # Role validation
 
         # Managed role check
         if role.managed:
-            await interaction.followup.send(embed=make_embed(
-                title="Invalid Role",
-                description=
-                "This role is managed by an integration and cannot be assigned.",
-                level="ERROR",
-            ), )
+            await interaction.followup.send(
+                embed=make_embed(
+                    title="Invalid Role",
+                    description=
+                    "This role is managed by an integration and cannot be assigned.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
             return
 
         # Role hierarchy check
         if role >= bot_member.top_role:
-            await interaction.followup.send(embed=make_embed(
-                title="Role Hierarchy Error",
-                description=
-                ("I cannot manage this role because it is higher than or equal to my highest role.\n\n"
-                 f"{EMOJIS['arrow_point']} Move my role above **{role.name}** and try again."
-                 ),
-                level="ERROR",
-            ), )
+            await interaction.followup.send(
+                embed=make_embed(
+                    title="Role Hierarchy Error",
+                    description=
+                    ("I cannot manage this role because it is higher than or equal to my highest role.\n\n"
+                     f"{EMOJIS['arrow_point']} Move my role above **{role.name}** and try again."
+                     ),
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
             return
 
         # Save configuration
         await set_tempban_role(guild.id, role.id)
 
         # Confirmation
-        await interaction.followup.send(embed=make_embed(
-            title="Tempban Role Configured",
-            description=
-            (f"{EMOJIS['success']} {role.mention} has been set as the **tempban role**.\n\n"
-             f"{EMOJIS['arrow_point']} This role will be automatically assigned on tempban."
-             ),
-            level="SUCCESS",
-        ), )
+        await interaction.followup.send(
+            embed=make_embed(
+                title="Tempban Role Configured",
+                description=
+                (f"{EMOJIS['success']} {role.mention} has been set as the **tempban role**.\n\n"
+                 f"{EMOJIS['arrow_point']} This role will be automatically assigned on tempban."
+                 ),
+                level="SUCCESS",
+            ),
+            ephemeral=True,
+        )
 
 
 async def setup(bot: commands.Bot):
