@@ -1,6 +1,10 @@
 import discord
 from discord.ui import View, Button, ChannelSelect, RoleSelect
 
+from sqlalchemy import select
+from db.engine import AsyncSessionLocal
+from db.models import VerificationConfig
+
 from utils.embeds import make_embed
 from utils.check_perms import is_bot_admin
 from db.db_helpers.verification import set_verification_config
@@ -9,10 +13,11 @@ from utils.views.verification_views.verify_button_view import VerifyButtonView
 
 class VerifySetupView(View):
     """
-    v4 Verification Setup View
+    v5 Verification Setup View
 
     - Fully async-safe
-    - Proper permission awaiting
+    - Stores verification message ID
+    - Deletes old verification message if exists
     - Role hierarchy validation
     - Production ready
     """
@@ -108,10 +113,8 @@ class VerifyChannelSelect(ChannelSelect):
 
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.verify_channel_id = self.values[0].id
-        await self.view_ref.refresh(
-            interaction,
-            "Verification channel selected",
-        )
+        await self.view_ref.refresh(interaction,
+                                    "Verification channel selected")
 
 
 class LogChannelSelect(ChannelSelect):
@@ -127,10 +130,7 @@ class LogChannelSelect(ChannelSelect):
 
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.log_channel_id = self.values[0].id
-        await self.view_ref.refresh(
-            interaction,
-            "Log channel selected",
-        )
+        await self.view_ref.refresh(interaction, "Log channel selected")
 
 
 # ─────────────────────────────────────
@@ -148,10 +148,7 @@ class VerifiedRoleSelect(RoleSelect):
 
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.verified_role_id = self.values[0].id
-        await self.view_ref.refresh(
-            interaction,
-            "Verified role selected",
-        )
+        await self.view_ref.refresh(interaction, "Verified role selected")
 
 
 class UnverifiedRoleSelect(RoleSelect):
@@ -167,10 +164,7 @@ class UnverifiedRoleSelect(RoleSelect):
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.unverified_role_id = (self.values[0].id
                                             if self.values else None)
-        await self.view_ref.refresh(
-            interaction,
-            "Unverified role updated",
-        )
+        await self.view_ref.refresh(interaction, "Unverified role updated")
 
 
 # ─────────────────────────────────────
@@ -192,7 +186,6 @@ class VerifySetupSaveButton(Button):
         if guild is None:
             return
 
-        # 🔥 FIXED: properly awaited permission check
         if not await is_bot_admin(interaction):
             return await interaction.response.send_message(
                 embed=make_embed(
@@ -203,7 +196,6 @@ class VerifySetupSaveButton(Button):
                 ephemeral=True,
             )
 
-        # Required selections
         if not all([
                 view.verify_channel_id,
                 view.log_channel_id,
@@ -222,7 +214,6 @@ class VerifySetupSaveButton(Button):
         unverified_role = (guild.get_role(view.unverified_role_id)
                            if view.unverified_role_id else None)
 
-        # 🔥 Role hierarchy validation
         for role in [verified_role, unverified_role]:
             if role and role >= bot_member.top_role:
                 return await interaction.response.send_message(
@@ -245,10 +236,26 @@ class VerifySetupSaveButton(Button):
             unverified_role_id=view.unverified_role_id,
         )
 
-        # Post verification message
         channel = guild.get_channel(view.verify_channel_id)
         if isinstance(channel, discord.TextChannel):
-            await channel.send(
+
+            # Delete old verification message if exists
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(VerificationConfig).where(
+                        VerificationConfig.guild_id == guild.id))
+                row = result.scalar_one_or_none()
+
+                if row and row.verification_message_id:
+                    try:
+                        old_msg = await channel.fetch_message(
+                            row.verification_message_id)
+                        await old_msg.delete()
+                    except Exception:
+                        pass
+
+            # Post new verification message
+            msg = await channel.send(
                 embed=make_embed(
                     title="Server Verification",
                     description=(
@@ -259,7 +266,17 @@ class VerifySetupSaveButton(Button):
                 view=VerifyButtonView(),
             )
 
-        # Disable setup UI
+            # Store new message ID
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(VerificationConfig).where(
+                        VerificationConfig.guild_id == guild.id))
+                row = result.scalar_one_or_none()
+
+                if row:
+                    row.verification_message_id = msg.id
+                    await session.commit()
+
         for item in view.children:
             item.disabled = True  # type: ignore
 

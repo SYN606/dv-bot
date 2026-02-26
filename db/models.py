@@ -189,7 +189,7 @@ class TempbanRecord(Base):
                 f"user={self.user_id} active={self.active}>")
 
 
-# VERIFICATION CONFIG (UPDATED)
+# VERIFICATION CONFIG
 class VerificationConfig(Base):
     __tablename__ = "verification_config"
 
@@ -218,7 +218,6 @@ class VerificationConfig(Base):
         nullable=True,
     )
 
-    # 🔥 NEW: Stored verification message ID
     verification_message_id: Mapped[int | None] = mapped_column(
         BigInteger,
         nullable=True,
