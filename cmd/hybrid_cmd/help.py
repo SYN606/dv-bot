@@ -1,41 +1,39 @@
 from __future__ import annotations
 from discord.ext import commands
 from discord import app_commands
+import discord
+
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
 from utils.check_perms import is_bot_admin
 from utils.protected_commands import PROTECTED_COMMANDS
 from db.db_helpers.channel_command_restrict import get_restricted_commands
 
-# region COMMAND CATEGORY MAP
-COMMAND_CATEGORIES: dict[str, str] = {
+# ─────────────────────────
+# Banner GIF
+# ─────────────────────────
+BANNER_GIF = ("https://cdn.discordapp.com/attachments/1476443404207652916/"
+              "1476443472088137780/watch_the_sky.gif")
 
-    # Moderation
+# ─────────────────────────
+# CATEGORY MAP
+# ─────────────────────────
+COMMAND_CATEGORIES: dict[str, str] = {
     "tempban_role": "Moderation",
     "tempban_list": "Moderation",
     "setup_log": "Moderation",
     "reset_verification": "Moderation",
-
-    # Verification
     "verify_setup": "Verification",
-
-    # Channel Management
     "media_only": "Channel",
     "sticky_set": "Channel",
     "sticky_disable": "Channel",
     "sticky_status": "Channel",
     "set_counting": "Channel",
     "unset_counting": "Channel",
-
-    # Role Management
     "roles": "Roles",
     "adminrole": "Roles",
-
-    # System
     "command": "System",
     "help": "System",
-
-    # Utility
     "weather": "Utility",
 }
 
@@ -50,6 +48,9 @@ CATEGORY_EMOJIS = {
 }
 
 
+# ─────────────────────────
+# HELP COG
+# ─────────────────────────
 class Help(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
@@ -57,13 +58,13 @@ class Help(commands.Cog):
         self._cached_commands: list[dict] = []
         self._cache_ready = False
 
-    # region CACHE BUILDER
+    # ─────────────────────────
+    # CACHE BUILDER
+    # ─────────────────────────
     def _build_cache(self) -> None:
-
         cache: list[dict] = []
 
         for cmd in self.bot.tree.walk_commands():
-
             if not isinstance(cmd, app_commands.Command):
                 continue
 
@@ -80,7 +81,9 @@ class Help(commands.Cog):
         self._cached_commands = cache
         self._cache_ready = True
 
-    # region HELP COMMAND
+    # ─────────────────────────
+    # HELP COMMAND
+    # ─────────────────────────
     @commands.hybrid_command(
         name="help",
         description="Show available bot commands",
@@ -88,30 +91,42 @@ class Help(commands.Cog):
     )
     async def help(self, ctx: commands.Context) -> None:
 
-        # region PREFIX HELP
+        # ─────────────────────────
+        # PREFIX MODE
+        # ─────────────────────────
         if ctx.interaction is None:
 
             embed = make_embed(
-                title="Digital Vigital Help",
+                title="Digital Vigital • Help Center",
                 description=
-                (f"{EMOJIS['announcement']} This bot primarily uses **slash commands**.\n\n"
-                 f"{EMOJIS['arrow_point']} Type `/` to explore commands.\n"
-                 f"{EMOJIS['arrow_point']} Use `/help` for a full categorised list.\n\n"
-                 f"{EMOJIS['green_dot']} Fast • Channel-aware • Modern"),
+                (f"{EMOJIS['green_dot']} **Bot Status:** Operational\n\n"
+                 f"{EMOJIS['announcement']} **Slash Commands:** Type `/`\n"
+                 f"{EMOJIS['arrow_point']} Use `/help` for categorised view\n\n"
+                 f"{EMOJIS['developer']} **Prefix Commands:**\n"
+                 f"{EMOJIS['arrow_point']} `dv afk`\n"
+                 f"{EMOJIS['arrow_point']} `dv avatar`\n"
+                 f"{EMOJIS['arrow_point']} `dv banner`\n"
+                 f"{EMOJIS['arrow_point']} `dv ping`\n"
+                 f"{EMOJIS['moderation']} `dv steal` (Admin Only)"),
                 level="INFO",
-                footer="Digital Vigital • Slash-first architecture",
+                footer="Digital Vigital • Modern Async Architecture",
             )
+
+            embed.set_image(url=BANNER_GIF)
 
             await ctx.reply(embed=embed, mention_author=False)
             return
 
-        # region SLASH HELP
+        # ─────────────────────────
+        # SLASH MODE
+        # ─────────────────────────
         interaction = ctx.interaction
         guild = interaction.guild
         channel = interaction.channel
-        is_admin = is_bot_admin(interaction)
 
         await interaction.response.defer(ephemeral=True)
+
+        is_admin = await is_bot_admin(interaction)
 
         if not self._cache_ready:
             self._build_cache()
@@ -142,18 +157,17 @@ class Help(commands.Cog):
 
             grouped.setdefault(cmd["category"], []).append(entry)
 
-        if not grouped:
-            await interaction.followup.send(
-                embed=make_embed(
-                    title="Help",
-                    description=
-                    (f"{EMOJIS['warning']} No commands available in this channel."
-                     ),
-                    level="WARNING",
-                ),
-                ephemeral=True,
-            )
-            return
+        # Prefix section (filtered)
+        prefix_commands = [
+            f"{EMOJIS['arrow_point']} `dv afk` — Set AFK status",
+            f"{EMOJIS['arrow_point']} `dv avatar` — Show user avatar",
+            f"{EMOJIS['arrow_point']} `dv banner` — Show user banner",
+            f"{EMOJIS['arrow_point']} `dv ping` — Show latency",
+        ]
+
+        if is_admin:
+            prefix_commands.append(
+                f"{EMOJIS['moderation']} `dv steal` — Steal emoji")
 
         fields = []
 
@@ -166,17 +180,25 @@ class Help(commands.Cog):
                 False,
             ))
 
+        fields.append((
+            f"{EMOJIS['developer']} Prefix Commands",
+            "\n".join(prefix_commands),
+            False,
+        ))
+
         embed = make_embed(
-            title="Available Commands",
+            title="Digital Vigital • Command Directory",
             description=
-            ("Commands you can use **in this channel**.\n"
-             "Restricted and protected commands are hidden automatically.\n\n"
-             f"{EMOJIS['arrow_point']} Use slash autocomplete for argument hints."
-             ),
+            ("Commands available **in this channel**.\n\n"
+             f"{EMOJIS['green_dot']} Restricted commands hidden automatically\n"
+             f"{EMOJIS['moderation']} Admin commands filtered by permission\n"
+             f"{EMOJIS['arrow_point']} Use autocomplete for argument hints"),
             level="INFO",
             fields=fields,
             footer="Digital Vigital • Categorised Help System",
         )
+
+        embed.set_image(url=BANNER_GIF)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 

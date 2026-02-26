@@ -4,6 +4,7 @@ from utils.embeds import make_embed
 from utils.emojis import EMOJIS
 from db.db_helpers.afk import set_afk
 
+
 class AFK(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
@@ -16,7 +17,6 @@ class AFK(commands.Cog):
         *,
         reason: str = "AFK",
     ):
-
         if ctx.guild is None:
             return
 
@@ -30,15 +30,16 @@ class AFK(commands.Cog):
 
         embed = make_embed(
             title="AFK Enabled",
-            description=(f"{EMOJIS['okay']} You are now AFK.\n"
+            description=(f"{EMOJIS['okay']} You are now marked as AFK.\n"
                          f"{EMOJIS['arrow_point']} Reason: {reason}"),
             level="SUCCESS",
         )
 
         await ctx.send(embed=embed)
 
+        # Delete invoking message silently
         try:
-            ctx.bot.loop.create_task(ctx.message.delete())
+            await ctx.message.delete()
         except Exception:
             pass
 
