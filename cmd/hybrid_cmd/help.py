@@ -1,21 +1,25 @@
 from __future__ import annotations
+
+import os
+import discord
+from dotenv import load_dotenv
 from discord.ext import commands
 from discord import app_commands
-import discord
 
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
 from utils.check_perms import is_bot_admin
 from utils.protected_commands import PROTECTED_COMMANDS
 from db.db_helpers.channel_command_restrict import get_restricted_commands
-from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
 BANNER_GIF = os.getenv("HELP_BANNER_GIF")
 
+# ─────────────────────────────────────────────
 # CATEGORY MAP
+# ─────────────────────────────────────────────
+
 COMMAND_CATEGORIES: dict[str, str] = {
     "tempban_role": "Moderation",
     "tempban_list": "Moderation",
@@ -45,6 +49,10 @@ CATEGORY_EMOJIS = {
     "General": EMOJIS["arrow_point"],
 }
 
+# ─────────────────────────────────────────────
+# HELP COG
+# ─────────────────────────────────────────────
+
 
 class Help(commands.Cog):
 
@@ -53,7 +61,10 @@ class Help(commands.Cog):
         self._cached_commands: list[dict] = []
         self._cache_ready = False
 
+    # ─────────────────────────
     # CACHE BUILDER
+    # ─────────────────────────
+
     def _build_cache(self) -> None:
         cache: list[dict] = []
 
@@ -74,7 +85,10 @@ class Help(commands.Cog):
         self._cached_commands = cache
         self._cache_ready = True
 
+    # ─────────────────────────
     # HELP COMMAND
+    # ─────────────────────────
+
     @commands.hybrid_command(
         name="help",
         description="Show available bot commands",
@@ -82,13 +96,16 @@ class Help(commands.Cog):
     )
     async def help(self, ctx: commands.Context) -> None:
 
+        # ─────────────────────────
         # PREFIX MODE
+        # ─────────────────────────
+
         if ctx.interaction is None:
 
             is_admin = False
             if ctx.guild:
                 try:
-                    is_admin = await is_bot_admin(ctx)  # works for ctx
+                    is_admin = await is_bot_admin(ctx)
                 except Exception:
                     pass
 
@@ -100,35 +117,39 @@ class Help(commands.Cog):
             ]
 
             admin_prefix = [
-                f"{EMOJIS['moderation']} `dv purge` — Delete messages (Admin)",
-                f"{EMOJIS['moderation']} `dv tempban` — Apply tempban (Admin)",
-                f"{EMOJIS['moderation']} `dv untempban` — Remove tempban (Admin)",
-                f"{EMOJIS['moderation']} `dv steal` — Steal emoji (Admin)",
+                f"{EMOJIS['moderation']} `dv purge` — Delete messages",
+                f"{EMOJIS['moderation']} `dv tempban` — Apply tempban",
+                f"{EMOJIS['moderation']} `dv untempban` — Remove tempban",
+                f"{EMOJIS['moderation']} `dv steal` — Steal emoji",
             ]
 
             description = (
-                f"{EMOJIS['green_dot']} **Bot Status:** Operational\n\n"
-                f"{EMOJIS['announcement']} **Slash Commands:** Type `/`\n"
-                f"{EMOJIS['arrow_point']} Use `/help` for full categorised view\n\n"
-                f"{EMOJIS['developer']} **Prefix Commands:**\n" +
+                f"{EMOJIS['green_dot']} Bot operational\n\n"
+                f"{EMOJIS['announcement']} Slash Commands → type `/`\n"
+                f"{EMOJIS['arrow_point']} Use `/help` for categorised view\n\n"
+                f"{EMOJIS['developer']} Prefix Commands\n" +
                 "\n".join(general_prefix))
 
             if is_admin:
                 description += "\n\n" + "\n".join(admin_prefix)
 
             embed = make_embed(
-                title="Digital Vigital • Help Center",
+                title="Help Center",
                 description=description,
                 level="INFO",
-                footer="Digital Vigital • Modern Async Architecture",
+                footer="Modern Async Architecture",
             )
 
-            embed.set_image(url=BANNER_GIF)
+            if BANNER_GIF:
+                embed.set_image(url=BANNER_GIF)
 
             await ctx.reply(embed=embed, mention_author=False)
             return
 
+        # ─────────────────────────
         # SLASH MODE
+        # ─────────────────────────
+
         interaction = ctx.interaction
         guild = interaction.guild
         channel = interaction.channel
@@ -166,23 +187,30 @@ class Help(commands.Cog):
 
             grouped.setdefault(cmd["category"], []).append(entry)
 
-        # Prefix section
+        # ─────────────────────────
+        # PREFIX SECTION
+        # ─────────────────────────
+
         prefix_commands = [
-            f"{EMOJIS['arrow_point']} `dv afk` — Set AFK status",
-            f"{EMOJIS['arrow_point']} `dv avatar` — Show user avatar",
-            f"{EMOJIS['arrow_point']} `dv banner` — Show user banner",
-            f"{EMOJIS['arrow_point']} `dv ping` — Show latency",
+            f"{EMOJIS['arrow_point']} `dv afk`",
+            f"{EMOJIS['arrow_point']} `dv avatar`",
+            f"{EMOJIS['arrow_point']} `dv banner`",
+            f"{EMOJIS['arrow_point']} `dv ping`",
         ]
 
         if is_admin:
             prefix_commands.extend([
-                f"{EMOJIS['moderation']} `dv purge` — Delete messages",
-                f"{EMOJIS['moderation']} `dv tempban` — Apply tempban",
-                f"{EMOJIS['moderation']} `dv untempban` — Remove tempban",
-                f"{EMOJIS['moderation']} `dv steal` — Steal emoji",
+                f"{EMOJIS['moderation']} `dv purge`",
+                f"{EMOJIS['moderation']} `dv tempban`",
+                f"{EMOJIS['moderation']} `dv untempban`",
+                f"{EMOJIS['moderation']} `dv steal`",
             ])
 
-        fields = []
+        # ─────────────────────────
+        # BUILD COLUMN FIELDS
+        # ─────────────────────────
+
+        fields: list[tuple[str, str, bool]] = []
 
         for category, entries in sorted(grouped.items()):
             emoji = CATEGORY_EMOJIS.get(category, EMOJIS["arrow_point"])
@@ -190,30 +218,38 @@ class Help(commands.Cog):
             fields.append((
                 f"{emoji} {category}",
                 "\n".join(sorted(entries)),
-                False,
+                True,  # column layout
             ))
 
         fields.append((
-            f"{EMOJIS['developer']} Prefix Commands",
+            f"{EMOJIS['developer']} Prefix",
             "\n".join(prefix_commands),
-            False,
+            True,
         ))
 
+        # Maintain 2-column symmetry
+        if len(fields) % 2 != 0:
+            fields.append(("\u200b", "\u200b", True))
+
         embed = make_embed(
-            title="Digital Vigital • Command Directory",
+            title="Command Directory",
             description=
-            ("Commands available **in this channel**.\n\n"
+            ("Commands available in this channel.\n\n"
              f"{EMOJIS['green_dot']} Restricted commands hidden automatically\n"
              f"{EMOJIS['moderation']} Admin commands filtered by permission\n"
-             f"{EMOJIS['arrow_point']} Use autocomplete for argument hints"),
+             f"{EMOJIS['arrow_point']} Use autocomplete for arguments"),
             level="INFO",
             fields=fields,
-            footer="Digital Vigital • Categorised Help System",
+            footer="Categorised Help System",
         )
 
-        embed.set_image(url=BANNER_GIF)
+        if BANNER_GIF:
+            embed.set_image(url=BANNER_GIF)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+# COG SETUP
 
 
 async def setup(bot: commands.Bot) -> None:
