@@ -41,7 +41,10 @@ class VerifySetup(BaseAdminCog):
 
         # Permission handled automatically by BaseAdminCog
 
-        view = VerifySetupView(guild=guild)
+        view = VerifySetupView(
+            guild=guild,
+            actor_id=interaction.user.id,
+        )
 
         embed = make_embed(
             title="Verification Setup",

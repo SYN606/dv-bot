@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import discord
 from discord.ext import commands
 
@@ -10,7 +11,7 @@ from utils.logging.mod_log import send_mod_log
 
 class Purge(BaseAdminCog):
     """
-    Prefix purge command.
+    Prefix purge command (rate-limit safe).
 
     Usage:
     dv purge <amount>
@@ -124,31 +125,53 @@ class Purge(BaseAdminCog):
             pass
 
         # ─────────────────────────
-        # Execute purge
+        # Execute purge (rate-limit safe)
         # ─────────────────────────
         deleted_count = 0
+        now = discord.utils.utcnow()
+        fourteen_days = datetime.timedelta(days=14)
 
         try:
-            if member:
-                # Prevent purging users above executor
-                if member.top_role >= ctx.author.top_role:
-                    return await ctx.send(embed=make_embed(
-                        title="Hierarchy Error",
-                        description="You cannot purge messages from this user.",
-                        level="ERROR",
-                    ))
+            messages: list[discord.Message] = []
 
-                deleted = await channel.purge(
-                    limit=amount * 5,
-                    check=lambda m: (m.author == member and not m.pinned),
-                )
-            else:
-                deleted = await channel.purge(
-                    limit=amount,
-                    check=lambda m: not m.pinned,
-                )
+            # Reduce scan multiplier (less API stress)
+            scan_limit = amount * 3 if member else amount
 
-            deleted_count = len(deleted)
+            async for msg in channel.history(limit=scan_limit):
+                if msg.pinned:
+                    continue
+
+                if member and msg.author != member:
+                    continue
+
+                messages.append(msg)
+
+                if len(messages) >= amount:
+                    break
+
+            if messages:
+
+                young = [
+                    m for m in messages if now - m.created_at < fourteen_days
+                ]
+
+                old = [
+                    m for m in messages if now - m.created_at >= fourteen_days
+                ]
+
+                # Bulk delete (fast, 1 request)
+                if young:
+                    await channel.delete_messages(young)
+
+                # Delete old messages individually (rate-safe)
+                for m in old:
+                    try:
+                        await m.delete()
+                        await asyncio.sleep(0.25)
+                    except discord.HTTPException:
+                        pass
+
+                deleted_count = len(young) + len(old)
 
         except discord.Forbidden:
             return await ctx.send(embed=make_embed(
@@ -158,7 +181,7 @@ class Purge(BaseAdminCog):
             ))
 
         # ─────────────────────────
-        # Confirmation embed
+        # Confirmation
         # ─────────────────────────
         if member:
             description = (
@@ -194,6 +217,7 @@ class Purge(BaseAdminCog):
             },
         )
 
+        # Auto delete confirmation
         await asyncio.sleep(5)
 
         try:
