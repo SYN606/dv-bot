@@ -13,20 +13,21 @@ from utils.views.verification_views.verify_button_view import VerifyButtonView
 
 class VerifySetupView(View):
     """
-    v6 Verification Setup View
+    v7 Verification Setup View
 
     - Fully async-safe
-    - Interaction lifecycle safe
-    - Stores verification message ID
-    - Deletes old verification message if exists
-    - Role hierarchy validation
+    - Interaction locked to invoker
+    - Lifecycle safe
+    - Single-session DB usage
+    - Role hierarchy validated
     - Production ready
     """
 
-    def __init__(self, guild: discord.Guild):
+    def __init__(self, guild: discord.Guild, actor_id: int):
         super().__init__(timeout=300)
 
         self.guild = guild
+        self.actor_id = actor_id
         self.message: discord.Message | None = None
 
         self.verify_channel_id: int | None = None
@@ -41,6 +42,17 @@ class VerifySetupView(View):
         self.add_item(VerifiedRoleSelect(self))
         self.add_item(UnverifiedRoleSelect(self))
         self.add_item(VerifySetupSaveButton())
+
+    # ─────────────────────────────────────
+    # VIEW LOCK
+    # ─────────────────────────────────────
+    async def interaction_check(self,
+                                interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.actor_id:
+            return False
+        if not await is_bot_admin(interaction):
+            return False
+        return True
 
     # ─────────────────────────────────────
     # EMBED BUILDER
@@ -69,7 +81,7 @@ class VerifySetupView(View):
         )
 
     # ─────────────────────────────────────
-    # SAFE REFRESH METHOD
+    # SAFE REFRESH
     # ─────────────────────────────────────
     async def refresh(
         self,
@@ -86,23 +98,19 @@ class VerifySetupView(View):
                     view=self,
                 )
             else:
-                await interaction.followup.edit_message(
-                    interaction.message.id,
+                await interaction.edit_original_response(
                     embed=self.build_embed(),
                     view=self,
                 )
         except discord.NotFound:
-            # Interaction expired
-            pass
-        except Exception:
             pass
 
     # ─────────────────────────────────────
-    # TIMEOUT HANDLING
+    # TIMEOUT
     # ─────────────────────────────────────
     async def on_timeout(self):
         for item in self.children:
-            item.disabled = True  # type: ignore
+            item.disabled = True
 
         if self.message:
             try:
@@ -110,12 +118,12 @@ class VerifySetupView(View):
                     content="Verification setup timed out.",
                     view=self,
                 )
-            except Exception:
+            except (discord.NotFound, discord.HTTPException):
                 pass
 
 
 # ─────────────────────────────────────
-# CHANNEL SELECTORS
+# SELECTORS (unchanged except safe call)
 # ─────────────────────────────────────
 class VerifyChannelSelect(ChannelSelect):
 
@@ -150,17 +158,12 @@ class LogChannelSelect(ChannelSelect):
         await self.view_ref.refresh(interaction, "Log channel selected")
 
 
-# ─────────────────────────────────────
-# ROLE SELECTORS
-# ─────────────────────────────────────
 class VerifiedRoleSelect(RoleSelect):
 
     def __init__(self, view: VerifySetupView):
-        super().__init__(
-            placeholder="Select verified role",
-            min_values=1,
-            max_values=1,
-        )
+        super().__init__(placeholder="Select verified role",
+                         min_values=1,
+                         max_values=1)
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
@@ -171,16 +174,14 @@ class VerifiedRoleSelect(RoleSelect):
 class UnverifiedRoleSelect(RoleSelect):
 
     def __init__(self, view: VerifySetupView):
-        super().__init__(
-            placeholder="Select unverified role (optional)",
-            min_values=0,
-            max_values=1,
-        )
+        super().__init__(placeholder="Select unverified role (optional)",
+                         min_values=0,
+                         max_values=1)
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
-        self.view_ref.unverified_role_id = (self.values[0].id
-                                            if self.values else None)
+        self.view_ref.unverified_role_id = self.values[
+            0].id if self.values else None
         await self.view_ref.refresh(interaction, "Unverified role updated")
 
 
@@ -199,19 +200,8 @@ class VerifySetupSaveButton(Button):
 
         view: VerifySetupView = self.view  # type: ignore
         guild = interaction.guild
-
-        if guild is None:
+        if not guild:
             return
-
-        if not await is_bot_admin(interaction):
-            return await interaction.response.send_message(
-                embed=make_embed(
-                    title="Permission Denied",
-                    description="Administrator access is required.",
-                    level="ERROR",
-                ),
-                ephemeral=True,
-            )
 
         if not all([
                 view.verify_channel_id,
@@ -224,12 +214,12 @@ class VerifySetupSaveButton(Button):
             )
 
         bot_member = guild.me
-        if bot_member is None:
+        if not bot_member:
             return
 
         verified_role = guild.get_role(view.verified_role_id)
-        unverified_role = (guild.get_role(view.unverified_role_id)
-                           if view.unverified_role_id else None)
+        unverified_role = guild.get_role(
+            view.unverified_role_id) if view.unverified_role_id else None
 
         for role in [verified_role, unverified_role]:
             if role and role >= bot_member.top_role:
@@ -244,6 +234,11 @@ class VerifySetupSaveButton(Button):
                     ephemeral=True,
                 )
 
+        try:
+            await interaction.response.defer()
+        except discord.NotFound:
+            return
+
         # Save configuration
         await set_verification_config(
             guild_id=guild.id,
@@ -256,7 +251,6 @@ class VerifySetupSaveButton(Button):
         channel = guild.get_channel(view.verify_channel_id)
         if isinstance(channel, discord.TextChannel):
 
-            # Delete old verification message
             async with AsyncSessionLocal() as session:
                 result = await session.execute(
                     select(VerificationConfig).where(
@@ -271,55 +265,34 @@ class VerifySetupSaveButton(Button):
                     except Exception:
                         pass
 
-            # Post new message
-            msg = await channel.send(
-                embed=make_embed(
-                    title="Server Verification",
-                    description=(
-                        "Verification is required to access the server.\n\n"
-                        "Click the button below to begin."),
-                    level="SYSTEM",
-                ),
-                view=VerifyButtonView(),
-            )
+                msg = await channel.send(
+                    embed=make_embed(
+                        title="Server Verification",
+                        description=(
+                            "Verification is required to access the server.\n\n"
+                            "Click the button below to begin."),
+                        level="SYSTEM",
+                    ),
+                    view=VerifyButtonView(),
+                )
 
-            # Store message ID
-            async with AsyncSessionLocal() as session:
-                result = await session.execute(
-                    select(VerificationConfig).where(
-                        VerificationConfig.guild_id == guild.id))
-                row = result.scalar_one_or_none()
                 if row:
                     row.verification_message_id = msg.id
                     await session.commit()
 
         for item in view.children:
-            item.disabled = True  # type: ignore
+            item.disabled = True
 
         try:
-            if not interaction.response.is_done():
-                await interaction.response.edit_message(
-                    embed=make_embed(
-                        title="Verification Configured",
-                        description=(
-                            "The verification system is now active.\n\n"
-                            "Verification message has been posted."),
-                        level="SUCCESS",
-                    ),
-                    view=view,
-                )
-            else:
-                await interaction.followup.edit_message(
-                    interaction.message.id,
-                    embed=make_embed(
-                        title="Verification Configured",
-                        description=(
-                            "The verification system is now active.\n\n"
-                            "Verification message has been posted."),
-                        level="SUCCESS",
-                    ),
-                    view=view,
-                )
+            await interaction.edit_original_response(
+                embed=make_embed(
+                    title="Verification Configured",
+                    description=("The verification system is now active.\n\n"
+                                 "Verification message has been posted."),
+                    level="SUCCESS",
+                ),
+                view=view,
+            )
         except discord.NotFound:
             pass
 

@@ -1,22 +1,28 @@
+import os
 from discord import Message
 import time
 
 from utils.embeds import make_embed
 from db.db_helpers.afk import get_afk, remove_afk
 
-AFK_IMAGE = ("https://cdn.discordapp.com/attachments/1476443404207652916/"
-             "1476448367835086868/e30e439f4537f017.jpg")
+AFK_IMAGE = os.getenv("AFK_IMAGE_URL")
+
+
+def format_duration(seconds: int) -> str:
+    if seconds < 60:
+        return f"{seconds}s"
+    if seconds < 3600:
+        return f"{seconds // 60}m {seconds % 60}s"
+    if seconds < 86400:
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        return f"{hours}h {minutes}m"
+    days = seconds // 86400
+    hours = (seconds % 86400) // 3600
+    return f"{days}d {hours}h"
 
 
 async def handle_afk(message: Message) -> bool:
-    """
-    Fully async AFK handler.
-
-    - Notifies when mentioned users are AFK
-    - Removes AFK when author speaks
-    - Proper timestamp handling
-    - Clean styled response
-    """
 
     if message.guild is None or message.author.bot:
         return False
@@ -25,32 +31,33 @@ async def handle_afk(message: Message) -> bool:
     guild_id = message.guild.id
     now = int(time.time())
 
-    # Check mentioned users
-    for user in message.mentions:
+    afk_lines = []
+    unique_mentions = {user.id: user for user in message.mentions}.values()
 
+    for user in unique_mentions:
         afk = await get_afk(guild_id, user.id)
-
         if not afk:
             continue
 
         handled = True
-
-        # Convert stored time safely
         since_ts = int(afk.since)
 
-        embed = make_embed(
-            title="User is AFK",
-            description=(f"{user.mention} is currently away.\n\n"
+        afk_lines.append(f"{user.mention}\n"
                          f"**Reason:** {afk.reason}\n"
-                         f"**Since:** <t:{since_ts}:R>"),
+                         f"**Since:** <t:{since_ts}:R>\n")
+
+    if afk_lines:
+        embed = make_embed(
+            title="AFK Notice",
+            description="\n".join(afk_lines),
             level="INFO",
         )
 
-        embed.set_image(url=AFK_IMAGE)
+        if AFK_IMAGE:
+            embed.set_image(url=AFK_IMAGE)
 
-        await message.channel.send(embed=embed)
+        await message.reply(embed=embed, mention_author=False)
 
-    # Remove author AFK
     removed = await remove_afk(guild_id, message.author.id)
 
     if removed:
@@ -61,14 +68,15 @@ async def handle_afk(message: Message) -> bool:
 
         embed = make_embed(
             title="Welcome Back",
-            description=(f"You are no longer marked as AFK.\n\n"
-                         f"**AFK Duration:** <t:{since_ts}:R>\n"
-                         f"({duration} seconds total)"),
+            description=("You are no longer marked as AFK.\n\n"
+                         f"**AFK Duration:** {format_duration(duration)} "
+                         f"(<t:{since_ts}:R>)"),
             level="SUCCESS",
         )
 
-        embed.set_image(url=AFK_IMAGE)
+        if AFK_IMAGE:
+            embed.set_image(url=AFK_IMAGE)
 
-        await message.channel.send(embed=embed)
+        await message.reply(embed=embed, mention_author=False)
 
     return handled

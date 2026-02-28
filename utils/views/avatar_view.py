@@ -1,16 +1,17 @@
 import discord
 
 from utils.embeds import make_embed
+from utils.emojis import EMOJIS
 
 
 class AvatarView(discord.ui.View):
     """
-    v3 Avatar View
+    Secure Avatar View
 
     - Switch between server and global avatar
     - Single-message updates
     - Interaction-locked to requester
-    - Non-blocking timeout
+    - Safe lifecycle handling
     """
 
     def __init__(
@@ -44,18 +45,39 @@ class AvatarView(discord.ui.View):
             self.add_item(GlobalAvatarButton(disabled=self.active == "global"))
 
     # ─────────────────────────────
-    # Restrict interaction
+    # Restrict interaction (SECURE)
     # ─────────────────────────────
     async def interaction_check(
         self,
         interaction: discord.Interaction,
     ) -> bool:
-        return interaction.user.id == self.requester_id
+
+        if interaction.user.id != self.requester_id:
+            try:
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(
+                        embed=make_embed(
+                            title="Unauthorized",
+                            description=
+                            f"{EMOJIS['fail']} You cannot use this interaction.",
+                            level="ERROR",
+                        ),
+                        ephemeral=True,
+                    )
+            except discord.NotFound:
+                pass
+            return False
+
+        return True
 
     # ─────────────────────────────
     # Embed builder
     # ─────────────────────────────
     def build_embed(self) -> discord.Embed:
+
+        current_url = (self.server_url
+                       if self.active == "server" else self.global_url)
+
         embed = make_embed(
             title="User Avatar",
             description="Switch between available avatars.",
@@ -64,8 +86,8 @@ class AvatarView(discord.ui.View):
                     if self.active == "server" else "Showing global avatar"),
         )
 
-        embed.set_image(url=self.server_url if self.active ==
-                        "server" else self.global_url)
+        if current_url:
+            embed.set_image(url=current_url)
 
         return embed
 
@@ -96,21 +118,27 @@ class ServerAvatarButton(discord.ui.Button):
         )
 
     async def callback(self, interaction: discord.Interaction):
+
         view: AvatarView = self.view  # type: ignore
+        if not view:
+            return
 
         view.active = "server"
         view._sync_buttons()
 
-        if interaction.response.is_done():
-            await interaction.edit_original_response(
-                embed=view.build_embed(),
-                view=view,
-            )
-        else:
-            await interaction.response.edit_message(
-                embed=view.build_embed(),
-                view=view,
-            )
+        try:
+            if interaction.response.is_done():
+                await interaction.edit_original_response(
+                    embed=view.build_embed(),
+                    view=view,
+                )
+            else:
+                await interaction.response.edit_message(
+                    embed=view.build_embed(),
+                    view=view,
+                )
+        except discord.NotFound:
+            pass
 
 
 class GlobalAvatarButton(discord.ui.Button):
@@ -123,18 +151,24 @@ class GlobalAvatarButton(discord.ui.Button):
         )
 
     async def callback(self, interaction: discord.Interaction):
+
         view: AvatarView = self.view  # type: ignore
+        if not view:
+            return
 
         view.active = "global"
         view._sync_buttons()
 
-        if interaction.response.is_done():
-            await interaction.edit_original_response(
-                embed=view.build_embed(),
-                view=view,
-            )
-        else:
-            await interaction.response.edit_message(
-                embed=view.build_embed(),
-                view=view,
-            )
+        try:
+            if interaction.response.is_done():
+                await interaction.edit_original_response(
+                    embed=view.build_embed(),
+                    view=view,
+                )
+            else:
+                await interaction.response.edit_message(
+                    embed=view.build_embed(),
+                    view=view,
+                )
+        except discord.NotFound:
+            pass

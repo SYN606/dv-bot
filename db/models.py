@@ -32,19 +32,45 @@ class AdminRole(Base):
     role_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
 
-# MEDIA ONLY CHANNELS
 class MediaOnlyChannel(Base):
     __tablename__ = "media_only_channels"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
+    sticky_message_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
+
+    whitelist_role_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
+
+    image_only: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+
+    auto_mute: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+
+    nsfw_bypass: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
         nullable=False,
     )
-
 
 # STICKY MESSAGES
 class StickyMessage(Base):

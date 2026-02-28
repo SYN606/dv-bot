@@ -1,4 +1,6 @@
 from __future__ import annotations
+import os
+import asyncio
 import discord
 from discord import Message
 from discord.ui import View, Button
@@ -8,21 +10,27 @@ from utils.emojis import EMOJIS
 
 __all__ = ("handle_bot_mention", )
 
-# ─────────────────────────
-# Banner GIF
-# ─────────────────────────
-MENTION_GIF = ("https://cdn.discordapp.com/attachments/1476443404207652916/"
-               "1476445134148210803/not_funny.gif")
+# Env-based banner GIF
+MENTION_GIF = os.getenv("MENTION_GIF_URL")
+
+# Mention cooldown (per guild)
+_mention_cooldown: dict[int, float] = {}
 
 
-# ─────────────────────────
 # Help Button View
-# ─────────────────────────
 class MentionView(View):
 
-    def __init__(self, bot: discord.Client):
+    def __init__(self, bot: discord.Client, author_id: int):
         super().__init__(timeout=60)
         self.bot = bot
+        self.author_id = author_id
+        self.message: discord.Message | None = None
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
+        return interaction.user.id == self.author_id
 
     @discord.ui.button(
         label="Open Help Menu",
@@ -32,7 +40,7 @@ class MentionView(View):
     async def help_button(
         self,
         interaction: discord.Interaction,
-        button: Button,
+        _: Button,
     ):
         try:
             if not interaction.response.is_done():
@@ -53,6 +61,16 @@ class MentionView(View):
             ephemeral=True,
         )
 
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except (discord.NotFound, discord.HTTPException):
+                pass
+
 
 # ─────────────────────────
 # Mention Handler
@@ -61,22 +79,15 @@ async def handle_bot_mention(
     bot: discord.Client,
     message: Message,
 ) -> bool:
-    """
-    Premium mention handler.
-    Savage but clean.
-    """
 
-    # Hard guards
-    if message.author.bot:
-        return False
-
-    if bot.user is None:
+    if message.author.bot or bot.user is None:
         return False
 
     content = message.content.strip()
     if not content:
         return False
 
+    # Accept mention only if it's the entire message
     valid_mentions = {
         bot.user.mention,
         f"<@!{bot.user.id}>",
@@ -84,6 +95,18 @@ async def handle_bot_mention(
 
     if content not in valid_mentions:
         return False
+
+    # ─────────────────────────
+    # Cooldown protection (5s per guild)
+    # ─────────────────────────
+    now = asyncio.get_event_loop().time()
+    guild_id = message.guild.id if message.guild else 0
+    last = _mention_cooldown.get(guild_id, 0)
+
+    if now - last < 5:
+        return True  # silently ignore spam
+
+    _mention_cooldown[guild_id] = now
 
     latency_ms = round(bot.latency * 1000)
 
@@ -95,20 +118,24 @@ async def handle_bot_mention(
             f"{EMOJIS['developer']} **Developer:** "
             f"**S Y N** • [Portfolio](https://syn606.pages.dev)\n\n"
             f"{EMOJIS['arrow_point']} You pinged me. I'm here.\n"
-            f"{EMOJIS['arrow_point']} Try `/help` instead of staring at me.\n"
+            f"{EMOJIS['arrow_point']} Try `/help` instead.\n"
             f"{EMOJIS['arrow_point']} I don’t bite… unless configured to."),
         level="SYSTEM",
         footer="Digital Vigital • Built different.",
     )
 
-    embed.set_image(url=MENTION_GIF)
+    if MENTION_GIF:
+        embed.set_image(url=MENTION_GIF)
+
+    view = MentionView(bot, author_id=message.author.id)
 
     try:
-        await message.reply(
+        sent = await message.reply(
             embed=embed,
-            view=MentionView(bot),
+            view=view,
             mention_author=False,
         )
+        view.message = sent
     except discord.HTTPException:
         pass
 

@@ -1,15 +1,17 @@
 from discord.ext import commands
 import discord
 import os
-from dotenv import load_dotenv
 
-# Load .env file
-load_dotenv()
+# DO NOT load dotenv here.
+# It should already be loaded in your main entrypoint.
 
-# Get prefix (fallback to "dv" if missing)
 PREFIX = os.getenv("PREFIX", "dv").strip()
 
+if not PREFIX:
+    PREFIX = "dv"
 
+
+# region Normalize prefix usage
 def normalize_prefix(content: str) -> str:
     """
     Normalizes:
@@ -30,18 +32,27 @@ def normalize_prefix(content: str) -> str:
     return f"{PREFIX}{rest}"
 
 
+# region Dynamic Prefix Resolver
 def dynamic_prefix(bot: commands.Bot, message: discord.Message):
     """
     Case-insensitive prefix resolver.
-    Allows: dv, DV, Dv, dV (or whatever is in .env)
+    Supports:
+    - dv
+    - DV
+    - dV
+    - bot mention
     """
 
+    base_prefix = PREFIX
+
     if not message.content:
-        return PREFIX
+        return commands.when_mentioned_or(base_prefix)(bot, message)
 
     content = message.content.lstrip()
 
-    if content.lower().startswith(PREFIX.lower()):
-        return content[:len(PREFIX)]
+    # Case-insensitive match
+    if content.lower().startswith(base_prefix.lower()):
+        actual = content[:len(base_prefix)]
+        return commands.when_mentioned_or(actual)(bot, message)
 
-    return PREFIX
+    return commands.when_mentioned_or(base_prefix)(bot, message)

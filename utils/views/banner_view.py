@@ -1,10 +1,12 @@
 import discord
+
 from utils.embeds import make_embed
+from utils.emojis import EMOJIS
 
 
 class BannerView(discord.ui.View):
     """
-    v3 Banner View
+    Secure Banner View
 
     - Toggle server/global banner
     - Interaction-locked
@@ -30,6 +32,7 @@ class BannerView(discord.ui.View):
 
         self._sync_buttons()
 
+    # Button sync
     def _sync_buttons(self) -> None:
         self.clear_items()
 
@@ -39,13 +42,36 @@ class BannerView(discord.ui.View):
         if self.global_url:
             self.add_item(GlobalBannerButton(disabled=self.active == "global"))
 
+    # Secure interaction check
     async def interaction_check(
         self,
         interaction: discord.Interaction,
     ) -> bool:
-        return interaction.user.id == self.requester_id
 
+        if interaction.user.id != self.requester_id:
+            try:
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(
+                        embed=make_embed(
+                            title="Unauthorized",
+                            description=
+                            f"{EMOJIS['fail']} You cannot use this interaction.",
+                            level="ERROR",
+                        ),
+                        ephemeral=True,
+                    )
+            except discord.NotFound:
+                pass
+            return False
+
+        return True
+
+    # Embed builder
     def build_embed(self) -> discord.Embed:
+
+        current_url = (self.server_url
+                       if self.active == "server" else self.global_url)
+
         embed = make_embed(
             title="User Banner",
             description="Switch between available banners.",
@@ -54,11 +80,12 @@ class BannerView(discord.ui.View):
                     if self.active == "server" else "Showing global banner"),
         )
 
-        embed.set_image(url=self.server_url if self.active ==
-                        "server" else self.global_url)
+        if current_url:
+            embed.set_image(url=current_url)
 
         return embed
 
+    # Timeout handling
     async def on_timeout(self) -> None:
         for item in self.children:
             item.disabled = True
@@ -70,6 +97,7 @@ class BannerView(discord.ui.View):
             pass
 
 
+# BUTTONS
 class ServerBannerButton(discord.ui.Button):
 
     def __init__(self, *, disabled: bool):
@@ -80,21 +108,27 @@ class ServerBannerButton(discord.ui.Button):
         )
 
     async def callback(self, interaction: discord.Interaction):
+
         view: BannerView = self.view  # type: ignore
+        if not view:
+            return
 
         view.active = "server"
         view._sync_buttons()
 
-        if interaction.response.is_done():
-            await interaction.edit_original_response(
-                embed=view.build_embed(),
-                view=view,
-            )
-        else:
-            await interaction.response.edit_message(
-                embed=view.build_embed(),
-                view=view,
-            )
+        try:
+            if interaction.response.is_done():
+                await interaction.edit_original_response(
+                    embed=view.build_embed(),
+                    view=view,
+                )
+            else:
+                await interaction.response.edit_message(
+                    embed=view.build_embed(),
+                    view=view,
+                )
+        except discord.NotFound:
+            pass
 
 
 class GlobalBannerButton(discord.ui.Button):
@@ -107,18 +141,24 @@ class GlobalBannerButton(discord.ui.Button):
         )
 
     async def callback(self, interaction: discord.Interaction):
+
         view: BannerView = self.view  # type: ignore
+        if not view:
+            return
 
         view.active = "global"
         view._sync_buttons()
 
-        if interaction.response.is_done():
-            await interaction.edit_original_response(
-                embed=view.build_embed(),
-                view=view,
-            )
-        else:
-            await interaction.response.edit_message(
-                embed=view.build_embed(),
-                view=view,
-            )
+        try:
+            if interaction.response.is_done():
+                await interaction.edit_original_response(
+                    embed=view.build_embed(),
+                    view=view,
+                )
+            else:
+                await interaction.response.edit_message(
+                    embed=view.build_embed(),
+                    view=view,
+                )
+        except discord.NotFound:
+            pass

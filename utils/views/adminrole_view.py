@@ -2,7 +2,6 @@ import discord
 
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
-from utils.check_perms import is_bot_admin
 from db.db_helpers.admin_roles import (
     add_admin_role,
     remove_admin_role,
@@ -10,6 +9,9 @@ from db.db_helpers.admin_roles import (
 )
 
 
+# ─────────────────────────────────────
+# MAIN ADMIN ROLE PANEL
+# ─────────────────────────────────────
 class AdminRoleView(discord.ui.View):
 
     def __init__(self, *, guild: discord.Guild, actor_id: int):
@@ -19,10 +21,26 @@ class AdminRoleView(discord.ui.View):
         self.actor_id = actor_id
         self.message: discord.Message | None = None
 
-    async def interaction_check(self,
-                                interaction: discord.Interaction) -> bool:
-        return interaction.user.id == self.actor_id and is_bot_admin(
-            interaction)
+    # ─────────────────────────
+    # SECURITY CHECK
+    # ─────────────────────────
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
+
+        if interaction.user.id != self.actor_id:
+            await interaction.response.send_message(
+                embed=make_embed(
+                    title="Unauthorized",
+                    description=f"{EMOJIS['fail']} You cannot use this panel.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
+            return False
+
+        return True
 
     # ─────────────────────────
     # ADD ROLE
@@ -33,6 +51,7 @@ class AdminRoleView(discord.ui.View):
         style=discord.ButtonStyle.success,
     )
     async def add_role(self, interaction: discord.Interaction, _):
+
         await interaction.response.send_message(
             embed=make_embed(
                 title="Add Bot Admin Role",
@@ -41,6 +60,7 @@ class AdminRoleView(discord.ui.View):
             ),
             view=AdminRoleSelectView(
                 guild=self.guild,
+                actor_id=self.actor_id,
                 mode="add",
             ),
             ephemeral=True,
@@ -55,6 +75,7 @@ class AdminRoleView(discord.ui.View):
         style=discord.ButtonStyle.danger,
     )
     async def remove_role(self, interaction: discord.Interaction, _):
+
         await interaction.response.send_message(
             embed=make_embed(
                 title="Remove Bot Admin Role",
@@ -63,6 +84,7 @@ class AdminRoleView(discord.ui.View):
             ),
             view=AdminRoleSelectView(
                 guild=self.guild,
+                actor_id=self.actor_id,
                 mode="remove",
             ),
             ephemeral=True,
@@ -97,9 +119,13 @@ class AdminRoleView(discord.ui.View):
             view=self,
         )
 
+    # ─────────────────────────
+    # TIMEOUT
+    # ─────────────────────────
     async def on_timeout(self):
+
         for item in self.children:
-            item.disabled = True
+            item.disabled = True  # type: ignore
 
         try:
             if self.message:
@@ -116,16 +142,49 @@ class AdminRoleView(discord.ui.View):
             pass
 
 
+# ─────────────────────────────────────
+# ROLE SELECT VIEW
+# ─────────────────────────────────────
 class AdminRoleSelectView(discord.ui.View):
 
-    def __init__(self, *, guild: discord.Guild, mode: str):
+    def __init__(
+        self,
+        *,
+        guild: discord.Guild,
+        actor_id: int,
+        mode: str,
+    ):
         super().__init__(timeout=60)
 
         self.guild = guild
+        self.actor_id = actor_id
         self.mode = mode
+
         self.add_item(AdminRoleSelect(self))
 
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
 
+        if interaction.user.id != self.actor_id:
+            await interaction.response.send_message(
+                embed=make_embed(
+                    title="Unauthorized",
+                    description=
+                    f"{EMOJIS['fail']} You cannot use this selection.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
+            return False
+
+        return True
+
+
+# ─────────────────────────────────────
+# ROLE SELECT COMPONENT
+# ─────────────────────────────────────
 class AdminRoleSelect(discord.ui.RoleSelect):
 
     def __init__(self, view: AdminRoleSelectView):
@@ -142,13 +201,31 @@ class AdminRoleSelect(discord.ui.RoleSelect):
 
         role = self.values[0]
 
+        # Extra defensive check
+        if role.is_default():
+            return await interaction.edit_original_response(
+                embed=make_embed(
+                    title="Invalid Role",
+                    description=f"{EMOJIS['fail']} You cannot use @everyone.",
+                    level="ERROR",
+                ),
+                view=None,
+            )
+
         if self.view_ref.mode == "add":
-            added = await add_admin_role(self.view_ref.guild.id, role.id)
+            added = await add_admin_role(
+                self.view_ref.guild.id,
+                role.id,
+            )
             msg = (f"{EMOJIS['success']} {role.mention} added."
                    if added else f"{EMOJIS['warning']} Already configured.")
             level = "SUCCESS" if added else "WARNING"
+
         else:
-            removed = await remove_admin_role(self.view_ref.guild.id, role.id)
+            removed = await remove_admin_role(
+                self.view_ref.guild.id,
+                role.id,
+            )
             msg = (f"{EMOJIS['success']} {role.mention} removed."
                    if removed else f"{EMOJIS['warning']} Not configured.")
             level = "SUCCESS" if removed else "WARNING"

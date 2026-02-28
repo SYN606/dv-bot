@@ -17,6 +17,7 @@ class VerifyCaptchaModal(discord.ui.Modal):
     def __init__(self, guild_id: int):
         self.guild_id = guild_id
         self.token = generate_token()
+        self._used = False  # simple replay guard
 
         super().__init__(
             title="Verification Check",
@@ -42,12 +43,27 @@ class VerifyCaptchaModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
 
-        await interaction.response.defer(ephemeral=True)
+        if self._used:
+            return
+
+        self._used = True
+
+        try:
+            await interaction.response.defer(ephemeral=True)
+        except discord.NotFound:
+            return
 
         try:
             guild = interaction.client.get_guild(self.guild_id)
             if guild is None:
-                return
+                return await interaction.followup.send(
+                    embed=make_embed(
+                        title="Verification Error",
+                        description="Server not found.",
+                        level="ERROR",
+                    ),
+                    ephemeral=True,
+                )
 
             member = guild.get_member(interaction.user.id)
             if member is None:
@@ -56,6 +72,17 @@ class VerifyCaptchaModal(discord.ui.Modal):
                         title="Verification Error",
                         description="We couldn’t verify your membership.",
                         level="ERROR",
+                    ),
+                    ephemeral=True,
+                )
+
+            # Check already verified (prevent spam)
+            if any(role.name.lower() == "verified" for role in member.roles):
+                return await interaction.followup.send(
+                    embed=make_embed(
+                        title="Already Verified",
+                        description="You are already verified.",
+                        level="INFO",
                     ),
                     ephemeral=True,
                 )
@@ -111,4 +138,4 @@ class VerifyCaptchaModal(discord.ui.Modal):
                 pass
 
     async def on_timeout(self) -> None:
-        pass
+        self._used = True

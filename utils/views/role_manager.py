@@ -6,7 +6,9 @@ from utils.emojis import EMOJIS
 from utils.check_perms import is_bot_admin
 
 
-# region ADD ROLE SELECT
+# ─────────────────────────────
+# ADD ROLE SELECT
+# ─────────────────────────────
 class AddRoleSelect(RoleSelect):
 
     def __init__(self, manager: "RoleManagerView"):
@@ -33,12 +35,13 @@ class AddRoleSelect(RoleSelect):
 
         await self.manager.update_embed(
             interaction,
-            notice=
-            f"{EMOJIS['green_dot']} {len(self.values)} role(s) queued for addition",
+            notice=f"{EMOJIS['green_dot']} {len(self.values)} role(s) queued for addition",
         )
 
 
-# region REMOVE ROLE SELECT
+# ─────────────────────────────
+# REMOVE ROLE SELECT
+# ─────────────────────────────
 class RemoveRoleSelect(Select):
 
     def __init__(self, manager: "RoleManagerView"):
@@ -49,24 +52,38 @@ class RemoveRoleSelect(Select):
 
         if bot_member:
             for role in manager.target.roles:
+
                 if role.is_default():
                     continue
+
+                # Bot must manage role
                 if role >= bot_member.top_role:
+                    continue
+
+                # Actor must manage role
+                if role >= manager.actor.top_role:
                     continue
 
                 options.append(
                     discord.SelectOption(
-                        label=role.name,
+                        label=role.name[:100],
                         value=str(role.id),
-                    ))
+                    )
+                )
 
         super().__init__(
             placeholder="Select roles to remove",
             min_values=1,
             max_values=min(10, len(options)) if options else 1,
-            options=options,
+            options=options if options else [
+                discord.SelectOption(
+                    label="No removable roles",
+                    value="none",
+                )
+            ],
             disabled=not options,
         )
+
 
     async def callback(self, interaction: discord.Interaction):
 
@@ -78,6 +95,9 @@ class RemoveRoleSelect(Select):
             )
             return
 
+        if self.values[0] == "none":
+            return
+
         for value in self.values:
             role_id = int(value)
             self.manager.to_remove.add(role_id)
@@ -85,12 +105,13 @@ class RemoveRoleSelect(Select):
 
         await self.manager.update_embed(
             interaction,
-            notice=
-            f"{EMOJIS['red_dot']} {len(self.values)} role(s) queued for removal",
+            notice=f"{EMOJIS['red_dot']} {len(self.values)} role(s) queued for removal",
         )
 
 
-# region ROLE MANAGER VIEW
+# ─────────────────────────────
+# ROLE MANAGER VIEW
+# ─────────────────────────────
 class RoleManagerView(View):
 
     def __init__(
@@ -115,7 +136,15 @@ class RoleManagerView(View):
         self.add_item(AddRoleSelect(self))
         self.add_item(RemoveRoleSelect(self))
 
-    # region RESPONSE HANDLER
+    # ─────────────────────────
+    # VIEW-LEVEL INTERACTION LOCK
+    # ─────────────────────────
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return await self.is_authorized(interaction)
+
+    # ─────────────────────────
+    # SAFE RESPONSE
+    # ─────────────────────────
     async def safe_respond(
         self,
         interaction: discord.Interaction,
@@ -139,7 +168,9 @@ class RoleManagerView(View):
         except discord.NotFound:
             pass
 
-    # region AUTH CHECK 
+    # ─────────────────────────
+    # AUTH CHECK
+    # ─────────────────────────
     async def is_authorized(self, interaction: discord.Interaction) -> bool:
 
         if interaction.user != self.actor:
@@ -148,12 +179,15 @@ class RoleManagerView(View):
         if not await is_bot_admin(interaction):
             return False
 
+        # Prevent managing someone equal or above
         if self.target.top_role >= self.actor.top_role:
             return False
 
         return True
 
-    # region EMBED UPDATE
+    # ─────────────────────────
+    # EMBED UPDATE
+    # ─────────────────────────
     async def update_embed(
         self,
         interaction: discord.Interaction,
@@ -164,11 +198,11 @@ class RoleManagerView(View):
 
         embed = make_embed(
             title="Role Manager",
-            description=
-            (f"{EMOJIS['moderation']} **Target:** {self.target.mention}\n\n"
-             f"{EMOJIS['green_dot']} To add: **{len(self.to_add) or 'None'}**\n"
-             f"{EMOJIS['red_dot']} To remove: **{len(self.to_remove) or 'None'}**"
-             ),
+            description=(
+                f"{EMOJIS['moderation']} **Target:** {self.target.mention}\n\n"
+                f"{EMOJIS['green_dot']} To add: **{len(self.to_add) or 'None'}**\n"
+                f"{EMOJIS['red_dot']} To remove: **{len(self.to_remove) or 'None'}**"
+            ),
             level="SYSTEM",
             footer=self.notice or "Use the menus to queue role changes",
         )
@@ -177,12 +211,13 @@ class RoleManagerView(View):
             if not interaction.response.is_done():
                 await interaction.response.edit_message(embed=embed, view=self)
             else:
-                await interaction.edit_original_response(embed=embed,
-                                                         view=self)
+                await interaction.edit_original_response(embed=embed, view=self)
         except discord.NotFound:
             pass
 
-    # region APPLY CHANGES BUTTON
+    # ─────────────────────────
+    # APPLY CHANGES
+    # ─────────────────────────
     @discord.ui.button(
         label="Apply Changes",
         style=discord.ButtonStyle.primary,
@@ -198,22 +233,34 @@ class RoleManagerView(View):
             )
             return
 
-        await interaction.response.defer()
-
-        bot_member = self.guild.me
-        if bot_member is None:
+        try:
+            await interaction.response.defer()
+        except discord.NotFound:
             return
 
-        added: list[str] = []
-        removed: list[str] = []
-        skipped: list[str] = []
+        bot_member = self.guild.me
+        if not bot_member:
+            return
 
-        # region ADD ROLES
+        # Hard block: bot cannot manage target
+        if self.target.top_role >= bot_member.top_role:
+            await self.safe_respond(
+                interaction,
+                f"{EMOJIS['warning']} I cannot manage this member due to role hierarchy.",
+                ephemeral=True,
+            )
+            return
+
+        added, removed, skipped = [], [], []
+
+        # ADD
         for role_id in self.to_add:
             role = self.guild.get_role(role_id)
-
-            if (not role or role >= bot_member.top_role
-                    or role >= self.actor.top_role):
+            if (
+                not role
+                or role >= bot_member.top_role
+                or role >= self.actor.top_role
+            ):
                 skipped.append(role.name if role else "Unknown role")
                 continue
 
@@ -226,12 +273,14 @@ class RoleManagerView(View):
             except discord.HTTPException:
                 skipped.append(role.name)
 
-        # region REMOVE ROLES
+        # REMOVE
         for role_id in self.to_remove:
             role = self.guild.get_role(role_id)
-
-            if (not role or role >= bot_member.top_role
-                    or role >= self.actor.top_role):
+            if (
+                not role
+                or role >= bot_member.top_role
+                or role >= self.actor.top_role
+            ):
                 skipped.append(role.name if role else "Unknown role")
                 continue
 
@@ -245,7 +294,7 @@ class RoleManagerView(View):
                 skipped.append(role.name)
 
         for item in self.children:
-            item.disabled = True  # type: ignore
+            item.disabled = True
 
         embed = make_embed(
             title="Roles Updated",
@@ -260,20 +309,19 @@ class RoleManagerView(View):
         )
 
         try:
-            await interaction.edit_original_response(
-                embed=embed,
-                view=self,
-            )
+            await interaction.edit_original_response(embed=embed, view=self)
         except discord.NotFound:
             pass
 
         self.stop()
 
-    # region TIMEOUT
+    # ─────────────────────────
+    # TIMEOUT
+    # ─────────────────────────
     async def on_timeout(self):
 
         for item in self.children:
-            item.disabled = True  # type: ignore
+            item.disabled = True
 
         try:
             if self.message:
@@ -281,5 +329,5 @@ class RoleManagerView(View):
                     content=f"{EMOJIS['warning']} Role manager timed out.",
                     view=self,
                 )
-        except Exception:
+        except (discord.NotFound, discord.HTTPException):
             pass
