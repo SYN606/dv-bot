@@ -26,16 +26,23 @@ class Roles(commands.Cog):
         member: discord.Member,
     ) -> None:
 
-        await interaction.response.defer(ephemeral=True)
-
         guild = interaction.guild
         actor = interaction.user
 
         if guild is None or not isinstance(actor, discord.Member):
-            return
+            return await interaction.response.send_message(
+                embed=make_embed(
+                    title="Invalid Context",
+                    description=
+                    "This command can only be used inside a server.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
 
+        # Permission check BEFORE defer (faster fail)
         if not await is_bot_admin(interaction):
-            await interaction.followup.send(
+            return await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
                     description=(
@@ -45,7 +52,42 @@ class Roles(commands.Cog):
                 ),
                 ephemeral=True,
             )
-            return
+
+        # Safety checks
+        if member.bot and member.id == self.bot.user.id:
+            return await interaction.response.send_message(
+                embed=make_embed(
+                    title="Invalid Target",
+                    description="You cannot manage my roles.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
+
+        if member == actor:
+            return await interaction.response.send_message(
+                embed=make_embed(
+                    title="Invalid Target",
+                    description="You cannot manage your own roles.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
+
+        if member.top_role >= actor.top_role:
+            return await interaction.response.send_message(
+                embed=make_embed(
+                    title="Role Hierarchy Error",
+                    description=(
+                        "You cannot manage this user because their top role "
+                        "is higher than or equal to yours."),
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
+
+        # Defer after passing validation
+        await interaction.response.defer(ephemeral=True)
 
         view = RoleManagerView(
             bot=self.bot,

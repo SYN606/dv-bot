@@ -38,7 +38,6 @@ class EmojiSteal(commands.Cog):
         if ctx.guild is None:
             return
 
-        # ✅ FIXED: async permission check
         if not await is_bot_admin_ctx(ctx):
             await ctx.reply(
                 embed=make_embed(

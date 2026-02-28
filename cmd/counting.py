@@ -23,9 +23,7 @@ class Counting(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # ─────────────────────────────────────
     # ENABLE COUNTING
-    # ─────────────────────────────────────
     @app_commands.command(
         name="set_counting",
         description="Enable counting game in a channel",
