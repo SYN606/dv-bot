@@ -2,9 +2,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils.check_perms import is_bot_admin
+from utils.base_admin import BaseAdminCog
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
+from utils.logging.mod_log import send_mod_log
 
 from db.db_helpers.verification import (
     get_verification_config,
@@ -12,7 +13,11 @@ from db.db_helpers.verification import (
 )
 
 
-class ResetVerification(commands.Cog):
+class ResetVerification(BaseAdminCog):
+    """
+    Disable and fully reset the verification system.
+    Admin-only.
+    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -34,18 +39,8 @@ class ResetVerification(commands.Cog):
                 ephemeral=True,
             )
 
-        # Permission check
-        if not await is_bot_admin(interaction):
-            return await interaction.response.send_message(
-                embed=make_embed(
-                    title="Permission Denied",
-                    description="You are not allowed to reset verification.",
-                    level="ERROR",
-                ),
-                ephemeral=True,
-            )
+        # Permission auto-handled by BaseAdminCog
 
-        # Get existing config
         config = await get_verification_config(guild.id)
 
         if not config:
@@ -58,21 +53,23 @@ class ResetVerification(commands.Cog):
                 ephemeral=True,
             )
 
-        # Delete verification message if exists
+        # ─────────────────────────
+        # Remove verification message
+        # ─────────────────────────
         if config.verification_message_id:
             channel = guild.get_channel(config.verify_channel_id)
 
             if isinstance(channel, discord.TextChannel):
                 try:
-                    message = await channel.fetch_message(
+                    msg = await channel.fetch_message(
                         config.verification_message_id)
-                    await message.delete()
-                except discord.NotFound:
-                    pass
-                except discord.Forbidden:
+                    await msg.delete()
+                except (discord.NotFound, discord.Forbidden):
                     pass
 
-        # Delete DB config
+        # ─────────────────────────
+        # Delete DB configuration
+        # ─────────────────────────
         await delete_verification_config(guild.id)
 
         await interaction.response.send_message(
@@ -85,6 +82,27 @@ class ResetVerification(commands.Cog):
                 footer=f"Action by {interaction.user}",
             ),
             ephemeral=True,
+        )
+
+        # ─────────────────────────
+        # Structured Logging
+        # ─────────────────────────
+        await send_mod_log(
+            guild=guild,
+            category="VERIFY",
+            title="Verification Reset",
+            description="Verification system has been disabled.",
+            level="WARNING",
+            actor=interaction.user,
+            extra_fields={
+                "Verification Channel ID":
+                config.verify_channel_id,
+                "Verified Role ID":
+                config.verified_role_id,
+                "Unverified Role ID":
+                config.unverified_role_id
+                if config.unverified_role_id else "None",
+            },
         )
 
 

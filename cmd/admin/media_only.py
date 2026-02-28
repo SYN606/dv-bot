@@ -2,17 +2,17 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils.check_perms import is_bot_admin
+from utils.base_admin import BaseAdminCog
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
 from utils.views.media_only_views import MediaOnlyView
+from utils.logging.mod_log import send_mod_log
 
 
-class MediaOnly(commands.Cog):
+class MediaOnly(BaseAdminCog):
     """
     Media-only channel control panel.
-
-    Single-command, button-driven (v2 UX).
+    Admin-only.
     """
 
     def __init__(self, bot: commands.Bot):
@@ -26,35 +26,15 @@ class MediaOnly(commands.Cog):
         self,
         interaction: discord.Interaction,
     ) -> None:
-        # ─────────────────────────
-        # Context validation
-        # ─────────────────────────
+
         guild = interaction.guild
         channel = interaction.channel
 
         if guild is None or not isinstance(channel, discord.TextChannel):
             return
 
-        # ─────────────────────────
-        # Permission check
-        # ─────────────────────────
-        if not await is_bot_admin(interaction):
-            await interaction.response.send_message(
-                embed=make_embed(
-                    title="Permission Denied",
-                    description=
-                    (f"{EMOJIS['warning']} You do not have permission to manage channel modes.\n\n"
-                     f"{EMOJIS['arrow_point']} Administrator access is required."
-                     ),
-                    level="ERROR",
-                ),
-                ephemeral=True,
-            )
-            return
+        # Permission auto-handled by BaseAdminCog
 
-        # ─────────────────────────
-        # Build media-only control panel
-        # ─────────────────────────
         view = MediaOnlyView(
             guild_id=guild.id,
             channel=channel,
@@ -63,14 +43,13 @@ class MediaOnly(commands.Cog):
 
         embed = make_embed(
             title="Media-Only Channel Control",
-            description=
-            (f"{EMOJIS['announcement']} Manage **media-only mode** for this channel.\n\n"
-             f"{EMOJIS['arrow_point']} **Available actions:**\n"
-             f"{EMOJIS['green_dot']} Enable media-only restrictions\n"
-             f"{EMOJIS['red_dot']} Disable media-only restrictions\n"
-             f"{EMOJIS['ping']} Check current status\n\n"
-             f"{EMOJIS['okay']} This control panel is visible **only to you**."
-             ),
+            description=(
+                f"{EMOJIS['announcement']} Manage **media-only mode** "
+                "for this channel.\n\n"
+                f"{EMOJIS['green_dot']} Enable restrictions\n"
+                f"{EMOJIS['red_dot']} Disable restrictions\n"
+                f"{EMOJIS['ping']} Check current status\n\n"
+                f"{EMOJIS['okay']} This panel is visible only to you."),
             level="SYSTEM",
             footer=f"Channel • #{channel.name}",
         )
@@ -79,6 +58,19 @@ class MediaOnly(commands.Cog):
             embed=embed,
             view=view,
             ephemeral=True,
+        )
+
+        # Structured logging
+        await send_mod_log(
+            guild=guild,
+            category="CONFIG",
+            title="Media-Only Panel Opened",
+            description=f"Media-only control opened for {channel.mention}.",
+            level="INFO",
+            actor=interaction.user,
+            extra_fields={
+                "Channel ID": channel.id,
+            },
         )
 
 

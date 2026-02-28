@@ -2,14 +2,16 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-from utils.check_perms import is_bot_admin
+from utils.base_admin import BaseAdminCog
 from utils.embeds import make_embed
 from utils.views.role_manager import RoleManagerView
+from utils.logging.mod_log import send_mod_log
 
 
-class Roles(commands.Cog):
+class Roles(BaseAdminCog):
     """
-    Role management commands.
+    Role management interface.
+    Admin-only.
     """
 
     def __init__(self, bot: commands.Bot):
@@ -40,18 +42,7 @@ class Roles(commands.Cog):
                 ephemeral=True,
             )
 
-        # Permission check BEFORE defer (faster fail)
-        if not await is_bot_admin(interaction):
-            return await interaction.response.send_message(
-                embed=make_embed(
-                    title="Permission Denied",
-                    description=(
-                        "You do not have permission to manage roles.\n"
-                        "Administrator access is required."),
-                    level="ERROR",
-                ),
-                ephemeral=True,
-            )
+        # Permission handled by BaseAdminCog
 
         # Safety checks
         if member.bot and member.id == self.bot.user.id:
@@ -86,7 +77,6 @@ class Roles(commands.Cog):
                 ephemeral=True,
             )
 
-        # Defer after passing validation
         await interaction.response.defer(ephemeral=True)
 
         view = RoleManagerView(
@@ -112,6 +102,20 @@ class Roles(commands.Cog):
         )
 
         view.message = await interaction.original_response()
+
+        # Structured Logging
+        await send_mod_log(
+            guild=guild,
+            category="ROLE",
+            title="Role Manager Opened",
+            description=f"Role manager opened for {member.mention}.",
+            level="INFO",
+            actor=actor,
+            target=member,
+            extra_fields={
+                "Target ID": member.id,
+            },
+        )
 
 
 async def setup(bot: commands.Bot) -> None:

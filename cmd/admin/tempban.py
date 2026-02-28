@@ -1,19 +1,21 @@
 import discord
 from discord.ext import commands
 
+from utils.base_admin import BaseAdminCog
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
-from utils.check_perms import is_bot_admin_ctx
+from utils.logging.mod_log import send_mod_log
 
 from db.db_helpers.tempban import (
     get_tempban_role,
     add_tempban,
 )
-from db.db_helpers.mod_logs import get_log_channel
 from db.db_helpers.verification import get_verification_config
 
 
-# region SAFE PREFIX CLEANUP
+# ─────────────────────────
+# SAFE PREFIX CLEANUP
+# ─────────────────────────
 async def _cleanup(ctx: commands.Context) -> None:
     try:
         await ctx.message.delete()
@@ -21,11 +23,10 @@ async def _cleanup(ctx: commands.Context) -> None:
         pass
 
 
-class Tempban(commands.Cog):
+class Tempban(BaseAdminCog):
     """
     PREFIX ONLY:
     dv tempban <user | reply> [reason]
-    Fully async (v2 architecture)
     """
 
     def __init__(self, bot: commands.Bot):
@@ -35,6 +36,7 @@ class Tempban(commands.Cog):
         name="tempban",
         help="Assign the tempban role to a user",
     )
+    @commands.guild_only()
     async def tempban(
         self,
         ctx: commands.Context,
@@ -42,13 +44,12 @@ class Tempban(commands.Cog):
         *,
         reason: str | None = None,
     ):
-        if ctx.guild is None:
-            return
-
         guild = ctx.guild
-        moderator = ctx.author
+        moderator: discord.Member = ctx.author  # guaranteed by guild_only
 
-        # region RESOLVE TARGET
+        # ─────────────────────────
+        # Resolve Target
+        # ─────────────────────────
         target: discord.Member | None = None
 
         if user:
@@ -78,12 +79,14 @@ class Tempban(commands.Cog):
             await _cleanup(ctx)
             return
 
-        # region PERMISSION CHECK
-        if not await is_bot_admin_ctx(ctx):
+        # ─────────────────────────
+        # Safety Checks
+        # ─────────────────────────
+        if target == moderator:
             await ctx.reply(
                 embed=make_embed(
-                    title="Permission Denied",
-                    description="You are not allowed to use this command.",
+                    title="Invalid Target",
+                    description="You cannot tempban yourself.",
                     level="ERROR",
                 ),
                 mention_author=False,
@@ -91,16 +94,56 @@ class Tempban(commands.Cog):
             await _cleanup(ctx)
             return
 
-        # region TEMPBAN ROLE CHECK 
+        if target == guild.me:
+            await ctx.reply(
+                embed=make_embed(
+                    title="Invalid Target",
+                    description="You cannot tempban me.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
+            await _cleanup(ctx)
+            return
+
+        if target.top_role >= moderator.top_role:
+            await ctx.reply(
+                embed=make_embed(
+                    title="Role Hierarchy Error",
+                    description=
+                    "You cannot tempban a member with an equal or higher role.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
+            await _cleanup(ctx)
+            return
+
+        bot_member = guild.me
+        if bot_member is None or target.top_role >= bot_member.top_role:
+            await ctx.reply(
+                embed=make_embed(
+                    title="Bot Role Hierarchy Error",
+                    description=
+                    "I cannot manage this member due to role hierarchy.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
+            await _cleanup(ctx)
+            return
+
+        # ─────────────────────────
+        # Tempban Role Check
+        # ─────────────────────────
         role_id = await get_tempban_role(guild.id)
 
         if not role_id:
             await ctx.reply(
                 embed=make_embed(
                     title="Tempban Not Configured",
-                    description=(
-                        f"{EMOJIS['red_dot']} Tempban role is not set.\n"
-                        f"{EMOJIS['arrow_point']} Use `/tempban_role` first."),
+                    description=
+                    f"{EMOJIS['arrow_point']} Use `/tempban_role` first.",
                     level="WARNING",
                 ),
                 mention_author=False,
@@ -109,7 +152,6 @@ class Tempban(commands.Cog):
             return
 
         tempban_role = guild.get_role(role_id)
-
         if not tempban_role:
             await ctx.reply(
                 embed=make_embed(
@@ -127,8 +169,7 @@ class Tempban(commands.Cog):
                 embed=make_embed(
                     title="Already Tempbanned",
                     description=
-                    (f"{EMOJIS['warning']} {target.mention} is already tempbanned."
-                     ),
+                    f"{EMOJIS['warning']} {target.mention} is already tempbanned.",
                     level="WARNING",
                 ),
                 mention_author=False,
@@ -136,9 +177,10 @@ class Tempban(commands.Cog):
             await _cleanup(ctx)
             return
 
-        # region REMOVE VERIFIED ROLE
+        # ─────────────────────────
+        # Remove Verified Role (if exists)
+        # ─────────────────────────
         cfg = await get_verification_config(guild.id)
-
         if cfg:
             verified_role = guild.get_role(cfg.verified_role_id)
             if verified_role and verified_role in target.roles:
@@ -150,13 +192,14 @@ class Tempban(commands.Cog):
                 except discord.Forbidden:
                     pass
 
-        # region APPLY TEMPBAN
+        # ─────────────────────────
+        # Apply Tempban
+        # ─────────────────────────
         await target.add_roles(
             tempban_role,
             reason=reason or f"Tempbanned by {moderator}",
         )
 
-        # region DATABASE UPDATE 
         await add_tempban(
             guild_id=guild.id,
             user_id=target.id,
@@ -164,7 +207,6 @@ class Tempban(commands.Cog):
             reason=reason,
         )
 
-        # region CONFIRMATION
         await ctx.reply(
             embed=make_embed(
                 title="User Tempbanned",
@@ -178,21 +220,21 @@ class Tempban(commands.Cog):
             mention_author=False,
         )
 
-        # region MODERATION LOG 
-        log_channel_id = await get_log_channel(guild.id)
-
-        if log_channel_id:
-            log_channel = guild.get_channel(log_channel_id)
-            if isinstance(log_channel, discord.TextChannel):
-                await log_channel.send(embed=make_embed(
-                    title="Tempban Applied",
-                    description=
-                    (f"{EMOJIS['ban']} **User:** {target.mention}\n"
-                     f"{EMOJIS['arrow_point']} **Moderator:** {moderator.mention}\n"
-                     f"{EMOJIS['arrow_point']} **Reason:** {reason or 'No reason provided'}"
-                     ),
-                    level="ERROR",
-                ))
+        # ─────────────────────────
+        # Structured Logging
+        # ─────────────────────────
+        await send_mod_log(
+            guild=guild,
+            category="BAN",
+            title="Tempban Applied",
+            description=f"{target.mention} was tempbanned.",
+            level="ERROR",
+            actor=moderator,
+            target=target,
+            extra_fields={
+                "Reason": reason or "No reason provided",
+            },
+        )
 
         await _cleanup(ctx)
 

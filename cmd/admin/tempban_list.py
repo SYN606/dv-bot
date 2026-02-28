@@ -2,13 +2,19 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from utils.base_admin import BaseAdminCog
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
-from utils.check_perms import is_bot_admin
+from utils.logging.mod_log import send_mod_log
+
 from db.db_helpers.tempban import get_active_tempbans
 
 
-class TempbanList(commands.Cog):
+class TempbanList(BaseAdminCog):
+    """
+    View all active tempbans in the server.
+    Admin-only.
+    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -21,42 +27,35 @@ class TempbanList(commands.Cog):
 
         guild = interaction.guild
         if guild is None:
-            return
+            return await interaction.response.send_message(
+                embed=make_embed(
+                    title="Invalid Context",
+                    description="This command must be used in a server.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
 
-        #  Instant interaction acknowledgement
+        # Permission handled by BaseAdminCog
+
         await interaction.response.defer(ephemeral=True)
 
-        # ─────────────────────────
-        # Permission check (async)
-        # ─────────────────────────
-        if not await is_bot_admin(interaction):
-            await interaction.followup.send(embed=make_embed(
-                title="Permission Denied",
-                description="You are not allowed to view tempban records.",
-                level="ERROR",
-            ), )
-            return
-
-        # ─────────────────────────
-        # Fetch records (async)
-        # ─────────────────────────
         records = await get_active_tempbans(guild.id)
 
         if not records:
-            await interaction.followup.send(embed=make_embed(
-                title="Active Tempbans",
-                description=
-                f"{EMOJIS['success']} No active tempbans in this server.",
-                level="INFO",
-            ), )
-            return
+            return await interaction.followup.send(
+                embed=make_embed(
+                    title="Active Tempbans",
+                    description=
+                    f"{EMOJIS['success']} No active tempbans in this server.",
+                    level="INFO",
+                ),
+                ephemeral=True,
+            )
 
-        # ─────────────────────────
-        # Build entries (limit to 10 for speed)
-        # ─────────────────────────
         entries: list[str] = []
 
-        for row in records[:10]:  # Hard cap for speed & safety
+        for row in records[:10]:  # Hard cap for safety
 
             member = guild.get_member(row.user_id)
             moderator = guild.get_member(row.moderator_id)
@@ -84,7 +83,20 @@ class TempbanList(commands.Cog):
             f"Showing {min(len(records), 10)} of {len(records)} active tempbans",
         )
 
-        await interaction.followup.send(embed=embed)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+        # Structured Logging
+        await send_mod_log(
+            guild=guild,
+            category="BAN",
+            title="Tempban List Viewed",
+            description=f"{len(records)} active tempban record(s) inspected.",
+            level="INFO",
+            actor=interaction.user,
+            extra_fields={
+                "Total Records": len(records),
+            },
+        )
 
 
 async def setup(bot: commands.Bot):

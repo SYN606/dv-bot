@@ -2,12 +2,13 @@ import asyncio
 import discord
 from discord.ext import commands
 
+from utils.base_admin import BaseAdminCog
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
-from utils.check_perms import is_bot_admin_ctx
+from utils.logging.mod_log import send_mod_log
 
 
-class Purge(commands.Cog):
+class Purge(BaseAdminCog):
     """
     Prefix purge command.
 
@@ -23,23 +24,22 @@ class Purge(commands.Cog):
     @commands.guild_only()
     async def purge(self, ctx: commands.Context, *args):
 
-        # Permission Check
-        if not await is_bot_admin_ctx(ctx):
-            return await ctx.reply(
-                embed=make_embed(
-                    title="Permission Denied",
-                    description="You are not allowed to use this command.",
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
+        guild = ctx.guild
+        channel = ctx.channel
 
-        # Argument Validation
+        if guild is None or not isinstance(channel, discord.TextChannel):
+            return
+
+        # ─────────────────────────
+        # Argument validation
+        # ─────────────────────────
         if not args:
             return await ctx.reply(
                 embed=make_embed(
                     title="Invalid Usage",
-                    description="Usage:\n`dv purge <amount>`\n`dv purge @user <amount>`",
+                    description=("Usage:\n"
+                                 "`dv purge <amount>`\n"
+                                 "`dv purge @user <amount>`"),
                     level="WARNING",
                 ),
                 mention_author=False,
@@ -48,7 +48,6 @@ class Purge(commands.Cog):
         member: discord.Member | None = None
         amount: int | None = None
 
-        # Case: dv purge 50
         if len(args) == 1:
             try:
                 amount = int(args[0])
@@ -62,7 +61,6 @@ class Purge(commands.Cog):
                     mention_author=False,
                 )
 
-        # Case: dv purge @user 50
         elif len(args) == 2:
             if not ctx.message.mentions:
                 return await ctx.reply(
@@ -97,7 +95,6 @@ class Purge(commands.Cog):
                 mention_author=False,
             )
 
-        # Amount Constraints
         if amount is None or amount <= 0:
             return await ctx.reply(
                 embed=make_embed(
@@ -112,64 +109,90 @@ class Purge(commands.Cog):
             return await ctx.reply(
                 embed=make_embed(
                     title="Limit Exceeded",
-                    description="Maximum purge limit is 100 messages at once.",
+                    description="Maximum purge limit is 100 messages.",
                     level="WARNING",
                 ),
                 mention_author=False,
             )
 
-        # Delete Command Message
+        # ─────────────────────────
+        # Delete invoking command
+        # ─────────────────────────
         try:
             await ctx.message.delete()
         except discord.HTTPException:
             pass
 
-        # Execute Purge
+        # ─────────────────────────
+        # Execute purge
+        # ─────────────────────────
+        deleted_count = 0
+
         try:
             if member:
+                # Prevent purging users above executor
+                if member.top_role >= ctx.author.top_role:
+                    return await ctx.send(embed=make_embed(
+                        title="Hierarchy Error",
+                        description="You cannot purge messages from this user.",
+                        level="ERROR",
+                    ))
 
-                # Widen search window for filtered purge
-                deleted = await ctx.channel.purge(
+                deleted = await channel.purge(
                     limit=amount * 5,
-                    check=lambda m: m.author == member,
+                    check=lambda m: (m.author == member and not m.pinned),
                 )
-
-                deleted_count = len(deleted)
-
-                embed = make_embed(
-                    title="User Messages Purged",
-                    description=(
-                        f"{EMOJIS['moderation']} Cleared **{deleted_count}** messages "
-                        f"from {member.mention}."
-                    ),
-                    level="SUCCESS",
-                    footer=f"Action by {ctx.author}",
-                )
-
             else:
-                deleted = await ctx.channel.purge(limit=amount)
-                deleted_count = len(deleted)
-
-                embed = make_embed(
-                    title="Messages Purged",
-                    description=(
-                        f"{EMOJIS['moderation']} Cleared **{deleted_count}** messages."
-                    ),
-                    level="SUCCESS",
-                    footer=f"Action by {ctx.author}",
+                deleted = await channel.purge(
+                    limit=amount,
+                    check=lambda m: not m.pinned,
                 )
+
+            deleted_count = len(deleted)
 
         except discord.Forbidden:
-            return await ctx.send(
-                embed=make_embed(
-                    title="Missing Permissions",
-                    description="I need **Manage Messages** permission.",
-                    level="ERROR",
-                )
-            )
+            return await ctx.send(embed=make_embed(
+                title="Missing Permissions",
+                description="I need **Manage Messages** permission.",
+                level="ERROR",
+            ))
 
-        # Confirmation 
+        # ─────────────────────────
+        # Confirmation embed
+        # ─────────────────────────
+        if member:
+            description = (
+                f"{EMOJIS['moderation']} Cleared "
+                f"**{deleted_count}** messages from {member.mention}.")
+        else:
+            description = (f"{EMOJIS['moderation']} Cleared "
+                           f"**{deleted_count}** messages.")
+
+        embed = make_embed(
+            title="Messages Purged",
+            description=description,
+            level="SUCCESS",
+            footer=f"Action by {ctx.author}",
+        )
+
         confirmation = await ctx.send(embed=embed)
+
+        # ─────────────────────────
+        # Structured logging
+        # ─────────────────────────
+        await send_mod_log(
+            guild=guild,
+            category="PURGE",
+            title="Messages Purged",
+            description=description,
+            level="WARNING",
+            actor=ctx.author,
+            target=member,
+            extra_fields={
+                "Channel": channel.mention,
+                "Deleted Count": deleted_count,
+            },
+        )
 
         await asyncio.sleep(5)
 

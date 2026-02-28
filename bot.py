@@ -1,4 +1,5 @@
 import os
+import asyncio
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -17,20 +18,26 @@ from utils.presence import SarcasticPresenceRotator
 from utils.startups.verification_startup import setup_verification_on_ready
 from utils.views.verification_views.verify_button_view import VerifyButtonView
 
-# region ENV
+# ─────────────────────────
+# ENV
+# ─────────────────────────
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN not found in .env")
 
-# region INTENTS
+# ─────────────────────────
+# INTENTS
+# ─────────────────────────
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
 
-# region BOT CLASS
+# ─────────────────────────
+# BOT CLASS
+# ─────────────────────────
 class DigitalVigilBot(commands.Bot):
 
     def __init__(self) -> None:
@@ -42,29 +49,35 @@ class DigitalVigilBot(commands.Bot):
 
         self.presence_rotator: SarcasticPresenceRotator | None = None
 
-    # region SETUP HOOK
+    # ─────────────────────────
+    # SETUP HOOK
+    # ─────────────────────────
     async def setup_hook(self) -> None:
-
-        # Initialize DB schema (async)
         await init_schema()
 
-        # Global slash interaction guard
+        # Global slash command guard
         self.tree.interaction_check = command_toggle_check
 
-        # Load all extensions
         await self.load_all_extensions()
 
-        # Sync slash commands
-        await self.tree.sync()
+        try:
+            await self.tree.sync()
+            print("[INFO] Slash commands synced")
+        except Exception as exc:
+            print(f"[ERROR] Slash sync failed: {exc}")
 
-        # Register persistent views (verification button)
+        # Persistent verification button
         self.add_view(VerifyButtonView())
 
         print("[SYSTEM] Setup hook completed")
 
-    # region EXTENSION LOADER
+    # ─────────────────────────
+    # EXTENSION LOADER
+    # ─────────────────────────
     async def load_all_extensions(self) -> None:
         base_path = os.path.abspath("cmd")
+        loaded = 0
+        failed = 0
 
         for root, _, files in os.walk(base_path):
             for file in files:
@@ -78,18 +91,24 @@ class DigitalVigilBot(commands.Bot):
                     try:
                         await self.load_extension(ext)
                         print(f"[INFO] Loaded {ext}")
+                        loaded += 1
                     except Exception as exc:
                         print(f"[ERROR] Failed to load {ext}: {exc}")
+                        failed += 1
 
-    # region READY EVENT
+        print(f"[SYSTEM] Extensions loaded: {loaded} | Failed: {failed}")
+
+    # ─────────────────────────
+    # READY EVENT
+    # ─────────────────────────
     async def on_ready(self) -> None:
-
         print(f"[INFO] Logged in as {self.user} ({self.user.id})")
 
-        # Restore verification state
-        await setup_verification_on_ready(self)
+        try:
+            await setup_verification_on_ready(self)
+        except Exception as exc:
+            print(f"[ERROR] Verification startup failed: {exc}")
 
-        # Start presence rotator once
         if self.presence_rotator is None:
             self.presence_rotator = SarcasticPresenceRotator(self)
             await self.presence_rotator.start()
@@ -97,37 +116,55 @@ class DigitalVigilBot(commands.Bot):
 
         print("[INFO] Bot ready")
 
-    # region MESSAGE PIPELINE
+    # ─────────────────────────
+    # GLOBAL COMMAND ERROR HANDLER
+    # ─────────────────────────
+    async def on_command_error(self, ctx: commands.Context, error):
+        if isinstance(error, commands.CommandNotFound):
+            return
+
+        print(f"[ERROR] Command error: {error}")
+
+        try:
+            await ctx.reply(
+                "⚠ An unexpected error occurred while executing that command.",
+                mention_author=False,
+            )
+        except Exception:
+            pass
+
+    # ─────────────────────────
+    # MESSAGE PIPELINE
+    # ─────────────────────────
     async def on_message(self, message: discord.Message) -> None:
 
-        if message.guild is None:
+        if message.guild is None or message.author.bot:
             return
 
-        # Normalize custom prefix
-        message.content = normalize_prefix(message.content)
+        try:
+            message.content = normalize_prefix(message.content)
 
-        # Counting game
-        if await handle_counting(message):
-            return
+            if await handle_counting(message):
+                return
 
-        # Media-only enforcement
-        if await enforce_media_only(message):
-            return
+            if await enforce_media_only(message):
+                return
 
-        # Sticky system
-        await handle_sticky(message)
+            await handle_sticky(message)
 
-        # Bot mention response
-        await handle_bot_mention(self, message)
+            await handle_bot_mention(self, message)
 
-        # AFK system
-        await handle_afk(message)
+            await handle_afk(message)
 
-        # Process prefix commands
+        except Exception as exc:
+            print(f"[ERROR] Message pipeline error: {exc}")
+
         await self.process_commands(message)
 
 
-# region ENTRYPOINT
+# ─────────────────────────
+# ENTRYPOINT
+# ─────────────────────────
 def main() -> None:
     bot = DigitalVigilBot()
 
@@ -135,6 +172,8 @@ def main() -> None:
         bot.run(TOKEN)
     except KeyboardInterrupt:
         print("[INFO] Shutdown requested")
+    except Exception as exc:
+        print(f"[FATAL] Bot crashed: {exc}")
 
 
 if __name__ == "__main__":

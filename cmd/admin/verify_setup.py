@@ -2,20 +2,18 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils.check_perms import is_bot_admin
+from utils.base_admin import BaseAdminCog
 from utils.embeds import make_embed
+from utils.logging.mod_log import send_mod_log
 from utils.views.verification_views.verify_setup_view import VerifySetupView
 
 
-class VerifySetup(commands.Cog):
+class VerifySetup(BaseAdminCog):
     """
     /verify_setup
 
     Opens the interactive verification setup panel.
-    Only usable by:
-    • Guild owner
-    • Discord administrator
-    • Bot admin role
+    Admin-only.
     """
 
     def __init__(self, bot: commands.Bot):
@@ -32,32 +30,17 @@ class VerifySetup(commands.Cog):
 
         guild = interaction.guild
         if guild is None:
-            await interaction.response.send_message(
+            return await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Context",
-                    description=
-                    "This command can only be used inside a server.",
+                    description="This command must be used inside a server.",
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
-            return
 
-        # Permission Check 
-        if not await is_bot_admin(interaction):
-            await interaction.response.send_message(
-                embed=make_embed(
-                    title="Permission Denied",
-                    description=(
-                        "You must be a **Server Administrator** or have the "
-                        "**Bot Admin role** to configure verification."),
-                    level="ERROR",
-                ),
-                ephemeral=True,
-            )
-            return
+        # Permission handled automatically by BaseAdminCog
 
-        # Build Setup View
         view = VerifySetupView(guild=guild)
 
         embed = make_embed(
@@ -81,10 +64,18 @@ class VerifySetup(commands.Cog):
             ephemeral=True,
         )
 
-        # Attach message reference to view
         view.message = await interaction.original_response()
 
+        # Structured logging (view opened)
+        await send_mod_log(
+            guild=guild,
+            category="VERIFY",
+            title="Verification Setup Panel Opened",
+            description="Verification configuration panel opened.",
+            level="INFO",
+            actor=interaction.user,
+        )
 
-# EXTENSION ENTRY POINT
+
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(VerifySetup(bot))

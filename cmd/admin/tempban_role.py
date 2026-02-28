@@ -2,13 +2,19 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from utils.base_admin import BaseAdminCog
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
-from utils.check_perms import is_bot_admin
+from utils.logging.mod_log import send_mod_log
+
 from db.db_helpers.tempban import set_tempban_role
 
 
-class TempbanRole(commands.Cog):
+class TempbanRole(BaseAdminCog):
+    """
+    Configure the role assigned to tempbanned members.
+    Admin-only.
+    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -25,44 +31,21 @@ class TempbanRole(commands.Cog):
         role: discord.Role,
     ):
         guild = interaction.guild
-
-        # Immediate safe defer
-        try:
-            if not interaction.response.is_done():
-                await interaction.response.defer(ephemeral=True)
-        except discord.NotFound:
-            # Interaction already expired
-            return
-
-        # Context validation
         if guild is None:
-            await interaction.followup.send(
+            return await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Context",
-                    description=
-                    "This command can only be used inside a server.",
+                    description="This command must be used in a server.",
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
-            return
 
-        # Permission check
-        if not await is_bot_admin(interaction):
-            await interaction.followup.send(
-                embed=make_embed(
-                    title="Permission Denied",
-                    description=
-                    "You are not allowed to configure tempban roles.",
-                    level="ERROR",
-                ),
-                ephemeral=True,
-            )
-            return
+        # Permission auto-handled by BaseAdminCog
 
         bot_member = guild.me
         if bot_member is None:
-            await interaction.followup.send(
+            return await interaction.response.send_message(
                 embed=make_embed(
                     title="Bot Error",
                     description="Unable to resolve my member instance.",
@@ -70,13 +53,13 @@ class TempbanRole(commands.Cog):
                 ),
                 ephemeral=True,
             )
-            return
 
+        # ─────────────────────────
         # Role validation
+        # ─────────────────────────
 
-        # Managed role check
         if role.managed:
-            await interaction.followup.send(
+            return await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Role",
                     description=
@@ -85,27 +68,28 @@ class TempbanRole(commands.Cog):
                 ),
                 ephemeral=True,
             )
-            return
 
-        # Role hierarchy check
         if role >= bot_member.top_role:
-            await interaction.followup.send(
+            return await interaction.response.send_message(
                 embed=make_embed(
                     title="Role Hierarchy Error",
                     description=
-                    ("I cannot manage this role because it is higher than or equal to my highest role.\n\n"
+                    ("I cannot manage this role because it is higher than or equal "
+                     "to my highest role.\n\n"
                      f"{EMOJIS['arrow_point']} Move my role above **{role.name}** and try again."
                      ),
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
-            return
 
+        await interaction.response.defer(ephemeral=True)
+
+        # ─────────────────────────
         # Save configuration
+        # ─────────────────────────
         await set_tempban_role(guild.id, role.id)
 
-        # Confirmation
         await interaction.followup.send(
             embed=make_embed(
                 title="Tempban Role Configured",
@@ -116,6 +100,21 @@ class TempbanRole(commands.Cog):
                 level="SUCCESS",
             ),
             ephemeral=True,
+        )
+
+        # ─────────────────────────
+        # Structured Logging
+        # ─────────────────────────
+        await send_mod_log(
+            guild=guild,
+            category="BAN",
+            title="Tempban Role Configured",
+            description=f"{role.mention} set as tempban role.",
+            level="SUCCESS",
+            actor=interaction.user,
+            extra_fields={
+                "Role ID": role.id,
+            },
         )
 
 
