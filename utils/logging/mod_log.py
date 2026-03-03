@@ -7,7 +7,8 @@ from db.engine import AsyncSessionLocal
 from db.models import ModerationLogConfig
 from utils.embeds import make_embed
 
-# Log Categories
+# Log Configuration
+
 LOG_COLORS = {
     "INFO": "INFO",
     "SUCCESS": "SUCCESS",
@@ -25,7 +26,7 @@ LOG_CATEGORIES = {
 }
 
 
-# MAIN LOGGER
+# Main Logger
 async def send_mod_log(
     *,
     guild: discord.Guild,
@@ -39,20 +40,10 @@ async def send_mod_log(
 ) -> None:
     """
     Structured moderation logger.
-
-    Example:
-        await send_mod_log(
-            guild=guild,
-            category="ROLE",
-            title="Roles Updated",
-            description="Added X, Removed Y",
-            level="SUCCESS",
-            actor=interaction.user,
-            target=member,
-        )
+    Sends a formatted embed to the configured moderation log channel.
     """
 
-    # Load log channel
+    # Load Log Channel From Database
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(ModerationLogConfig).where(
@@ -63,11 +54,17 @@ async def send_mod_log(
         return
 
     channel = guild.get_channel(row.channel_id)
+
     if not isinstance(channel, discord.TextChannel):
         return
 
-    # Build embed
+    # Prepare Data
+
+    category = category.upper()
+    level = level.upper()
+
     category_name = LOG_CATEGORIES.get(category, "Moderation")
+    level_name = LOG_COLORS.get(level, "INFO")
 
     fields = []
 
@@ -79,18 +76,26 @@ async def send_mod_log(
 
     if extra_fields:
         for name, value in extra_fields.items():
-            fields.append((name, str(value), False))
+            if value is None:
+                continue
+            fields.append((str(name), str(value), False))
+
+    # Build Embed
 
     embed = make_embed(
         title=f"[{category_name}] {title}",
         description=description,
-        level=LOG_COLORS.get(level, "INFO"),
-        fields=fields,
+        level=level_name,
+        fields=fields if fields else None,
         footer=f"Guild ID: {guild.id}",
     )
 
-    # Send safely
+    # Send Safely
+
     try:
         await channel.send(embed=embed)
     except (discord.Forbidden, discord.NotFound):
-        pass
+        return
+    except Exception:
+        # Prevent logger from ever crashing the bot
+        return
