@@ -18,9 +18,7 @@ class RenameSystem(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # =========================================================
     # Helpers
-    # =========================================================
 
     def _normalize(self, text: str) -> str:
         return unicodedata.normalize("NFKC", text)
@@ -51,9 +49,7 @@ class RenameSystem(BaseAdminCog):
 
         return target.top_role < moderator.top_role
 
-    # =========================================================
     # RENAME COMMAND
-    # =========================================================
 
     @commands.command(name="rename")
     @commands.guild_only()
@@ -76,9 +72,7 @@ class RenameSystem(BaseAdminCog):
                 mention_author=False,
             )
 
-        # -----------------------------------------------------
         # Try resolve mentioned user
-        # -----------------------------------------------------
 
         target = None
         nickname = None
@@ -100,9 +94,7 @@ class RenameSystem(BaseAdminCog):
                 mention_author=False,
             )
 
-        # -----------------------------------------------------
         # RESET
-        # -----------------------------------------------------
 
         if nickname.lower() == "reset":
 
@@ -175,9 +167,7 @@ class RenameSystem(BaseAdminCog):
 
             return
 
-        # -----------------------------------------------------
         # NORMAL RENAME
-        # -----------------------------------------------------
 
         nickname = self._normalize(nickname)
         nickname = " ".join(nickname.split())

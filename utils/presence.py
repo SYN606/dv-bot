@@ -6,78 +6,125 @@ from itertools import cycle
 from datetime import timedelta
 
 
-class SarcasticPresenceRotator:
+class PresenceRotator:
     """
-    v4 Presence Rotator
+    Roman Hindi Personality Presence System
 
-    - Original sarcastic lines restored
-    - Dynamic stats mixed in
-    - Cleaner rotation logic
-    - Optional streaming trick support
+    - Emoji rich
+    - Human sarcastic tone
+    - Weighted rotation
+    - Rare mysterious state
+    - Streaming injection
     """
 
     def __init__(self, bot: discord.Client):
         self.bot = bot
         self.started_at = time.time()
 
-        # Your original sarcastic lines (restored)
-        self.sarcastic_messages = [
-            ("watching", "kaa pehni ho aaj 👀"),
-            ("watching", "biyah hogya hai tumhara?"),
-            ("listening", "bhai mujhe nahi pata, syn se puch lo"),
-            ("playing", "kartikey mera dusra papa hai"),
-            ("watching", "putli ka naam mat lo mere saamne"),
-            ("playing", "debugging human emotions"),
-        ]
+        # 🔥 Personality Pack (Roman Hindi + Emojis)
+        self.personality_states = cycle([
+            ("playing", "tum log fir rules tod rahe ho 👀"),
+            ("watching", "kaun drama start karne wala hai 🍿"),
+            ("listening", "admin ki tension 🎧"),
+            ("playing", "ban hammer ready hai 🔨"),
+            ("watching", "kaun mute hone wala hai 🤐"),
+            ("playing", "server ka asli boss main hoon 😎"),
+            ("watching", "general chat ki bakchodi 👁️"),
+            ("playing", "permissions sambhal ke chalna ⚠️"),
+            ("listening", "complaints in modmail 📩"),
+            ("playing", "timeout dene ka mann kar raha hai ⏳"),
+            ("watching", "tum sab ko observe kar raha hoon 🧠"),
+            ("playing", "silent mode me planning 😌"),
+            ("watching", "kaun jhoot bol raha hai 🤨"),
+            ("playing", "power misuse detect ho raha hai 🚨"),
+            ("watching", "appeal likhne ki taiyari karo 📝"),
+            ("playing", "rate limit se bach ke 😏"),
+            ("watching", "kuch to gadbad lag rahi hai 🤔"),
+            ("playing", "shadow mode activated 🌑"),
+        ])
 
-        self.sarcastic_cycle = cycle(self.sarcastic_messages)
+        self.status_cycle = cycle([
+            discord.Status.online,
+            discord.Status.idle,
+        ])
+
+        self.rotation_counter = 0
 
     # ─────────────────────────────
-    # Utility: formatted uptime
+    # Uptime
     # ─────────────────────────────
-    def get_uptime(self) -> str:
+    def get_uptime(self):
         seconds = int(time.time() - self.started_at)
         return str(timedelta(seconds=seconds)).split(".")[0]
 
     # ─────────────────────────────
-    # Presence loop
+    # Dynamic States
     # ─────────────────────────────
-    @tasks.loop(seconds=45)
+    def build_dynamic_states(self):
+
+        latency = round(self.bot.latency * 1000)
+        guild_count = len(self.bot.guilds)
+
+        return [
+            ("watching", f"{guild_count} servers sambhal raha hoon 🌍"),
+            ("playing", f"latency {latency}ms pe chal raha hoon ⚡"),
+            ("playing", f"{self.get_uptime()} se online hoon 🕒"),
+        ]
+
+    # ─────────────────────────────
+    # Streaming Presence (Clickable)
+    # ─────────────────────────────
+    def build_streaming(self):
+        return discord.Streaming(
+            name="SYN 606 control panel 🚀",
+            url="https://syn606.pages.dev",  # your link
+        )
+
+    # ─────────────────────────────
+    # Main Loop
+    # ─────────────────────────────
+    @tasks.loop(seconds=60)
     async def rotate(self):
 
         if not self.bot.is_ready():
             return
 
-        latency = round(self.bot.latency * 1000)
-        guild_count = len(self.bot.guilds)
-        user_count = sum(g.member_count or 0 for g in self.bot.guilds)
+        self.rotation_counter += 1
+        dynamic_states = self.build_dynamic_states()
 
-        dynamic_states = [
-            ("watching", f"{guild_count} servers"),
-            ("watching", f"{user_count:,} members"),
-            ("playing", f"Latency: {latency}ms"),
-            ("playing", f"Uptime: {self.get_uptime()}"),
-        ]
+        # 🔥 Rare mysterious vibe (5%)
+        if random.random() < 0.05:
+            activity = discord.Activity(
+                type=discord.ActivityType.playing,
+                name="aaj kisi ki kismat kharab hai 👁️",
+            )
 
-        # 🔀 Randomly choose between dynamic and sarcastic
-        if random.random() < 0.5:
-            activity_type_str, message = random.choice(dynamic_states)
+        # 🔴 Streaming injection every 6 rotations
+        elif self.rotation_counter % 6 == 0:
+            activity = self.build_streaming()
+
         else:
-            activity_type_str, message = next(self.sarcastic_cycle)
+            roll = random.random()
 
-        activity_type = {
-            "watching": discord.ActivityType.watching,
-            "listening": discord.ActivityType.listening,
-            "playing": discord.ActivityType.playing,
-        }[activity_type_str]
+            # 60% dynamic, 40% personality
+            if roll < 0.6:
+                activity_type_str, message = random.choice(dynamic_states)
+            else:
+                activity_type_str, message = next(self.personality_states)
 
-        activity = discord.Activity(
-            type=activity_type,
-            name=message,
-        )
+            activity_type = {
+                "watching": discord.ActivityType.watching,
+                "listening": discord.ActivityType.listening,
+                "playing": discord.ActivityType.playing,
+            }[activity_type_str]
+
+            activity = discord.Activity(
+                type=activity_type,
+                name=message,
+            )
 
         await self.bot.change_presence(
-            status=discord.Status.online,
+            status=next(self.status_cycle),
             activity=activity,
         )
 

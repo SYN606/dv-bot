@@ -23,9 +23,7 @@ class TempbanManagement(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # =========================================================
     # TEMPBAN LIST
-    # =========================================================
 
     @app_commands.command(
         name="tempban_list",
@@ -115,9 +113,7 @@ class TempbanManagement(BaseAdminCog):
             actor=interaction.user,
         )
 
-    # =========================================================
     # TEMPBAN ROLE CONFIG
-    # =========================================================
 
     @app_commands.command(
         name="tempban_role",
@@ -143,9 +139,7 @@ class TempbanManagement(BaseAdminCog):
         bot_member = guild.me
         moderator: discord.Member = interaction.user
 
-        # -------------------------------------------------
         # Role Safety Validation
-        # -------------------------------------------------
 
         if role.is_default():
             return await interaction.response.send_message(

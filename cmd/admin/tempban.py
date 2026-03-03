@@ -27,9 +27,7 @@ class TempbanSystem(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # =========================================================
-    # FAST Reply Resolution (No API call)
-    # =========================================================
+    # FAST Reply Resolution
 
     def _resolve_from_reply(self, ctx: commands.Context):
         ref = ctx.message.reference
@@ -41,9 +39,7 @@ class TempbanSystem(BaseAdminCog):
 
         return None
 
-    # =========================================================
     # Shared Validation
-    # =========================================================
 
     async def _validate_target(self, ctx: commands.Context,
                                target: discord.Member):
@@ -73,9 +69,7 @@ class TempbanSystem(BaseAdminCog):
 
         return None
 
-    # =========================================================
     # TEMPBAN
-    # =========================================================
 
     @commands.command(name="tempban")
     @commands.guild_only()

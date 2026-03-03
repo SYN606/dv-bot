@@ -14,7 +14,7 @@ from utils.handlers.sticky_handler import handle_sticky
 from utils.handlers.afk_handler import handle_afk
 from utils.handlers.mention import handle_bot_mention
 
-from utils.presence import SarcasticPresenceRotator
+from utils.presence import PresenceRotator
 from utils.startups.verification_startup import setup_verification_on_ready
 from utils.views.verification_views.verify_button_view import VerifyButtonView
 
@@ -47,7 +47,7 @@ class DigitalVigilBot(commands.Bot):
             help_command=None,
         )
 
-        self.presence_rotator: SarcasticPresenceRotator | None = None
+        self.presence_rotator: PresenceRotator | None = None
 
     # ─────────────────────────
     # SETUP HOOK
@@ -110,7 +110,7 @@ class DigitalVigilBot(commands.Bot):
             print(f"[ERROR] Verification startup failed: {exc}")
 
         if self.presence_rotator is None:
-            self.presence_rotator = SarcasticPresenceRotator(self)
+            self.presence_rotator = PresenceRotator(self)
             await self.presence_rotator.start()
             print("[INFO] Presence rotator started")
 
