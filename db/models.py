@@ -72,6 +72,7 @@ class MediaOnlyChannel(Base):
         nullable=False,
     )
 
+
 # STICKY MESSAGES
 class StickyMessage(Base):
     __tablename__ = "sticky_messages"
