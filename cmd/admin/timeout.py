@@ -130,7 +130,7 @@ class TimeoutAdmin(BaseAdminCog):
             return await ctx.send(
                 embed=make_embed(
                     title="Missing Member",
-                    description="Usage: ts timeout @user [duration] [reason]",
+                    description="Usage: <prefix> timeout @user [duration] [reason]",
                     level="ERROR",
                 ),
                 delete_after=5,
@@ -214,7 +214,7 @@ class TimeoutAdmin(BaseAdminCog):
             return await ctx.send(
                 embed=make_embed(
                     title="Missing Member",
-                    description="Usage: ts untimeout @user [reason]",
+                    description="Usage: <prefix> untimeout @user [reason]",
                     level="ERROR",
                 ),
                 delete_after=5,
