@@ -11,43 +11,50 @@ from utils.logging.mod_log import send_mod_log
 
 class Purge(BaseAdminCog):
     """
-    Prefix purge command (rate-limit safe).
+    Advanced purge command (large bot style).
 
     Usage:
     dv purge <amount>
     dv purge @user <amount>
+
+    Works in:
+    - Text channels
+    - Voice channel chat
+    - Threads
+    - Forum posts
     """
+
+    MAX_PURGE = 1000
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     @commands.command(name="purge")
     @commands.guild_only()
+    @commands.has_permissions(manage_messages=True)
     async def purge(self, ctx: commands.Context, *args):
 
         guild = ctx.guild
         channel = ctx.channel
 
-        if guild is None or not isinstance(channel, discord.TextChannel):
+        if guild is None or not hasattr(channel, "history"):
             return
 
         # ─────────────────────────
-        # Argument validation
+        # Argument parsing
         # ─────────────────────────
+        member: discord.Member | None = None
+        amount: int | None = None
+
         if not args:
             return await ctx.reply(
                 embed=make_embed(
                     title="Invalid Usage",
-                    description=("Usage:\n"
-                                 "`dv purge <amount>`\n"
-                                 "`dv purge @user <amount>`"),
+                    description=("`dv purge <amount>`\n`dv purge @user <amount>`"),
                     level="WARNING",
                 ),
                 mention_author=False,
             )
-
-        member: discord.Member | None = None
-        amount: int | None = None
 
         if len(args) == 1:
             try:
@@ -56,7 +63,7 @@ class Purge(BaseAdminCog):
                 return await ctx.reply(
                     embed=make_embed(
                         title="Invalid Amount",
-                        description="Amount must be a valid number.",
+                        description="Amount must be a number.",
                         level="WARNING",
                     ),
                     mention_author=False,
@@ -81,7 +88,7 @@ class Purge(BaseAdminCog):
                 return await ctx.reply(
                     embed=make_embed(
                         title="Invalid Amount",
-                        description="Amount must be a valid number.",
+                        description="Amount must be a number.",
                         level="WARNING",
                     ),
                     mention_author=False,
@@ -90,13 +97,13 @@ class Purge(BaseAdminCog):
             return await ctx.reply(
                 embed=make_embed(
                     title="Invalid Usage",
-                    description="Too many arguments provided.",
+                    description="Too many arguments.",
                     level="WARNING",
                 ),
                 mention_author=False,
             )
 
-        if amount is None or amount <= 0:
+        if amount <= 0:
             return await ctx.reply(
                 embed=make_embed(
                     title="Invalid Amount",
@@ -106,90 +113,96 @@ class Purge(BaseAdminCog):
                 mention_author=False,
             )
 
-        if amount > 100:
+        if amount > self.MAX_PURGE:
             return await ctx.reply(
                 embed=make_embed(
                     title="Limit Exceeded",
-                    description="Maximum purge limit is 100 messages.",
+                    description=f"Maximum purge limit is **{self.MAX_PURGE}**.",
                     level="WARNING",
                 ),
                 mention_author=False,
             )
 
-        # ─────────────────────────
-        # Delete invoking command
-        # ─────────────────────────
+        # delete invoking command
         try:
             await ctx.message.delete()
         except discord.HTTPException:
             pass
 
         # ─────────────────────────
-        # Execute purge (rate-limit safe)
+        # Message collection
         # ─────────────────────────
-        deleted_count = 0
+
         now = discord.utils.utcnow()
         fourteen_days = datetime.timedelta(days=14)
 
-        try:
-            messages: list[discord.Message] = []
+        messages: list[discord.Message] = []
 
-            # Reduce scan multiplier (less API stress)
-            scan_limit = amount * 3 if member else amount
+        scan_limit = amount * 5 if member else amount
 
-            async for msg in channel.history(limit=scan_limit):
-                if msg.pinned:
-                    continue
+        async for msg in channel.history(limit=scan_limit):
+            if msg.pinned:
+                continue
 
-                if member and msg.author != member:
-                    continue
+            if member and msg.author != member:
+                continue
 
-                messages.append(msg)
+            messages.append(msg)
 
-                if len(messages) >= amount:
-                    break
+            if len(messages) >= amount:
+                break
 
-            if messages:
+        if not messages:
+            return
 
-                young = [
-                    m for m in messages if now - m.created_at < fourteen_days
-                ]
+        young = []
+        old = []
 
-                old = [
-                    m for m in messages if now - m.created_at >= fourteen_days
-                ]
+        for m in messages:
+            if now - m.created_at < fourteen_days:
+                young.append(m)
+            else:
+                old.append(m)
 
-                # Bulk delete (fast, 1 request)
-                if young:
-                    await channel.delete_messages(young)
+        deleted = 0
 
-                # Delete old messages individually (rate-safe)
-                for m in old:
-                    try:
-                        await m.delete()
-                        await asyncio.sleep(0.25)
-                    except discord.HTTPException:
-                        pass
+        # ─────────────────────────
+        # Fast bulk delete
+        # ─────────────────────────
 
-                deleted_count = len(young) + len(old)
+        while young:
+            batch = young[:100]
+            young = young[100:]
 
-        except discord.Forbidden:
-            return await ctx.send(embed=make_embed(
-                title="Missing Permissions",
-                description="I need **Manage Messages** permission.",
-                level="ERROR",
-            ))
+            try:
+                await channel.delete_messages(batch)
+                deleted += len(batch)
+            except discord.HTTPException:
+                pass
+
+        # ─────────────────────────
+        # Old message deletion
+        # ─────────────────────────
+
+        for msg in old:
+            try:
+                await msg.delete()
+                deleted += 1
+                await asyncio.sleep(0.35)
+            except discord.HTTPException:
+                pass
 
         # ─────────────────────────
         # Confirmation
         # ─────────────────────────
+
         if member:
             description = (
                 f"{EMOJIS['moderation']} Cleared "
-                f"**{deleted_count}** messages from {member.mention}.")
+                f"**{deleted}** messages from {member.mention}"
+            )
         else:
-            description = (f"{EMOJIS['moderation']} Cleared "
-                           f"**{deleted_count}** messages.")
+            description = f"{EMOJIS['moderation']} Cleared **{deleted}** messages"
 
         embed = make_embed(
             title="Messages Purged",
@@ -198,11 +211,12 @@ class Purge(BaseAdminCog):
             footer=f"Action by {ctx.author}",
         )
 
-        confirmation = await ctx.send(embed=embed)
+        msg = await ctx.send(embed=embed)
 
         # ─────────────────────────
-        # Structured logging
+        # Structured mod log
         # ─────────────────────────
+
         await send_mod_log(
             guild=guild,
             category="PURGE",
@@ -213,15 +227,14 @@ class Purge(BaseAdminCog):
             target=member,
             extra_fields={
                 "Channel": channel.mention,
-                "Deleted Count": deleted_count,
+                "Deleted Count": deleted,
             },
         )
 
-        # Auto delete confirmation
         await asyncio.sleep(5)
 
         try:
-            await confirmation.delete()
+            await msg.delete()
         except discord.HTTPException:
             pass
 

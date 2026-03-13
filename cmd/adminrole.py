@@ -8,7 +8,6 @@ from utils.views.adminrole_view import AdminRoleView
 
 
 class AdminRole(commands.Cog):
-
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -16,40 +15,45 @@ class AdminRole(commands.Cog):
         name="adminrole",
         description="Manage bot admin roles (Server Owner Only)",
     )
-    async def adminrole(
-        self,
-        interaction: discord.Interaction,
-    ):
+    async def adminrole(self, interaction: discord.Interaction):
 
         guild = interaction.guild
         user = interaction.user
 
+        # ─────────────────────────
+        # SERVER CHECK
+        # ─────────────────────────
         if guild is None:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Context",
-                    description=f"{EMOJIS['fail']} Server only command.",
+                    description=f"{EMOJIS['fail']} This command can only be used in a server.",
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
+            return
 
-        # ─────────────────────────────
-        # OWNER ONLY CHECK
-        # ─────────────────────────────
+        # ─────────────────────────
+        # OWNER CHECK
+        # ─────────────────────────
         if user.id != guild.owner_id:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Permission Denied",
-                    description=(f"{EMOJIS['fail']} Only the **server owner** "
-                                 "can manage bot admin roles."),
+                    description=(
+                        f"{EMOJIS['fail']} Only the **server owner** "
+                        "can manage bot admin roles."
+                    ),
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
+            return
 
-        await interaction.response.defer(ephemeral=True)
-
+        # ─────────────────────────
+        # CREATE PANEL
+        # ─────────────────────────
         view = AdminRoleView(
             guild=guild,
             actor_id=user.id,
@@ -57,20 +61,21 @@ class AdminRole(commands.Cog):
 
         embed = make_embed(
             title="Bot Admin Role Panel",
-            description=
-            (f"{EMOJIS['announcement']} Manage bot admin roles.\n\n"
-             f"{EMOJIS['arrow_point']} Access restricted to **Server Owner**."
-             ),
+            description=(
+                f"{EMOJIS['announcement']} Manage bot admin roles.\n\n"
+                f"{EMOJIS['arrow_point']} Access restricted to **Server Owner**."
+            ),
             level="SYSTEM",
             footer=f"Owner: {user}",
         )
 
-        await interaction.followup.send(
+        await interaction.response.send_message(
             embed=embed,
             view=view,
             ephemeral=True,
         )
 
+        # Save message reference for timeout handling
         view.message = await interaction.original_response()
 
 
