@@ -33,8 +33,7 @@ class MediaOnly(BaseAdminCog):
         if guild is None or not isinstance(channel, discord.TextChannel):
             return
 
-        # Permission auto-handled by BaseAdminCog
-
+        # Create control panel view
         view = MediaOnlyView(
             guild_id=guild.id,
             channel=channel,
@@ -54,13 +53,26 @@ class MediaOnly(BaseAdminCog):
             footer=f"Channel • #{channel.name}",
         )
 
-        await interaction.response.send_message(
-            embed=embed,
-            view=view,
-            ephemeral=True,
-        )
+        # Safe interaction response
+        if interaction.response.is_done():
+            message = await interaction.followup.send(
+                embed=embed,
+                view=view,
+                ephemeral=True,
+                wait=True,
+            )
+        else:
+            await interaction.response.send_message(
+                embed=embed,
+                view=view,
+                ephemeral=True,
+            )
+            message = await interaction.original_response()
 
-        # Structured logging
+        # Attach message to view for timeout editing
+        view.message = message
+
+        # Structured moderation logging
         await send_mod_log(
             guild=guild,
             category="CONFIG",

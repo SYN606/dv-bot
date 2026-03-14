@@ -61,7 +61,6 @@ class MediaOnlyChannel(Base):
                                                           nullable=True)
     whitelist_role_id: Mapped[int | None] = mapped_column(BigInteger,
                                                           nullable=True)
-
     image_only: Mapped[bool] = mapped_column(Boolean,
                                              default=False,
                                              nullable=False)
@@ -71,7 +70,6 @@ class MediaOnlyChannel(Base):
     nsfw_bypass: Mapped[bool] = mapped_column(Boolean,
                                               default=True,
                                               nullable=False)
-
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         server_default=func.now(),

@@ -234,7 +234,7 @@ class MediaOnlyView(discord.ui.View):
     async def on_timeout(self) -> None:
 
         for item in self.children:
-            item.disabled = True
+            item.disabled = True # type: ignore
 
         try:
             if self.message:
