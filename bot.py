@@ -1,6 +1,7 @@
 import os
 import asyncio
 import logging
+import time
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -38,25 +39,6 @@ logging.basicConfig(level=logging.INFO)
 
 if DEBUG_HTTP:
     logging.getLogger("discord.http").setLevel(logging.DEBUG)
-
-# ─────────────────────────
-# GLOBAL API GUARD
-# ─────────────────────────
-_api_calls = []
-API_LIMIT = 40
-
-
-async def api_guard():
-    now = asyncio.get_event_loop().time()
-
-    _api_calls.append(now)
-
-    while _api_calls and now - _api_calls[0] > 1:
-        _api_calls.pop(0)
-
-    if len(_api_calls) > API_LIMIT:
-        await asyncio.sleep(0.8)
-
 
 # ─────────────────────────
 # INTENTS
@@ -98,7 +80,6 @@ class DigitalVigilBot(commands.Bot):
             except Exception as exc:
                 print(f"[ERROR] Slash sync failed: {exc}")
 
-        # Persistent verification button
         self.add_view(VerifyButtonView())
 
         print("[SYSTEM] Setup hook completed")
@@ -118,11 +99,14 @@ class DigitalVigilBot(commands.Bot):
 
                 if not file.endswith(".py") or file.startswith("__"):
                     continue
+
                 rel = os.path.relpath(
                     os.path.join(root, file),
                     base_path,
                 )
+
                 ext = f"cmd.{rel.replace(os.sep,'.')[:-3]}"
+
                 try:
                     await self.load_extension(ext)
                     print(f"[INFO] Loaded {ext}")
@@ -138,7 +122,10 @@ class DigitalVigilBot(commands.Bot):
     # READY EVENT
     # ─────────────────────────
     async def on_ready(self) -> None:
-        print(f"[INFO] Logged in as {self.user} ({self.user.id})")  # type: ignore
+
+        print(f"[INFO] Logged in as {self.user} ({self.user.id})" # type: ignore
+              )  # type: ignore
+
         try:
             await setup_verification_on_ready(self)
         except Exception as exc:
@@ -155,29 +142,7 @@ class DigitalVigilBot(commands.Bot):
         print("[INFO] Bot ready")
 
     # ─────────────────────────
-    # GLOBAL COMMAND ERROR HANDLER
-    # ─────────────────────────
-    async def on_command_error(self, ctx: commands.Context, error):
-
-        if isinstance(error, commands.CommandNotFound):
-            return
-
-        print(f"[ERROR] Command error: {error}")
-
-        try:
-            await api_guard()
-
-            await ctx.reply(
-                "⚠ An unexpected error occurred while executing that command.",
-                mention_author=False,
-            )
-
-        except Exception:
-            pass
-
-    # ─────────────────────────
     # MESSAGE PIPELINE
-    # Optimized to reduce handler load
     # ─────────────────────────
     async def on_message(self, message: discord.Message) -> None:
 
@@ -188,24 +153,19 @@ class DigitalVigilBot(commands.Bot):
 
             message.content = normalize_prefix(message.content)
 
-            # Counting only if numeric
             if message.content.isdigit():
                 if await handle_counting(message):
                     return
 
-            # Media-only only if message contains media
             if message.attachments or message.embeds:
                 if await enforce_media_only(message):
                     return
 
-            # Sticky system
             await handle_sticky(message)
 
-            # Bot mention handler
             if self.user and self.user.mentioned_in(message):
                 await handle_bot_mention(self, message)
 
-            # AFK handler
             await handle_afk(message)
 
         except Exception as exc:
@@ -215,20 +175,36 @@ class DigitalVigilBot(commands.Bot):
 
 
 # ─────────────────────────
-# ENTRYPOINT
+# ENTRYPOINT (RETRY SAFE)
 # ─────────────────────────
 def main() -> None:
 
-    bot = DigitalVigilBot()
+    while True:
 
-    try:
-        bot.run(TOKEN)  # type: ignore
+        bot = DigitalVigilBot()
 
-    except KeyboardInterrupt:
-        print("[INFO] Shutdown requested")
+        try:
+            bot.run(TOKEN)  # type: ignore
 
-    except Exception as exc:
-        print(f"[FATAL] Bot crashed: {exc}")
+        except discord.HTTPException as exc:
+
+            if exc.status == 429:
+                print(
+                    "[WARN] Global rate limit detected. Waiting 60 seconds before reconnecting..."
+                )
+                time.sleep(60)
+                continue
+
+            raise
+
+        except KeyboardInterrupt:
+            print("[INFO] Shutdown requested")
+            break
+
+        except Exception as exc:
+            print(f"[FATAL] Bot crashed: {exc}")
+            print("[INFO] Restarting bot in 30 seconds...")
+            time.sleep(30)
 
 
 if __name__ == "__main__":

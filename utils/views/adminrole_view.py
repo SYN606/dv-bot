@@ -97,7 +97,7 @@ class AdminRoleView(discord.ui.View):
         role_ids = await get_admin_roles(self.guild.id)
 
         roles = [
-            self.guild.get_role(role_id).mention
+            self.guild.get_role(role_id).mention # type: ignore
             for role_id in role_ids
             if self.guild.get_role(role_id)
         ]

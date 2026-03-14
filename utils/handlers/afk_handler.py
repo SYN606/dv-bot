@@ -1,22 +1,29 @@
 import os
-from discord import Message
 import time
+from discord import Message
 
 from utils.embeds import make_embed
 from db.db_helpers.afk import get_afk, remove_afk
 
 AFK_IMAGE = os.getenv("AFK_IMAGE_URL")
 
+# cooldown per mentioned user
+_afk_notice_cooldown: dict[int, float] = {}
+
 
 def format_duration(seconds: int) -> str:
+
     if seconds < 60:
         return f"{seconds}s"
+
     if seconds < 3600:
         return f"{seconds // 60}m {seconds % 60}s"
+
     if seconds < 86400:
         hours = seconds // 3600
         minutes = (seconds % 3600) // 60
         return f"{hours}h {minutes}m"
+
     days = seconds // 86400
     hours = (seconds % 86400) // 3600
     return f"{days}d {hours}h"
@@ -32,12 +39,23 @@ async def handle_afk(message: Message) -> bool:
     now = int(time.time())
 
     afk_lines = []
-    unique_mentions = {user.id: user for user in message.mentions}.values()
+
+    # deduplicate mentions
+    unique_mentions = {u.id: u for u in message.mentions}.values()
 
     for user in unique_mentions:
+
+        last = _afk_notice_cooldown.get(user.id, 0)
+
+        if now - last < 10:
+            continue
+
         afk = await get_afk(guild_id, user.id)
+
         if not afk:
             continue
+
+        _afk_notice_cooldown[user.id] = now
 
         handled = True
         since_ts = int(afk.since)
@@ -47,6 +65,7 @@ async def handle_afk(message: Message) -> bool:
                          f"**Since:** <t:{since_ts}:R>\n")
 
     if afk_lines:
+
         embed = make_embed(
             title="AFK Notice",
             description="\n".join(afk_lines),
@@ -61,6 +80,7 @@ async def handle_afk(message: Message) -> bool:
     removed = await remove_afk(guild_id, message.author.id)
 
     if removed:
+
         handled = True
 
         since_ts = int(removed.since)

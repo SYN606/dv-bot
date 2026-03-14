@@ -10,14 +10,15 @@ from utils.emojis import EMOJIS
 
 __all__ = ("handle_bot_mention", )
 
-# Env-based banner GIF
 MENTION_GIF = os.getenv("MENTION_GIF_URL")
 
-# Mention cooldown (per guild)
+# Cooldown per guild
 _mention_cooldown: dict[int, float] = {}
 
 
+# ─────────────────────────
 # Help Button View
+# ─────────────────────────
 class MentionView(View):
 
     def __init__(self, bot: discord.Client, author_id: int):
@@ -26,10 +27,8 @@ class MentionView(View):
         self.author_id = author_id
         self.message: discord.Message | None = None
 
-    async def interaction_check(
-        self,
-        interaction: discord.Interaction,
-    ) -> bool:
+    async def interaction_check(self,
+                                interaction: discord.Interaction) -> bool:
         return interaction.user.id == self.author_id
 
     @discord.ui.button(
@@ -37,11 +36,8 @@ class MentionView(View):
         style=discord.ButtonStyle.primary,
         emoji="📘",
     )
-    async def help_button(
-        self,
-        interaction: discord.Interaction,
-        _: Button,
-    ):
+    async def help_button(self, interaction: discord.Interaction, _: Button):
+
         try:
             if not interaction.response.is_done():
                 await interaction.response.defer(ephemeral=True)
@@ -62,8 +58,9 @@ class MentionView(View):
         )
 
     async def on_timeout(self):
+
         for item in self.children:
-            item.disabled = True # type: ignore
+            item.disabled = True  # type: ignore
 
         if self.message:
             try:
@@ -75,36 +72,26 @@ class MentionView(View):
 # ─────────────────────────
 # Mention Handler
 # ─────────────────────────
-async def handle_bot_mention(
-    bot: discord.Client,
-    message: Message,
-) -> bool:
+async def handle_bot_mention(bot: discord.Client, message: Message) -> bool:
 
     if message.author.bot or bot.user is None:
         return False
 
     content = message.content.strip()
+
     if not content:
         return False
 
-    # Accept mention only if it's the entire message
-    valid_mentions = {
-        bot.user.mention,
-        f"<@!{bot.user.id}>",
-    }
-
-    if content not in valid_mentions:
+    if content not in {f"<@{bot.user.id}>", f"<@!{bot.user.id}>"}:
         return False
 
-    # ─────────────────────────
-    # Cooldown protection (5s per guild)
-    # ─────────────────────────
-    now = asyncio.get_event_loop().time()
+    # Cooldown guard
+    now = asyncio.get_running_loop().time()
     guild_id = message.guild.id if message.guild else 0
     last = _mention_cooldown.get(guild_id, 0)
 
     if now - last < 5:
-        return True  # silently ignore spam
+        return True
 
     _mention_cooldown[guild_id] = now
 

@@ -8,12 +8,16 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+# ─────────────────────────
 # ENV LOAD
+# ─────────────────────────
 load_dotenv()
 
 ENV = os.getenv("ENV", "dev").lower()
 
-# region PRODUCTION 
+# ─────────────────────────
+# PRODUCTION DATABASE
+# ─────────────────────────
 if ENV == "prod":
 
     DB_USER = os.getenv("DB_USER")
@@ -25,25 +29,31 @@ if ENV == "prod":
     if not all([DB_USER, DB_PASS, DB_HOST, DB_NAME]):
         raise RuntimeError("Missing production DB environment variables")
 
-    DATABASE_URL = (f"postgresql+asyncpg://{DB_USER}:{quote_plus(DB_PASS)}"
+    DATABASE_URL = (f"postgresql+asyncpg://{DB_USER}:{quote_plus(DB_PASS)}" # type: ignore
                     f"@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
     engine = create_async_engine(
         DATABASE_URL,
+
+        # Connection pool tuning
         pool_size=10,
         max_overflow=20,
+        pool_timeout=30,
+
+        # Neon/serverless protection
+        pool_recycle=1800,
         pool_pre_ping=True,
         echo=False,
         future=True,
     )
 
-# region DEVELOPMENT
+# ─────────────────────────
+# DEVELOPMENT DATABASE
+# ─────────────────────────
 else:
 
-    # Absolute project root path
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    # Ensure /db directory exists
     DB_DIR = os.path.join(BASE_DIR, "db")
     os.makedirs(DB_DIR, exist_ok=True)
 
@@ -57,9 +67,22 @@ else:
         future=True,
     )
 
-# region SESSION FACTORY
+# ─────────────────────────
+# SESSION FACTORY
+# ─────────────────────────
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
     expire_on_commit=False,
     class_=AsyncSession,
 )
+
+
+# ─────────────────────────
+# SAFE ENGINE SHUTDOWN
+# Prevents asyncio loop crash
+# ─────────────────────────
+async def close_database():
+    try:
+        await engine.dispose()
+    except Exception:
+        pass

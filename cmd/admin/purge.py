@@ -16,16 +16,10 @@ class Purge(BaseAdminCog):
     Usage:
     dv purge <amount>
     dv purge @user <amount>
-
-    Works in:
-    - Text channels
-    - Voice channel chat
-    - Threads
-    - Forum posts
     """
 
     MAX_PURGE = 1000
-    MAX_SCAN = 2000  # prevents huge history scans
+    MAX_SCAN = 2000
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -33,7 +27,10 @@ class Purge(BaseAdminCog):
     @commands.command(name="purge")
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True)
-    @commands.cooldown(1, 5, commands.BucketType.guild)
+    # cooldown per moderator
+    @commands.cooldown(1, 10, commands.BucketType.user)
+    # global safety limit
+    @commands.max_concurrency(1, per=commands.BucketType.guild, wait=False)
     async def purge(self, ctx: commands.Context, *args):
 
         guild = ctx.guild
@@ -48,6 +45,7 @@ class Purge(BaseAdminCog):
         # ─────────────────────────
         # ARGUMENT PARSING
         # ─────────────────────────
+
         if not args:
             return await ctx.reply(
                 embed=make_embed(
@@ -60,6 +58,7 @@ class Purge(BaseAdminCog):
             )
 
         if len(args) == 1:
+
             try:
                 amount = int(args[0])
             except ValueError:
@@ -73,6 +72,7 @@ class Purge(BaseAdminCog):
                 )
 
         elif len(args) == 2:
+
             if not ctx.message.mentions:
                 return await ctx.reply(
                     embed=make_embed(
@@ -127,7 +127,6 @@ class Purge(BaseAdminCog):
                 mention_author=False,
             )
 
-        # delete invoking command
         try:
             await ctx.message.delete()
         except discord.HTTPException:
@@ -146,6 +145,7 @@ class Purge(BaseAdminCog):
         scan_limit = min(scan_limit, self.MAX_SCAN)
 
         async for msg in channel.history(limit=scan_limit):
+
             if msg.pinned:
                 continue
 
@@ -164,6 +164,7 @@ class Purge(BaseAdminCog):
         old = []
 
         for m in messages:
+
             if now - m.created_at < fourteen_days:
                 young.append(m)
             else:
@@ -172,7 +173,7 @@ class Purge(BaseAdminCog):
         deleted = 0
 
         # ─────────────────────────
-        # BULK DELETE (FAST)
+        # BULK DELETE
         # ─────────────────────────
 
         while young:

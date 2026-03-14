@@ -9,12 +9,17 @@ from utils.embeds import make_embed
 from db.engine import AsyncSessionLocal
 from db.models import VerificationConfig
 
+# ─────────────────────────────────────
+# PER-GUILD VERIFY LOCK
+# Prevents bursts but does not block other servers
+# ─────────────────────────────────────
+_verify_locks: dict[int, asyncio.Lock] = {}
 
-# ─────────────────────────────────────
-# GLOBAL VERIFY LOCK
-# Prevents verification bursts
-# ─────────────────────────────────────
-_verify_lock = asyncio.Lock()
+
+def get_verify_lock(guild_id: int) -> asyncio.Lock:
+    if guild_id not in _verify_locks:
+        _verify_locks[guild_id] = asyncio.Lock()
+    return _verify_locks[guild_id]
 
 
 # ─────────────────────────────────────
@@ -46,7 +51,7 @@ class VerifyCaptchaModal(discord.ui.Modal):
             default=self.token,
             required=False,
         )
-        self.captcha_display.disabled = True # type: ignore
+        self.captcha_display.disabled = True  # type: ignore
 
         self.code_input = discord.ui.TextInput(
             label="Enter the code shown above",
@@ -68,20 +73,23 @@ class VerifyCaptchaModal(discord.ui.Modal):
 
         self._used = True
 
-        # queue verification requests
-        async with _verify_lock:
+        guild = interaction.guild
+        user = interaction.user
 
-            await asyncio.sleep(0.2)
+        if guild is None or not isinstance(user, discord.Member):
+            return
+
+        lock = get_verify_lock(guild.id)
+
+        async with lock:
+
+            # small spacing to smooth bursts
+            await asyncio.sleep(0.15)
 
             try:
-                await interaction.response.defer(ephemeral=True)
+                if not interaction.response.is_done():
+                    await interaction.response.defer(ephemeral=True)
             except discord.HTTPException:
-                return
-
-            guild = interaction.guild
-            user = interaction.user
-
-            if guild is None or not isinstance(user, discord.Member):
                 return
 
             # ─────────────────────────
@@ -101,11 +109,10 @@ class VerifyCaptchaModal(discord.ui.Modal):
             # FETCH CONFIG
             # ─────────────────────────
             async with AsyncSessionLocal() as session:
+
                 result = await session.execute(
                     select(VerificationConfig).where(
-                        VerificationConfig.guild_id == guild.id
-                    )
-                )
+                        VerificationConfig.guild_id == guild.id))
 
                 config = result.scalar_one_or_none()
 
@@ -120,11 +127,8 @@ class VerifyCaptchaModal(discord.ui.Modal):
                 )
 
             verified_role = guild.get_role(config.verified_role_id)
-            unverified_role = (
-                guild.get_role(config.unverified_role_id)
-                if config.unverified_role_id
-                else None
-            )
+            unverified_role = (guild.get_role(config.unverified_role_id)
+                               if config.unverified_role_id else None)
 
             if not verified_role:
                 return await interaction.followup.send(
@@ -163,16 +167,19 @@ class VerifyCaptchaModal(discord.ui.Modal):
                 )
 
             # ─────────────────────────
-            # APPLY VERIFICATION (single API call)
+            # APPLY VERIFICATION
             # ─────────────────────────
             try:
 
-                roles = [r for r in user.roles if r != unverified_role]
-                roles.append(verified_role)
+                if unverified_role and unverified_role in user.roles:
+                    await user.remove_roles(
+                        unverified_role,
+                        reason="User verified",
+                    )
 
-                await user.edit(
-                    roles=roles,
-                    reason="User completed verification captcha",
+                await user.add_roles(
+                    verified_role,
+                    reason="User completed captcha verification",
                 )
 
             except discord.HTTPException:
@@ -207,15 +214,13 @@ class VerifyCaptchaModal(discord.ui.Modal):
                 if isinstance(log_channel, discord.TextChannel):
 
                     try:
-                        await asyncio.sleep(0.3)
+                        await asyncio.sleep(0.25)
 
-                        await log_channel.send(
-                            embed=make_embed(
-                                title="User Verified",
-                                description=f"{user.mention} has been verified.",
-                                level="INFO",
-                            )
-                        )
+                        await log_channel.send(embed=make_embed(
+                            title="User Verified",
+                            description=f"{user.mention} has been verified.",
+                            level="INFO",
+                        ))
 
                     except discord.HTTPException:
                         pass

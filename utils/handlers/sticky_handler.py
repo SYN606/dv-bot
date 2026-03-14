@@ -7,9 +7,9 @@ from db.db_helpers.sticky import (
     update_last_message,
 )
 
-# Cooldown per channel (seconds)
+# Cooldown per channel
 _STICKY_COOLDOWN: dict[int, float] = {}
-_STICKY_DELAY = 5  # seconds
+_STICKY_DELAY = 5
 
 
 async def handle_sticky(message: Message) -> bool:
@@ -22,7 +22,7 @@ async def handle_sticky(message: Message) -> bool:
         return False
 
     # Cooldown guard
-    now = asyncio.get_event_loop().time()
+    now = asyncio.get_running_loop().time()
     last = _STICKY_COOLDOWN.get(channel.id, 0)
 
     if now - last < _STICKY_DELAY:
@@ -40,13 +40,12 @@ async def handle_sticky(message: Message) -> bool:
 
     _STICKY_COOLDOWN[channel.id] = now
 
-    # Delete old sticky safely
+    # Delete previous sticky safely
     if last_id:
         try:
-            await channel.delete_messages([discord.Object(id=last_id)])
-        except (discord.Forbidden, discord.NotFound):
-            pass
-        except discord.HTTPException:
+            msg = channel.get_partial_message(last_id)
+            await msg.delete()
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
             pass
 
     # Send new sticky
