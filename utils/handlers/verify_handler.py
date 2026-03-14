@@ -1,4 +1,5 @@
 import discord
+import asyncio
 from datetime import datetime
 
 from utils.embeds import make_embed
@@ -24,11 +25,16 @@ async def handle_verification(
         return False
 
     verified_role = guild.get_role(config.verified_role_id)
-    unverified_role = (guild.get_role(config.unverified_role_id)
-                       if config.unverified_role_id else None)
+    unverified_role = (
+        guild.get_role(config.unverified_role_id) if config.unverified_role_id else None
+    )
 
     if not verified_role:
         return False
+
+    # Already verified (fast exit)
+    if verified_role in member.roles:
+        return True
 
     # Hierarchy validation
     if verified_role >= bot_member.top_role:
@@ -37,50 +43,43 @@ async def handle_verification(
     if unverified_role and unverified_role >= bot_member.top_role:
         unverified_role = None
 
-    # Idempotency check
-    if verified_role in member.roles:
-        return True  # already verified
-
-    # Apply roles safely
+    # ROLE UPDATE
     try:
-        role_changes = []
+        new_roles = [r for r in member.roles if r != unverified_role]
 
-        if unverified_role and unverified_role in member.roles:
-            role_changes.append(("remove", unverified_role))
+        if verified_role not in new_roles:
+            new_roles.append(verified_role)
 
-        role_changes.append(("add", verified_role))
+        await member.edit(
+            roles=new_roles,
+            reason="User verified",
+        )
 
-        for action, role in role_changes:
-            if action == "remove":
-                await member.remove_roles(
-                    role,
-                    reason="Verification completed",
-                )
-            else:
-                await member.add_roles(
-                    role,
-                    reason="User verified",
-                )
-
-    except (discord.Forbidden, discord.HTTPException):
+    except discord.Forbidden, discord.HTTPException:
         return False
 
-    # Logging (safe)
+    # LOGGING
     log_channel = guild.get_channel(config.log_channel_id)
 
     if isinstance(log_channel, discord.TextChannel):
         try:
-            await log_channel.send(embed=make_embed(
-                title="User Verified",
-                description=
-                (f"{EMOJIS['success']} {member.mention} completed verification.\n\n"
-                 f"{EMOJIS['arrow_point']} **User ID:** `{member.id}`\n"
-                 f"{EMOJIS['arrow_point']} **Time:** "
-                 f"<t:{int(datetime.utcnow().timestamp())}:R>"),
-                level="SUCCESS",
-                footer=f"Verification • {guild.name}",
-            ))
-        except (discord.Forbidden, discord.HTTPException):
+            await asyncio.sleep(0.2)
+
+            await log_channel.send(
+                embed=make_embed(
+                    title="User Verified",
+                    description=(
+                        f"{EMOJIS['success']} {member.mention} completed verification.\n\n"
+                        f"{EMOJIS['arrow_point']} **User ID:** `{member.id}`\n"
+                        f"{EMOJIS['arrow_point']} **Time:** "
+                        f"<t:{int(datetime.utcnow().timestamp())}:R>"
+                    ),
+                    level="SUCCESS",
+                    footer=f"Verification • {guild.name}",
+                )
+            )
+
+        except discord.Forbidden, discord.HTTPException:
             pass
 
     return True
