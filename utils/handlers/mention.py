@@ -63,7 +63,7 @@ class MentionView(View):
 
     async def on_timeout(self):
         for item in self.children:
-            item.disabled = True
+            item.disabled = True # type: ignore
 
         if self.message:
             try:
