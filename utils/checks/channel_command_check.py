@@ -9,7 +9,6 @@ from db.db_helpers.channel_command_restrict import is_command_restricted
 async def channel_command_check(ctx: commands.Context) -> bool:
     """
     v2 Prefix command channel restriction check
-
     - Blocks restricted commands per channel
     - Sends clean feedback embed
     - Safe for aliases & subcommands
