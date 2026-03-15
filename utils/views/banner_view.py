@@ -8,10 +8,10 @@ class BannerView(discord.ui.View):
     """
     Secure Banner View
 
-    - Toggle server/global banner
-    - Interaction-locked
-    - Safe editing
-    - Clean timeout
+    • Toggle between server and global banner
+    • Interaction locked to requester
+    • Safe message editing
+    • Clean timeout lifecycle
     """
 
     def __init__(
@@ -32,8 +32,11 @@ class BannerView(discord.ui.View):
 
         self._sync_buttons()
 
+    # ─────────────────────────────
     # Button sync
+    # ─────────────────────────────
     def _sync_buttons(self) -> None:
+
         self.clear_items()
 
         if self.server_url:
@@ -42,7 +45,9 @@ class BannerView(discord.ui.View):
         if self.global_url:
             self.add_item(GlobalBannerButton(disabled=self.active == "global"))
 
-    # Secure interaction check
+    # ─────────────────────────────
+    # Interaction restriction
+    # ─────────────────────────────
     async def interaction_check(
         self,
         interaction: discord.Interaction,
@@ -54,52 +59,61 @@ class BannerView(discord.ui.View):
                     await interaction.response.send_message(
                         embed=make_embed(
                             title="Unauthorized",
-                            description=
-                            f"{EMOJIS['fail']} You cannot use this interaction.",
+                            description=f"{EMOJIS['fail']} You cannot use this interaction.",
                             level="ERROR",
                         ),
                         ephemeral=True,
                     )
             except discord.NotFound:
                 pass
+
             return False
 
         return True
 
+    # ─────────────────────────────
     # Embed builder
+    # ─────────────────────────────
     def build_embed(self) -> discord.Embed:
 
-        current_url = (self.server_url
-                       if self.active == "server" else self.global_url)
+        if self.active == "server":
+            url = self.server_url
+            footer_text = "Showing server banner"
+        else:
+            url = self.global_url
+            footer_text = "Showing global banner"
 
         embed = make_embed(
             title="User Banner",
             description="Switch between available banners.",
             level="INFO",
-            footer=("Showing server banner"
-                    if self.active == "server" else "Showing global banner"),
+            footer=footer_text,
         )
 
-        if current_url:
-            embed.set_image(url=current_url)
+        if url:
+            embed.set_image(url=url)
 
         return embed
 
-    # Timeout handling
+    # ─────────────────────────────
+    # Timeout lifecycle
+    # ─────────────────────────────
     async def on_timeout(self) -> None:
+
         for item in self.children:
             item.disabled = True
 
         try:
             if self.message:
                 await self.message.edit(view=self)
-        except (discord.NotFound, discord.HTTPException):
+        except discord.NotFound, discord.HTTPException:
             pass
 
 
+# ─────────────────────────────
 # BUTTONS
+# ─────────────────────────────
 class ServerBannerButton(discord.ui.Button):
-
     def __init__(self, *, disabled: bool):
         super().__init__(
             label="Server Banner",
@@ -132,7 +146,6 @@ class ServerBannerButton(discord.ui.Button):
 
 
 class GlobalBannerButton(discord.ui.Button):
-
     def __init__(self, *, disabled: bool):
         super().__init__(
             label="Global Banner",

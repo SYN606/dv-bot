@@ -24,31 +24,37 @@ class AdminRole(commands.Cog):
         # SERVER CHECK
         # ─────────────────────────
         if guild is None:
-            await interaction.response.send_message(
-                embed=make_embed(
-                    title="Invalid Context",
-                    description=f"{EMOJIS['fail']} This command can only be used in a server.",
-                    level="ERROR",
-                ),
-                ephemeral=True,
+            embed = make_embed(
+                title="Invalid Context",
+                description=f"{EMOJIS['fail']} This command can only be used in a server.",
+                level="ERROR",
             )
+
+            if interaction.response.is_done():
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+
             return
 
         # ─────────────────────────
         # OWNER CHECK
         # ─────────────────────────
         if user.id != guild.owner_id:
-            await interaction.response.send_message(
-                embed=make_embed(
-                    title="Permission Denied",
-                    description=(
-                        f"{EMOJIS['fail']} Only the **server owner** "
-                        "can manage bot admin roles."
-                    ),
-                    level="ERROR",
+            embed = make_embed(
+                title="Permission Denied",
+                description=(
+                    f"{EMOJIS['fail']} Only the **server owner** "
+                    "can manage bot admin roles."
                 ),
-                ephemeral=True,
+                level="ERROR",
             )
+
+            if interaction.response.is_done():
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+
             return
 
         # ─────────────────────────
@@ -69,14 +75,24 @@ class AdminRole(commands.Cog):
             footer=f"Owner: {user}",
         )
 
-        await interaction.response.send_message(
-            embed=embed,
-            view=view,
-            ephemeral=True,
-        )
+        # SAFE RESPONSE
+        if interaction.response.is_done():
+            message = await interaction.followup.send(
+                embed=embed,
+                view=view,
+                ephemeral=True,
+                wait=True,
+            )
+        else:
+            await interaction.response.send_message(
+                embed=embed,
+                view=view,
+                ephemeral=True,
+            )
+            message = await interaction.original_response()
 
-        # Save message reference for timeout handling
-        view.message = await interaction.original_response()
+        # store message for timeout
+        view.message = message
 
 
 async def setup(bot: commands.Bot):

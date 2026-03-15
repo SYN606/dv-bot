@@ -8,10 +8,10 @@ class AvatarView(discord.ui.View):
     """
     Secure Avatar View
 
-    - Switch between server and global avatar
-    - Single-message updates
-    - Interaction-locked to requester
-    - Safe lifecycle handling
+    • Toggle between server and global avatar
+    • Single message editing
+    • Locked to command requester
+    • Safe timeout lifecycle
     """
 
     def __init__(
@@ -33,9 +33,10 @@ class AvatarView(discord.ui.View):
         self._sync_buttons()
 
     # ─────────────────────────────
-    # Button sync
+    # Sync buttons
     # ─────────────────────────────
     def _sync_buttons(self) -> None:
+
         self.clear_items()
 
         if self.server_url:
@@ -45,7 +46,7 @@ class AvatarView(discord.ui.View):
             self.add_item(GlobalAvatarButton(disabled=self.active == "global"))
 
     # ─────────────────────────────
-    # Restrict interaction (SECURE)
+    # Restrict interaction
     # ─────────────────────────────
     async def interaction_check(
         self,
@@ -58,14 +59,14 @@ class AvatarView(discord.ui.View):
                     await interaction.response.send_message(
                         embed=make_embed(
                             title="Unauthorized",
-                            description=
-                            f"{EMOJIS['fail']} You cannot use this interaction.",
+                            description=f"{EMOJIS['fail']} You cannot use this interaction.",
                             level="ERROR",
                         ),
                         ephemeral=True,
                     )
             except discord.NotFound:
                 pass
+
             return False
 
         return True
@@ -75,19 +76,22 @@ class AvatarView(discord.ui.View):
     # ─────────────────────────────
     def build_embed(self) -> discord.Embed:
 
-        current_url = (self.server_url
-                       if self.active == "server" else self.global_url)
+        if self.active == "server":
+            url = self.server_url
+            footer_text = "Showing server avatar"
+        else:
+            url = self.global_url
+            footer_text = "Showing global avatar"
 
         embed = make_embed(
             title="User Avatar",
             description="Switch between available avatars.",
             level="INFO",
-            footer=("Showing server avatar"
-                    if self.active == "server" else "Showing global avatar"),
+            footer=footer_text,
         )
 
-        if current_url:
-            embed.set_image(url=current_url)
+        if url:
+            embed.set_image(url=url)
 
         return embed
 
@@ -95,13 +99,14 @@ class AvatarView(discord.ui.View):
     # Timeout
     # ─────────────────────────────
     async def on_timeout(self) -> None:
+
         for item in self.children:
             item.disabled = True
 
         try:
             if self.message:
                 await self.message.edit(view=self)
-        except (discord.NotFound, discord.HTTPException):
+        except discord.NotFound, discord.HTTPException:
             pass
 
 
@@ -109,7 +114,6 @@ class AvatarView(discord.ui.View):
 # BUTTONS
 # ─────────────────────────────
 class ServerAvatarButton(discord.ui.Button):
-
     def __init__(self, *, disabled: bool):
         super().__init__(
             label="Server Avatar",
@@ -120,6 +124,7 @@ class ServerAvatarButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
 
         view: AvatarView = self.view  # type: ignore
+
         if not view:
             return
 
@@ -142,7 +147,6 @@ class ServerAvatarButton(discord.ui.Button):
 
 
 class GlobalAvatarButton(discord.ui.Button):
-
     def __init__(self, *, disabled: bool):
         super().__init__(
             label="Global Avatar",
@@ -153,6 +157,7 @@ class GlobalAvatarButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
 
         view: AvatarView = self.view  # type: ignore
+
         if not view:
             return
 
