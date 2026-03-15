@@ -24,7 +24,7 @@ class BaseAdminCog(commands.Cog):
         if not ctx.guild:
             return True
 
-        # 🔥 OWNER BYPASS
+        # OWNER BYPASS
         if ctx.author.id == ctx.guild.owner_id:
             return True
 
@@ -52,7 +52,7 @@ class BaseAdminCog(commands.Cog):
         if not guild:
             return True
 
-        # 🔥 OWNER BYPASS
+        # OWNER BYPASS
         if interaction.user.id == guild.owner_id:
             return True
 
