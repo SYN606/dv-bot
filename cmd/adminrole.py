@@ -20,10 +20,7 @@ class AdminRole(BaseAdminCog):
         name="adminrole",
         description="Manage bot admin roles (Server Owner Only)",
     )
-    async def adminrole(
-        self,
-        interaction: discord.Interaction,
-    ) -> None:
+    async def adminrole(self, interaction: discord.Interaction) -> None:
 
         guild = interaction.guild
         user = interaction.user
@@ -32,11 +29,9 @@ class AdminRole(BaseAdminCog):
         # SERVER CHECK
         # ─────────────────────────
         if guild is None:
-
             embed = make_embed(
                 title="Invalid Context",
-                description=
-                f"{EMOJIS['fail']} This command can only be used in a server.",
+                description=f"{EMOJIS['fail']} This command can only be used in a server.",
                 level="ERROR",
             )
 
@@ -47,32 +42,23 @@ class AdminRole(BaseAdminCog):
             return
 
         # ─────────────────────────
-        # OWNER ONLY CHECK
+        # OWNER CHECK
         # ─────────────────────────
         if user.id != guild.owner_id:
-
             embed = make_embed(
                 title="Permission Denied",
-                description=(f"{EMOJIS['fail']} Only the **server owner** "
-                             "can manage bot admin roles."),
+                description=f"{EMOJIS['fail']} Only the **server owner** can manage bot admin roles.",
                 level="ERROR",
             )
 
-            if interaction.response.is_done():
-                await interaction.followup.send(
-                    embed=embed,
-                    ephemeral=True,
-                )
-            else:
-                await interaction.response.send_message(
-                    embed=embed,
-                    ephemeral=True,
-                )
-
+            await interaction.response.send_message(
+                embed=embed,
+                ephemeral=True,
+            )
             return
 
         # ─────────────────────────
-        # CREATE PANEL
+        # PANEL
         # ─────────────────────────
         view = AdminRoleView(
             guild=guild,
@@ -81,10 +67,10 @@ class AdminRole(BaseAdminCog):
 
         embed = make_embed(
             title="Bot Admin Role Panel",
-            description=
-            (f"{EMOJIS['announcement']} Manage bot admin roles.\n\n"
-             f"{EMOJIS['arrow_point']} Access restricted to **Server Owner**."
-             ),
+            description=(
+                f"{EMOJIS['announcement']} Manage bot admin roles.\n\n"
+                f"{EMOJIS['arrow_point']} Access restricted to **Server Owner**."
+            ),
             level="SYSTEM",
             footer=f"Owner: {user}",
         )
@@ -97,7 +83,7 @@ class AdminRole(BaseAdminCog):
 
         message = await interaction.original_response()
 
-        # store message for timeout lifecycle
+        # store message reference
         view.message = message
 
 
