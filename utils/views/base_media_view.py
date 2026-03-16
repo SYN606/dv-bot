@@ -1,7 +1,7 @@
 import time
 import discord
-from utils.embeds import make_embed
-from utils.emojis import EMOJIS
+from utils.core.embeds import make_embed
+from utils.core.emojis import EMOJIS
 
 
 class BaseMediaView(discord.ui.View):

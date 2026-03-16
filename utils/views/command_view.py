@@ -1,9 +1,9 @@
 import discord
 
-from utils.embeds import make_embed
-from utils.emojis import EMOJIS
-from utils.check_perms import is_bot_admin
-from utils.protected_commands import PROTECTED_COMMANDS
+from utils.core.embeds import make_embed
+from utils.core.emojis import EMOJIS
+from utils.permissions.check_perms import is_bot_admin
+from utils.permissions.protected_commands import PROTECTED_COMMANDS
 from db.db_helpers.channel_command_restrict import (
     disable_command,
     enable_command,

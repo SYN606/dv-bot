@@ -3,8 +3,8 @@ import time
 import discord
 from discord import Message, MessageType
 
-from utils.embeds import make_embed
-from utils.emojis import EMOJIS
+from utils.core.embeds import make_embed
+from utils.core.emojis import EMOJIS
 from db.db_helpers.afk import get_afk, remove_afk
 
 AFK_IMAGE = os.getenv("AFK_IMAGE_URL")

@@ -1,8 +1,8 @@
 import discord
 from discord.ext import commands
 
-from utils.embeds import make_embed
-from utils.emojis import EMOJIS
+from utils.core.embeds import make_embed
+from utils.core.emojis import EMOJIS
 from db.db_helpers.afk import set_afk
 
 

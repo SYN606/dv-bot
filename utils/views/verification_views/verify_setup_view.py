@@ -6,8 +6,8 @@ from sqlalchemy import select
 from db.engine import AsyncSessionLocal
 from db.models import VerificationConfig
 
-from utils.embeds import make_embed
-from utils.check_perms import is_bot_admin
+from utils.core.embeds import make_embed
+from utils.permissions.check_perms import is_bot_admin
 from db.db_helpers.verification import set_verification_config
 from utils.views.verification_views.verify_button_view import VerifyButtonView
 

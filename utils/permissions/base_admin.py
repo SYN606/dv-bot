@@ -1,8 +1,8 @@
 import discord
 from discord.ext import commands
 
-from utils.check_perms import is_bot_admin, is_bot_admin_ctx
-from utils.embeds import make_embed
+from utils.permissions.check_perms import is_bot_admin, is_bot_admin_ctx
+from utils.core.embeds import make_embed
 from utils.logging.mod_log import send_mod_log
 
 

@@ -2,8 +2,8 @@ from discord.ext import commands
 from discord import app_commands
 import discord
 
-from utils.base_admin import BaseAdminCog
-from utils.embeds import make_embed
+from utils.permissions.base_admin import BaseAdminCog
+from utils.core.embeds import make_embed
 
 DANGEROUS_PERMS = {
     "administrator": "Administrator",

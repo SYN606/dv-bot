@@ -3,8 +3,8 @@ import discord
 from datetime import timedelta
 import re
 
-from utils.base_admin import BaseAdminCog
-from utils.embeds import make_embed
+from utils.permissions.base_admin import BaseAdminCog
+from utils.core.embeds import make_embed
 from utils.logging.mod_log import send_mod_log
 
 # ============================================================

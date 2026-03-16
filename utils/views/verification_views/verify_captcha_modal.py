@@ -5,7 +5,7 @@ import discord
 
 from sqlalchemy import select
 
-from utils.embeds import make_embed
+from utils.core.embeds import make_embed
 from db.engine import AsyncSessionLocal
 from db.models import VerificationConfig
 

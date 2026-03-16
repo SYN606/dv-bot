@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from db.engine import AsyncSessionLocal
 from db.models import ModerationLogConfig
-from utils.embeds import make_embed
+from utils.core.embeds import make_embed
 
 
 _log_cache: dict[int, int] = {}

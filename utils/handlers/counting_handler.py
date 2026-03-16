@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.engine import AsyncSessionLocal
 from db.models import CountingChannel
-from utils.emojis import EMOJIS
-from utils.embeds import make_embed
+from utils.core.emojis import EMOJIS
+from utils.core.embeds import make_embed
 
 
 async def handle_counting(message: discord.Message) -> bool:

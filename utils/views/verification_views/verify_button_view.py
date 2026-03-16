@@ -1,7 +1,7 @@
 import asyncio
 import discord
 
-from utils.emojis import EMOJIS
+from utils.core.emojis import EMOJIS
 from utils.views.verification_views.verify_captcha_modal import VerifyCaptchaModal
 from db.db_helpers.verification import get_verification_config
 

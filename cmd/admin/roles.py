@@ -2,8 +2,8 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-from utils.base_admin import BaseAdminCog
-from utils.embeds import make_embed
+from utils.permissions.base_admin import BaseAdminCog
+from utils.core.embeds import make_embed
 from utils.views.role_manager import RoleManagerView
 from utils.logging.mod_log import send_mod_log
 

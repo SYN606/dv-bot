@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from db.schema import init_schema
 from utils.handlers.prefix import dynamic_prefix, normalize_prefix
-from utils.interaction_check import command_toggle_check
+from utils.core.interaction_check import command_toggle_check
 
 from utils.handlers.counting_handler import handle_counting
 from utils.handlers.media_only import enforce_media_only
@@ -16,7 +16,7 @@ from utils.handlers.sticky_handler import handle_sticky
 from utils.handlers.afk_handler import handle_afk
 from utils.handlers.mention import handle_bot_mention
 
-from utils.presence import PresenceRotator
+from utils.core.presence import PresenceRotator
 from utils.startups.verification_startup import setup_verification_on_ready
 from utils.views.verification_views.verify_button_view import VerifyButtonView
 

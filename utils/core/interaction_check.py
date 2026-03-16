@@ -1,6 +1,6 @@
 import discord
-from utils.embeds import make_embed
-from utils.emojis import EMOJIS
+from utils.core.embeds import make_embed
+from utils.core.emojis import EMOJIS
 from db.db_helpers.channel_command_restrict import is_command_restricted
 
 

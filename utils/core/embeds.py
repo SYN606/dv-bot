@@ -1,6 +1,6 @@
 import discord
 from typing import Iterable, Optional
-from utils.emojis import EMOJIS
+from utils.core.emojis import EMOJIS
 
 COLORS: dict[str, int] = {
     "INFO": 0x2B2D31,

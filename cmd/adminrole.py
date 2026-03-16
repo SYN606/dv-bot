@@ -2,9 +2,9 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-from utils.base_admin import BaseAdminCog
-from utils.embeds import make_embed
-from utils.emojis import EMOJIS
+from utils.permissions.base_admin import BaseAdminCog
+from utils.core.embeds import make_embed
+from utils.core.emojis import EMOJIS
 from utils.views.adminrole_view import AdminRoleView
 
 

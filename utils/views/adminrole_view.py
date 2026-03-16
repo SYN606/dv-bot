@@ -1,7 +1,7 @@
 import discord
 
-from utils.embeds import make_embed
-from utils.emojis import EMOJIS
+from utils.core.embeds import make_embed
+from utils.core.emojis import EMOJIS
 from db.db_helpers.admin_roles import (
     add_admin_role,
     remove_admin_role,
