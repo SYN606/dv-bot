@@ -279,3 +279,27 @@ class ModerationLogConfig(Base):
 
     def __repr__(self) -> str:
         return f"<ModerationLogConfig guild={self.guild_id} channel={self.channel_id}>"
+
+
+class ChannelPermissionSnapshot(Base):
+    __tablename__ = "channel_permission_snapshots"
+
+    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    target_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+
+    send_messages: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+    locked_by: Mapped[int] = mapped_column(BigInteger, nullable=False)
+
+    locked_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (Index(
+        "idx_lock_snapshot_lookup",
+        "guild_id",
+        "channel_id",
+    ), )

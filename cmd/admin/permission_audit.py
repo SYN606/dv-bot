@@ -24,17 +24,20 @@ class PermissionAudit(BaseAdminCog):
         self.bot = bot
 
     # =========================================================
-    # SERVER WIDE SCAN
+    # SERVER SECURITY SCAN
     # =========================================================
 
     @app_commands.command(
         name="perm-scan",
-        description="List members that have dangerous permissions.")
+        description="Scan the server for dangerous permissions.")
     async def perm_scan(self, interaction: discord.Interaction):
+
+        guild = interaction.guild
+        if guild is None:
+            return
 
         await interaction.response.defer(ephemeral=True)
 
-        guild = interaction.guild
         flagged = []
 
         for member in guild.members:
@@ -50,37 +53,68 @@ class PermissionAudit(BaseAdminCog):
             ]
 
             if dangerous:
-                flagged.append((member, dangerous))
+
+                roles_with_perms = []
+
+                for role in member.roles:
+
+                    if role.is_default():
+                        continue
+
+                    role_perms = role.permissions
+
+                    role_dangerous = [
+                        label for key, label in DANGEROUS_PERMS.items()
+                        if getattr(role_perms, key, False)
+                    ]
+
+                    if role_dangerous:
+                        roles_with_perms.append(role.name)
+
+                flagged.append({
+                    "member": member,
+                    "perms": dangerous,
+                    "roles": roles_with_perms
+                })
 
         if not flagged:
-            return await interaction.followup.send(
-                embed=make_embed(
-                    title="Permission Scan Complete",
-                    description=
-                    "No users with dangerous permissions were found.",
-                    level="SUCCESS",
-                ),
-                ephemeral=True,
+
+            embed = make_embed(
+                title="Permission Scan Complete",
+                description="No users with dangerous permissions were found.",
+                level="SUCCESS",
             )
 
-        # Sort: Administrator first, then by number of perms descending
-        flagged.sort(key=lambda x: ("Administrator" not in x[1], -len(x[1])))
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
+        # sort by risk
+        flagged.sort(key=lambda x:
+                     ("Administrator" not in x["perms"], -len(x["perms"])))
 
         pages = []
-        current_chunk = ""
+        chunk = ""
 
-        for member, perms in flagged:
-            block = (f"**{member}**\n" + "\n".join(f"• {p}"
-                                                   for p in perms) + "\n\n")
+        for entry in flagged:
 
-            if len(current_chunk) + len(block) > 3500:
-                pages.append(current_chunk)
-                current_chunk = block
+            member = entry["member"]
+            perms = entry["perms"]
+            roles = entry["roles"]
+
+            role_text = ", ".join(roles) if roles else "Direct Permission"
+
+            block = (f"**{member}**\n"
+                     f"Roles: {role_text}\n" +
+                     "\n".join(f"• {p}" for p in perms) + "\n\n")
+
+            if len(chunk) + len(block) > 3500:
+                pages.append(chunk)
+                chunk = block
             else:
-                current_chunk += block
+                chunk += block
 
-        if current_chunk:
-            pages.append(current_chunk)
+        if chunk:
+            pages.append(chunk)
 
         for index, page in enumerate(pages, start=1):
 
@@ -89,18 +123,18 @@ class PermissionAudit(BaseAdminCog):
                 description=page,
                 level="WARNING",
                 footer=
-                f"Page {index}/{len(pages)} • Total flagged users: {len(flagged)}",
+                f"Page {index}/{len(pages)} • Users flagged: {len(flagged)}",
             )
 
             await interaction.followup.send(embed=embed, ephemeral=True)
 
     # =========================================================
-    # INDIVIDUAL CHECK
+    # INDIVIDUAL SECURITY CHECK
     # =========================================================
 
     @app_commands.command(
         name="perm-check",
-        description="Check dangerous permissions of a specific member.")
+        description="Audit dangerous permissions of a specific member.")
     async def perm_check(self, interaction: discord.Interaction,
                          member: discord.Member):
 
@@ -111,16 +145,40 @@ class PermissionAudit(BaseAdminCog):
             if getattr(perms, key, False)
         ]
 
+        roles_with_perms = []
+
+        for role in member.roles:
+
+            if role.is_default():
+                continue
+
+            role_perms = role.permissions
+
+            role_dangerous = [
+                label for key, label in DANGEROUS_PERMS.items()
+                if getattr(role_perms, key, False)
+            ]
+
+            if role_dangerous:
+                roles_with_perms.append(role.name)
+
         if not dangerous:
+
             embed = make_embed(
                 title="Permission Inspection",
                 description=f"**{member}** has no dangerous permissions.",
                 level="SUCCESS",
             )
+
         else:
+
+            role_text = ", ".join(
+                roles_with_perms) if roles_with_perms else "Direct Permission"
+
             embed = make_embed(
                 title="Permission Inspection",
-                description=(f"**{member}**\n\n" +
+                description=(f"**{member}**\n"
+                             f"Roles granting permissions: {role_text}\n\n" +
                              "\n".join(f"• {p}" for p in dangerous)),
                 level="WARNING",
             )

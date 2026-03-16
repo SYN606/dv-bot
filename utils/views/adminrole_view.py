@@ -13,6 +13,7 @@ from db.db_helpers.admin_roles import (
 # MAIN ADMIN ROLE PANEL
 # ─────────────────────────────────────
 class AdminRoleView(discord.ui.View):
+
     def __init__(self, *, guild: discord.Guild, actor_id: int):
         super().__init__(timeout=180)
 
@@ -20,10 +21,14 @@ class AdminRoleView(discord.ui.View):
         self.actor_id = actor_id
         self.message: discord.Message | None = None
 
+    # ─────────────────────────
     # SECURITY CHECK
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+    # ─────────────────────────
+    async def interaction_check(self,
+                                interaction: discord.Interaction) -> bool:
 
         if interaction.user.id != self.actor_id:
+
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Unauthorized",
@@ -32,6 +37,7 @@ class AdminRoleView(discord.ui.View):
                 ),
                 ephemeral=True,
             )
+
             return False
 
         return True
@@ -46,17 +52,19 @@ class AdminRoleView(discord.ui.View):
     )
     async def add_role(self, interaction: discord.Interaction, _):
 
+        view = AdminRoleSelectView(
+            guild=self.guild,
+            actor_id=self.actor_id,
+            mode="add",
+        )
+
         await interaction.response.send_message(
             embed=make_embed(
                 title="Add Bot Admin Role",
                 description=f"{EMOJIS['arrow_point']} Select a role to add.",
                 level="INFO",
             ),
-            view=AdminRoleSelectView(
-                guild=self.guild,
-                actor_id=self.actor_id,
-                mode="add",
-            ),
+            view=view,
             ephemeral=True,
         )
 
@@ -70,17 +78,19 @@ class AdminRoleView(discord.ui.View):
     )
     async def remove_role(self, interaction: discord.Interaction, _):
 
+        view = AdminRoleSelectView(
+            guild=self.guild,
+            actor_id=self.actor_id,
+            mode="remove",
+        )
+
         await interaction.response.send_message(
             embed=make_embed(
                 title="Remove Bot Admin Role",
                 description=f"{EMOJIS['arrow_point']} Select a role to remove.",
                 level="INFO",
             ),
-            view=AdminRoleSelectView(
-                guild=self.guild,
-                actor_id=self.actor_id,
-                mode="remove",
-            ),
+            view=view,
             ephemeral=True,
         )
 
@@ -96,20 +106,21 @@ class AdminRoleView(discord.ui.View):
 
         role_ids = await get_admin_roles(self.guild.id)
 
-        roles = [
-            self.guild.get_role(role_id).mention # type: ignore
-            for role_id in role_ids
-            if self.guild.get_role(role_id)
-        ]
+        roles = []
+
+        for role_id in role_ids:
+            role = self.guild.get_role(role_id)
+
+            if role:
+                roles.append(role.mention)
+
+        description = ("\n".join(roles) if roles else
+                       f"{EMOJIS['warning']} No roles configured.")
 
         await interaction.response.send_message(
             embed=make_embed(
                 title="Configured Bot Admin Roles",
-                description=(
-                    "\n".join(roles)
-                    if roles
-                    else f"{EMOJIS['warning']} No roles configured."
-                ),
+                description=description,
                 level="INFO",
             ),
             ephemeral=True,
@@ -123,16 +134,18 @@ class AdminRoleView(discord.ui.View):
         for item in self.children:
             item.disabled = True  # type: ignore
 
+        if not self.message:
+            return
+
         try:
-            if self.message:
-                await self.message.edit(
-                    embed=make_embed(
-                        title="Panel Expired",
-                        description=f"{EMOJIS['warning']} This panel has expired.",
-                        level="WARNING",
-                    ),
-                    view=self,
-                )
+            await self.message.edit(
+                embed=make_embed(
+                    title="Panel Expired",
+                    description=f"{EMOJIS['warning']} This panel has expired.",
+                    level="WARNING",
+                ),
+                view=self,
+            )
         except discord.HTTPException:
             pass
 
@@ -141,6 +154,7 @@ class AdminRoleView(discord.ui.View):
 # ROLE SELECT VIEW
 # ─────────────────────────────────────
 class AdminRoleSelectView(discord.ui.View):
+
     def __init__(
         self,
         *,
@@ -156,17 +170,21 @@ class AdminRoleSelectView(discord.ui.View):
 
         self.add_item(AdminRoleSelect(self))
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+    async def interaction_check(self,
+                                interaction: discord.Interaction) -> bool:
 
         if interaction.user.id != self.actor_id:
+
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Unauthorized",
-                    description=f"{EMOJIS['fail']} You cannot use this selection.",
+                    description=
+                    f"{EMOJIS['fail']} You cannot use this selection.",
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
+
             return False
 
         return True
@@ -176,6 +194,7 @@ class AdminRoleSelectView(discord.ui.View):
 # ROLE SELECT COMPONENT
 # ─────────────────────────────────────
 class AdminRoleSelect(discord.ui.RoleSelect):
+
     def __init__(self, view: AdminRoleSelectView):
         super().__init__(
             placeholder="Select a role",
@@ -197,40 +216,48 @@ class AdminRoleSelect(discord.ui.RoleSelect):
         # ─────────────────────────
 
         if role.is_default():
+
             return await interaction.response.edit_message(
                 embed=make_embed(
                     title="Invalid Role",
-                    description=f"{EMOJIS['fail']} You cannot use **@everyone**.",
+                    description=
+                    f"{EMOJIS['fail']} You cannot use **@everyone**.",
                     level="ERROR",
                 ),
                 view=None,
             )
 
         if role.managed:
+
             return await interaction.response.edit_message(
                 embed=make_embed(
                     title="Invalid Role",
-                    description=f"{EMOJIS['fail']} Managed roles cannot be used.",
+                    description=
+                    f"{EMOJIS['fail']} Managed roles cannot be used.",
                     level="ERROR",
                 ),
                 view=None,
             )
 
         if bot_member and role >= bot_member.top_role:
+
             return await interaction.response.edit_message(
                 embed=make_embed(
                     title="Hierarchy Error",
-                    description=f"{EMOJIS['fail']} My role is not high enough to manage this role.",
+                    description=
+                    f"{EMOJIS['fail']} My role is not high enough to manage this role.",
                     level="ERROR",
                 ),
                 view=None,
             )
 
         if isinstance(actor, discord.Member) and role >= actor.top_role:
+
             return await interaction.response.edit_message(
                 embed=make_embed(
                     title="Hierarchy Error",
-                    description=f"{EMOJIS['fail']} You cannot configure roles higher than your own.",
+                    description=
+                    f"{EMOJIS['fail']} You cannot configure roles higher than your own.",
                     level="ERROR",
                 ),
                 view=None,
@@ -241,24 +268,20 @@ class AdminRoleSelect(discord.ui.RoleSelect):
         # ─────────────────────────
 
         if self.view_ref.mode == "add":
+
             added = await add_admin_role(guild.id, role.id)
 
-            msg = (
-                f"{EMOJIS['success']} {role.mention} added."
-                if added
-                else f"{EMOJIS['warning']} Already configured."
-            )
+            msg = (f"{EMOJIS['success']} {role.mention} added."
+                   if added else f"{EMOJIS['warning']} Already configured.")
 
             level = "SUCCESS" if added else "WARNING"
 
         else:
+
             removed = await remove_admin_role(guild.id, role.id)
 
-            msg = (
-                f"{EMOJIS['success']} {role.mention} removed."
-                if removed
-                else f"{EMOJIS['warning']} Not configured."
-            )
+            msg = (f"{EMOJIS['success']} {role.mention} removed."
+                   if removed else f"{EMOJIS['warning']} Not configured.")
 
             level = "SUCCESS" if removed else "WARNING"
 

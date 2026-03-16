@@ -8,7 +8,7 @@ from discord import app_commands
 
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
-from utils.check_perms import is_bot_admin
+from utils.check_perms import is_bot_admin, is_bot_admin_ctx
 from utils.protected_commands import PROTECTED_COMMANDS
 from db.db_helpers.channel_command_restrict import get_restricted_commands
 
@@ -66,9 +66,11 @@ class Help(commands.Cog):
     # ─────────────────────────
 
     def _build_cache(self) -> None:
+
         cache: list[dict] = []
 
         for cmd in self.bot.tree.walk_commands():
+
             if not isinstance(cmd, app_commands.Command):
                 continue
 
@@ -103,9 +105,10 @@ class Help(commands.Cog):
         if ctx.interaction is None:
 
             is_admin = False
+
             if ctx.guild:
                 try:
-                    is_admin = await is_bot_admin(ctx)
+                    is_admin = await is_bot_admin_ctx(ctx)
                 except Exception:
                     pass
 
@@ -126,7 +129,7 @@ class Help(commands.Cog):
             description = (
                 f"{EMOJIS['green_dot']} Bot operational\n\n"
                 f"{EMOJIS['announcement']} Slash Commands → type `/`\n"
-                f"{EMOJIS['arrow_point']} Use `/help` for categorised view\n\n"
+                f"{EMOJIS['arrow_point']} Use `/help` for categorized view\n\n"
                 f"{EMOJIS['developer']} Prefix Commands\n" +
                 "\n".join(general_prefix))
 
@@ -213,12 +216,13 @@ class Help(commands.Cog):
         fields: list[tuple[str, str, bool]] = []
 
         for category, entries in sorted(grouped.items()):
+
             emoji = CATEGORY_EMOJIS.get(category, EMOJIS["arrow_point"])
 
             fields.append((
                 f"{emoji} {category}",
                 "\n".join(sorted(entries)),
-                True,  # column layout
+                True,
             ))
 
         fields.append((
@@ -227,7 +231,7 @@ class Help(commands.Cog):
             True,
         ))
 
-        # Maintain 2-column symmetry
+        # maintain 2-column symmetry
         if len(fields) % 2 != 0:
             fields.append(("\u200b", "\u200b", True))
 
@@ -249,7 +253,9 @@ class Help(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
 
+# ─────────────────────────
 # COG SETUP
+# ─────────────────────────
 
 
 async def setup(bot: commands.Bot) -> None:

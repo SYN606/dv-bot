@@ -137,7 +137,7 @@ class TempbanManagement(BaseAdminCog):
             )
 
         bot_member = guild.me
-        moderator: discord.Member = interaction.user
+        moderator: discord.Member = interaction.user # type: ignore
 
         # Role Safety Validation
 

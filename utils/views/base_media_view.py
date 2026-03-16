@@ -1,54 +1,59 @@
+import time
 import discord
-
 from utils.embeds import make_embed
 from utils.emojis import EMOJIS
 
 
-class AvatarView(discord.ui.View):
+class BaseMediaView(discord.ui.View):
     """
-    Secure Avatar View
-
-    • Toggle between server and global avatar
-    • Single message editing
-    • Locked to command requester
-    • Safe timeout lifecycle
+    Reusable media switcher for Avatar / Banner / Icon etc.
     """
 
     def __init__(
         self,
         *,
         requester_id: int,
+        requester_name: str,
         global_url: str | None,
         server_url: str | None,
         active: str = "server",
+        title: str,
+        server_label: str,
+        global_label: str,
     ):
         super().__init__(timeout=60)
 
         self.requester_id = requester_id
+        self.requester_name = requester_name
+
         self.global_url = global_url
         self.server_url = server_url
+
         self.active = active
+        self.title = title
+
+        self.server_label = server_label
+        self.global_label = global_label
+
         self.message: discord.Message | None = None
 
         self._sync_buttons()
 
     # ─────────────────────────────
-    # Sync buttons
+    # Button Sync
     # ─────────────────────────────
     def _sync_buttons(self) -> None:
 
         self.clear_items()
 
-        # show server button only if server avatar exists
         if self.server_url:
-            self.add_item(ServerAvatarButton(disabled=self.active == "server"))
+            self.add_item(ServerMediaButton(self))
 
-        # show global button only if global avatar exists
         if self.global_url:
-            self.add_item(GlobalAvatarButton(disabled=self.active == "global"))
+            self.add_item(GlobalMediaButton(self))
 
     # ─────────────────────────────
-    # Restrict interaction
+    # Interaction Security
     # ─────────────────────────────
     async def interaction_check(
         self,
@@ -56,48 +61,49 @@ class AvatarView(discord.ui.View):
     ) -> bool:
 
         if interaction.user.id != self.requester_id:
-            try:
-                if not interaction.response.is_done():
-                    await interaction.response.send_message(
-                        embed=make_embed(
-                            title="Unauthorized",
-                            description=f"{EMOJIS['fail']} You cannot use this interaction.",
-                            level="ERROR",
-                        ),
-                        ephemeral=True,
-                    )
-            except discord.NotFound:
-                pass
+
+            await interaction.response.send_message(
+                embed=make_embed(
+                    title="Unauthorized",
+                    description=f"{EMOJIS['fail']} You cannot use this interaction.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
 
             return False
 
         return True
 
-    def build_embed(self):
+    # ─────────────────────────────
+    # Embed Builder
+    # ─────────────────────────────
+    def build_embed(self) -> discord.Embed:
 
         if self.active == "server":
             url = self.server_url
-            footer_text = "Showing server avatar"
+            state = self.server_label
         else:
             url = self.global_url
-            footer_text = "Showing global avatar"
+            state = self.global_label
 
         embed = make_embed(
-            title="User Avatar",
-            description="Switch between available avatars.",
+            title=self.title,
+            description=f"Switch between available {self.title.lower()}.",
             level="INFO",
-            footer=footer_text,
+            footer=f"{state} • Requested by {self.requester_name}",
         )
 
         if url:
-            embed.set_image(url=url)
+            # cache buster prevents Discord CDN caching issue
+            embed.set_image(url=f"{url}?v={int(time.time())}")
 
         return embed
 
     # ─────────────────────────────
     # Timeout
     # ─────────────────────────────
-    async def on_timeout(self) -> None:
+    async def on_timeout(self):
 
         for item in self.children:
             item.disabled = True # type: ignore
@@ -105,23 +111,29 @@ class AvatarView(discord.ui.View):
         try:
             if self.message:
                 await self.message.edit(view=self)
-        except discord.NotFound, discord.HTTPException:
+        except (discord.NotFound, discord.HTTPException):
             pass
 
 
-class ServerAvatarButton(discord.ui.Button):
-    def __init__(self, *, disabled: bool):
+# ─────────────────────────────
+# BUTTONS
+# ─────────────────────────────
+class ServerMediaButton(discord.ui.Button):
+
+    def __init__(self, view: BaseMediaView):
         super().__init__(
-            label="Server Avatar",
+            label=view.server_label,
             style=discord.ButtonStyle.primary,
-            disabled=disabled,
+            disabled=view.active == "server",
         )
+        self._view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
 
-        view: AvatarView = self.view  # type: ignore
+        view = self._view_ref
 
-        if not view:
+        if view.active == "server":
+            await interaction.response.defer()
             return
 
         view.active = "server"
@@ -133,19 +145,22 @@ class ServerAvatarButton(discord.ui.Button):
         )
 
 
-class GlobalAvatarButton(discord.ui.Button):
-    def __init__(self, *, disabled: bool):
+class GlobalMediaButton(discord.ui.Button):
+
+    def __init__(self, view: BaseMediaView):
         super().__init__(
-            label="Global Avatar",
+            label=view.global_label,
             style=discord.ButtonStyle.secondary,
-            disabled=disabled,
+            disabled=view.active == "global",
         )
+        self._view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
 
-        view: AvatarView = self.view  # type: ignore
+        view = self._view_ref
 
-        if not view:
+        if view.active == "global":
+            await interaction.response.defer()
             return
 
         view.active = "global"

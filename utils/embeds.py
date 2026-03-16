@@ -2,8 +2,6 @@ import discord
 from typing import Iterable, Optional
 from utils.emojis import EMOJIS
 
-# COLOR PALETTE (Refined)
-
 COLORS: dict[str, int] = {
     "INFO": 0x2B2D31,
     "SUCCESS": 0x1F8B4C,
@@ -22,16 +20,11 @@ SEVERITY_EMOJI_MAP = {
     "SYSTEM": "okay",
 }
 
-# SAFETY
-
 
 def _safe(text: Optional[str], limit: int) -> Optional[str]:
     if not text:
         return None
     return text if len(text) <= limit else text[:limit - 1] + "…"
-
-
-# CLEAN EMBED FACTORY 
 
 
 def make_embed(
@@ -43,24 +36,16 @@ def make_embed(
     author: Optional[str] = None,
     author_icon: Optional[str] = None,
     thumbnail: Optional[str] = None,
+    image: Optional[str] = None,
     footer: Optional[str] = None,
     footer_icon: Optional[str] = None,
     show_timestamp: bool = True,
     use_emoji: bool = False,
 ) -> discord.Embed:
-    """
-    Minimal, visually clean embed factory.
-
-    - No hard-coded branding
-    - No level clutter in footer
-    - Subtle severity colouring
-    - Optional emoji (disabled by default)
-    """
 
     level = level.upper()
     color = COLORS.get(level, COLORS["INFO"])
 
-    # Optional subtle emoji
     emoji = None
     if use_emoji:
         emoji_key = SEVERITY_EMOJI_MAP.get(level)
@@ -74,27 +59,28 @@ def make_embed(
         color=color,
     )
 
-    # Author
     if author:
         embed.set_author(
             name=_safe(author, 256),
             icon_url=author_icon,
         )
 
-    # Thumbnail
     if thumbnail:
         embed.set_thumbnail(url=thumbnail)
 
-    # Fields
+    if image:
+        embed.set_image(url=image)
+
     if fields:
-        for name, value, inline in list(fields)[:25]:
+        for i, (name, value, inline) in enumerate(fields):
+            if i >= 25:
+                break
             embed.add_field(
                 name=_safe(name, 256),
                 value=_safe(value, 1024),
                 inline=inline,
             )
 
-    # Footer (no branding injection)
     if footer:
         embed.set_footer(
             text=_safe(footer, 2048),

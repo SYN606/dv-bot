@@ -1,14 +1,11 @@
 import discord
 from discord.ext import commands
 
-from utils.views.avatar_view import AvatarView
+from utils.embeds import make_embed
+from utils.views.base_media_view import BaseMediaView
 
 
 class Avatar(commands.Cog):
-    """
-    Prefix avatar command.
-    Displays global and server avatars with toggle support.
-    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -29,31 +26,31 @@ class Avatar(commands.Cog):
 
         target = user or ctx.author
 
-        # Resolve guild member for server avatar
-        member = (target if isinstance(target, discord.Member) else
-                  ctx.guild.get_member(target.id))
+        # Resolve guild member safely
+        member = ctx.guild.get_member(target.id)
 
-        # Global avatar (always exists)
-        global_avatar = target.display_avatar.url
+        # Real global avatar
+        global_avatar = (target.avatar.url
+                         if target.avatar else target.display_avatar.url)
 
-        # Server avatar (if user has one)
+        # Server avatar (if exists)
         server_avatar = (member.guild_avatar.url
                          if member and member.guild_avatar else None)
 
-        # Check if both avatars exist and differ
-        avatars_are_distinct = (server_avatar and global_avatar
-                                and server_avatar != global_avatar)
-
         # ─────────────────────────
-        # Use AvatarView
+        # Toggle view if server avatar exists
         # ─────────────────────────
-        if avatars_are_distinct:
+        if server_avatar:
 
-            view = AvatarView(
+            view = BaseMediaView(
                 requester_id=ctx.author.id,
+                requester_name=str(ctx.author),
                 global_url=global_avatar,
                 server_url=server_avatar,
                 active="server",
+                title="User Avatar",
+                server_label="Server Avatar",
+                global_label="Global Avatar",
             )
 
             embed = view.build_embed()
@@ -62,17 +59,19 @@ class Avatar(commands.Cog):
             view.message = message
 
         else:
-            # No toggle needed
-            embed = discord.Embed(
+
+            embed = make_embed(
                 title="User Avatar",
                 description=f"Avatar for {target.mention}.",
+                level="INFO",
+                footer=f"Requested by {ctx.author}",
             )
 
-            embed.set_image(url=server_avatar or global_avatar)
+            embed.set_image(url=global_avatar)
 
             await ctx.send(embed=embed)
 
-        # Delete invoking message (non-blocking)
+        # delete invoking message silently
         try:
             ctx.bot.loop.create_task(ctx.message.delete())
         except Exception:

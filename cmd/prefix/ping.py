@@ -19,19 +19,33 @@ class Ping(commands.Cog):
     )
     async def ping(self, ctx: commands.Context) -> None:
 
-        # Measure API round-trip latency
+        # Initial placeholder
+        message = await ctx.send(embed=make_embed(
+            title="Pinging...",
+            description=f"{EMOJIS['loading']} Measuring connection latency...",
+            level="DEBUG",
+            show_timestamp=False,
+        ))
+
+        # Measure API latency
         start = time.perf_counter()
-        message = await ctx.send("🏓 Pinging...")
+        await message.edit(embed=make_embed(
+            title="Calculating...",
+            description=f"{EMOJIS['loading']} Gathering diagnostics...",
+            level="DEBUG",
+            show_timestamp=False,
+        ))
         api_latency = round((time.perf_counter() - start) * 1000)
 
+        # Gateway latency
         gateway_latency = round(self.bot.latency * 1000)
 
-        # Status logic
         overall = max(api_latency, gateway_latency)
 
-        if overall < 250:
+        # Status determination
+        if overall < 200:
             status_text = f"{EMOJIS['green_dot']} Excellent"
-        elif overall < 500:
+        elif overall < 400:
             status_text = f"{EMOJIS['success']} Good"
         else:
             status_text = f"{EMOJIS['warning']} High latency"
@@ -39,20 +53,20 @@ class Ping(commands.Cog):
         embed = make_embed(
             title="Connection Status",
             description=(
-                f"{EMOJIS['success']} The bot is online and responding.\n\n"
+                f"{EMOJIS['success']} Bot is online and responding.\n\n"
                 f"{EMOJIS['arrow_point']} Live connection metrics:"),
             level="INFO",
             fields=[
-                ("📡 Gateway Latency", f"`{gateway_latency} ms`", True),
-                ("🌐 API Latency", f"`{api_latency} ms`", True),
-                ("⚙️ Status", status_text, True),
+                ("Gateway Latency", f"`{gateway_latency} ms`", True),
+                ("API Latency", f"`{api_latency} ms`", True),
+                ("Status", status_text, True),
             ],
             footer="System diagnostics • ping",
         )
 
-        await message.edit(content=None, embed=embed)
+        await message.edit(embed=embed)
 
-        # Delete user message in background (non-blocking)
+        # Delete invoking message silently
         try:
             ctx.bot.loop.create_task(ctx.message.delete())
         except Exception:

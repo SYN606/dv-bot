@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from utils.embeds import make_embed
-from utils.views.banner_view import BannerView
+from utils.views.base_media_view import BaseMediaView
 
 
 class Banner(commands.Cog):
@@ -29,20 +29,20 @@ class Banner(commands.Cog):
 
         target = user or ctx.author
 
-        # Resolve guild member (for server banner)
-        member = (target if isinstance(target, discord.Member) else
-                  ctx.guild.get_member(target.id))
+        # Resolve guild member safely
+        member = ctx.guild.get_member(target.id)
 
-        # Fetch full user to get global banner
+        # Fetch full user (global banner requires API fetch)
         fetched_user = await self.bot.fetch_user(target.id)
 
-        global_banner = fetched_user.banner.url if fetched_user.banner else None
+        global_banner = (fetched_user.banner.url
+                         if fetched_user.banner else None)
 
         server_banner = (member.guild_banner.url
                          if member and member.guild_banner else None)
 
         # ─────────────────────────
-        # No banners
+        # No banners at all
         # ─────────────────────────
         if not global_banner and not server_banner:
 
@@ -58,43 +58,40 @@ class Banner(commands.Cog):
             return
 
         # ─────────────────────────
-        # Determine banner state
+        # If both banners exist → show toggle view
         # ─────────────────────────
-        banners_are_distinct = (global_banner and server_banner
-                                and global_banner != server_banner)
+        if global_banner and server_banner:
 
-        embed = make_embed(
-            title="User Banner",
-            description=f"Banner for {target.mention}.",
-            level="INFO",
-            footer=f"Requested by {ctx.author}",
-        )
-
-        # default image priority → server banner
-        embed.set_image(url=server_banner or global_banner)
-
-        # ─────────────────────────
-        # If both banners exist
-        # ─────────────────────────
-        if banners_are_distinct:
-
-            view = BannerView(
+            view = BaseMediaView(
                 requester_id=ctx.author.id,
                 requester_name=str(ctx.author),
                 global_url=global_banner,
                 server_url=server_banner,
                 active="server",
+                title="User Banner",
+                server_label="Server Banner",
+                global_label="Global Banner",
             )
 
+            embed = view.build_embed()
+
             message = await ctx.send(embed=embed, view=view)
-            view.message = message # type: ignore
+            view.message = message
 
         else:
+
+            embed = make_embed(
+                title="User Banner",
+                description=f"Banner for {target.mention}.",
+                level="INFO",
+                footer=f"Requested by {ctx.author}",
+            )
+
+            embed.set_image(url=server_banner or global_banner)
+
             await ctx.send(embed=embed)
 
-        # ─────────────────────────
         # Delete invoking message silently
-        # ─────────────────────────
         try:
             ctx.bot.loop.create_task(ctx.message.delete())
         except Exception:
