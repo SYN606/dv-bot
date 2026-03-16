@@ -30,28 +30,26 @@ class Banner(commands.Cog):
         target = user or ctx.author
 
         # Resolve guild member (for server banner)
-        member = (
-            target
-            if isinstance(target, discord.Member)
-            else ctx.guild.get_member(target.id)
-        )
+        member = (target if isinstance(target, discord.Member) else
+                  ctx.guild.get_member(target.id))
 
         # Fetch full user to get global banner
         fetched_user = await self.bot.fetch_user(target.id)
 
         global_banner = fetched_user.banner.url if fetched_user.banner else None
 
-        server_banner = (
-            member.guild_banner.url if member and member.guild_banner else None
-        )
+        server_banner = (member.guild_banner.url
+                         if member and member.guild_banner else None)
 
         # ─────────────────────────
         # No banners
         # ─────────────────────────
         if not global_banner and not server_banner:
+
             embed = make_embed(
                 title="User Banner",
-                description=f"{target.mention} does not have a banner configured.",
+                description=
+                f"{target.mention} does not have a banner configured.",
                 level="WARNING",
                 footer=f"Requested by {ctx.author}",
             )
@@ -62,9 +60,8 @@ class Banner(commands.Cog):
         # ─────────────────────────
         # Determine banner state
         # ─────────────────────────
-        banners_are_distinct = (
-            global_banner and server_banner and global_banner != server_banner
-        )
+        banners_are_distinct = (global_banner and server_banner
+                                and global_banner != server_banner)
 
         embed = make_embed(
             title="User Banner",
@@ -80,15 +77,17 @@ class Banner(commands.Cog):
         # If both banners exist
         # ─────────────────────────
         if banners_are_distinct:
+
             view = BannerView(
                 requester_id=ctx.author.id,
+                requester_name=str(ctx.author),
                 global_url=global_banner,
                 server_url=server_banner,
                 active="server",
             )
 
             message = await ctx.send(embed=embed, view=view)
-            view.message = message
+            view.message = message # type: ignore
 
         else:
             await ctx.send(embed=embed)
@@ -102,5 +101,5 @@ class Banner(commands.Cog):
             pass
 
 
-async def setup(bot: commands.Bot) -> None:
+async def setup(bot: commands.Bot):
     await bot.add_cog(Banner(bot))

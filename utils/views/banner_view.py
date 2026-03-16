@@ -18,6 +18,7 @@ class BannerView(discord.ui.View):
         self,
         *,
         requester_id: int,
+        requester_name: str,
         global_url: str | None,
         server_url: str | None,
         active: str = "server",
@@ -25,6 +26,7 @@ class BannerView(discord.ui.View):
         super().__init__(timeout=60)
 
         self.requester_id = requester_id
+        self.requester_name = requester_name
         self.global_url = global_url
         self.server_url = server_url
         self.active = active
@@ -101,7 +103,7 @@ class BannerView(discord.ui.View):
     async def on_timeout(self) -> None:
 
         for item in self.children:
-            item.disabled = True
+            item.disabled = True  # type: ignore
 
         try:
             if self.message:
@@ -130,19 +132,10 @@ class ServerBannerButton(discord.ui.Button):
         view.active = "server"
         view._sync_buttons()
 
-        try:
-            if interaction.response.is_done():
-                await interaction.edit_original_response(
-                    embed=view.build_embed(),
-                    view=view,
-                )
-            else:
-                await interaction.response.edit_message(
-                    embed=view.build_embed(),
-                    view=view,
-                )
-        except discord.NotFound:
-            pass
+        await interaction.response.edit_message(
+            embed=view.build_embed(),
+            view=view,
+        )
 
 
 class GlobalBannerButton(discord.ui.Button):
@@ -162,16 +155,7 @@ class GlobalBannerButton(discord.ui.Button):
         view.active = "global"
         view._sync_buttons()
 
-        try:
-            if interaction.response.is_done():
-                await interaction.edit_original_response(
-                    embed=view.build_embed(),
-                    view=view,
-                )
-            else:
-                await interaction.response.edit_message(
-                    embed=view.build_embed(),
-                    view=view,
-                )
-        except discord.NotFound:
-            pass
+        await interaction.response.edit_message(
+            embed=view.build_embed(),
+            view=view,
+        )

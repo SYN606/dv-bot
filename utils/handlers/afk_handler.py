@@ -8,8 +8,11 @@ from db.db_helpers.afk import get_afk, remove_afk
 
 AFK_IMAGE = os.getenv("AFK_IMAGE_URL")
 
-# cooldown per mentioned user
-_afk_notice_cooldown: dict[int, float] = {}
+# cooldown per (guild_id, user_id)
+_afk_notice_cooldown: dict[tuple[int, int], int] = {}
+
+# cooldown duration in seconds
+AFK_NOTICE_COOLDOWN = 10
 
 
 def format_duration(seconds: int) -> str:
@@ -18,7 +21,9 @@ def format_duration(seconds: int) -> str:
         return f"{seconds}s"
 
     if seconds < 3600:
-        return f"{seconds // 60}m {seconds % 60}s"
+        minutes = seconds // 60
+        sec = seconds % 60
+        return f"{minutes}m {sec}s"
 
     if seconds < 86400:
         hours = seconds // 3600
@@ -31,6 +36,11 @@ def format_duration(seconds: int) -> str:
 
 
 async def handle_afk(message: Message) -> bool:
+    """
+    Handles AFK logic for:
+    - Mentioning AFK users
+    - Removing AFK when user sends message
+    """
 
     # ─────────────────────────
     # BASIC SAFETY FILTERS
@@ -46,7 +56,7 @@ async def handle_afk(message: Message) -> bool:
 
     # ignore bot commands
     bot = message.guild._state._get_client()  # type: ignore
-    ctx = await bot.get_context(message)
+    ctx = await bot.get_context(message) # type: ignore
 
     if ctx.valid:
         return False
@@ -63,19 +73,23 @@ async def handle_afk(message: Message) -> bool:
     unique_mentions = {u.id: u for u in message.mentions}.values()
 
     for user in unique_mentions:
-        last = _afk_notice_cooldown.get(user.id, 0)
+        last = _afk_notice_cooldown.get(user.id, 0) # type: ignore
 
-        if now - last < 10:
+        if now - last < AFK_NOTICE_COOLDOWN:
             continue
 
-        afk = await get_afk(guild_id, user.id)
+        try:
+            afk = await get_afk(guild_id, user.id)
+        except Exception:
+            continue
 
         if not afk:
             continue
 
-        _afk_notice_cooldown[user.id] = now
+        _afk_notice_cooldown[key] = now # type: ignore
 
         handled = True
+
         since_ts = int(afk.since)
 
         afk_sections.append(
@@ -99,7 +113,10 @@ async def handle_afk(message: Message) -> bool:
         if AFK_IMAGE:
             embed.set_image(url=AFK_IMAGE)
 
-        await message.reply(embed=embed, mention_author=False)
+        try:
+            await message.reply(embed=embed, mention_author=False)
+        except Exception:
+            pass
 
     # ─────────────────────────
     # REMOVE AFK IF AUTHOR RETURNS
@@ -126,6 +143,9 @@ async def handle_afk(message: Message) -> bool:
 
         # No image here intentionally
 
-        await message.reply(embed=embed, mention_author=False)
+        try:
+            await message.reply(embed=embed, mention_author=False)
+        except Exception:
+            pass
 
     return handled

@@ -39,9 +39,11 @@ class AvatarView(discord.ui.View):
 
         self.clear_items()
 
+        # show server button only if server avatar exists
         if self.server_url:
             self.add_item(ServerAvatarButton(disabled=self.active == "server"))
 
+        # show global button only if global avatar exists
         if self.global_url:
             self.add_item(GlobalAvatarButton(disabled=self.active == "global"))
 
@@ -71,10 +73,7 @@ class AvatarView(discord.ui.View):
 
         return True
 
-    # ─────────────────────────────
-    # Embed builder
-    # ─────────────────────────────
-    def build_embed(self) -> discord.Embed:
+    def build_embed(self):
 
         if self.active == "server":
             url = self.server_url
@@ -101,7 +100,7 @@ class AvatarView(discord.ui.View):
     async def on_timeout(self) -> None:
 
         for item in self.children:
-            item.disabled = True
+            item.disabled = True # type: ignore
 
         try:
             if self.message:
@@ -110,9 +109,6 @@ class AvatarView(discord.ui.View):
             pass
 
 
-# ─────────────────────────────
-# BUTTONS
-# ─────────────────────────────
 class ServerAvatarButton(discord.ui.Button):
     def __init__(self, *, disabled: bool):
         super().__init__(
@@ -131,19 +127,10 @@ class ServerAvatarButton(discord.ui.Button):
         view.active = "server"
         view._sync_buttons()
 
-        try:
-            if interaction.response.is_done():
-                await interaction.edit_original_response(
-                    embed=view.build_embed(),
-                    view=view,
-                )
-            else:
-                await interaction.response.edit_message(
-                    embed=view.build_embed(),
-                    view=view,
-                )
-        except discord.NotFound:
-            pass
+        await interaction.response.edit_message(
+            embed=view.build_embed(),
+            view=view,
+        )
 
 
 class GlobalAvatarButton(discord.ui.Button):
@@ -164,16 +151,7 @@ class GlobalAvatarButton(discord.ui.Button):
         view.active = "global"
         view._sync_buttons()
 
-        try:
-            if interaction.response.is_done():
-                await interaction.edit_original_response(
-                    embed=view.build_embed(),
-                    view=view,
-                )
-            else:
-                await interaction.response.edit_message(
-                    embed=view.build_embed(),
-                    view=view,
-                )
-        except discord.NotFound:
-            pass
+        await interaction.response.edit_message(
+            embed=view.build_embed(),
+            view=view,
+        )

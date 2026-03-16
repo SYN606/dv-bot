@@ -30,29 +30,25 @@ class Avatar(commands.Cog):
         target = user or ctx.author
 
         # Resolve guild member for server avatar
-        member = (
-            target
-            if isinstance(target, discord.Member)
-            else ctx.guild.get_member(target.id)
-        )
+        member = (target if isinstance(target, discord.Member) else
+                  ctx.guild.get_member(target.id))
 
         # Global avatar (always exists)
         global_avatar = target.display_avatar.url
 
         # Server avatar (if user has one)
-        server_avatar = (
-            member.guild_avatar.url if member and member.guild_avatar else None
-        )
+        server_avatar = (member.guild_avatar.url
+                         if member and member.guild_avatar else None)
 
         # Check if both avatars exist and differ
-        avatars_are_distinct = (
-            server_avatar and global_avatar and server_avatar != global_avatar
-        )
+        avatars_are_distinct = (server_avatar and global_avatar
+                                and server_avatar != global_avatar)
 
         # ─────────────────────────
-        # Use AvatarView 
+        # Use AvatarView
         # ─────────────────────────
         if avatars_are_distinct:
+
             view = AvatarView(
                 requester_id=ctx.author.id,
                 global_url=global_avatar,
@@ -83,5 +79,5 @@ class Avatar(commands.Cog):
             pass
 
 
-async def setup(bot: commands.Bot) -> None:
+async def setup(bot: commands.Bot):
     await bot.add_cog(Avatar(bot))
