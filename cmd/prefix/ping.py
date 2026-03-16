@@ -20,21 +20,27 @@ class Ping(commands.Cog):
     async def ping(self, ctx: commands.Context) -> None:
 
         # Initial placeholder
-        message = await ctx.send(embed=make_embed(
-            title="Pinging...",
-            description=f"{EMOJIS['loading']} Measuring connection latency...",
-            level="DEBUG",
-            show_timestamp=False,
-        ))
+        message = await ctx.send(
+            embed=make_embed(
+                title="Pinging...",
+                description=f"{EMOJIS['rounded_loading']} Measuring connection latency...",
+                level="DEBUG",
+                show_timestamp=False,
+            )
+        )
 
         # Measure API latency
         start = time.perf_counter()
-        await message.edit(embed=make_embed(
-            title="Calculating...",
-            description=f"{EMOJIS['loading']} Gathering diagnostics...",
-            level="DEBUG",
-            show_timestamp=False,
-        ))
+
+        await message.edit(
+            embed=make_embed(
+                title="Collecting Diagnostics...",
+                description=f"{EMOJIS['rounded_loading']} Gathering system metrics...",
+                level="DEBUG",
+                show_timestamp=False,
+            )
+        )
+
         api_latency = round((time.perf_counter() - start) * 1000)
 
         # Gateway latency
@@ -51,15 +57,28 @@ class Ping(commands.Cog):
             status_text = f"{EMOJIS['warning']} High latency"
 
         embed = make_embed(
-            title="Connection Status",
+            title=f"{EMOJIS['ping']} Connection Status",
             description=(
                 f"{EMOJIS['success']} Bot is online and responding.\n\n"
-                f"{EMOJIS['arrow_point']} Live connection metrics:"),
+                f"{EMOJIS['arrow_point']} Live connection metrics:"
+            ),
             level="INFO",
             fields=[
-                ("Gateway Latency", f"`{gateway_latency} ms`", True),
-                ("API Latency", f"`{api_latency} ms`", True),
-                ("Status", status_text, True),
+                (
+                    "Gateway Latency",
+                    f"{EMOJIS['support_dot']} `{gateway_latency} ms`",
+                    True,
+                ),
+                (
+                    "API Latency",
+                    f"{EMOJIS['support_dot']} `{api_latency} ms`",
+                    True,
+                ),
+                (
+                    "Status",
+                    status_text,
+                    True,
+                ),
             ],
             footer="System diagnostics • ping",
         )

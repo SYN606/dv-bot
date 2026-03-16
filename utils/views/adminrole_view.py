@@ -34,7 +34,6 @@ class AdminRoleView(discord.ui.View):
                 ),
                 ephemeral=True,
             )
-
             return False
 
         if interaction.user.id != self.actor_id:
@@ -46,7 +45,6 @@ class AdminRoleView(discord.ui.View):
                 ),
                 ephemeral=True,
             )
-
             return False
 
         return True
@@ -72,7 +70,10 @@ class AdminRoleView(discord.ui.View):
         await interaction.followup.send(
             embed=make_embed(
                 title="Add Bot Admin Role",
-                description=f"{EMOJIS['arrow_point']} Select a role to add.",
+                description=(
+                    f"{EMOJIS['rounded_loading']} Preparing role selector...\n\n"
+                    f"{EMOJIS['arrow_point']} Select a role to add."
+                ),
                 level="INFO",
             ),
             view=view,
@@ -100,7 +101,10 @@ class AdminRoleView(discord.ui.View):
         await interaction.followup.send(
             embed=make_embed(
                 title="Remove Bot Admin Role",
-                description=f"{EMOJIS['arrow_point']} Select a role to remove.",
+                description=(
+                    f"{EMOJIS['rounded_loading']} Preparing role selector...\n\n"
+                    f"{EMOJIS['arrow_point']} Select a role to remove."
+                ),
                 level="INFO",
             ),
             view=view,
@@ -112,7 +116,7 @@ class AdminRoleView(discord.ui.View):
     # ─────────────────────────
     @discord.ui.button(
         label="List Roles",
-        emoji=EMOJIS["pants"],
+        emoji=EMOJIS["folder"],
         style=discord.ButtonStyle.secondary,
     )
     async def list_roles(self, interaction: discord.Interaction, _):
@@ -150,7 +154,7 @@ class AdminRoleView(discord.ui.View):
     async def on_timeout(self):
 
         for item in self.children:
-            item.disabled = True  # type: ignore
+            item.disabled = True
 
         if not self.message:
             return
@@ -192,7 +196,6 @@ class AdminRoleSelectView(discord.ui.View):
                 ),
                 ephemeral=True,
             )
-
             return False
 
         return True

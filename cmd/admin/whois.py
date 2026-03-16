@@ -81,7 +81,7 @@ class Whois(BaseAdminCog):
             if len(roles_mentions) > 12:
                 roles_display += f" +{len(roles_mentions) - 12} more"
         else:
-            roles_display = "None"
+            roles_display = f"{EMOJIS['warning']} None"
 
         # ─────────────────────────
         # STATUS FLAGS
@@ -107,33 +107,36 @@ class Whois(BaseAdminCog):
         # ─────────────────────────
         fields = [
             (
-                f"{EMOJIS['announcement']} Account Information",
+                f"{EMOJIS['curved_arrow']} Account Information",
                 (
-                    f"**Username:** {member}\n"
-                    f"**User ID:** `{member.id}`\n"
-                    f"**Type:** {account_type}\n"
-                    f"**Created:** <t:{created_ts}:F>\n"
-                    f"**Account Age:** <t:{created_ts}:R>"
+                    f"{EMOJIS['arrow_point']} **Username:** {member}\n"
+                    f"{EMOJIS['arrow_point']} **User ID:** `{member.id}`\n"
+                    f"{EMOJIS['arrow_point']} **Type:** {account_type}\n"
+                    f"{EMOJIS['arrow_point']} **Created:** <t:{created_ts}:F>\n"
+                    f"{EMOJIS['arrow_point']} **Account Age:** <t:{created_ts}:R>"
                 ),
                 False,
             ),
             (
                 f"{EMOJIS['moderation']} Server Information",
                 (
-                    f"**Nickname:** {member.nick or 'None'}\n"
-                    f"**Joined:** <t:{joined_ts}:F>\n"
-                    f"**Join Position:** `{join_position}/{guild.member_count}`\n"
-                    f"**Top Role:** {member.top_role.mention}"
+                    f"{EMOJIS['arrow_point']} **Nickname:** {member.nick or 'None'}\n"
+                    f"{EMOJIS['arrow_point']} **Joined:** <t:{joined_ts}:F>\n"
+                    f"{EMOJIS['arrow_point']} **Join Position:** `{join_position}/{guild.member_count}`\n"
+                    f"{EMOJIS['arrow_point']} **Top Role:** {member.top_role.mention}"
                 ),
                 False,
             ),
             (
-                f"{EMOJIS['boost']} Member Status",
-                (f"**Boost:** {boosting}\n**Permissions:** {admin_status}"),
+                f"{EMOJIS['support_dot']} Member Status",
+                (
+                    f"{EMOJIS['arrow_point']} **Boost:** {boosting}\n"
+                    f"{EMOJIS['arrow_point']} **Permissions:** {admin_status}"
+                ),
                 False,
             ),
             (
-                f"{EMOJIS['pants']} Roles ({len(roles_mentions)})",
+                f"{EMOJIS['folder']} Roles ({len(roles_mentions)})",
                 roles_display,
                 False,
             ),
@@ -143,13 +146,13 @@ class Whois(BaseAdminCog):
             fields.append(
                 (
                     f"{EMOJIS['github']} Vanity Invite",
-                    f"https://discord.gg/{guild.vanity_url_code}",
+                    f"{EMOJIS['arrow_white']} https://discord.gg/{guild.vanity_url_code}",
                     False,
                 )
             )
 
         embed = make_embed(
-            title="User Lookup",
+            title=f"{EMOJIS['message']} User Lookup",
             description=f"{EMOJIS['ping']} Information for {member.mention}",
             level="INFO",
             fields=fields,
