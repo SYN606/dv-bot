@@ -7,7 +7,8 @@ from utils.core.emojis import EMOJIS
 
 class Ping(commands.Cog):
     """
-    Diagnostics and health-check commands.
+    Diagnostics and health-check command.
+    Provides gateway and API latency information.
     """
 
     def __init__(self, bot: commands.Bot):
@@ -19,7 +20,7 @@ class Ping(commands.Cog):
     )
     async def ping(self, ctx: commands.Context) -> None:
 
-        # Initial placeholder
+        # Initial placeholder message
         message = await ctx.send(
             embed=make_embed(
                 title="Pinging...",
@@ -48,7 +49,7 @@ class Ping(commands.Cog):
 
         overall = max(api_latency, gateway_latency)
 
-        # Status determination
+        # Status evaluation
         if overall < 200:
             status_text = f"{EMOJIS['green_dot']} Excellent"
         elif overall < 400:
@@ -85,9 +86,9 @@ class Ping(commands.Cog):
 
         await message.edit(embed=embed)
 
-        # Delete invoking message silently
+        # Delete invoking message quietly
         try:
-            ctx.bot.loop.create_task(ctx.message.delete())
+            await ctx.message.delete()
         except Exception:
             pass
 

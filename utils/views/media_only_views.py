@@ -18,11 +18,11 @@ STICKY_TAG = "MEDIA_ONLY_STICKY_NOTICE"
 def build_media_only_sticky_embed() -> discord.Embed:
     return make_embed(
         title="Media-Only Channel",
-        description=
-        (f"{EMOJIS['announcement']} This channel is restricted to **media messages only**.\n\n"
-         f"{EMOJIS['arrow_point']} Text-only messages will be automatically deleted.\n"
-         f"{EMOJIS['arrow_point']} Images, videos, GIFs, and files are allowed."
-         ),
+        description=(
+            f"{EMOJIS['announcement']} This channel is restricted to **media messages only**.\n\n"
+            f"{EMOJIS['arrow_point']} Text-only messages will be automatically deleted.\n"
+            f"{EMOJIS['arrow_point']} Images, videos, GIFs, and files are allowed."
+        ),
         level="SYSTEM",
         footer=STICKY_TAG,
     )
@@ -43,7 +43,7 @@ async def remove_media_only_sticky(channel: discord.TextChannel) -> None:
             if footer and STICKY_TAG in footer:
                 try:
                     await message.delete()
-                except (discord.Forbidden, discord.NotFound):
+                except discord.Forbidden, discord.NotFound:
                     pass
                 break
     except discord.Forbidden:
@@ -54,7 +54,6 @@ async def remove_media_only_sticky(channel: discord.TextChannel) -> None:
 # MEDIA ONLY VIEW
 # ─────────────────────────────────────
 class MediaOnlyView(discord.ui.View):
-
     def __init__(
         self,
         *,
@@ -86,8 +85,7 @@ class MediaOnlyView(discord.ui.View):
                     await interaction.response.send_message(
                         embed=make_embed(
                             title="Permission Denied",
-                            description=
-                            "You are not allowed to use this panel.",
+                            description="You are not allowed to use this panel.",
                             level="ERROR",
                         ),
                         ephemeral=True,
@@ -103,7 +101,7 @@ class MediaOnlyView(discord.ui.View):
     # ─────────────────────────
     @discord.ui.button(
         label="Enable",
-        emoji=EMOJIS["green_dot"],
+        emoji=EMOJIS['success'],
         style=discord.ButtonStyle.success,
     )
     async def enable(self, interaction: discord.Interaction, _):
@@ -118,7 +116,6 @@ class MediaOnlyView(discord.ui.View):
             self.channel.id,
         )
 
-        # Optional: post sticky notice
         try:
             await self.channel.send(embed=build_media_only_sticky_embed())
         except discord.Forbidden:
@@ -128,10 +125,10 @@ class MediaOnlyView(discord.ui.View):
             await interaction.edit_original_response(
                 embed=make_embed(
                     title="Media-Only Enabled",
-                    description=
-                    (f"{EMOJIS['success']} {self.channel.mention} is now media-only.\n\n"
-                     f"{EMOJIS['arrow_point']} Non-media messages will be removed automatically."
-                     ),
+                    description=(
+                        f"{EMOJIS['success']} {self.channel.mention} is now media-only.\n\n"
+                        f"{EMOJIS['arrow_point']} Non-media messages will be removed automatically."
+                    ),
                     level="SUCCESS" if added else "INFO",
                 ),
                 view=self,
@@ -144,7 +141,7 @@ class MediaOnlyView(discord.ui.View):
     # ─────────────────────────
     @discord.ui.button(
         label="Disable",
-        emoji=EMOJIS["red_dot"],
+        emoji=EMOJIS['fail'], 
         style=discord.ButtonStyle.danger,
     )
     async def disable(self, interaction: discord.Interaction, _):
@@ -164,9 +161,9 @@ class MediaOnlyView(discord.ui.View):
                 await interaction.edit_original_response(
                     embed=make_embed(
                         title="Media-Only Mode",
-                        description=
-                        (f"{EMOJIS['warning']} {self.channel.mention} is not media-only."
-                         ),
+                        description=(
+                            f"{EMOJIS['warning']} {self.channel.mention} is not media-only."
+                        ),
                         level="WARNING",
                     ),
                     view=self,
@@ -181,10 +178,10 @@ class MediaOnlyView(discord.ui.View):
             await interaction.edit_original_response(
                 embed=make_embed(
                     title="Media-Only Disabled",
-                    description=
-                    (f"{EMOJIS['success']} Media-only restrictions removed.\n\n"
-                     f"{EMOJIS['arrow_point']} Normal messages are now allowed."
-                     ),
+                    description=(
+                        f"{EMOJIS['success']} Media-only restrictions removed.\n\n"
+                        f"{EMOJIS['arrow_point']} Normal messages are now allowed."
+                    ),
                     level="SUCCESS",
                 ),
                 view=self,
@@ -197,7 +194,7 @@ class MediaOnlyView(discord.ui.View):
     # ─────────────────────────
     @discord.ui.button(
         label="Status",
-        emoji=EMOJIS["pants"],
+        emoji="📊",  
         style=discord.ButtonStyle.secondary,
     )
     async def status(self, interaction: discord.Interaction, _):
@@ -216,11 +213,11 @@ class MediaOnlyView(discord.ui.View):
             await interaction.edit_original_response(
                 embed=make_embed(
                     title="Media-Only Status",
-                    description=
-                    (f"{EMOJIS['green_dot']} {self.channel.mention} is media-only."
-                     if enabled else
-                     f"{EMOJIS['red_dot']} {self.channel.mention} is not media-only."
-                     ),
+                    description=(
+                        f"{EMOJIS['green_dot']} {self.channel.mention} is media-only."
+                        if enabled
+                        else f"{EMOJIS['red_dot']} {self.channel.mention} is not media-only."
+                    ),
                     level="INFO",
                 ),
                 view=self,
@@ -234,20 +231,20 @@ class MediaOnlyView(discord.ui.View):
     async def on_timeout(self) -> None:
 
         for item in self.children:
-            item.disabled = True # type: ignore
+            item.disabled = True  # type: ignore
 
         try:
             if self.message:
                 await self.message.edit(
                     embed=make_embed(
                         title="Media-Only Panel Expired",
-                        description=
-                        (f"{EMOJIS['warning']} This control panel has timed out.\n"
-                         f"{EMOJIS['arrow_point']} Run `/media_only` again if needed."
-                         ),
+                        description=(
+                            f"{EMOJIS['warning']} This control panel has timed out.\n"
+                            f"{EMOJIS['arrow_point']} Run `/media_only` again if needed."
+                        ),
                         level="WARNING",
                     ),
                     view=self,
                 )
-        except (discord.NotFound, discord.HTTPException):
+        except discord.NotFound, discord.HTTPException:
             pass
