@@ -1,4 +1,4 @@
-from sqlalchemy import select, delete
+from sqlalchemy import select
 from db.engine import AsyncSessionLocal
 from db.models import VerificationConfig
 

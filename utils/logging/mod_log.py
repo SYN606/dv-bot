@@ -26,9 +26,7 @@ async def send_mod_log(
 
     try:
 
-        # ─────────────────────────
-        # GET CHANNEL (cached)
-        # ─────────────────────────
+        # GET CHANNEL 
         if guild.id in _log_cache:
             channel_id = _log_cache[guild.id]
 

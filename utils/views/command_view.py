@@ -127,7 +127,7 @@ class CommandControlView(discord.ui.View):
     # ─────────────────────────
     @discord.ui.button(
         label="Status",
-        emoji=EMOJIS["pants"],
+        emoji=EMOJIS["moderation"],
         style=discord.ButtonStyle.secondary,
     )
     async def status(self, interaction: discord.Interaction, _):

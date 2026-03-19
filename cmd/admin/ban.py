@@ -5,55 +5,41 @@ from utils.permissions.base_admin import BaseAdminCog
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import send_mod_log
+from utils.logging.notifier import ModNotifier
 
 
 async def _cleanup(ctx: commands.Context) -> None:
     try:
         await ctx.message.delete()
-    except (discord.Forbidden, discord.NotFound):
+    except discord.Forbidden, discord.NotFound:
         pass
 
 
 class BanSystem(BaseAdminCog):
-    """
-    PREFIX:
-    dv ban <user | id | reply> [reason]
-    dv unban <user id> [reason]
-    """
-
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     # =========================================================
-    # Fast Reply Resolution (No API Call)
+    # Reply Resolve
     # =========================================================
-
     def _resolve_from_reply(self, ctx: commands.Context):
         ref = ctx.message.reference
-        if not ref:
-            return None
-
-        if isinstance(ref.resolved, discord.Message):
+        if ref and isinstance(ref.resolved, discord.Message):
             return ctx.guild.get_member(ref.resolved.author.id)
-
         return None
 
     # =========================================================
-    # Resolve User (Mention / ID / Reply)
+    # Resolve User
     # =========================================================
-
-    async def _resolve_user(self, ctx: commands.Context, user_input):
+    async def _resolve_user(self, ctx, user_input):
         guild = ctx.guild
 
-        # Direct member
         if isinstance(user_input, discord.Member):
             return user_input
 
-        # Try reply
         if not user_input:
             return self._resolve_from_reply(ctx)
 
-        # Try ID
         try:
             user_id = int(user_input)
         except ValueError:
@@ -63,33 +49,24 @@ class BanSystem(BaseAdminCog):
         if member:
             return member
 
-        # ID ban (user not in server)
         try:
             return await self.bot.fetch_user(user_id)
-        except (discord.NotFound, discord.HTTPException):
+        except discord.NotFound, discord.HTTPException:
             return None
 
     # =========================================================
     # BAN
     # =========================================================
-
     @commands.command(name="ban")
     @commands.guild_only()
-    async def ban(
-        self,
-        ctx: commands.Context,
-        user: str | discord.Member | None = None,
-        *,
-        reason: str | None = None,
-    ):
+    async def ban(self, ctx, user=None, *, reason=None):
 
         guild = ctx.guild
-        moderator: discord.Member = ctx.author
+        moderator = ctx.author
         bot_member = guild.me
 
         reason = reason or "No reason provided"
 
-        # Fast bot permission check first
         if not bot_member.guild_permissions.ban_members:
             return await ctx.reply(
                 embed=make_embed(
@@ -113,11 +90,9 @@ class BanSystem(BaseAdminCog):
             )
 
         # =====================================================
-        # If target is member → hierarchy checks
+        # Member Checks
         # =====================================================
-
         if isinstance(target, discord.Member):
-
             if target == moderator:
                 return await ctx.reply(
                     embed=make_embed(
@@ -149,7 +124,6 @@ class BanSystem(BaseAdminCog):
                 )
 
             if moderator != guild.owner:
-
                 if target.guild_permissions.administrator:
                     return await ctx.reply(
                         embed=make_embed(
@@ -164,8 +138,7 @@ class BanSystem(BaseAdminCog):
                     return await ctx.reply(
                         embed=make_embed(
                             title="Hierarchy Error",
-                            description=
-                            "You cannot ban someone with equal or higher role.",
+                            description="You cannot ban someone with equal or higher role.",
                             level="ERROR",
                         ),
                         mention_author=False,
@@ -175,72 +148,97 @@ class BanSystem(BaseAdminCog):
                 return await ctx.reply(
                     embed=make_embed(
                         title="Bot Hierarchy Error",
-                        description=
-                        "I cannot ban this member due to role hierarchy.",
+                        description="I cannot manage this member due to role hierarchy.",
                         level="ERROR",
                     ),
                     mention_author=False,
                 )
 
-            # DM before ban
+            # DM (safe)
             try:
-                await target.send(embed=make_embed(
-                    title="You Have Been Banned",
-                    description=f"Server: {guild.name}\nReason: {reason}",
-                    level="ERROR",
-                ))
-            except discord.Forbidden:
+                await ModNotifier.notify_ban(
+                    member=target,
+                    guild_name=guild.name,
+                    moderator=moderator,
+                    reason=reason,
+                )
+            except Exception:
                 pass
 
         # =====================================================
-        # Execute Ban
+        # EXECUTE BAN (SAFE)
         # =====================================================
+        try:
+            await guild.ban(
+                target,
+                reason=f"{reason} | Banned by {moderator}",
+                delete_message_seconds=0,
+            )
+        except discord.Forbidden:
+            return await ctx.reply(
+                embed=make_embed(
+                    title="Action Failed",
+                    description="I do not have permission to ban this user.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
+        except discord.HTTPException:
+            return await ctx.reply(
+                embed=make_embed(
+                    title="Ban Failed",
+                    description="An error occurred while banning the user.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
 
-        await guild.ban(
-            target,
-            reason=f"{reason} | Banned by {moderator}",
-            delete_message_seconds=0,
-        )
+        # =====================================================
+        # RESPONSE
+        # =====================================================
+        try:
+            await ctx.reply(
+                embed=make_embed(
+                    title="User Banned",
+                    description=(
+                        f"{EMOJIS['ban']} {target}\n\n"
+                        f"{EMOJIS['arrow_point']} Reason: {reason}"
+                    ),
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
+        except Exception:
+            pass
 
-        await ctx.reply(
-            embed=make_embed(
+        # =====================================================
+        # LOGGING
+        # =====================================================
+        try:
+            await send_mod_log(
+                guild=guild,
+                category="BAN",
                 title="User Banned",
-                description=(f"{EMOJIS['ban']} {target}\n\n"
-                             f"{EMOJIS['arrow_point']} Reason: {reason}"),
+                description=f"{target} was banned.",
                 level="ERROR",
-            ),
-            mention_author=False,
-        )
-
-        await send_mod_log(
-            guild=guild,
-            category="BAN",
-            title="User Banned",
-            description=f"{target} was banned.",
-            level="ERROR",
-            actor=moderator,
-            target=target,
-            extra_fields={"Reason": reason},
-        )
+                actor=moderator,
+                target=target,
+                extra_fields={"Reason": reason},
+            )
+        except Exception:
+            pass
 
         await _cleanup(ctx)
 
     # =========================================================
     # UNBAN
     # =========================================================
-
     @commands.command(name="unban")
     @commands.guild_only()
-    async def unban(
-        self,
-        ctx: commands.Context,
-        user: str | None = None,
-        *,
-        reason: str | None = None,
-    ):
+    async def unban(self, ctx, user=None, *, reason=None):
 
         guild = ctx.guild
-        moderator: discord.Member = ctx.author
+        moderator = ctx.author
         reason = reason or "No reason provided"
 
         if not user:
@@ -276,32 +274,68 @@ class BanSystem(BaseAdminCog):
                 ),
                 mention_author=False,
             )
+        except discord.HTTPException:
+            return await ctx.reply(
+                embed=make_embed(
+                    title="Error",
+                    description="Failed to fetch ban entry.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
 
-        await guild.unban(
-            banned_entry.user,
-            reason=f"{reason} | Unbanned by {moderator}",
-        )
+        try:
+            await guild.unban(
+                banned_entry.user,
+                reason=f"{reason} | Unbanned by {moderator}",
+            )
+        except discord.Forbidden:
+            return await ctx.reply(
+                embed=make_embed(
+                    title="Permission Error",
+                    description="I do not have permission to unban users.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
+        except discord.HTTPException:
+            return await ctx.reply(
+                embed=make_embed(
+                    title="Unban Failed",
+                    description="An error occurred while unbanning.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
 
-        await ctx.reply(
-            embed=make_embed(
+        try:
+            await ctx.reply(
+                embed=make_embed(
+                    title="User Unbanned",
+                    description=(
+                        f"{EMOJIS['success']} {banned_entry.user}\n\n"
+                        f"{EMOJIS['arrow_point']} Reason: {reason}"
+                    ),
+                    level="SUCCESS",
+                ),
+                mention_author=False,
+            )
+        except Exception:
+            pass
+
+        try:
+            await send_mod_log(
+                guild=guild,
+                category="BAN",
                 title="User Unbanned",
-                description=(f"{EMOJIS['success']} {banned_entry.user}\n\n"
-                             f"{EMOJIS['arrow_point']} Reason: {reason}"),
+                description=f"{banned_entry.user} was unbanned.",
                 level="SUCCESS",
-            ),
-            mention_author=False,
-        )
-
-        await send_mod_log(
-            guild=guild,
-            category="BAN",
-            title="User Unbanned",
-            description=f"{banned_entry.user} was unbanned.",
-            level="SUCCESS",
-            actor=moderator,
-            target=banned_entry.user,
-            extra_fields={"Reason": reason},
-        )
+                actor=moderator,
+                target=banned_entry.user,
+                extra_fields={"Reason": reason},
+            )
+        except Exception:
+            pass
 
         await _cleanup(ctx)
 

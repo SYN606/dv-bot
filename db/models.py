@@ -158,37 +158,6 @@ class RestrictedCommand(Base):
     __table_args__ = (Index("idx_restricted_lookup", "guild_id",
                             "channel_id"), )
 
-
-# ─────────────────────────
-# COUNTING CHANNELS
-# ─────────────────────────
-class CountingChannel(Base):
-    __tablename__ = "counting_channels"
-
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-
-    channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-
-    current: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False,
-    )
-
-    last_user_id: Mapped[int | None] = mapped_column(
-        BigInteger,
-        nullable=True,
-    )
-
-    best: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False,
-    )
-
-    __table_args__ = (Index("idx_counting_lookup", "guild_id", "channel_id"), )
-
-
 # TEMPBAN CONFIG
 class TempbanConfig(Base):
     __tablename__ = "tempban_config"
