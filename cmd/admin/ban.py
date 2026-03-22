@@ -11,7 +11,7 @@ from utils.logging.notifier import ModNotifier
 async def _cleanup(ctx: commands.Context) -> None:
     try:
         await ctx.message.delete()
-    except discord.Forbidden, discord.NotFound:
+    except (discord.Forbidden, discord.NotFound):
         pass
 
 
@@ -51,7 +51,7 @@ class BanSystem(BaseAdminCog):
 
         try:
             return await self.bot.fetch_user(user_id)
-        except discord.NotFound, discord.HTTPException:
+        except (discord.Forbidden, discord.NotFound):
             return None
 
     # =========================================================

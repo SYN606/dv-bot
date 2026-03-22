@@ -19,7 +19,7 @@ from db.db_helpers.verification import get_verification_config
 async def _cleanup(ctx: commands.Context):
     try:
         await ctx.message.delete()
-    except discord.Forbidden, discord.NotFound:
+    except (discord.Forbidden, discord.NotFound):
         pass
 
 
@@ -28,22 +28,39 @@ class TempbanSystem(BaseAdminCog):
         self.bot = bot
 
     # =========================================================
-    # Reply resolve
+    # UNIVERSAL MEMBER RESOLVER (FIXES YOUR ERROR)
     # =========================================================
-    def _resolve_from_reply(self, ctx):
+    async def resolve_member(self, ctx, user_input):
+        # already resolved
+        if isinstance(user_input, discord.Member):
+            return user_input
+
+        # reply support
         ref = ctx.message.reference
-        if ref and isinstance(ref.resolved, discord.Message):
-            return ctx.guild.get_member(ref.resolved.author.id)
+        if not user_input and ref:
+            if isinstance(ref.resolved, discord.Message):
+                return ctx.guild.get_member(ref.resolved.author.id)
+
+        # convert string → Member
+        if user_input:
+            try:
+                return await commands.MemberConverter().convert(ctx, user_input)
+            except commands.BadArgument:
+                return None
+
         return None
 
     # =========================================================
-    # Validation
+    # VALIDATION
     # =========================================================
     async def _validate_target(self, ctx, target):
 
         guild = ctx.guild
         moderator = ctx.author
         bot_member = guild.me
+
+        if not isinstance(target, discord.Member):
+            return "Invalid user."
 
         if target == moderator:
             return "You cannot target yourself."
@@ -54,7 +71,6 @@ class TempbanSystem(BaseAdminCog):
         if target == bot_member:
             return "You cannot target me."
 
-        # ✅ missing permission check
         if not bot_member.guild_permissions.manage_roles:
             return "I do not have permission to manage roles."
 
@@ -80,14 +96,14 @@ class TempbanSystem(BaseAdminCog):
         guild = ctx.guild
         moderator = ctx.author
 
-        if not user:
-            user = self._resolve_from_reply(ctx)
+        # ✅ FIXED: resolve user properly
+        user = await self.resolve_member(ctx, user)
 
         if not user:
             return await ctx.reply(
                 embed=make_embed(
-                    title="Missing User",
-                    description="Usage: dv tempban <user | reply> [reason]",
+                    title="Invalid User",
+                    description="Provide a valid user or reply to a message.",
                     level="ERROR",
                 ),
                 mention_author=False,
@@ -105,7 +121,7 @@ class TempbanSystem(BaseAdminCog):
             )
 
         # =====================================================
-        # Get role safely
+        # Get role
         # =====================================================
         try:
             role_id = await get_tempban_role(guild.id)
@@ -137,7 +153,7 @@ class TempbanSystem(BaseAdminCog):
         reason = reason or "No reason provided"
 
         # =====================================================
-        # DM (safe)
+        # DM notify
         # =====================================================
         try:
             await ModNotifier.notify_timeout(
@@ -151,7 +167,7 @@ class TempbanSystem(BaseAdminCog):
             pass
 
         # =====================================================
-        # Remove verified role (safe)
+        # Remove verified role
         # =====================================================
         try:
             verify_cfg = await get_verification_config(guild.id)
@@ -170,7 +186,7 @@ class TempbanSystem(BaseAdminCog):
                     pass
 
         # =====================================================
-        # Apply tempban role (safe)
+        # Apply role
         # =====================================================
         try:
             await user.add_roles(
@@ -197,7 +213,7 @@ class TempbanSystem(BaseAdminCog):
             )
 
         # =====================================================
-        # DB record (safe)
+        # DB
         # =====================================================
         try:
             await add_tempban(
@@ -210,25 +226,22 @@ class TempbanSystem(BaseAdminCog):
             pass
 
         # =====================================================
-        # Response
+        # RESPONSE
         # =====================================================
-        try:
-            await ctx.reply(
-                embed=make_embed(
-                    title="User Tempbanned",
-                    description=(
-                        f"{EMOJIS['ban']} {user.mention}\n\n"
-                        f"{EMOJIS['arrow_point']} Reason: {reason}"
-                    ),
-                    level="SUCCESS",
+        await ctx.reply(
+            embed=make_embed(
+                title="User Tempbanned",
+                description=(
+                    f"{EMOJIS['ban']} {user.mention}\n\n"
+                    f"{EMOJIS['arrow_point']} Reason: {reason}"
                 ),
-                mention_author=False,
-            )
-        except Exception:
-            pass
+                level="SUCCESS",
+            ),
+            mention_author=False,
+        )
 
         # =====================================================
-        # Logging
+        # LOG
         # =====================================================
         try:
             await send_mod_log(
@@ -256,14 +269,14 @@ class TempbanSystem(BaseAdminCog):
         guild = ctx.guild
         moderator = ctx.author
 
-        if not user:
-            user = self._resolve_from_reply(ctx)
+        # ✅ FIXED
+        user = await self.resolve_member(ctx, user)
 
         if not user:
             return await ctx.reply(
                 embed=make_embed(
-                    title="Missing User",
-                    description="Usage: dv untempban <user | reply> [reason]",
+                    title="Invalid User",
+                    description="Provide a valid user or reply.",
                     level="ERROR",
                 ),
                 mention_author=False,
@@ -295,7 +308,7 @@ class TempbanSystem(BaseAdminCog):
                 mention_author=False,
             )
 
-        # Remove role safely
+        # remove role
         try:
             role_id = await get_tempban_role(guild.id)
         except Exception:
@@ -312,7 +325,7 @@ class TempbanSystem(BaseAdminCog):
             except discord.Forbidden:
                 pass
 
-        # Restore verified role
+        # restore verified
         try:
             verify_cfg = await get_verification_config(guild.id)
         except Exception:
@@ -340,7 +353,7 @@ class TempbanSystem(BaseAdminCog):
 
         reason = reason or "No reason provided"
 
-        # DM safe
+        # notify
         try:
             await ModNotifier.notify_timeout(
                 member=user,
@@ -352,20 +365,17 @@ class TempbanSystem(BaseAdminCog):
         except Exception:
             pass
 
-        try:
-            await ctx.reply(
-                embed=make_embed(
-                    title="Tempban Removed",
-                    description=(
-                        f"{EMOJIS['success']} {user.mention}\n\n"
-                        f"{EMOJIS['arrow_point']} Reason: {reason}"
-                    ),
-                    level="SUCCESS",
+        await ctx.reply(
+            embed=make_embed(
+                title="Tempban Removed",
+                description=(
+                    f"{EMOJIS['success']} {user.mention}\n\n"
+                    f"{EMOJIS['arrow_point']} Reason: {reason}"
                 ),
-                mention_author=False,
-            )
-        except Exception:
-            pass
+                level="SUCCESS",
+            ),
+            mention_author=False,
+        )
 
         try:
             await send_mod_log(

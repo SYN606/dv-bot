@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 from datetime import timedelta
 import re
 
@@ -51,18 +52,31 @@ class TimeoutAdmin(BaseAdminCog):
         self.bot = bot
 
     # =========================================================
-    # Reply resolver
+    # MEMBER RESOLVER (ID / mention / reply)
     # =========================================================
-    def _resolve_from_reply(self, ctx):
+    async def resolve_member(self, ctx, member_input):
+        if isinstance(member_input, discord.Member):
+            return member_input
+
+        # reply support
         ref = ctx.message.reference
-        if ref and isinstance(ref.resolved, discord.Message):
-            return ctx.guild.get_member(ref.resolved.author.id)
+        if not member_input and ref:
+            if isinstance(ref.resolved, discord.Message):
+                return ctx.guild.get_member(ref.resolved.author.id)
+
+        # try converter
+        if member_input:
+            try:
+                return await commands.MemberConverter().convert(ctx, member_input)
+            except commands.BadArgument:
+                return None
+
         return None
 
     async def _cleanup(self, ctx):
         try:
             await ctx.message.delete()
-        except discord.Forbidden, discord.NotFound:
+        except Exception:
             pass
 
     async def _validate_target(self, ctx, member):
@@ -70,13 +84,15 @@ class TimeoutAdmin(BaseAdminCog):
         moderator = ctx.author
         bot_member = guild.me
 
+        if not member:
+            return "Invalid member."
+
         if member == moderator:
             return "You cannot timeout yourself."
 
         if member == guild.owner:
             return "You cannot timeout the server owner."
 
-        # missing permission check (important)
         if not bot_member.guild_permissions.moderate_members:
             return "I do not have permission to timeout members."
 
@@ -104,36 +120,37 @@ class TimeoutAdmin(BaseAdminCog):
         return seconds, None
 
     # =========================================================
-    # TIMEOUT
+    # HYBRID COMMAND (prefix + slash)
     # =========================================================
-    @commands.command(name="timeout")
-    async def timeout_member(self, ctx, member=None, arg1=None, *, arg2=None):
+    @commands.hybrid_command(name="timeout", description="Timeout a member")
+    @app_commands.describe(
+        member="User to timeout",
+        duration="Example: 10m, 2h, 1d",
+        reason="Reason for timeout"
+    )
+    async def timeout_member(
+        self,
+        ctx: commands.Context,
+        member: str = None,
+        duration: str = DEFAULT_DURATION,
+        *,
+        reason: str = "No reason provided"
+    ):
+        if ctx.interaction is None:
+            await self._cleanup(ctx)
 
-        await self._cleanup(ctx)
-
-        if not member:
-            member = self._resolve_from_reply(ctx)
+        member = await self.resolve_member(ctx, member)
 
         if not member:
             return await ctx.send(
                 embed=make_embed(
-                    title="Missing Member",
-                    description="Usage: timeout <user/reply> [duration] [reason]",
+                    title="Invalid Member",
+                    description="Provide a valid user or reply to a message.",
                     level="ERROR",
                 ),
-                delete_after=5,
+                ephemeral=True if ctx.interaction else False,
+                delete_after=5 if not ctx.interaction else None,
             )
-
-        duration = DEFAULT_DURATION
-        reason = "No reason provided"
-
-        if arg1:
-            if parse_duration(arg1) > 0:
-                duration = arg1
-                if arg2:
-                    reason = arg2
-            else:
-                reason = f"{arg1} {arg2 or ''}".strip()
 
         error = await self._validate_target(ctx, member)
         if error:
@@ -143,7 +160,7 @@ class TimeoutAdmin(BaseAdminCog):
                     description=error,
                     level="ERROR",
                 ),
-                delete_after=5,
+                ephemeral=True if ctx.interaction else False,
             )
 
         seconds, err = self._validate_duration(duration)
@@ -154,36 +171,35 @@ class TimeoutAdmin(BaseAdminCog):
                     description=err,
                     level="ERROR",
                 ),
-                delete_after=5,
+                ephemeral=True if ctx.interaction else False,
             )
 
         until = discord.utils.utcnow() + timedelta(seconds=seconds)
 
-        # SAFE timeout execution
         try:
             await member.timeout(until, reason=reason)
         except discord.Forbidden:
             return await ctx.send(
                 embed=make_embed(
                     title="Action Failed",
-                    description="I do not have permission to timeout this user.",
+                    description="Missing permissions.",
                     level="ERROR",
                 ),
-                delete_after=5,
+                ephemeral=True if ctx.interaction else False,
             )
         except discord.HTTPException:
             return await ctx.send(
                 embed=make_embed(
-                    title="Timeout Failed",
-                    description="An error occurred while applying timeout.",
+                    title="Error",
+                    description="Failed to apply timeout.",
                     level="ERROR",
                 ),
-                delete_after=5,
+                ephemeral=True if ctx.interaction else False,
             )
 
         human_time = format_duration(seconds)
 
-        # notifier (safe)
+        # notify
         try:
             await ModNotifier.notify_timeout(
                 member=member,
@@ -195,24 +211,20 @@ class TimeoutAdmin(BaseAdminCog):
         except Exception:
             pass
 
-        # response 
-        try:
-            await ctx.send(
-                embed=make_embed(
-                    title="User Timed Out",
-                    description=f"{member.mention}\nDuration: {human_time}\nReason: {reason}",
-                    level="WARNING",
-                ),
-                delete_after=5,
+        # response
+        await ctx.send(
+            embed=make_embed(
+                title="User Timed Out",
+                description=f"{member.mention}\nDuration: {human_time}\nReason: {reason}",
+                level="WARNING",
             )
-        except Exception:
-            pass
+        )
 
-        # logging (safe)
+        # log
         try:
             await send_mod_log(
                 guild=ctx.guild,
-                category="BAN",
+                category="TIMEOUT",
                 title="User Timed Out",
                 description=f"{member} was timed out.",
                 level="WARNING",
@@ -229,34 +241,37 @@ class TimeoutAdmin(BaseAdminCog):
     # =========================================================
     # UNTIMEOUT
     # =========================================================
-    @commands.command(name="untimeout")
-    async def untimeout_member(self, ctx, member=None, *, reason=None):
+    @commands.hybrid_command(name="untimeout", description="Remove timeout")
+    async def untimeout_member(
+        self,
+        ctx: commands.Context,
+        member: str = None,
+        *,
+        reason: str = "No reason provided"
+    ):
+        if ctx.interaction is None:
+            await self._cleanup(ctx)
 
-        await self._cleanup(ctx)
-
-        if not member:
-            member = self._resolve_from_reply(ctx)
+        member = await self.resolve_member(ctx, member)
 
         if not member:
             return await ctx.send(
                 embed=make_embed(
-                    title="Missing Member",
-                    description="Usage: untimeout <user/reply> [reason]",
+                    title="Invalid Member",
+                    description="Provide a valid user or reply.",
                     level="ERROR",
                 ),
-                delete_after=5,
+                ephemeral=True if ctx.interaction else False,
             )
-
-        reason = reason or "No reason provided"
 
         if not member.is_timed_out():
             return await ctx.send(
                 embed=make_embed(
-                    title="User Not Timed Out",
-                    description="This user is not currently timed out.",
+                    title="Not Timed Out",
+                    description="User is not timed out.",
                     level="ERROR",
                 ),
-                delete_after=5,
+                ephemeral=True if ctx.interaction else False,
             )
 
         try:
@@ -264,58 +279,20 @@ class TimeoutAdmin(BaseAdminCog):
         except discord.Forbidden:
             return await ctx.send(
                 embed=make_embed(
-                    title="Action Failed",
-                    description="I do not have permission to remove timeout.",
+                    title="Permission Error",
+                    description="Cannot remove timeout.",
                     level="ERROR",
                 ),
-                delete_after=5,
-            )
-        except discord.HTTPException:
-            return await ctx.send(
-                embed=make_embed(
-                    title="Error",
-                    description="Failed to remove timeout.",
-                    level="ERROR",
-                ),
-                delete_after=5,
+                ephemeral=True if ctx.interaction else False,
             )
 
-        try:
-            await ModNotifier.notify_timeout(
-                member=member,
-                guild_name=ctx.guild.name,
-                moderator=ctx.author,
-                duration="Removed",
-                reason=reason,
-            )
-        except Exception:
-            pass
-
-        try:
-            await ctx.send(
-                embed=make_embed(
-                    title="Timeout Removed",
-                    description=f"{member.mention} has been unmuted.",
-                    level="SUCCESS",
-                ),
-                delete_after=5,
-            )
-        except Exception:
-            pass
-
-        try:
-            await send_mod_log(
-                guild=ctx.guild,
-                category="BAN",
+        await ctx.send(
+            embed=make_embed(
                 title="Timeout Removed",
-                description=f"Timeout removed for {member}.",
+                description=f"{member.mention} is now free.",
                 level="SUCCESS",
-                actor=ctx.author,
-                target=member,
-                extra_fields={"Reason": reason},
             )
-        except Exception:
-            pass
+        )
 
 
 async def setup(bot: commands.Bot):
