@@ -18,7 +18,6 @@ from utils.core.presence import PresenceRotator
 from utils.startups.verification_startup import setup_verification_on_ready
 from utils.views.verification_views.verify_button_view import VerifyButtonView
 
-
 # ─────────────────────────
 # ENV
 # ─────────────────────────
@@ -28,12 +27,19 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 ENV = os.getenv("ENV", "prod").lower()
 DEV_GUILD_ID = os.getenv("DEV_GUILD_ID")
 
-SYNC_COMMANDS = os.getenv("SYNC_COMMANDS", "true").lower() == "true"
-DEBUG_HTTP = os.getenv("DEBUG_HTTP", "false").lower() == "true"
+
+def env_bool(key: str, default: bool) -> bool:
+    val = os.getenv(key)
+    if val is None:
+        return default
+    return val.lower() in ("true", "1", "yes")
+
+
+SYNC_COMMANDS = env_bool("SYNC_COMMANDS", True)
+DEBUG_HTTP = env_bool("DEBUG_HTTP", False)
 
 if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN not found in .env")
-
 
 # ─────────────────────────
 # LOGGING
@@ -49,7 +55,6 @@ if DEBUG_HTTP:
     logging.getLogger("discord.http").setLevel(logging.DEBUG)
 
 logger.info(f"Running in {ENV.upper()} mode")
-
 
 # ─────────────────────────
 # INTENTS
@@ -91,16 +96,19 @@ class DigitalVigilBot(commands.Bot):
             try:
                 if ENV == "test":
                     if not DEV_GUILD_ID:
-                        logger.warning("DEV_GUILD_ID not set — skipping dev sync")
+                        logger.warning(
+                            "DEV_GUILD_ID not set — skipping dev sync")
                     else:
                         guild = discord.Object(id=int(DEV_GUILD_ID))
 
-                        logger.info("[DEV MODE] Syncing commands to dev guild...")
+                        logger.info(
+                            "[DEV MODE] Syncing commands to dev guild...")
 
                         self.tree.copy_global_to(guild=guild)
                         synced = await self.tree.sync(guild=guild)
 
-                        logger.info(f"[DEV MODE] Synced {len(synced)} commands")
+                        logger.info(
+                            f"[DEV MODE] Synced {len(synced)} commands")
 
                 else:
                     logger.info("[PROD MODE] Syncing globally...")

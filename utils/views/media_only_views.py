@@ -43,7 +43,7 @@ async def remove_media_only_sticky(channel: discord.TextChannel) -> None:
             if footer and STICKY_TAG in footer:
                 try:
                     await message.delete()
-                except discord.Forbidden, discord.NotFound:
+                except (discord.Forbidden, discord.NotFound):
                     pass
                 break
     except discord.Forbidden:
@@ -246,5 +246,5 @@ class MediaOnlyView(discord.ui.View):
                     ),
                     view=self,
                 )
-        except discord.NotFound, discord.HTTPException:
+        except (discord.NotFound, discord.HTTPException):
             pass
