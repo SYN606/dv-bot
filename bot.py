@@ -10,7 +10,7 @@ from utils.handlers.prefix import dynamic_prefix, normalize_prefix
 from utils.core.interaction_check import command_toggle_check
 
 from utils.handlers.media_only import enforce_media_only
-from utils.handlers.sticky_handler import handle_sticky
+from utils.handlers.sticky.sticky_handler import handle_sticky
 from utils.handlers.afk_handler import handle_afk
 from utils.handlers.mention import handle_bot_mention
 
@@ -18,17 +18,22 @@ from utils.core.presence import PresenceRotator
 from utils.startups.verification_startup import setup_verification_on_ready
 from utils.views.verification_views.verify_button_view import VerifyButtonView
 
+
 # ─────────────────────────
 # ENV
 # ─────────────────────────
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
+ENV = os.getenv("ENV", "prod").lower()
+DEV_GUILD_ID = os.getenv("DEV_GUILD_ID")
+
 SYNC_COMMANDS = os.getenv("SYNC_COMMANDS", "true").lower() == "true"
 DEBUG_HTTP = os.getenv("DEBUG_HTTP", "false").lower() == "true"
 
 if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN not found in .env")
+
 
 # ─────────────────────────
 # LOGGING
@@ -43,6 +48,9 @@ logger = logging.getLogger("bot")
 if DEBUG_HTTP:
     logging.getLogger("discord.http").setLevel(logging.DEBUG)
 
+logger.info(f"Running in {ENV.upper()} mode")
+
+
 # ─────────────────────────
 # INTENTS
 # ─────────────────────────
@@ -55,6 +63,7 @@ intents.message_content = True
 # BOT CLASS
 # ─────────────────────────
 class DigitalVigilBot(commands.Bot):
+
     def __init__(self) -> None:
         super().__init__(
             command_prefix=dynamic_prefix,
@@ -70,17 +79,36 @@ class DigitalVigilBot(commands.Bot):
     async def setup_hook(self) -> None:
 
         await init_schema()
-
         self.tree.interaction_check = command_toggle_check
 
         await self.load_all_extensions()
 
-        if SYNC_COMMANDS:
+        logger.info(f"Tree commands before sync: {self.tree.get_commands()}")
+
+        if not SYNC_COMMANDS:
+            logger.info("Command sync disabled via ENV")
+        else:
             try:
-                await self.tree.sync()
-                logger.info("Slash commands synced")
+                if ENV == "test":
+                    if not DEV_GUILD_ID:
+                        logger.warning("DEV_GUILD_ID not set — skipping dev sync")
+                    else:
+                        guild = discord.Object(id=int(DEV_GUILD_ID))
+
+                        logger.info("[DEV MODE] Syncing commands to dev guild...")
+
+                        self.tree.copy_global_to(guild=guild)
+                        synced = await self.tree.sync(guild=guild)
+
+                        logger.info(f"[DEV MODE] Synced {len(synced)} commands")
+
+                else:
+                    logger.info("[PROD MODE] Syncing globally...")
+                    synced = await self.tree.sync()
+                    logger.info(f"[PROD MODE] Synced {len(synced)} commands")
+
             except Exception as exc:
-                logger.warning(f"Slash sync failed: {exc}")
+                logger.error(f"Command sync failed: {exc}")
 
         self.add_view(VerifyButtonView())
 
@@ -105,6 +133,7 @@ class DigitalVigilBot(commands.Bot):
 
                 try:
                     await self.load_extension(ext)
+                    logger.info(f"Loaded extension: {ext}")
                 except Exception as exc:
                     logger.error(f"Failed to load {ext}: {exc}")
 
@@ -127,7 +156,7 @@ class DigitalVigilBot(commands.Bot):
         logger.info("Bot ready")
 
     # ─────────────────────────
-    # MESSAGE PIPELINE
+    # MESSAGE PIPELINE (FIXED)
     # ─────────────────────────
     async def on_message(self, message: discord.Message) -> None:
 
@@ -137,15 +166,26 @@ class DigitalVigilBot(commands.Bot):
         try:
             message.content = normalize_prefix(message.content)
 
-            if message.attachments or message.embeds:
-                if await enforce_media_only(message):
-                    return
+            # ─────────────────────────
+            # MEDIA SYSTEM (TOP PRIORITY)
+            # ─────────────────────────
+            if await enforce_media_only(message):
+                return
 
+            # ─────────────────────────
+            # STICKY SYSTEM
+            # ─────────────────────────
             await handle_sticky(message)
 
+            # ─────────────────────────
+            # MENTION SYSTEM
+            # ─────────────────────────
             if self.user and self.user.mentioned_in(message):
                 await handle_bot_mention(self, message)
 
+            # ─────────────────────────
+            # AFK SYSTEM
+            # ─────────────────────────
             await handle_afk(message)
 
         except Exception as exc:
@@ -155,7 +195,7 @@ class DigitalVigilBot(commands.Bot):
 
 
 # ─────────────────────────
-# ENTRYPOINT (RETRY SAFE)
+# ENTRYPOINT
 # ─────────────────────────
 def main() -> None:
 

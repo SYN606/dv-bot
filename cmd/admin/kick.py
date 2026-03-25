@@ -12,62 +12,93 @@ class KickSystem(BaseAdminCog):
         self.bot = bot
 
     # =========================================================
-    # Reply Resolve
+    # Resolve Member (reply fallback)
     # =========================================================
     def _resolve_from_reply(self, ctx: commands.Context) -> discord.Member | None:
         ref = ctx.message.reference
         if ref and isinstance(ref.resolved, discord.Message):
-            return ctx.guild.get_member(ref.resolved.author.id)
+            return ctx.guild.get_member(ref.resolved.author.id)  # type: ignore
         return None
 
     # =========================================================
-    # Target Validation
+    # Validate Target
     # =========================================================
-    async def _validate_target(self, ctx, member):
+    async def _validate_target(
+        self,
+        ctx: commands.Context,
+        member: discord.Member,
+    ) -> str | None:
 
         guild = ctx.guild
-        moderator = ctx.author
-        bot_member = guild.me
+        assert guild is not None
 
+        moderator = ctx.author
+        if not isinstance(moderator, discord.Member):
+            return "Invalid moderator context."
+
+        bot_member = guild.me
+        assert bot_member is not None
+
+        owner = guild.owner
+
+        # Self / owner / bot checks
         if member == moderator:
             return "You cannot kick yourself."
 
-        if member == guild.owner:
+        if owner and member == owner:
             return "You cannot kick the server owner."
 
         if member == bot_member:
             return "You cannot kick me."
 
+        # Bot permission
         if not bot_member.guild_permissions.kick_members:
             return "I do not have permission to kick members."
 
-        if moderator != guild.owner:
+        # Moderator hierarchy
+        if moderator != owner:
             if member.guild_permissions.administrator:
                 return "You cannot kick another administrator."
 
-            if member.top_role >= moderator.top_role:
+            if moderator.top_role <= member.top_role:
                 return "You cannot kick someone with equal or higher role."
 
+        # Bot hierarchy
         if bot_member.top_role <= member.top_role:
             return "I cannot manage this member due to role hierarchy."
 
         return None
 
     # =========================================================
-    # KICK COMMAND
+    # KICK COMMAND (ROBUST)
     # =========================================================
     @commands.command(name="kick")
     @commands.guild_only()
-    async def kick(self, ctx, member=None, *, reason=None):
+    async def kick(
+        self,
+        ctx: commands.Context,
+        member: discord.Member | None = None,
+        *,
+        reason: str | None = None,
+    ):
+        guild = ctx.guild
+        assert guild is not None
 
-        if not member:
+        moderator = ctx.author
+        if not isinstance(moderator, discord.Member):
+            return
+
+        # =====================================================
+        # Resolve member
+        # =====================================================
+        if member is None:
             member = self._resolve_from_reply(ctx)
 
-        if not member:
+        if not isinstance(member, discord.Member):
             return await ctx.reply(
                 embed=make_embed(
-                    title="Missing User",
-                    description="Usage: dv kick <user | reply> [reason]",
+                    title="Invalid User",
+                    description="Please mention a valid member or reply to a user.",
                     level="ERROR",
                 ),
                 mention_author=False,
@@ -75,6 +106,9 @@ class KickSystem(BaseAdminCog):
 
         reason = reason or "No reason provided"
 
+        # =====================================================
+        # Validate
+        # =====================================================
         error = await self._validate_target(ctx, member)
         if error:
             return await ctx.reply(
@@ -87,23 +121,23 @@ class KickSystem(BaseAdminCog):
             )
 
         # =====================================================
-        # DM (safe)
+        # DM Notification (safe)
         # =====================================================
         try:
             await ModNotifier.notify_kick(
                 member=member,
-                guild_name=ctx.guild.name,
-                moderator=ctx.author,
+                guild_name=guild.name,
+                moderator=moderator,
                 reason=reason,
             )
         except Exception:
             pass
 
         # =====================================================
-        # EXECUTE KICK (SAFE)
+        # Execute Kick
         # =====================================================
         try:
-            await member.kick(reason=f"{reason} | Kicked by {ctx.author}")
+            await member.kick(reason=f"{reason} | Kicked by {moderator}")
         except discord.Forbidden:
             return await ctx.reply(
                 embed=make_embed(
@@ -124,7 +158,7 @@ class KickSystem(BaseAdminCog):
             )
 
         # =====================================================
-        # RESPONSE (SAFE)
+        # Response
         # =====================================================
         try:
             await ctx.reply(
@@ -139,16 +173,16 @@ class KickSystem(BaseAdminCog):
             pass
 
         # =====================================================
-        # LOGGING (SAFE)
+        # Logging
         # =====================================================
         try:
             await send_mod_log(
-                guild=ctx.guild,
-                category="BAN",
+                guild=guild,
+                category="KICK",
                 title="User Kicked",
                 description=f"{member} was kicked.",
                 level="WARNING",
-                actor=ctx.author,
+                actor=moderator,
                 target=member,
                 extra_fields={"Reason": reason},
             )

@@ -9,12 +9,11 @@ from utils.logging.mod_log import send_mod_log
 
 from db.db_helpers.mod_logs import set_log_channel
 
+# import cache from logger (important)
+from utils.logging.mod_log import _log_cache
+
 
 class SetupLog(BaseAdminCog):
-    """
-    Configure moderation log channel.
-    Admin-only.
-    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -31,6 +30,7 @@ class SetupLog(BaseAdminCog):
         channel: discord.TextChannel,
     ):
         guild = interaction.guild
+
         if guild is None:
             return await interaction.response.send_message(
                 embed=make_embed(
@@ -41,51 +41,42 @@ class SetupLog(BaseAdminCog):
                 ephemeral=True,
             )
 
-        # Permission auto-handled by BaseAdminCog
-
-        # ─────────────────────────
-        # Bot permission validation
-        # ─────────────────────────
         bot_member = guild.me
         if bot_member is None:
             return
 
-        permissions = channel.permissions_for(bot_member)
+        perms = channel.permissions_for(bot_member)
 
-        if not permissions.send_messages or not permissions.embed_links:
+        if not perms.send_messages or not perms.embed_links:
             return await interaction.response.send_message(
                 embed=make_embed(
                     title="Missing Permissions",
                     description=(
-                        "I need **Send Messages** and **Embed Links** "
-                        f"permissions in {channel.mention}."),
+                        "I need Send Messages and Embed Links permissions "
+                        f"in {channel.mention}."),
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
 
-        # ─────────────────────────
-        # Save configuration
-        # ─────────────────────────
         await set_log_channel(guild.id, channel.id)
+
+        # cache invalidation (important)
+        _log_cache.pop(guild.id, None)
 
         await interaction.response.send_message(
             embed=make_embed(
                 title="Log Channel Configured",
-                description=(
-                    f"{EMOJIS['success']} Moderation logs will now be sent to "
-                    f"{channel.mention}.\n\n"
-                    f"{EMOJIS['arrow_point']} All admin and moderation "
-                    "actions will be logged."),
+                description=
+                (f"{EMOJIS['success']} Logs will be sent to {channel.mention}.\n\n"
+                 f"{EMOJIS['arrow_point']} Moderation actions will now be tracked."
+                 ),
                 level="SUCCESS",
                 footer="Moderation system • Digital Vigital",
             ),
             ephemeral=True,
         )
 
-        # ─────────────────────────
-        # Structured Logging
-        # ─────────────────────────
         await send_mod_log(
             guild=guild,
             category="CONFIG",

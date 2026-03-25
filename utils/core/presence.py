@@ -7,7 +7,7 @@ from datetime import timedelta
 
 
 class PresenceRotator:
-    """Minimal & Rate-limit safe presence system"""
+    """Clean, dynamic & rate-limit safe presence system"""
 
     ROTATE_INTERVAL = 1800  # 30 minutes
 
@@ -17,16 +17,25 @@ class PresenceRotator:
 
         self.activities = cycle([
             self._uptime_activity,
-            self._servers_activity
+            self._servers_activity,
+            self._users_activity,
         ])
 
-    # Helpers
+    # ─────────────────────────
+    # HELPERS
+    # ─────────────────────────
 
     def uptime(self) -> str:
         seconds = int(time.time() - self.started_at)
         return str(timedelta(seconds=seconds)).split(".")[0]
 
-    # Activities
+    def total_users(self) -> int:
+        # Unique users across all guilds
+        return len({member.id for guild in self.bot.guilds for member in guild.members})
+
+    # ─────────────────────────
+    # ACTIVITIES
+    # ─────────────────────────
 
     def _uptime_activity(self):
         return discord.Activity(
@@ -40,7 +49,15 @@ class PresenceRotator:
             name=f"{len(self.bot.guilds)} servers",
         )
 
-    # Loop
+    def _users_activity(self):
+        return discord.Activity(
+            type=discord.ActivityType.listening,
+            name=f"{self.total_users()} users",
+        )
+
+    # ─────────────────────────
+    # LOOP
+    # ─────────────────────────
 
     @tasks.loop(seconds=ROTATE_INTERVAL)
     async def rotate(self):
@@ -48,15 +65,22 @@ class PresenceRotator:
         if not self.bot.is_ready():
             return
 
-        activity_fn = next(self.activities)
-        activity = activity_fn()
+        try:
+            activity_fn = next(self.activities)
+            activity = activity_fn()
 
-        await self.bot.change_presence(
-            status=discord.Status.online,
-            activity=activity
-        )
+            await self.bot.change_presence(
+                status=discord.Status.online,
+                activity=activity
+            )
 
-    # Start
+        except Exception:
+            # fail silently (presence should never crash bot)
+            pass
+
+    # ─────────────────────────
+    # START
+    # ─────────────────────────
 
     async def start(self):
         if not self.rotate.is_running():

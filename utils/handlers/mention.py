@@ -12,12 +12,11 @@ __all__ = ("handle_bot_mention", )
 
 MENTION_GIF = os.getenv("MENTION_GIF_URL")
 
-# Cooldown per guild
 _mention_cooldown: dict[int, float] = {}
 
 
 # ─────────────────────────
-# Help Button View
+# VIEW
 # ─────────────────────────
 class MentionView(View):
 
@@ -31,34 +30,47 @@ class MentionView(View):
                                 interaction: discord.Interaction) -> bool:
         return interaction.user.id == self.author_id
 
-    @discord.ui.button(
-        label="Open Help Menu",
-        style=discord.ButtonStyle.primary,
-        emoji="📘",
-    )
+    @discord.ui.button(label="Help",
+                       style=discord.ButtonStyle.primary,
+                       emoji="📘")
     async def help_button(self, interaction: discord.Interaction, _: Button):
-
-        try:
-            if not interaction.response.is_done():
-                await interaction.response.defer(ephemeral=True)
-        except discord.NotFound:
-            return
-
-        await interaction.followup.send(
+        await interaction.response.send_message(
             embed=make_embed(
-                title="Digital Vigital • Help",
-                description=
-                (f"{EMOJIS['arrow_point']} Use `/help` to explore everything.\n\n"
-                 f"{EMOJIS['green_dot']} Slash-first architecture\n"
-                 f"{EMOJIS['ping']} Optimized async core\n"
-                 f"{EMOJIS['moderation']} Secure admin system"),
+                title="Help Menu",
+                description="Use `/help` to explore all commands.",
+                level="INFO",
+            ),
+            ephemeral=True,
+        )
+
+    @discord.ui.button(label="Ping",
+                       style=discord.ButtonStyle.secondary,
+                       emoji="🏓")
+    async def ping_button(self, interaction: discord.Interaction, _: Button):
+        latency = round(self.bot.latency * 1000)
+        await interaction.response.send_message(
+            embed=make_embed(
+                title="Pong",
+                description=f"Latency: `{latency} ms`",
+                level="INFO",
+            ),
+            ephemeral=True,
+        )
+
+    @discord.ui.button(label="Setup",
+                       style=discord.ButtonStyle.secondary,
+                       emoji="⚙️")
+    async def setup_button(self, interaction: discord.Interaction, _: Button):
+        await interaction.response.send_message(
+            embed=make_embed(
+                title="Quick Setup",
+                description="Use `/setup_log` to configure moderation logs.",
                 level="INFO",
             ),
             ephemeral=True,
         )
 
     async def on_timeout(self):
-
         for item in self.children:
             item.disabled = True  # type: ignore
 
@@ -70,7 +82,7 @@ class MentionView(View):
 
 
 # ─────────────────────────
-# Mention Handler
+# HANDLER
 # ─────────────────────────
 async def handle_bot_mention(bot: discord.Client, message: Message) -> bool:
 
@@ -79,13 +91,9 @@ async def handle_bot_mention(bot: discord.Client, message: Message) -> bool:
 
     content = message.content.strip()
 
-    if not content:
-        return False
-
     if content not in {f"<@{bot.user.id}>", f"<@!{bot.user.id}>"}:
         return False
 
-    # Cooldown guard
     now = asyncio.get_running_loop().time()
     guild_id = message.guild.id if message.guild else 0
     last = _mention_cooldown.get(guild_id, 0)
@@ -98,17 +106,15 @@ async def handle_bot_mention(bot: discord.Client, message: Message) -> bool:
     latency_ms = round(bot.latency * 1000)
 
     embed = make_embed(
-        title="Digital Vigital • Yes?",
+        title="Digital Vigital",
         description=(
-            f"{EMOJIS['green_dot']} **Status:** Fully Operational\n"
-            f"{EMOJIS['ping']} **Latency:** `{latency_ms} ms`\n\n"
-            f"{EMOJIS['developer']} **Developer:** "
-            f"**S Y N** • [Portfolio](https://syn606.pages.dev)\n\n"
-            f"{EMOJIS['arrow_point']} You pinged me. I'm here.\n"
-            f"{EMOJIS['arrow_point']} Try `/help` instead.\n"
-            f"{EMOJIS['arrow_point']} I don’t bite… unless configured to."),
+            f"{EMOJIS['green_dot']} **Online** • `{latency_ms} ms`\n\n"
+            f"{EMOJIS['arrow_point']} Use `/help` to explore commands\n"
+            f"{EMOJIS['arrow_point']} Use `/verification` to setup systems\n\n"
+            f"{EMOJIS['developer']} **Developer**\n"
+            f"**S Y N** • https://syn606.pages.dev"),
         level="SYSTEM",
-        footer="Digital Vigital • Built different.",
+        footer="Built for performance • Modular • Reliable",
     )
 
     if MENTION_GIF:

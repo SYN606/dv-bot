@@ -15,26 +15,31 @@ load_dotenv()
 
 BANNER_GIF = os.getenv("HELP_BANNER_GIF")
 
-# ─────────────────────────────────────────────
+# ─────────────────────────
 # CATEGORY MAP
-# ─────────────────────────────────────────────
+# ─────────────────────────
 
 COMMAND_CATEGORIES: dict[str, str] = {
+    "ban": "Moderation",
+    "kick": "Moderation",
+    "tempban": "Moderation",
     "tempban_role": "Moderation",
     "tempban_list": "Moderation",
     "setup_log": "Moderation",
-    "reset_verification": "Moderation",
-    "verify_setup": "Verification",
+
+    "verification": "Verification",
+
     "media_only": "Channel",
     "sticky_set": "Channel",
     "sticky_disable": "Channel",
     "sticky_status": "Channel",
-    "set_counting": "Channel",
-    "unset_counting": "Channel",
+
     "roles": "Roles",
     "adminrole": "Roles",
+
     "command": "System",
     "help": "System",
+
     "weather": "Utility",
 }
 
@@ -48,11 +53,10 @@ CATEGORY_EMOJIS = {
     "General": EMOJIS["arrow_point"],
 }
 
-# ─────────────────────────────────────────────
+
+# ─────────────────────────
 # HELP COG
-# ─────────────────────────────────────────────
-
-
+# ─────────────────────────
 class Help(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
@@ -63,7 +67,6 @@ class Help(commands.Cog):
     # ─────────────────────────
     # CACHE BUILDER
     # ─────────────────────────
-
     def _build_cache(self) -> None:
 
         cache: list[dict] = []
@@ -89,7 +92,6 @@ class Help(commands.Cog):
     # ─────────────────────────
     # HELP COMMAND
     # ─────────────────────────
-
     @commands.hybrid_command(
         name="help",
         description="Show available bot commands",
@@ -100,7 +102,6 @@ class Help(commands.Cog):
         # ─────────────────────────
         # PREFIX MODE
         # ─────────────────────────
-
         if ctx.interaction is None:
 
             is_admin = False
@@ -112,25 +113,26 @@ class Help(commands.Cog):
                     pass
 
             general_prefix = [
-                f"{EMOJIS['arrow_point']} `dv afk` — Set AFK status",
-                f"{EMOJIS['arrow_point']} `dv avatar` — Show user avatar",
-                f"{EMOJIS['arrow_point']} `dv banner` — Show user banner",
-                f"{EMOJIS['arrow_point']} `dv ping` — Show latency",
+                f"{EMOJIS['arrow_point']} `dv afk` — AFK status",
+                f"{EMOJIS['arrow_point']} `dv avatar` — Avatar",
+                f"{EMOJIS['arrow_point']} `dv banner` — Banner",
+                f"{EMOJIS['arrow_point']} `dv ping` — Latency",
             ]
 
             admin_prefix = [
-                f"{EMOJIS['moderation']} `dv purge` — Delete messages",
-                f"{EMOJIS['moderation']} `dv tempban` — Apply tempban",
+                f"{EMOJIS['moderation']} `dv purge` — Purge messages",
+                f"{EMOJIS['moderation']} `dv tempban` — Tempban user",
                 f"{EMOJIS['moderation']} `dv untempban` — Remove tempban",
                 f"{EMOJIS['moderation']} `dv steal` — Steal emoji",
             ]
 
             description = (
-                f"{EMOJIS['green_dot']} Bot operational\n\n"
-                f"{EMOJIS['announcement']} Slash Commands → type `/`\n"
-                f"{EMOJIS['arrow_point']} Use `/help` for categorized view\n\n"
+                f"{EMOJIS['green_dot']} System active\n\n"
+                f"{EMOJIS['announcement']} Slash commands → `/`\n"
+                f"{EMOJIS['arrow_point']} Use `/help` for full directory\n\n"
                 f"{EMOJIS['developer']} Prefix Commands\n" +
-                "\n".join(general_prefix))
+                "\n".join(general_prefix)
+            )
 
             if is_admin:
                 description += "\n\n" + "\n".join(admin_prefix)
@@ -139,7 +141,7 @@ class Help(commands.Cog):
                 title="Help Center",
                 description=description,
                 level="INFO",
-                footer="Modern Async Architecture",
+                footer="Digital Vigital • Async Core",
             )
 
             if BANNER_GIF:
@@ -151,7 +153,6 @@ class Help(commands.Cog):
         # ─────────────────────────
         # SLASH MODE
         # ─────────────────────────
-
         interaction = ctx.interaction
         guild = interaction.guild
         channel = interaction.channel
@@ -184,15 +185,16 @@ class Help(commands.Cog):
             if cmd["qualified"] in PROTECTED_COMMANDS and not is_admin:
                 continue
 
-            entry = (f"{EMOJIS['arrow_point']} "
-                     f"`/{cmd['qualified']}` — {cmd['description']}")
+            entry = (
+                f"{EMOJIS['arrow_point']} "
+                f"`/{cmd['qualified']}`\n{cmd['description']}"
+            )
 
             grouped.setdefault(cmd["category"], []).append(entry)
 
         # ─────────────────────────
         # PREFIX SECTION
         # ─────────────────────────
-
         prefix_commands = [
             f"{EMOJIS['arrow_point']} `dv afk`",
             f"{EMOJIS['arrow_point']} `dv avatar`",
@@ -209,9 +211,8 @@ class Help(commands.Cog):
             ])
 
         # ─────────────────────────
-        # BUILD COLUMN FIELDS
+        # BUILD FIELDS (REFINED)
         # ─────────────────────────
-
         fields: list[tuple[str, str, bool]] = []
 
         for category, entries in sorted(grouped.items()):
@@ -220,7 +221,7 @@ class Help(commands.Cog):
 
             fields.append((
                 f"{emoji} {category}",
-                "\n".join(sorted(entries)),
+                "\n\n".join(sorted(entries)),
                 True,
             ))
 
@@ -230,20 +231,23 @@ class Help(commands.Cog):
             True,
         ))
 
-        # maintain 2-column symmetry
         if len(fields) % 2 != 0:
             fields.append(("\u200b", "\u200b", True))
 
+        # ─────────────────────────
+        # FINAL EMBED
+        # ─────────────────────────
         embed = make_embed(
             title="Command Directory",
-            description=
-            ("Commands available in this channel.\n\n"
-             f"{EMOJIS['green_dot']} Restricted commands hidden automatically\n"
-             f"{EMOJIS['moderation']} Admin commands filtered by permission\n"
-             f"{EMOJIS['arrow_point']} Use autocomplete for arguments"),
+            description=(
+                f"{EMOJIS['green_dot']} System active\n\n"
+                f"{EMOJIS['arrow_point']} Slash commands: use `/`\n"
+                f"{EMOJIS['arrow_point']} Commands filtered by permissions\n"
+                f"{EMOJIS['arrow_point']} Use autocomplete for arguments"
+            ),
             level="INFO",
             fields=fields,
-            footer="Categorised Help System",
+            footer="Digital Vigital • Structured Interface",
         )
 
         if BANNER_GIF:
@@ -253,9 +257,7 @@ class Help(commands.Cog):
 
 
 # ─────────────────────────
-# COG SETUP
+# SETUP
 # ─────────────────────────
-
-
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Help(bot))
