@@ -13,8 +13,8 @@ load_dotenv()
 ENV = os.getenv("ENV", "dev").lower()
 
 
-def get_database_url() -> tuple[str, str]:
-    """Return (database_url, mode)"""
+def build_manual_db_url() -> str | None:
+    """Build DB URL from individual env vars"""
 
     DB_USER = os.getenv("DB_USER")
     DB_PASS = os.getenv("DB_PASS")
@@ -22,18 +22,34 @@ def get_database_url() -> tuple[str, str]:
     DB_PORT = os.getenv("DB_PORT", "5432")
     DB_NAME = os.getenv("DB_DATABASE")
 
-    # ─────────────────────────
-    # PRODUCTION DB AVAILABLE
-    # ─────────────────────────
-    if all([DB_USER, DB_PASS, DB_HOST]):
-        url = (
-            f"postgresql+asyncpg://{DB_USER}:{quote_plus(DB_PASS)}" # type: ignore
-            f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-        )
-        return url, "postgres"
+    if not all([DB_USER, DB_PASS, DB_HOST, DB_NAME]):
+        return None
+
+    return (
+        f"postgresql+asyncpg://{DB_USER}:{quote_plus(DB_PASS)}" # type: ignore
+        f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
+
+
+def get_database_url() -> tuple[str, str]:
+    """Universal DB resolver"""
 
     # ─────────────────────────
-    # FALLBACK 
+    # 1. DATABASE_URL (PRIMARY)
+    # ─────────────────────────
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        return db_url, "postgres"
+
+    # ─────────────────────────
+    # 2. MANUAL CONFIG
+    # ─────────────────────────
+    manual_url = build_manual_db_url()
+    if manual_url:
+        return manual_url, "postgres"
+
+    # ─────────────────────────
+    # 3. SQLITE FALLBACK
     # ─────────────────────────
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     DB_DIR = os.path.join(BASE_DIR, "db")
@@ -75,15 +91,11 @@ else:
     )
 
     if ENV == "prod":
-        print("[DB WARNING] Running in PROD without DB → using SQLite fallback")
-
+        print("[DB WARNING] No DB configured → using SQLite fallback")
     else:
         print("[DB] Using SQLite (dev mode)")
 
 
-# ─────────────────────────
-# SESSION
-# ─────────────────────────
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
     expire_on_commit=False,
@@ -91,9 +103,6 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-# ─────────────────────────
-# CLEAN SHUTDOWN
-# ─────────────────────────
 async def close_database():
     try:
         await engine.dispose()
