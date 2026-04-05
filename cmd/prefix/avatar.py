@@ -10,10 +10,18 @@ class Avatar(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    # =====================================================
+    # COMMAND
+    # =====================================================
     @commands.command(
         name="avatar",
         aliases=["av"],
         help="Display the avatar of a user",
+    )
+    @commands.dynamic_cooldown(
+        lambda ctx: None if isinstance(ctx.author, discord.Member) and ctx.
+        author.guild_permissions.manage_guild else commands.Cooldown(2, 5),
+        commands.BucketType.user,
     )
     async def avatar(
         self,
@@ -21,25 +29,27 @@ class Avatar(commands.Cog):
         user: discord.Member | discord.User | None = None,
     ) -> None:
 
-        if ctx.guild is None:
-            return
-
         target = user or ctx.author
 
-        # Resolve guild member safely
-        member = ctx.guild.get_member(target.id)
+        # =====================================================
+        # RESOLVE MEMBER (SAFE)
+        # =====================================================
+        member: discord.Member | None = None
+        if ctx.guild:
+            member = ctx.guild.get_member(target.id)
 
-        # Real global avatar
+        # =====================================================
+        # AVATAR RESOLUTION
+        # =====================================================
         global_avatar = (target.avatar.url
                          if target.avatar else target.display_avatar.url)
 
-        # Server avatar (if exists)
         server_avatar = (member.guild_avatar.url
                          if member and member.guild_avatar else None)
 
-        # ─────────────────────────
-        # Toggle view if server avatar exists
-        # ─────────────────────────
+        # =====================================================
+        # WITH TOGGLE VIEW
+        # =====================================================
         if server_avatar:
 
             view = BaseMediaView(
@@ -58,6 +68,9 @@ class Avatar(commands.Cog):
             message = await ctx.send(embed=embed, view=view)
             view.message = message
 
+        # =====================================================
+        # SIMPLE VIEW
+        # =====================================================
         else:
 
             embed = make_embed(
@@ -71,11 +84,26 @@ class Avatar(commands.Cog):
 
             await ctx.send(embed=embed)
 
-        # delete invoking message silently
+        # =====================================================
+        # CLEANUP
+        # =====================================================
         try:
-            ctx.bot.loop.create_task(ctx.message.delete())
-        except Exception:
+            await ctx.message.delete()
+        except discord.HTTPException:
             pass
+
+    # =====================================================
+    # ERROR HANDLER (COOLDOWN)
+    # =====================================================
+    @avatar.error
+    async def avatar_error(self, ctx: commands.Context, error):
+
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(embed=make_embed(
+                title="Cooldown Active",
+                description=f"Try again in **{round(error.retry_after, 1)}s**.",
+                level="WARNING",
+            ))
 
 
 async def setup(bot: commands.Bot):

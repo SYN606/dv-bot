@@ -1,8 +1,15 @@
 import discord
 from discord.ext import commands
+import time
 
 from utils.core.embeds import make_embed
 from utils.views.base_media_view import BaseMediaView
+
+# =====================================================
+# CACHE 
+# =====================================================
+_banner_cache: dict[int, tuple[float, str | None]] = {}
+CACHE_TTL = 30  # seconds
 
 
 class Banner(commands.Cog):
@@ -14,9 +21,17 @@ class Banner(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    # =====================================================
+    # COMMAND
+    # =====================================================
     @commands.command(
         name="banner",
         help="Display the banner of a user",
+    )
+    @commands.dynamic_cooldown(
+        lambda ctx: None if isinstance(ctx.author, discord.Member) and ctx.
+        author.guild_permissions.manage_guild else commands.Cooldown(1, 5),
+        commands.BucketType.user,
     )
     async def banner(
         self,
@@ -24,42 +39,55 @@ class Banner(commands.Cog):
         user: discord.Member | discord.User | None = None,
     ) -> None:
 
-        if ctx.guild is None:
-            return
-
         target = user or ctx.author
 
-        # Resolve guild member safely
-        member = ctx.guild.get_member(target.id)
+        # =====================================================
+        # RESOLVE MEMBER (SAFE)
+        # =====================================================
+        member: discord.Member | None = None
+        if ctx.guild:
+            member = ctx.guild.get_member(target.id)
 
-        # Fetch full user (global banner requires API fetch)
-        fetched_user = await self.bot.fetch_user(target.id)
+        # =====================================================
+        # GLOBAL BANNER (WITH CACHE)
+        # =====================================================
+        now = time.time()
+        cache = _banner_cache.get(target.id)
 
-        global_banner = (fetched_user.banner.url
-                         if fetched_user.banner else None)
+        if cache and now - cache[0] < CACHE_TTL:
+            global_banner = cache[1]
+        else:
+            try:
+                fetched_user = await self.bot.fetch_user(target.id)
+                global_banner = (fetched_user.banner.url
+                                 if fetched_user.banner else None)
+                _banner_cache[target.id] = (now, global_banner)
+            except discord.HTTPException:
+                global_banner = None
 
+        # =====================================================
+        # SERVER BANNER
+        # =====================================================
         server_banner = (member.guild_banner.url
                          if member and member.guild_banner else None)
 
-        # ─────────────────────────
-        # No banners at all
-        # ─────────────────────────
+        # =====================================================
+        # NO BANNER
+        # =====================================================
         if not global_banner and not server_banner:
 
-            embed = make_embed(
+            await ctx.send(embed=make_embed(
                 title="User Banner",
                 description=
                 f"{target.mention} does not have a banner configured.",
                 level="WARNING",
                 footer=f"Requested by {ctx.author}",
-            )
-
-            await ctx.send(embed=embed)
+            ))
             return
 
-        # ─────────────────────────
-        # If both banners exist → show toggle view
-        # ─────────────────────────
+        # =====================================================
+        # TOGGLE VIEW
+        # =====================================================
         if global_banner and server_banner:
 
             view = BaseMediaView(
@@ -78,7 +106,12 @@ class Banner(commands.Cog):
             message = await ctx.send(embed=embed, view=view)
             view.message = message
 
+        # =====================================================
+        # SINGLE BANNER
+        # =====================================================
         else:
+
+            banner_url = server_banner or global_banner
 
             embed = make_embed(
                 title="User Banner",
@@ -87,15 +120,30 @@ class Banner(commands.Cog):
                 footer=f"Requested by {ctx.author}",
             )
 
-            embed.set_image(url=server_banner or global_banner)
+            embed.set_image(url=banner_url)
 
             await ctx.send(embed=embed)
 
-        # Delete invoking message silently
+        # =====================================================
+        # CLEANUP
+        # =====================================================
         try:
-            ctx.bot.loop.create_task(ctx.message.delete())
-        except Exception:
+            await ctx.message.delete()
+        except discord.HTTPException:
             pass
+
+    # =====================================================
+    # ERROR HANDLER
+    # =====================================================
+    @banner.error
+    async def banner_error(self, ctx: commands.Context, error):
+
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(embed=make_embed(
+                title="Cooldown Active",
+                description=f"Try again in **{round(error.retry_after, 1)}s**.",
+                level="WARNING",
+            ))
 
 
 async def setup(bot: commands.Bot):

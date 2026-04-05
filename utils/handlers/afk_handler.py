@@ -9,28 +9,25 @@ from db.db_helpers.afk import get_afk, remove_afk
 
 AFK_IMAGE = os.getenv("AFK_IMAGE_URL")
 
-# cooldown per (guild_id, user_id)
 _afk_notice_cooldown: dict[tuple[int, int], int] = {}
+_channel_cooldown: dict[int, float] = {}
 
 AFK_NOTICE_COOLDOWN = 10
+CHANNEL_COOLDOWN = 5.0
 
 
 def format_duration(seconds: int) -> str:
-
     if seconds < 60:
         return f"{seconds}s"
-
     if seconds < 3600:
         return f"{seconds // 60}m {seconds % 60}s"
-
     if seconds < 86400:
-        hours = seconds // 3600
-        minutes = (seconds % 3600) // 60
-        return f"{hours}h {minutes}m"
-
-    days = seconds // 86400
-    hours = (seconds % 86400) // 3600
-    return f"{days}d {hours}h"
+        h = seconds // 3600
+        m = (seconds % 3600) // 60
+        return f"{h}h {m}m"
+    d = seconds // 86400
+    h = (seconds % 86400) // 3600
+    return f"{d}d {h}h"
 
 
 async def handle_afk(message: Message) -> bool:
@@ -38,30 +35,36 @@ async def handle_afk(message: Message) -> bool:
     if message.guild is None:
         return False
 
-    if message.author.bot:
-        return False
-
-    if message.webhook_id:
+    if message.author.bot or message.webhook_id:
         return False
 
     if message.type != MessageType.default:
         return False
 
-    bot = message._state._get_client()
-    ctx = await bot.get_context(message) # type: ignore
+    bot = message.guild._state._get_client(
+    )  # still internal but safer context not needed
+    prefix = await bot.get_prefix(message)  # type: ignore
 
-    # ignore commands
-    if ctx.command:
-        return False
+    # ignore commands (safe check)
+    if isinstance(prefix, (list, tuple)):
+        if any(message.content.startswith(p) for p in prefix):
+            return False
+    else:
+        if message.content.startswith(prefix):
+            return False
 
     handled = False
     guild_id = message.guild.id
+    channel_id = message.channel.id
     now = int(time.time())
 
     afk_sections = []
 
     unique_mentions = {m.id: m for m in message.mentions}.values()
 
+    # =====================================================
+    # AFK CHECK (PER USER COOLDOWN)
+    # =====================================================
     for user in unique_mentions:
 
         key = (guild_id, user.id)
@@ -88,10 +91,20 @@ async def handle_afk(message: Message) -> bool:
             f"{EMOJIS['arrow_point']} **Reason:** {afk.reason}\n"
             f"{EMOJIS['arrow_point']} **Away Since:** <t:{since_ts}:R>")
 
-    # ─────────────────────────
+    # =====================================================
+    # CHANNEL THROTTLE (ANTI-SPAM)
+    # =====================================================
+    last_channel = _channel_cooldown.get(channel_id, 0)
+    now_float = time.monotonic()
+
+    can_send = now_float - last_channel >= CHANNEL_COOLDOWN
+
+    # =====================================================
     # SEND AFK NOTICE
-    # ─────────────────────────
-    if afk_sections:
+    # =====================================================
+    if afk_sections and can_send:
+
+        _channel_cooldown[channel_id] = now_float
 
         embed = make_embed(
             title=f"{EMOJIS['announcement']} AFK Notice",
@@ -113,13 +126,12 @@ async def handle_afk(message: Message) -> bool:
         except Exception:
             pass
 
-    # ─────────────────────────
-    # REMOVE AFK IF USER RETURNS
-    # ─────────────────────────
+    # =====================================================
+    # REMOVE AFK (RETURN)
+    # =====================================================
     removed = await remove_afk(guild_id, message.author.id)
 
     if removed:
-
         handled = True
 
         since_ts = int(removed.since)
@@ -129,13 +141,10 @@ async def handle_afk(message: Message) -> bool:
         if isinstance(message.author, discord.Member):
             try:
                 if message.guild.me.guild_permissions.manage_nicknames:
-
                     nick = message.author.nick
-
                     if nick and nick.startswith("[AFK] "):
                         new_name = nick.replace("[AFK] ", "", 1)
                         await message.author.edit(nick=new_name)
-
             except Exception:
                 pass
 

@@ -15,8 +15,26 @@ PROFANITY_BLOCKLIST = {
 
 class RenameSystem(BaseAdminCog):
 
+    # =====================================================
+    # CONFIG
+    # =====================================================
+    COOLDOWN_RATE = 1
+    COOLDOWN_PER = 5
+    COOLDOWN_BUCKET = commands.BucketType.user
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    # =====================================================
+    # DYNAMIC COOLDOWN
+    # =====================================================
+    @classmethod
+    def cooldown(cls):
+        return commands.cooldown(
+            cls.COOLDOWN_RATE,
+            cls.COOLDOWN_PER,
+            cls.COOLDOWN_BUCKET,
+        )
 
     # =====================================================
     # HELPERS
@@ -57,17 +75,25 @@ class RenameSystem(BaseAdminCog):
     # =====================================================
     @commands.command(name="rename")
     @commands.guild_only()
+    @RenameSystem.cooldown() # type: ignore
     async def rename(self, ctx: commands.Context, *, args: str | None = None):
 
         guild = ctx.guild
-        moderator: discord.Member = ctx.author # type: ignore
-        prefix = ctx.clean_prefix
 
-        if not guild:
+        if guild is None:
             return
 
-        # Bot permission check (global)
-        if not guild.me.guild_permissions.manage_nicknames:
+        if not isinstance(ctx.author, discord.Member):
+            return
+
+        moderator: discord.Member = ctx.author
+        prefix = ctx.clean_prefix
+
+        # =====================================================
+        # BOT PERMISSION CHECK
+        # =====================================================
+        bot_member = guild.me
+        if not bot_member or not bot_member.guild_permissions.manage_nicknames:
             return await ctx.reply(
                 embed=make_embed(
                     title="Missing Permissions",
@@ -91,13 +117,25 @@ class RenameSystem(BaseAdminCog):
             )
 
         # =====================================================
-        # RESOLVE TARGET
+        # TARGET RESOLUTION
         # =====================================================
         target: discord.Member
         nickname: str
 
         if ctx.message.mentions:
-            target = ctx.message.mentions[0] # type: ignore
+            potential = ctx.message.mentions[0]
+
+            if not isinstance(potential, discord.Member):
+                return await ctx.reply(
+                    embed=make_embed(
+                        title="Invalid Target",
+                        description="User must be in this server.",
+                        level="ERROR",
+                    ),
+                    mention_author=False,
+                )
+
+            target = potential
             nickname = args.replace(target.mention, "", 1).strip()
         else:
             target = moderator
@@ -113,11 +151,11 @@ class RenameSystem(BaseAdminCog):
                 mention_author=False,
             )
 
-        # =====================================================
-        # SELF RENAME PERMISSION (IMPORTANT FEATURE)
-        # =====================================================
         is_self = target == moderator
 
+        # =====================================================
+        # PERMISSIONS
+        # =====================================================
         if not is_self:
             if not self._moderator_can_modify(guild, moderator, target):
                 return await ctx.reply(
@@ -133,10 +171,7 @@ class RenameSystem(BaseAdminCog):
             return await ctx.reply(
                 embed=make_embed(
                     title="Role Hierarchy Issue",
-                    description=(
-                        "I cannot modify this user because my role "
-                        "is lower than theirs.\n\n"
-                        "Move my role higher in Server Settings → Roles."),
+                    description="My role is too low to modify this user.",
                     level="ERROR",
                 ),
                 mention_author=False,
@@ -181,7 +216,6 @@ class RenameSystem(BaseAdminCog):
                 mention_author=False,
             )
 
-            # Logging
             try:
                 await send_mod_log(
                     guild=guild,
@@ -203,8 +237,7 @@ class RenameSystem(BaseAdminCog):
         # NORMAL RENAME
         # =====================================================
         nickname = self._normalize(nickname)
-        nickname = " ".join(nickname.split())
-        nickname = nickname[:32]
+        nickname = " ".join(nickname.split())[:32]
 
         if "@everyone" in nickname or "@here" in nickname:
             return await ctx.reply(
@@ -263,7 +296,6 @@ class RenameSystem(BaseAdminCog):
             mention_author=False,
         )
 
-        # Logging
         try:
             await send_mod_log(
                 guild=guild,
@@ -280,6 +312,23 @@ class RenameSystem(BaseAdminCog):
             )
         except Exception as e:
             print(f"[Rename Log Failed] {e}")
+
+    # =====================================================
+    # ERROR HANDLER
+    # =====================================================
+    @rename.error
+    async def rename_error(self, ctx: commands.Context, error):
+
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.reply(
+                embed=make_embed(
+                    title="Cooldown Active",
+                    description=
+                    f"Try again in **{round(error.retry_after, 1)}s**.",
+                    level="WARNING",
+                ),
+                mention_author=False,
+            )
 
 
 async def setup(bot: commands.Bot):
