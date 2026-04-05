@@ -1,11 +1,15 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
+
 from utils.permissions.base_admin import BaseAdminCog
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import send_mod_log
 
 from db.db_helpers.tempban import (
+    get_active_tempbans,
+    set_tempban_role,
     get_tempban_role,
     add_tempban,
     remove_tempban,
@@ -21,66 +25,86 @@ class Tempban(BaseAdminCog):
         self.bot = bot
 
     # =========================================================
-    # UTILITIES
+    # SLASH GROUP
     # =========================================================
-    async def resolve_member(self, ctx, user_input):
-        if isinstance(user_input, discord.Member):
-            return user_input
+    tempban_group = app_commands.Group(
+        name="tempban-config",
+        description="Manage tempban system",
+    )
 
-        ref = ctx.message.reference
-        if not user_input and ref:
-            if isinstance(ref.resolved, discord.Message):
-                return ctx.guild.get_member(ref.resolved.author.id)
+    # ------------------ SET ROLE ------------------
+    @tempban_group.command(name="set", description="Set tempban role")
+    async def set_role(self, interaction: discord.Interaction,
+                       role: discord.Role):
 
-        if user_input:
-            try:
-                return await commands.MemberConverter().convert(
-                    ctx, user_input)
-            except commands.BadArgument:
-                return None
+        guild = interaction.guild
+        if not guild:
+            return
 
-        return None
+        if role >= guild.me.top_role:
+            return await interaction.response.send_message(
+                embed=make_embed(
+                    title="Hierarchy Error",
+                    description="Role must be below bot role.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
 
-    async def _validate_target(self, ctx, target):
-        guild = ctx.guild
-        moderator = ctx.author
-        bot_member = guild.me
+        await set_tempban_role(guild.id, role.id)
 
-        if not isinstance(target, discord.Member):
-            return "Invalid user."
+        await interaction.response.send_message(
+            embed=make_embed(
+                title="Tempban Role Set",
+                description=f"{EMOJIS['success']} {role.mention} configured.",
+                level="SUCCESS",
+            ),
+            ephemeral=True,
+        )
 
-        if target == moderator:
-            return "You cannot target yourself."
+    # ------------------ LIST ------------------
+    @tempban_group.command(name="list", description="List active tempbans")
+    async def list_tempbans(self, interaction: discord.Interaction):
 
-        if target == guild.owner:
-            return "You cannot target the server owner."
+        guild = interaction.guild
+        if not guild:
+            return
 
-        if target == bot_member:
-            return "You cannot target me."
+        await interaction.response.defer(ephemeral=True)
 
-        if not bot_member.guild_permissions.manage_roles:
-            return "I do not have permission to manage roles."
+        records = await get_active_tempbans(guild.id)
 
-        if moderator != guild.owner:
-            if target.guild_permissions.administrator:
-                return "You cannot modify another administrator."
+        if not records:
+            return await interaction.followup.send(
+                embed=make_embed(
+                    title="Active Tempbans",
+                    description=f"{EMOJIS['success']} No active tempbans.",
+                    level="INFO",
+                ),
+                ephemeral=True,
+            )
 
-            if target.top_role >= moderator.top_role:
-                return "You cannot modify a member with equal or higher role."
+        entries = []
+        for row in records:
+            user = guild.get_member(row.user_id)
+            mod = guild.get_member(row.moderator_id)
 
-        if bot_member.top_role <= target.top_role:
-            return "I cannot manage this member due to role hierarchy."
+            entries.append(
+                f"{EMOJIS['red_dot']} {user.mention if user else row.user_id}\n"
+                f"Moderator: {mod.mention if mod else row.moderator_id}\n"
+                f"Reason: {row.reason or 'No reason'}")
 
-        return None
-
-    async def _cleanup(self, ctx):
-        try:
-            await ctx.message.delete()
-        except (discord.Forbidden, discord.NotFound):
-            pass
+        await interaction.followup.send(
+            embed=make_embed(
+                title="Active Tempbans",
+                description="\n\n".join(entries[:10]),
+                level="INFO",
+            ),
+            ephemeral=True,
+        )
 
     # =========================================================
-    # TEMPBAN COMMAND
+    # PREFIX COMMANDS
     # =========================================================
     @commands.command(name="tempban")
     @commands.guild_only()
@@ -94,14 +118,6 @@ class Tempban(BaseAdminCog):
                 level="ERROR",
             ))
 
-        error = await self._validate_target(ctx, user)
-        if error:
-            return await ctx.reply(embed=make_embed(
-                title="Permission Denied",
-                description=error,
-                level="ERROR",
-            ))
-
         role_id = await get_tempban_role(ctx.guild.id)
         tempban_role = ctx.guild.get_role(role_id)
 
@@ -112,32 +128,39 @@ class Tempban(BaseAdminCog):
                 level="WARNING",
             ))
 
-        # ─────────────────────────
-        # GET VERIFICATION ROLE
-        # ─────────────────────────
+        if tempban_role >= ctx.guild.me.top_role:
+            return await ctx.reply(embed=make_embed(
+                title="Hierarchy Error",
+                description="Tempban role must be below bot role.",
+                level="ERROR",
+            ))
+
         config = await get_verification_config(ctx.guild.id)
-        verified_role = None
+        verified_role = ctx.guild.get_role(
+            config.verified_role_id) if config else None
 
-        if config:
-            verified_role = ctx.guild.get_role(config.verified_role_id)
+        try:
+            if verified_role and verified_role in user.roles:
+                await user.remove_roles(verified_role,
+                                        reason="Tempban applied")
 
-        # ─────────────────────────
-        # APPLY ROLES
-        # ─────────────────────────
-        if verified_role and verified_role in user.roles:
-            await user.remove_roles(
-                verified_role,
-                reason="Tempban applied",
-            )
+            await user.add_roles(tempban_role,
+                                 reason=reason or "Tempban applied")
 
-        await user.add_roles(
-            tempban_role,
-            reason=reason or "Tempban applied",
-        )
+        except discord.Forbidden:
+            return await ctx.reply(embed=make_embed(
+                title="Permission Error",
+                description="I cannot manage roles due to hierarchy.",
+                level="ERROR",
+            ))
 
-        # ─────────────────────────
-        # DATABASE
-        # ─────────────────────────
+        except discord.HTTPException:
+            return await ctx.reply(embed=make_embed(
+                title="Discord Error",
+                description="Failed to update roles.",
+                level="ERROR",
+            ))
+
         await add_tempban(
             guild_id=ctx.guild.id,
             user_id=user.id,
@@ -145,9 +168,6 @@ class Tempban(BaseAdminCog):
             reason=reason or "No reason",
         )
 
-        # ─────────────────────────
-        # RESPONSE
-        # ─────────────────────────
         await ctx.reply(embed=make_embed(
             title="User Tempbanned",
             description=(f"{EMOJIS['ban']} {user.mention}\n"
@@ -155,9 +175,6 @@ class Tempban(BaseAdminCog):
             level="SUCCESS",
         ))
 
-        # ─────────────────────────
-        # CLEAN LOG (NO SPAM)
-        # ─────────────────────────
         await send_mod_log(
             guild=ctx.guild,
             category="MODERATION",
@@ -175,9 +192,6 @@ class Tempban(BaseAdminCog):
 
         await self._cleanup(ctx)
 
-    # =========================================================
-    # UNTEMPBAN COMMAND
-    # =========================================================
     @commands.command(name="untempban")
     @commands.guild_only()
     async def untempban(self, ctx, user=None, *, reason=None):
@@ -200,44 +214,43 @@ class Tempban(BaseAdminCog):
         role_id = await get_tempban_role(ctx.guild.id)
         tempban_role = ctx.guild.get_role(role_id)
 
-        if tempban_role:
-            await user.remove_roles(tempban_role)
+        try:
+            if tempban_role:
+                await user.remove_roles(tempban_role)
 
-        # ─────────────────────────
-        # RESTORE VERIFIED ROLE
-        # ─────────────────────────
-        config = await get_verification_config(ctx.guild.id)
-        verified_role = None
+            config = await get_verification_config(ctx.guild.id)
+            if config:
+                verified_role = ctx.guild.get_role(config.verified_role_id)
+                if verified_role:
+                    await user.add_roles(verified_role,
+                                         reason="Tempban removed")
 
-        if config:
-            verified_role = ctx.guild.get_role(config.verified_role_id)
-            if verified_role:
-                await user.add_roles(
-                    verified_role,
-                    reason="Tempban removed",
-                )
+        except discord.Forbidden:
+            return await ctx.reply(embed=make_embed(
+                title="Permission Error",
+                description="I cannot update roles due to hierarchy.",
+                level="ERROR",
+            ))
 
-        # ─────────────────────────
-        # DATABASE
-        # ─────────────────────────
+        except discord.HTTPException:
+            return await ctx.reply(embed=make_embed(
+                title="Discord Error",
+                description="Failed to update roles.",
+                level="ERROR",
+            ))
+
         await remove_tempban(
             guild_id=ctx.guild.id,
             user_id=user.id,
             moderator_id=ctx.author.id,
         )
 
-        # ─────────────────────────
-        # RESPONSE
-        # ─────────────────────────
         await ctx.reply(embed=make_embed(
             title="Tempban Removed",
             description=f"{EMOJIS['success']} {user.mention}",
             level="SUCCESS",
         ))
 
-        # ─────────────────────────
-        # CLEAN LOG
-        # ─────────────────────────
         await send_mod_log(
             guild=ctx.guild,
             category="MODERATION",
@@ -251,6 +264,33 @@ class Tempban(BaseAdminCog):
 
         await self._cleanup(ctx)
 
+    # =========================================================
+    # UTIL
+    # =========================================================
+    async def resolve_member(self, ctx, user_input):
+        if isinstance(user_input, discord.Member):
+            return user_input
+
+        if user_input:
+            try:
+                return await commands.MemberConverter().convert(
+                    ctx, user_input)
+            except commands.BadArgument:
+                return None
+
+        return None
+
+    async def _cleanup(self, ctx):
+        try:
+            await ctx.message.delete()
+        except (discord.Forbidden, discord.NotFound):
+            pass
+
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Tempban(bot))
+    cog = Tempban(bot)
+    await bot.add_cog(cog)
+
+    # SAFE REGISTER (NO DUPLICATE CRASH)
+    if not bot.tree.get_command("tempban-config"):
+        bot.tree.add_command(cog.tempban_group)
