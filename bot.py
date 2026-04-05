@@ -1,11 +1,14 @@
 import os
 import logging
 import time
+import asyncio
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
 from db.schema import init_schema
+from db.engine import close_database
+
 from utils.handlers.prefix import dynamic_prefix, normalize_prefix
 from utils.core.interaction_check import command_toggle_check
 
@@ -21,10 +24,16 @@ from utils.views.verification_views.verify_button_view import VerifyButtonView
 # ─────────────────────────
 # ENV
 # ─────────────────────────
-load_dotenv()
+env_loaded = load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-ENV = os.getenv("ENV", "prod").lower()
+
+if not env_loaded:
+    ENV = "dev"
+    print("[ENV] .env not found → running in DEV mode")
+else:
+    ENV = os.getenv("ENV", "prod").lower()
+
 DEV_GUILD_ID = os.getenv("DEV_GUILD_ID")
 
 
@@ -39,7 +48,7 @@ SYNC_COMMANDS = env_bool("SYNC_COMMANDS", True)
 DEBUG_HTTP = env_bool("DEBUG_HTTP", False)
 
 if not TOKEN:
-    raise RuntimeError("DISCORD_TOKEN not found in .env")
+    raise RuntimeError("DISCORD_TOKEN not found in environment")
 
 # ─────────────────────────
 # LOGGING
@@ -54,7 +63,10 @@ logger = logging.getLogger("bot")
 if DEBUG_HTTP:
     logging.getLogger("discord.http").setLevel(logging.DEBUG)
 
-logger.info(f"Running in {ENV.upper()} mode")
+if ENV == "dev":
+    logger.info("[ENV] Running in DEV mode (safe defaults)")
+else:
+    logger.info("[ENV] Running in PROD mode")
 
 # ─────────────────────────
 # INTENTS
@@ -78,11 +90,7 @@ class DigitalVigilBot(commands.Bot):
 
         self.presence_rotator: PresenceRotator | None = None
 
-    # ─────────────────────────
-    # SETUP HOOK
-    # ─────────────────────────
     async def setup_hook(self) -> None:
-
         await init_schema()
         self.tree.interaction_check = command_toggle_check
 
@@ -100,31 +108,22 @@ class DigitalVigilBot(commands.Bot):
                             "DEV_GUILD_ID not set — skipping dev sync")
                     else:
                         guild = discord.Object(id=int(DEV_GUILD_ID))
-
                         logger.info(
                             "[DEV MODE] Syncing commands to dev guild...")
-
                         self.tree.copy_global_to(guild=guild)
                         synced = await self.tree.sync(guild=guild)
-
                         logger.info(
                             f"[DEV MODE] Synced {len(synced)} commands")
-
                 else:
                     logger.info("[PROD MODE] Syncing globally...")
                     synced = await self.tree.sync()
                     logger.info(f"[PROD MODE] Synced {len(synced)} commands")
-
             except Exception as exc:
                 logger.error(f"Command sync failed: {exc}")
 
         self.add_view(VerifyButtonView())
 
-    # ─────────────────────────
-    # EXTENSION LOADER
-    # ─────────────────────────
     async def load_all_extensions(self) -> None:
-
         base_path = os.path.abspath("cmd")
 
         for root, _, files in os.walk(base_path):
@@ -132,11 +131,7 @@ class DigitalVigilBot(commands.Bot):
                 if not file.endswith(".py") or file.startswith("__"):
                     continue
 
-                rel = os.path.relpath(
-                    os.path.join(root, file),
-                    base_path,
-                )
-
+                rel = os.path.relpath(os.path.join(root, file), base_path)
                 ext = f"cmd.{rel.replace(os.sep, '.')[:-3]}"
 
                 try:
@@ -145,11 +140,7 @@ class DigitalVigilBot(commands.Bot):
                 except Exception as exc:
                     logger.error(f"Failed to load {ext}: {exc}")
 
-    # ─────────────────────────
-    # READY EVENT
-    # ─────────────────────────
     async def on_ready(self) -> None:
-
         logger.info(f"Logged in as {self.user}")
 
         try:
@@ -163,9 +154,6 @@ class DigitalVigilBot(commands.Bot):
 
         logger.info("Bot ready")
 
-    # ─────────────────────────
-    # MESSAGE PIPELINE (FIXED)
-    # ─────────────────────────
     async def on_message(self, message: discord.Message) -> None:
 
         if message.guild is None or message.author.bot:
@@ -174,26 +162,14 @@ class DigitalVigilBot(commands.Bot):
         try:
             message.content = normalize_prefix(message.content)
 
-            # ─────────────────────────
-            # MEDIA SYSTEM (TOP PRIORITY)
-            # ─────────────────────────
             if await enforce_media_only(message):
                 return
 
-            # ─────────────────────────
-            # STICKY SYSTEM
-            # ─────────────────────────
             await handle_sticky(message)
 
-            # ─────────────────────────
-            # MENTION SYSTEM
-            # ─────────────────────────
             if self.user and self.user.mentioned_in(message):
                 await handle_bot_mention(self, message)
 
-            # ─────────────────────────
-            # AFK SYSTEM
-            # ─────────────────────────
             await handle_afk(message)
 
         except Exception as exc:
@@ -203,7 +179,7 @@ class DigitalVigilBot(commands.Bot):
 
 
 # ─────────────────────────
-# ENTRYPOINT
+# ENTRYPOINT (FIXED)
 # ─────────────────────────
 def main() -> None:
 
@@ -211,23 +187,45 @@ def main() -> None:
         bot = DigitalVigilBot()
 
         try:
+            logger.info("[STARTUP] Starting bot...")
             bot.run(TOKEN)  # type: ignore
 
-        except discord.HTTPException as exc:
-            if exc.status == 429:
-                logger.warning("Rate limited. Retrying in 60s...")
-                time.sleep(60)
-                continue
-
-            raise
-
-        except KeyboardInterrupt:
-            logger.info("Shutdown requested")
+            logger.info("[EXIT] Bot stopped normally")
             break
 
+        # CTRL+C → STOP
+        except KeyboardInterrupt:
+            logger.info("\n[SHUTDOWN] CTRL+C detected — shutting down...")
+
+            try:
+                asyncio.run(close_database())
+                logger.info("[SHUTDOWN] Database connection closed")
+            except Exception as e:
+                logger.warning(f"[SHUTDOWN] DB close failed: {e}")
+
+            logger.info("[SHUTDOWN] Bot stopped successfully")
+            break  
+
+        # RATE LIMIT
+        except discord.HTTPException as exc:
+            if exc.status == 429:
+                logger.warning("[RATE LIMIT] Hit 429. Retrying in 60s...")
+                try:
+                    time.sleep(60)
+                except KeyboardInterrupt:
+                    raise
+                continue
+            raise
+
+        # CRASH → RESTART
         except Exception as exc:
-            logger.error(f"Bot crashed: {exc}")
-            time.sleep(30)
+            logger.error(f"[CRASH] Bot crashed: {exc}")
+            logger.info("[RESTART] Restarting in 30 seconds...")
+
+            try:
+                time.sleep(30)
+            except KeyboardInterrupt:
+                raise
 
 
 if __name__ == "__main__":

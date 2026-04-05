@@ -1,3 +1,4 @@
+import logging
 import discord
 from discord.ext import commands
 import unicodedata
@@ -7,6 +8,8 @@ from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import send_mod_log
 
+logger = logging.getLogger("bot")
+
 PROFANITY_BLOCKLIST = {
     "badword1",
     "badword2",
@@ -15,26 +18,11 @@ PROFANITY_BLOCKLIST = {
 
 class RenameSystem(BaseAdminCog):
 
-    # =====================================================
-    # CONFIG
-    # =====================================================
     COOLDOWN_RATE = 1
     COOLDOWN_PER = 5
-    COOLDOWN_BUCKET = commands.BucketType.user
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-
-    # =====================================================
-    # DYNAMIC COOLDOWN
-    # =====================================================
-    @classmethod
-    def cooldown(cls):
-        return commands.cooldown(
-            cls.COOLDOWN_RATE,
-            cls.COOLDOWN_PER,
-            cls.COOLDOWN_BUCKET,
-        )
 
     # =====================================================
     # HELPERS
@@ -49,7 +37,10 @@ class RenameSystem(BaseAdminCog):
     def _bot_can_modify(self, guild: discord.Guild,
                         target: discord.Member) -> bool:
         bot_member = guild.me
-        return (bot_member and bot_member.guild_permissions.manage_nicknames
+        if not bot_member:
+            return False
+
+        return (bot_member.guild_permissions.manage_nicknames
                 and target != guild.owner
                 and target.top_role < bot_member.top_role)
 
@@ -59,6 +50,7 @@ class RenameSystem(BaseAdminCog):
         moderator: discord.Member,
         target: discord.Member,
     ) -> bool:
+
         if moderator.id == guild.owner_id:
             return True
 
@@ -75,11 +67,10 @@ class RenameSystem(BaseAdminCog):
     # =====================================================
     @commands.command(name="rename")
     @commands.guild_only()
-    @RenameSystem.cooldown() # type: ignore
+    @commands.cooldown(COOLDOWN_RATE, COOLDOWN_PER, commands.BucketType.user)
     async def rename(self, ctx: commands.Context, *, args: str | None = None):
 
         guild = ctx.guild
-
         if guild is None:
             return
 
@@ -137,6 +128,7 @@ class RenameSystem(BaseAdminCog):
 
             target = potential
             nickname = args.replace(target.mention, "", 1).strip()
+
         else:
             target = moderator
             nickname = args.strip()
@@ -229,7 +221,7 @@ class RenameSystem(BaseAdminCog):
                     extra_fields={"Old Nickname": old_nick},
                 )
             except Exception as e:
-                print(f"[Rename Log Failed] {e}")
+                logger.error(f"Rename log failed: {e}")
 
             return
 
@@ -311,7 +303,7 @@ class RenameSystem(BaseAdminCog):
                 },
             )
         except Exception as e:
-            print(f"[Rename Log Failed] {e}")
+            logger.error(f"Rename log failed: {e}")
 
     # =====================================================
     # ERROR HANDLER

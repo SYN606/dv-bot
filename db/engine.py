@@ -13,9 +13,28 @@ load_dotenv()
 ENV = os.getenv("ENV", "dev").lower()
 
 
-def build_manual_db_url() -> str | None:
-    """Build DB URL from individual env vars"""
+# =====================================================
+# SQLITE (DEV)
+# =====================================================
+def build_sqlite_url() -> str:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    DB_DIR = os.path.join(BASE_DIR, "db")
+    os.makedirs(DB_DIR, exist_ok=True)
 
+    DB_PATH = os.path.join(DB_DIR, "bot.db")
+    return f"sqlite+aiosqlite:///{DB_PATH}"
+
+
+# =====================================================
+# POSTGRES (NEON)
+# =====================================================
+def build_postgres_url() -> str:
+    db_url = os.getenv("DATABASE_URL")
+
+    if db_url:
+        return db_url
+
+    # fallback manual config
     DB_USER = os.getenv("DB_USER")
     DB_PASS = os.getenv("DB_PASS")
     DB_HOST = os.getenv("DB_HOST")
@@ -23,54 +42,30 @@ def build_manual_db_url() -> str | None:
     DB_NAME = os.getenv("DB_DATABASE")
 
     if not all([DB_USER, DB_PASS, DB_HOST, DB_NAME]):
-        return None
+        raise RuntimeError("PostgreSQL config missing for production")
 
-    return (
-        f"postgresql+asyncpg://{DB_USER}:{quote_plus(DB_PASS)}" # type: ignore
-        f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    )
+    return (f"postgresql+asyncpg://{DB_USER}:{quote_plus(DB_PASS)}" # type: ignore
+            f"@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 
-def get_database_url() -> tuple[str, str]:
-    """Universal DB resolver"""
+# =====================================================
+# RESOLVE DB
+# =====================================================
+if ENV == "dev":
+    DATABASE_URL = build_sqlite_url()
+    DB_MODE = "sqlite"
+else:
+    DATABASE_URL = build_postgres_url()
+    DB_MODE = "postgres"
 
-    # ─────────────────────────
-    # 1. DATABASE_URL (PRIMARY)
-    # ─────────────────────────
-    db_url = os.getenv("DATABASE_URL")
-    if db_url:
-        return db_url, "postgres"
-
-    # ─────────────────────────
-    # 2. MANUAL CONFIG
-    # ─────────────────────────
-    manual_url = build_manual_db_url()
-    if manual_url:
-        return manual_url, "postgres"
-
-    # ─────────────────────────
-    # 3. SQLITE FALLBACK
-    # ─────────────────────────
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    DB_DIR = os.path.join(BASE_DIR, "db")
-    os.makedirs(DB_DIR, exist_ok=True)
-
-    DB_PATH = os.path.join(DB_DIR, "bot.db")
-
-    return f"sqlite+aiosqlite:///{DB_PATH}", "sqlite"
-
-
-DATABASE_URL, DB_MODE = get_database_url()
-
-
-# ─────────────────────────
-# ENGINE CREATION
-# ─────────────────────────
-
+# =====================================================
+# ENGINE
+# =====================================================
 if DB_MODE == "postgres":
 
     engine = create_async_engine(
         DATABASE_URL,
+        connect_args={"ssl": True},  # 🔥 REQUIRED FOR NEON
         pool_size=10,
         max_overflow=20,
         pool_timeout=30,
@@ -80,7 +75,7 @@ if DB_MODE == "postgres":
         future=True,
     )
 
-    print("[DB] Using PostgreSQL")
+    print("[DB] PostgreSQL (Neon SSL enabled)")
 
 else:
 
@@ -90,12 +85,11 @@ else:
         future=True,
     )
 
-    if ENV == "prod":
-        print("[DB WARNING] No DB configured → using SQLite fallback")
-    else:
-        print("[DB] Using SQLite (dev mode)")
+    print("[DB] SQLite (dev mode)")
 
-
+# =====================================================
+# SESSION
+# =====================================================
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
     expire_on_commit=False,
@@ -103,6 +97,9 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
+# =====================================================
+# CLEANUP
+# =====================================================
 async def close_database():
     try:
         await engine.dispose()

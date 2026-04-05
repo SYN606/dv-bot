@@ -13,24 +13,11 @@ class Roles(BaseAdminCog):
     Admin-only.
     """
 
-    # =====================================================
-    # CONFIG (DYNAMIC COOLDOWN)
-    # =====================================================
     COOLDOWN_RATE = 1
     COOLDOWN_PER = 5.0
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-
-    # =====================================================
-    # DYNAMIC SLASH COOLDOWN
-    # =====================================================
-    @classmethod
-    def cooldown(cls):
-        return app_commands.checks.cooldown(
-            cls.COOLDOWN_RATE,
-            cls.COOLDOWN_PER,
-        )
 
     # =====================================================
     # COMMAND
@@ -39,7 +26,10 @@ class Roles(BaseAdminCog):
         name="roles",
         description="Manage roles for a member using an interactive interface",
     )
-    @Roles.cooldown() # type: ignore
+    @app_commands.checks.cooldown(
+        COOLDOWN_RATE,
+        COOLDOWN_PER,
+    )
     @app_commands.describe(member="Member whose roles you want to manage")
     async def roles(
         self,
@@ -91,7 +81,7 @@ class Roles(BaseAdminCog):
             )
             return
 
-        # User hierarchy
+        # user hierarchy
         if member.top_role >= actor.top_role:
             await interaction.response.send_message(
                 embed=make_embed(
@@ -105,7 +95,7 @@ class Roles(BaseAdminCog):
             )
             return
 
-        # Bot hierarchy
+        # bot hierarchy
         bot_member = guild.me
         if bot_member and member.top_role >= bot_member.top_role:
             await interaction.response.send_message(
@@ -120,12 +110,12 @@ class Roles(BaseAdminCog):
             return
 
         # =====================================================
-        # DEFER RESPONSE
+        # DEFER
         # =====================================================
         await interaction.response.defer(ephemeral=True)
 
         # =====================================================
-        # CREATE VIEW
+        # VIEW
         # =====================================================
         view = RoleManagerView(
             bot=self.bot,
@@ -149,14 +139,14 @@ class Roles(BaseAdminCog):
             ephemeral=True,
         )
 
-        # Store message reference for timeout handling
+        # attach message safely
         try:
             view.message = await interaction.original_response()
         except discord.HTTPException:
             view.message = None
 
     # =====================================================
-    # ERROR HANDLER (COOLDOWN CLEAN)
+    # ERROR HANDLER
     # =====================================================
     async def cog_app_command_error(
         self,
@@ -164,19 +154,32 @@ class Roles(BaseAdminCog):
         error: app_commands.AppCommandError,
     ):
         if isinstance(error, app_commands.CommandOnCooldown):
-            await interaction.response.send_message(
-                embed=make_embed(
-                    title="Cooldown Active",
-                    description=
-                    f"Try again in **{round(error.retry_after, 1)}s**.",
-                    level="WARNING",
-                ),
-                ephemeral=True,
-            )
+
+            # avoid "interaction already responded" crash
+            if interaction.response.is_done():
+                await interaction.followup.send(
+                    embed=make_embed(
+                        title="Cooldown Active",
+                        description=
+                        f"Try again in **{round(error.retry_after, 1)}s**.",
+                        level="WARNING",
+                    ),
+                    ephemeral=True,
+                )
+            else:
+                await interaction.response.send_message(
+                    embed=make_embed(
+                        title="Cooldown Active",
+                        description=
+                        f"Try again in **{round(error.retry_after, 1)}s**.",
+                        level="WARNING",
+                    ),
+                    ephemeral=True,
+                )
 
 
-# =========================================================
+# =====================================================
 # SETUP
-# =========================================================
+# =====================================================
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Roles(bot))

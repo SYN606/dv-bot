@@ -11,7 +11,6 @@ from db.models import VerificationConfig
 
 # ─────────────────────────────────────
 # PER-GUILD VERIFY LOCK
-# Prevents bursts but does not block other servers
 # ─────────────────────────────────────
 _verify_locks: dict[int, asyncio.Lock] = {}
 
@@ -83,7 +82,6 @@ class VerifyCaptchaModal(discord.ui.Modal):
 
         async with lock:
 
-            # small spacing to smooth bursts
             await asyncio.sleep(0.15)
 
             try:
@@ -92,9 +90,7 @@ class VerifyCaptchaModal(discord.ui.Modal):
             except discord.HTTPException:
                 return
 
-            # ─────────────────────────
-            # CAPTCHA VALIDATION
-            # ─────────────────────────
+            # CAPTCHA CHECK
             if self.code_input.value.strip().lower() != self.token:
                 return await interaction.followup.send(
                     embed=make_embed(
@@ -105,15 +101,11 @@ class VerifyCaptchaModal(discord.ui.Modal):
                     ephemeral=True,
                 )
 
-            # ─────────────────────────
             # FETCH CONFIG
-            # ─────────────────────────
             async with AsyncSessionLocal() as session:
-
                 result = await session.execute(
                     select(VerificationConfig).where(
                         VerificationConfig.guild_id == guild.id))
-
                 config = result.scalar_one_or_none()
 
             if not config:
@@ -140,7 +132,6 @@ class VerifyCaptchaModal(discord.ui.Modal):
                     ephemeral=True,
                 )
 
-            # Already verified
             if verified_role in user.roles:
                 return await interaction.followup.send(
                     embed=make_embed(
@@ -151,11 +142,8 @@ class VerifyCaptchaModal(discord.ui.Modal):
                     ephemeral=True,
                 )
 
-            # ─────────────────────────
-            # ROLE HIERARCHY CHECK
-            # ─────────────────────────
+            # ROLE CHECK
             bot_member = guild.me
-
             if not bot_member or verified_role >= bot_member.top_role:
                 return await interaction.followup.send(
                     embed=make_embed(
@@ -166,11 +154,8 @@ class VerifyCaptchaModal(discord.ui.Modal):
                     ephemeral=True,
                 )
 
-            # ─────────────────────────
-            # APPLY VERIFICATION
-            # ─────────────────────────
+            # APPLY ROLES
             try:
-
                 if unverified_role and unverified_role in user.roles:
                     await user.remove_roles(
                         unverified_role,
@@ -192,9 +177,7 @@ class VerifyCaptchaModal(discord.ui.Modal):
                     ephemeral=True,
                 )
 
-            # ─────────────────────────
             # SUCCESS MESSAGE
-            # ─────────────────────────
             await interaction.followup.send(
                 embed=make_embed(
                     title="Verification Complete",
@@ -205,7 +188,7 @@ class VerifyCaptchaModal(discord.ui.Modal):
             )
 
             # ─────────────────────────
-            # LOG EVENT
+            # ✅ CLEAN MOD LOG (NO SPAM)
             # ─────────────────────────
             if config.log_channel_id:
 
@@ -217,9 +200,17 @@ class VerifyCaptchaModal(discord.ui.Modal):
                         await asyncio.sleep(0.25)
 
                         await log_channel.send(embed=make_embed(
-                            title="User Verified",
-                            description=f"{user.mention} has been verified.",
-                            level="INFO",
+                            title="✅ User Verified",
+                            description=
+                            (f"👤 User: {user.mention}\n"
+                             f"🆔 ID: `{user.id}`\n"
+                             f"📥 Role Added: {verified_role.mention}\n"
+                             f"📤 Role Removed: "
+                             f"{unverified_role.mention if unverified_role else 'None'}\n"
+                             f"📍 Channel: {interaction.channel.mention if interaction.channel else 'Unknown'}" # type: ignore
+                             ),
+                            level="SUCCESS",
+                            footer=f"Guild: {guild.name}",
                         ))
 
                     except discord.HTTPException:

@@ -4,9 +4,8 @@ from discord.ext import commands
 
 from utils.permissions.base_admin import BaseAdminCog
 from utils.core.embeds import make_embed
-from utils.logging.mod_log import send_mod_log
 
-# ✅ UPDATED IMPORT (IMPORTANT)
+# UPDATED IMPORT 
 from utils.views.verification_views.verify_panel_view import VerificationView
 
 
@@ -31,11 +30,11 @@ class Verification(BaseAdminCog):
                 ephemeral=True,
             )
 
-        # ✅ USE NEW VIEW
+        # USE NEW VIEW
         view = VerificationView(
             bot=self.bot,
             guild=guild,
-            actor=interaction.user,
+            actor=interaction.user, # type: ignore
         )
 
         embed = make_embed(
@@ -56,21 +55,11 @@ class Verification(BaseAdminCog):
             ephemeral=True,
         )
 
-        # ✅ IMPORTANT: attach message to view (for timeout/edit safety)
+        # attach message to view 
         try:
             view.message = await interaction.original_response()
         except Exception:
             pass
-
-        # ✅ LOGGING
-        await send_mod_log(
-            guild=guild,
-            category="VERIFY",
-            title="Verification Panel Opened",
-            description="Verification control panel opened.",
-            level="INFO",
-            actor=interaction.user,
-        )
 
 
 async def setup(bot: commands.Bot):
