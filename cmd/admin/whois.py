@@ -1,9 +1,22 @@
 import discord
 from discord.ext import commands
+from datetime import datetime
 
 from utils.permissions.base_admin import BaseAdminCog
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
+
+DANGEROUS_PERMS = {
+    "administrator": "Administrator",
+    "manage_guild": "Manage Server",
+    "manage_roles": "Manage Roles",
+    "manage_channels": "Manage Channels",
+    "kick_members": "Kick Members",
+    "ban_members": "Ban Members",
+    "manage_webhooks": "Manage Webhooks",
+    "manage_messages": "Manage Messages",
+    "mention_everyone": "Mention Everyone",
+}
 
 
 class Whois(BaseAdminCog):
@@ -20,13 +33,14 @@ class Whois(BaseAdminCog):
         if ctx.guild is None:
             return
 
+        guild = ctx.guild
         member: discord.Member | None = None
 
-        # ─────────────────────────
+        # =====================================================
         # RESOLVE USER
-        # ─────────────────────────
+        # =====================================================
 
-        # Reply support
+        # Reply
         if ctx.message.reference and ctx.message.reference.message_id:
             try:
                 ref = await ctx.channel.fetch_message(
@@ -36,55 +50,64 @@ class Whois(BaseAdminCog):
             except Exception:
                 pass
 
-        # ID support
+        # ID
         if not member and target and target.isdigit():
-            member = ctx.guild.get_member(int(target))
+            member = guild.get_member(int(target))
 
-        # Mention support
+        # Mention
         if not member and ctx.message.mentions:
             m = ctx.message.mentions[0]
             if isinstance(m, discord.Member):
                 member = m
 
-        # Default → self
+        # Default self
         if not member and isinstance(ctx.author, discord.Member):
             member = ctx.author
 
-        # FINAL TYPE SAFETY
         if not isinstance(member, discord.Member):
             return await ctx.send("User not found in this server.")
 
-        guild = ctx.guild
+        # =====================================================
+        # BASIC TIMES
+        # =====================================================
 
-        # ─────────────────────────
-        # BASIC TIMESTAMPS
-        # ─────────────────────────
         created_ts = int(member.created_at.timestamp())
         joined_ts = int(
             member.joined_at.timestamp()) if member.joined_at else 0
 
-        # ─────────────────────────
-        # JOIN POSITION (OPTIMIZED)
-        # ─────────────────────────
-        join_position = sum(1 for m in guild.members if m.joined_at and member.
-                            joined_at and m.joined_at < member.joined_at) + 1
+        # =====================================================
+        # JOIN POSITION (SAFE)
+        # =====================================================
 
-        # ─────────────────────────
-        # ROLES
-        # ─────────────────────────
-        roles = [r for r in member.roles if r.name != "@everyone"]
-        roles_mentions = [r.mention for r in roles]
+        members_sorted = sorted(
+            [m for m in guild.members if m.joined_at is not None],
+            key=lambda m: m.joined_at or discord.utils.utcnow())
+
+        try:
+            join_position = members_sorted.index(member) + 1
+        except ValueError:
+            join_position = "Unknown"
+
+        # =====================================================
+        # ROLES (SORTED)
+        # =====================================================
+
+        roles = [r for r in member.roles if not r.is_default()]
+        roles_sorted = sorted(roles, key=lambda r: r.position, reverse=True)
+
+        roles_mentions = [r.mention for r in roles_sorted]
 
         if roles_mentions:
-            roles_display = " ".join(roles_mentions[-10:])
+            roles_display = " ".join(roles_mentions[:10])
             if len(roles_mentions) > 10:
                 roles_display += f" +{len(roles_mentions) - 10}"
         else:
             roles_display = f"{EMOJIS['warning']} None"
 
-        # ─────────────────────────
+        # =====================================================
         # BADGES
-        # ─────────────────────────
+        # =====================================================
+
         badges = []
         flags = member.public_flags
 
@@ -97,11 +120,12 @@ class Whois(BaseAdminCog):
         if flags.bug_hunter:
             badges.append("Bug Hunter")
 
-        badges_display = ", ".join(badges) if badges else "None"
+        badges_display = ", ".join(badges) or "None"
 
-        # ─────────────────────────
-        # STATUS & ACTIVITY
-        # ─────────────────────────
+        # =====================================================
+        # STATUS
+        # =====================================================
+
         status_map = {
             discord.Status.online: "Online",
             discord.Status.idle: "Idle",
@@ -116,23 +140,52 @@ class Whois(BaseAdminCog):
             act = member.activities[0]
             activity = getattr(act, "name", str(act))
 
-        # ─────────────────────────
+        # =====================================================
         # PERMISSIONS
-        # ─────────────────────────
-        perms = [p for p, v in member.guild_permissions if v]
-        perm_count = len(perms)
+        # =====================================================
+
+        dangerous = [
+            label for key, label in DANGEROUS_PERMS.items()
+            if getattr(member.guild_permissions, key, False)
+        ]
+
+        dangerous_display = ", ".join(dangerous) or "None"
 
         admin_status = "Yes" if member.guild_permissions.administrator else "No"
 
-        # ─────────────────────────
-        # BOOST STATUS
-        # ─────────────────────────
+        # =====================================================
+        # TIMEOUT STATUS
+        # =====================================================
+
+        timeout_status = (f"<t:{int(member.timed_out_until.timestamp())}:R>"
+                          if member.timed_out_until else "No")
+
+        # =====================================================
+        # BOOST
+        # =====================================================
+
         boosting = (f"<t:{int(member.premium_since.timestamp())}:R>"
                     if member.premium_since else "No")
 
-        # ─────────────────────────
+        # =====================================================
+        # RISK ANALYSIS
+        # =====================================================
+
+        account_age_days = (discord.utils.utcnow() - member.created_at).days
+
+        risks = []
+        if account_age_days < 7:
+            risks.append("New Account")
+
+        if member.display_avatar == member.default_avatar:
+            risks.append("No Custom Avatar")
+
+        risk_display = ", ".join(risks) or "None"
+
+        # =====================================================
         # LINKS
-        # ─────────────────────────
+        # =====================================================
+
         avatar = member.display_avatar.url
         banner = member.banner.url if member.banner else None
 
@@ -140,12 +193,11 @@ class Whois(BaseAdminCog):
         if banner:
             links += f" • [Banner]({banner})"
 
-        # ─────────────────────────
+        # =====================================================
         # EMBED
-        # ─────────────────────────
-        fields = [
+        # =====================================================
 
-            # Account
+        fields = [
             (
                 f"{EMOJIS['curved_arrow']} Account",
                 (f"**User:** {member}\n"
@@ -156,8 +208,6 @@ class Whois(BaseAdminCog):
                  f"**Age:** <t:{created_ts}:R>"),
                 True,
             ),
-
-            # Server
             (
                 f"{EMOJIS['moderation']} Server",
                 (f"**Nickname:** {member.nick or 'None'}\n"
@@ -166,8 +216,6 @@ class Whois(BaseAdminCog):
                  f"**Top Role:** {member.top_role.mention}"),
                 True,
             ),
-
-            # Status
             (
                 f"{EMOJIS['support_dot']} Status",
                 (f"**Presence:** {status}\n"
@@ -175,23 +223,23 @@ class Whois(BaseAdminCog):
                  f"**Boosting:** {boosting}"),
                 True,
             ),
-
-            # Permissions
             (
                 f"{EMOJIS['folder']} Permissions",
                 (f"**Admin:** {admin_status}\n"
-                 f"**Enabled:** `{perm_count}`"),
+                 f"**Dangerous:** {dangerous_display}"),
                 True,
             ),
-
-            # Roles
+            (
+                f"{EMOJIS['moderation']} Moderation",
+                (f"**Timed Out:** {timeout_status}\n"
+                 f"**Risk Flags:** {risk_display}"),
+                True,
+            ),
             (
                 f"{EMOJIS['folder']} Roles ({len(roles_mentions)})",
                 roles_display,
                 False,
             ),
-
-            # Links
             (
                 f"{EMOJIS['github']} Links",
                 links,
@@ -208,9 +256,15 @@ class Whois(BaseAdminCog):
             footer=f"Requested by {ctx.author} • ID: {member.id}",
         )
 
+        # Show banner / avatar preview
+        if banner:
+            embed.set_image(url=banner)
+        else:
+            embed.set_image(url=avatar)
+
         await ctx.send(embed=embed)
 
-        # Cleanup invoking message
+        # Cleanup command
         try:
             ctx.bot.loop.create_task(ctx.message.delete())
         except Exception:

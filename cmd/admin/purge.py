@@ -10,13 +10,6 @@ from utils.logging.mod_log import send_mod_log
 
 
 class Purge(BaseAdminCog):
-    """
-    High-performance purge command.
-
-    Usage:
-    dv purge <amount>
-    dv purge @user <amount>
-    """
 
     MAX_PURGE = 1000
     MAX_SCAN = 2000
@@ -27,25 +20,36 @@ class Purge(BaseAdminCog):
     @commands.command(name="purge")
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True)
-    # cooldown per moderator
     @commands.cooldown(1, 10, commands.BucketType.user)
-    # global safety limit
     @commands.max_concurrency(1, per=commands.BucketType.guild, wait=False)
     async def purge(self, ctx: commands.Context, *args):
 
         guild = ctx.guild
         channel = ctx.channel
 
-        if guild is None or not hasattr(channel, "history"):
+        if guild is None or not isinstance(channel, discord.TextChannel):
             return
+
+        # =====================================================
+        # BOT PERMISSION CHECK
+        # =====================================================
+        bot_member = guild.me
+        if not bot_member or not bot_member.guild_permissions.manage_messages:
+            return await ctx.reply(
+                embed=make_embed(
+                    title="Missing Permissions",
+                    description="I need Manage Messages permission.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
 
         member: discord.Member | None = None
         amount: int | None = None
 
-        # ─────────────────────────
+        # =====================================================
         # ARGUMENT PARSING
-        # ─────────────────────────
-
+        # =====================================================
         if not args:
             return await ctx.reply(
                 embed=make_embed(
@@ -58,7 +62,6 @@ class Purge(BaseAdminCog):
             )
 
         if len(args) == 1:
-
             try:
                 amount = int(args[0])
             except ValueError:
@@ -72,7 +75,6 @@ class Purge(BaseAdminCog):
                 )
 
         elif len(args) == 2:
-
             if not ctx.message.mentions:
                 return await ctx.reply(
                     embed=make_embed(
@@ -83,7 +85,7 @@ class Purge(BaseAdminCog):
                     mention_author=False,
                 )
 
-            member = ctx.message.mentions[0]  # type: ignore
+            member = ctx.message.mentions[0] # type: ignore
 
             try:
                 amount = int(args[1])
@@ -96,7 +98,6 @@ class Purge(BaseAdminCog):
                     ),
                     mention_author=False,
                 )
-
         else:
             return await ctx.reply(
                 embed=make_embed(
@@ -132,10 +133,9 @@ class Purge(BaseAdminCog):
         except discord.HTTPException:
             pass
 
-        # ─────────────────────────
-        # MESSAGE COLLECTION
-        # ─────────────────────────
-
+        # =====================================================
+        # COLLECT MESSAGES
+        # =====================================================
         now = discord.utils.utcnow()
         fourteen_days = datetime.timedelta(days=14)
 
@@ -145,26 +145,25 @@ class Purge(BaseAdminCog):
         scan_limit = min(scan_limit, self.MAX_SCAN)
 
         async for msg in channel.history(limit=scan_limit):
-
             if msg.pinned:
                 continue
-
             if member and msg.author != member:
                 continue
 
             messages.append(msg)
-
             if len(messages) >= amount:
                 break
 
         if not messages:
-            return
+            return await ctx.send(embed=make_embed(
+                title="Nothing Found",
+                description="No messages matched your query.",
+                level="INFO",
+            ))
 
-        young = []
-        old = []
+        young, old = [], []
 
         for m in messages:
-
             if now - m.created_at < fourteen_days:
                 young.append(m)
             else:
@@ -172,25 +171,22 @@ class Purge(BaseAdminCog):
 
         deleted = 0
 
-        # ─────────────────────────
+        # =====================================================
         # BULK DELETE
-        # ─────────────────────────
-
+        # =====================================================
         while young:
-
             batch = young[:100]
             young = young[100:]
 
             try:
-                await channel.delete_messages(batch)  # type: ignore
+                await channel.delete_messages(batch)
                 deleted += len(batch)
             except discord.HTTPException:
                 pass
 
-        # ─────────────────────────
-        # OLD MESSAGE DELETE
-        # ─────────────────────────
-
+        # =====================================================
+        # OLD DELETE
+        # =====================================================
         for msg in old:
             try:
                 await msg.delete()
@@ -199,16 +195,13 @@ class Purge(BaseAdminCog):
             except discord.HTTPException:
                 pass
 
-        # ─────────────────────────
-        # CONFIRMATION
-        # ─────────────────────────
-
+        # =====================================================
+        # RESPONSE
+        # =====================================================
         if member:
-            description = (f"{EMOJIS['moderation']} Cleared "
-                           f"**{deleted}** messages from {member.mention}")
+            description = f"{EMOJIS['moderation']} Cleared **{deleted}** messages from {member.mention}"
         else:
-            description = (
-                f"{EMOJIS['moderation']} Cleared **{deleted}** messages")
+            description = f"{EMOJIS['moderation']} Cleared **{deleted}** messages"
 
         embed = make_embed(
             title="Messages Purged",
@@ -219,23 +212,25 @@ class Purge(BaseAdminCog):
 
         confirm = await ctx.send(embed=embed)
 
-        # ─────────────────────────
-        # MOD LOG
-        # ─────────────────────────
-
-        await send_mod_log(
-            guild=guild,
-            category="PURGE",
-            title="Messages Purged",
-            description=description,
-            level="WARNING",
-            actor=ctx.author,
-            target=member,
-            extra_fields={
-                "Channel": channel.mention,  # type: ignore
-                "Deleted Count": deleted,
-            },
-        )
+        # =====================================================
+        # LOGGING
+        # =====================================================
+        try:
+            await send_mod_log(
+                guild=guild,
+                category="MODERATION",
+                title="Messages Purged",
+                description=description,
+                level="WARNING",
+                actor=ctx.author,
+                target=member,
+                extra_fields={
+                    "Channel": channel.mention,
+                    "Deleted Count": deleted,
+                },
+            )
+        except Exception as e:
+            print(f"[Purge Log Failed] {e}")
 
         await asyncio.sleep(5)
 

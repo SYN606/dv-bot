@@ -8,8 +8,6 @@ from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import send_mod_log
 
 from db.db_helpers.mod_logs import set_log_channel
-
-# import cache from logger (important)
 from utils.logging.mod_log import _log_cache
 
 
@@ -28,11 +26,16 @@ class SetupLog(BaseAdminCog):
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
-    ):
-        guild = interaction.guild
+    ) -> None:
 
+        guild = interaction.guild
+        actor = interaction.user
+
+        # =====================================================
+        # CONTEXT CHECK
+        # =====================================================
         if guild is None:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Context",
                     description="This command can only be used in a server.",
@@ -40,7 +43,11 @@ class SetupLog(BaseAdminCog):
                 ),
                 ephemeral=True,
             )
+            return
 
+        # =====================================================
+        # BOT PERMISSION CHECK
+        # =====================================================
         bot_member = guild.me
         if bot_member is None:
             return
@@ -48,7 +55,7 @@ class SetupLog(BaseAdminCog):
         perms = channel.permissions_for(bot_member)
 
         if not perms.send_messages or not perms.embed_links:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Missing Permissions",
                     description=(
@@ -58,12 +65,19 @@ class SetupLog(BaseAdminCog):
                 ),
                 ephemeral=True,
             )
+            return
 
+        # =====================================================
+        # SAVE TO DB
+        # =====================================================
         await set_log_channel(guild.id, channel.id)
 
-        # cache invalidation (important)
+        # Clear cache so new channel is used immediately
         _log_cache.pop(guild.id, None)
 
+        # =====================================================
+        # RESPONSE
+        # =====================================================
         await interaction.response.send_message(
             embed=make_embed(
                 title="Log Channel Configured",
@@ -77,18 +91,27 @@ class SetupLog(BaseAdminCog):
             ephemeral=True,
         )
 
-        await send_mod_log(
-            guild=guild,
-            category="CONFIG",
-            title="Moderation Log Channel Set",
-            description=f"Log channel configured to {channel.mention}.",
-            level="SUCCESS",
-            actor=interaction.user,
-            extra_fields={
-                "Channel ID": channel.id,
-            },
-        )
+        # =====================================================
+        # LOGGING (VALID HERE)
+        # =====================================================
+        try:
+            await send_mod_log(
+                guild=guild,
+                category="CONFIG",
+                title="Moderation Log Channel Set",
+                description=f"Log channel configured to {channel.mention}.",
+                level="SUCCESS",
+                actor=actor,
+                extra_fields={
+                    "Channel ID": channel.id,
+                },
+            )
+        except Exception as e:
+            print(f"[SetupLog Failed] {e}")
 
 
+# =========================================================
+# SETUP
+# =========================================================
 async def setup(bot: commands.Bot):
     await bot.add_cog(SetupLog(bot))

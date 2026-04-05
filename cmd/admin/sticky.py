@@ -11,10 +11,9 @@ from db.db_helpers.sticky import (
     set_sticky,
     remove_sticky,
     get_sticky,
-    update_last_message,  # ⚠️ make sure this exists
+    update_last_message,
 )
 
-# IMPORT CENTRAL STICKY ENGINE
 from utils.handlers.sticky.sticky_handler import StickyPayload, process_sticky
 
 
@@ -32,10 +31,13 @@ class Sticky(BaseAdminCog):
         interaction: discord.Interaction,
         channel: discord.TextChannel,
         message: str,
-    ):
+    ) -> None:
+
         guild = interaction.guild
+        actor = interaction.user
+
         if guild is None:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Context",
                     description="This command must be used in a server.",
@@ -43,9 +45,10 @@ class Sticky(BaseAdminCog):
                 ),
                 ephemeral=True,
             )
+            return
 
         if not message.strip():
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Message",
                     description="Sticky message cannot be empty.",
@@ -53,13 +56,30 @@ class Sticky(BaseAdminCog):
                 ),
                 ephemeral=True,
             )
+            return
+
+        # Permission check
+        bot_member = guild.me
+        if bot_member:
+            perms = channel.permissions_for(bot_member)
+            if not perms.send_messages:
+                await interaction.response.send_message(
+                    embed=make_embed(
+                        title="Missing Permissions",
+                        description=
+                        f"I cannot send messages in {channel.mention}.",
+                        level="ERROR",
+                    ),
+                    ephemeral=True,
+                )
+                return
 
         await interaction.response.defer(ephemeral=True)
 
         # Save config
         await set_sticky(guild.id, channel.id, message)
 
-        # Create sticky instantly using engine
+        # Create sticky instantly
         payload = StickyPayload(
             content=message,
             message_id=None,
@@ -73,21 +93,26 @@ class Sticky(BaseAdminCog):
         await interaction.followup.send(
             embed=make_embed(
                 title="Sticky Enabled",
-                description=f"{EMOJIS['success']} Sticky enabled in {channel.mention}.",
+                description=
+                f"{EMOJIS['success']} Sticky enabled in {channel.mention}.",
                 level="SUCCESS",
             ),
             ephemeral=True,
         )
 
-        await send_mod_log(
-            guild=guild,
-            category="CONFIG",
-            title="Sticky Enabled",
-            description=f"Sticky enabled in {channel.mention}.",
-            level="SUCCESS",
-            actor=interaction.user,
-            extra_fields={"Channel ID": channel.id},
-        )
+        # Logging
+        try:
+            await send_mod_log(
+                guild=guild,
+                category="CONFIG",
+                title="Sticky Enabled",
+                description=f"Sticky enabled in {channel.mention}.",
+                level="SUCCESS",
+                actor=actor,
+                extra_fields={"Channel ID": channel.id},
+            )
+        except Exception as e:
+            print(f"[Sticky Log Failed] {e}")
 
     # ─────────────────────────
     # DISABLE STICKY
@@ -97,20 +122,22 @@ class Sticky(BaseAdminCog):
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
-    ):
+    ) -> None:
+
         guild = interaction.guild
+        actor = interaction.user
+
         if guild is None:
             return
 
         await interaction.response.defer(ephemeral=True)
 
-        content = await get_sticky(guild.id, channel.id)
         removed = await remove_sticky(guild.id, channel.id)
 
-        # Delete existing sticky message
+        # Try deleting last sticky (better approach)
         if removed:
             try:
-                async for msg in channel.history(limit=10):
+                async for msg in channel.history(limit=20):
                     if msg.author == interaction.client.user:
                         await msg.delete()
                         break
@@ -123,23 +150,25 @@ class Sticky(BaseAdminCog):
                 description=(
                     f"{EMOJIS['success']} Sticky disabled in {channel.mention}."
                     if removed else
-                    f"{EMOJIS['warning']} No sticky configured."
-                ),
+                    f"{EMOJIS['warning']} No sticky configured."),
                 level="SUCCESS" if removed else "WARNING",
             ),
             ephemeral=True,
         )
 
         if removed:
-            await send_mod_log(
-                guild=guild,
-                category="CONFIG",
-                title="Sticky Disabled",
-                description=f"Sticky disabled in {channel.mention}.",
-                level="INFO",
-                actor=interaction.user,
-                extra_fields={"Channel ID": channel.id},
-            )
+            try:
+                await send_mod_log(
+                    guild=guild,
+                    category="CONFIG",
+                    title="Sticky Disabled",
+                    description=f"Sticky disabled in {channel.mention}.",
+                    level="INFO",
+                    actor=actor,
+                    extra_fields={"Channel ID": channel.id},
+                )
+            except Exception as e:
+                print(f"[Sticky Log Failed] {e}")
 
     # ─────────────────────────
     # STATUS
@@ -149,8 +178,10 @@ class Sticky(BaseAdminCog):
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
-    ):
+    ) -> None:
+
         guild = interaction.guild
+
         if guild is None:
             return
 
@@ -161,11 +192,11 @@ class Sticky(BaseAdminCog):
         await interaction.followup.send(
             embed=make_embed(
                 title="Sticky Status",
-                description=(
-                    f"{EMOJIS['green_dot']} Enabled in {channel.mention}\n\n{content}"
-                    if content else
-                    f"{EMOJIS['red_dot']} Sticky not enabled in {channel.mention}."
-                ),
+                description=
+                (f"{EMOJIS['green_dot']} Enabled in {channel.mention}\n\n{content}"
+                 if content else
+                 f"{EMOJIS['red_dot']} Sticky not enabled in {channel.mention}."
+                 ),
                 level="INFO",
             ),
             ephemeral=True,

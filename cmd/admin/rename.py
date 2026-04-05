@@ -18,8 +18,9 @@ class RenameSystem(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # Helpers
-
+    # =====================================================
+    # HELPERS
+    # =====================================================
     def _normalize(self, text: str) -> str:
         return unicodedata.normalize("NFKC", text)
 
@@ -30,14 +31,16 @@ class RenameSystem(BaseAdminCog):
     def _bot_can_modify(self, guild: discord.Guild,
                         target: discord.Member) -> bool:
         bot_member = guild.me
-        return (bot_member.guild_permissions.manage_nicknames
+        return (bot_member and bot_member.guild_permissions.manage_nicknames
                 and target != guild.owner
                 and target.top_role < bot_member.top_role)
 
-    def _moderator_can_modify(self, guild: discord.Guild,
-                              moderator: discord.Member,
-                              target: discord.Member) -> bool:
-        # Owner bypass
+    def _moderator_can_modify(
+        self,
+        guild: discord.Guild,
+        moderator: discord.Member,
+        target: discord.Member,
+    ) -> bool:
         if moderator.id == guild.owner_id:
             return True
 
@@ -49,36 +52,52 @@ class RenameSystem(BaseAdminCog):
 
         return target.top_role < moderator.top_role
 
-    # RENAME COMMAND
-
+    # =====================================================
+    # COMMAND
+    # =====================================================
     @commands.command(name="rename")
     @commands.guild_only()
     async def rename(self, ctx: commands.Context, *, args: str | None = None):
 
         guild = ctx.guild
-        moderator: discord.Member = ctx.author
+        moderator: discord.Member = ctx.author # type: ignore
         prefix = ctx.clean_prefix
+
+        if not guild:
+            return
+
+        # Bot permission check (global)
+        if not guild.me.guild_permissions.manage_nicknames:
+            return await ctx.reply(
+                embed=make_embed(
+                    title="Missing Permissions",
+                    description="I need Manage Nicknames permission.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
 
         if not args:
             return await ctx.reply(
                 embed=make_embed(
                     title="Missing Nickname",
                     description=(f"Usage:\n"
-                                 f"`{prefix} rename <nickname>`\n"
-                                 f"`{prefix} rename @user <nickname>`\n"
-                                 f"`{prefix} rename reset`"),
+                                 f"`{prefix}rename <nickname>`\n"
+                                 f"`{prefix}rename @user <nickname>`\n"
+                                 f"`{prefix}rename reset`"),
                     level="WARNING",
                 ),
                 mention_author=False,
             )
 
-        # Try resolve mentioned user
-
-        target = None
-        nickname = None
+        # =====================================================
+        # RESOLVE TARGET
+        # =====================================================
+        target: discord.Member
+        nickname: str
 
         if ctx.message.mentions:
-            target = ctx.message.mentions[0]
+            target = ctx.message.mentions[0] # type: ignore
             nickname = args.replace(target.mention, "", 1).strip()
         else:
             target = moderator
@@ -94,20 +113,12 @@ class RenameSystem(BaseAdminCog):
                 mention_author=False,
             )
 
-        # RESET
+        # =====================================================
+        # SELF RENAME PERMISSION (IMPORTANT FEATURE)
+        # =====================================================
+        is_self = target == moderator
 
-        if nickname.lower() == "reset":
-
-            if target.nick is None:
-                return await ctx.reply(
-                    embed=make_embed(
-                        title="No Nickname Set",
-                        description="That user does not have a nickname.",
-                        level="INFO",
-                    ),
-                    mention_author=False,
-                )
-
+        if not is_self:
             if not self._moderator_can_modify(guild, moderator, target):
                 return await ctx.reply(
                     embed=make_embed(
@@ -118,15 +129,30 @@ class RenameSystem(BaseAdminCog):
                     mention_author=False,
                 )
 
-            if not self._bot_can_modify(guild, target):
+        if not self._bot_can_modify(guild, target):
+            return await ctx.reply(
+                embed=make_embed(
+                    title="Role Hierarchy Issue",
+                    description=(
+                        "I cannot modify this user because my role "
+                        "is lower than theirs.\n\n"
+                        "Move my role higher in Server Settings → Roles."),
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
+
+        # =====================================================
+        # RESET
+        # =====================================================
+        if nickname.lower() == "reset":
+
+            if target.nick is None:
                 return await ctx.reply(
                     embed=make_embed(
-                        title="Role Hierarchy Issue",
-                        description=(
-                            "I cannot modify this user because my role "
-                            "is lower than theirs.\n\n"
-                            "Move my role higher in Server Settings → Roles."),
-                        level="ERROR",
+                        title="No Nickname Set",
+                        description="That user does not have a nickname.",
+                        level="INFO",
                     ),
                     mention_author=False,
                 )
@@ -155,20 +181,27 @@ class RenameSystem(BaseAdminCog):
                 mention_author=False,
             )
 
-            await send_mod_log(
-                guild=guild,
-                category="CONFIG",
-                title="Nickname Reset",
-                description=f"{target.mention} nickname reset.",
-                actor=moderator,
-                target=target,
-                extra_fields={"Old Nickname": old_nick},
-            )
+            # Logging
+            try:
+                await send_mod_log(
+                    guild=guild,
+                    category="MODERATION",
+                    title="Nickname Reset",
+                    description=
+                    f"{moderator} reset nickname of {target.mention}",
+                    level="INFO",
+                    actor=moderator,
+                    target=target,
+                    extra_fields={"Old Nickname": old_nick},
+                )
+            except Exception as e:
+                print(f"[Rename Log Failed] {e}")
 
             return
 
+        # =====================================================
         # NORMAL RENAME
-
+        # =====================================================
         nickname = self._normalize(nickname)
         nickname = " ".join(nickname.split())
         nickname = nickname[:32]
@@ -203,29 +236,6 @@ class RenameSystem(BaseAdminCog):
                 mention_author=False,
             )
 
-        if not self._moderator_can_modify(guild, moderator, target):
-            return await ctx.reply(
-                embed=make_embed(
-                    title="Permission Denied",
-                    description="You cannot modify this user.",
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
-
-        if not self._bot_can_modify(guild, target):
-            return await ctx.reply(
-                embed=make_embed(
-                    title="Role Hierarchy Issue",
-                    description=(
-                        "I cannot modify this user because my role "
-                        "is lower than theirs.\n\n"
-                        "Move my role higher in Server Settings → Roles."),
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
-
         old_nick = target.display_name
 
         try:
@@ -253,18 +263,23 @@ class RenameSystem(BaseAdminCog):
             mention_author=False,
         )
 
-        await send_mod_log(
-            guild=guild,
-            category="CONFIG",
-            title="Nickname Changed",
-            description=f"{target.mention} nickname updated.",
-            actor=moderator,
-            target=target,
-            extra_fields={
-                "Old Nickname": old_nick,
-                "New Nickname": nickname,
-            },
-        )
+        # Logging
+        try:
+            await send_mod_log(
+                guild=guild,
+                category="MODERATION",
+                title="Nickname Changed",
+                description=f"{moderator} changed nickname of {target.mention}",
+                level="INFO",
+                actor=moderator,
+                target=target,
+                extra_fields={
+                    "Old Nickname": old_nick,
+                    "New Nickname": nickname,
+                },
+            )
+        except Exception as e:
+            print(f"[Rename Log Failed] {e}")
 
 
 async def setup(bot: commands.Bot):

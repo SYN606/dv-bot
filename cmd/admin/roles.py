@@ -5,7 +5,6 @@ from discord import app_commands
 from utils.permissions.base_admin import BaseAdminCog
 from utils.core.embeds import make_embed
 from utils.views.role_manager import RoleManagerView
-from utils.logging.mod_log import send_mod_log
 
 
 class Roles(BaseAdminCog):
@@ -30,9 +29,13 @@ class Roles(BaseAdminCog):
 
         guild = interaction.guild
         actor = interaction.user
+        bot_user = self.bot.user
 
+        # =====================================================
+        # CONTEXT VALIDATION
+        # =====================================================
         if guild is None or not isinstance(actor, discord.Member):
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Context",
                     description=
@@ -41,12 +44,13 @@ class Roles(BaseAdminCog):
                 ),
                 ephemeral=True,
             )
+            return
 
-        # Permission handled by BaseAdminCog
-
-        # Safety checks
-        if member.bot and member.id == self.bot.user.id:
-            return await interaction.response.send_message(
+        # =====================================================
+        # SAFETY CHECKS
+        # =====================================================
+        if bot_user and member.bot and member.id == bot_user.id:
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Target",
                     description="You cannot manage my roles.",
@@ -54,9 +58,10 @@ class Roles(BaseAdminCog):
                 ),
                 ephemeral=True,
             )
+            return
 
         if member == actor:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Invalid Target",
                     description="You cannot manage your own roles.",
@@ -64,9 +69,12 @@ class Roles(BaseAdminCog):
                 ),
                 ephemeral=True,
             )
+            return
 
-        if member.top_role >= actor.top_role:
-            return await interaction.response.send_message(
+        # Prevent managing higher/equal roles
+        if isinstance(actor,
+                      discord.Member) and member.top_role >= actor.top_role:
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Role Hierarchy Error",
                     description=(
@@ -76,9 +84,30 @@ class Roles(BaseAdminCog):
                 ),
                 ephemeral=True,
             )
+            return
 
+        # Bot hierarchy check (important missing piece)
+        bot_member = guild.me
+        if bot_member and member.top_role >= bot_member.top_role:
+            await interaction.response.send_message(
+                embed=make_embed(
+                    title="Bot Hierarchy Error",
+                    description=
+                    "I cannot manage this user due to role hierarchy.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
+            return
+
+        # =====================================================
+        # DEFER RESPONSE
+        # =====================================================
         await interaction.response.defer(ephemeral=True)
 
+        # =====================================================
+        # CREATE VIEW
+        # =====================================================
         view = RoleManagerView(
             bot=self.bot,
             actor=actor,
@@ -101,22 +130,15 @@ class Roles(BaseAdminCog):
             ephemeral=True,
         )
 
-        view.message = await interaction.original_response()
-
-        # Structured Logging
-        await send_mod_log(
-            guild=guild,
-            category="ROLE",
-            title="Role Manager Opened",
-            description=f"Role manager opened for {member.mention}.",
-            level="INFO",
-            actor=actor,
-            target=member,
-            extra_fields={
-                "Target ID": member.id,
-            },
-        )
+        # Store message for timeout handling
+        try:
+            view.message = await interaction.original_response()
+        except discord.HTTPException:
+            view.message = None
 
 
+# =========================================================
+# SETUP
+# =========================================================
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Roles(bot))

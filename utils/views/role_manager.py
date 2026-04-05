@@ -3,9 +3,11 @@ import discord
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.permissions.check_perms import is_bot_admin
+from utils.logging.mod_log import send_mod_log
 
 
 class AddRoleSelect(discord.ui.RoleSelect):
+
     def __init__(self, manager: "RoleManagerView"):
         super().__init__(
             placeholder="Select roles to ADD",
@@ -15,7 +17,6 @@ class AddRoleSelect(discord.ui.RoleSelect):
         self.manager = manager
 
     async def callback(self, interaction: discord.Interaction):
-
         self.manager.roles_to_add = list(self.values)
 
         await interaction.response.send_message(
@@ -25,6 +26,7 @@ class AddRoleSelect(discord.ui.RoleSelect):
 
 
 class RemoveRoleSelect(discord.ui.RoleSelect):
+
     def __init__(self, manager: "RoleManagerView"):
         super().__init__(
             placeholder="Select roles to REMOVE",
@@ -34,7 +36,6 @@ class RemoveRoleSelect(discord.ui.RoleSelect):
         self.manager = manager
 
     async def callback(self, interaction: discord.Interaction):
-
         self.manager.roles_to_remove = list(self.values)
 
         await interaction.response.send_message(
@@ -44,6 +45,7 @@ class RemoveRoleSelect(discord.ui.RoleSelect):
 
 
 class RoleManagerView(discord.ui.View):
+
     def __init__(
         self,
         bot: discord.Client,
@@ -63,12 +65,10 @@ class RoleManagerView(discord.ui.View):
 
         self.message: discord.Message | None = None
 
-        # Add components manually
         self.add_item(AddRoleSelect(self))
         self.add_item(RemoveRoleSelect(self))
 
     async def interaction_check(self, interaction: discord.Interaction):
-
         if interaction.user != self.actor:
             await interaction.response.send_message(
                 f"{EMOJIS['warning']} You cannot use this panel.",
@@ -86,15 +86,19 @@ class RoleManagerView(discord.ui.View):
         style=discord.ButtonStyle.success,
         emoji=EMOJIS["okay"],
     )
-    async def apply(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def apply(self, interaction: discord.Interaction,
+                    button: discord.ui.Button):
 
         await interaction.response.defer()
 
         bot_member = self.guild.me
 
-        added = []
-        removed = []
+        added: list[str] = []
+        removed: list[str] = []
 
+        # ================================
+        # ADD ROLES
+        # ================================
         for role in self.roles_to_add:
             if role.managed:
                 continue
@@ -109,8 +113,11 @@ class RoleManagerView(discord.ui.View):
                 )
                 added.append(role.name)
             except discord.HTTPException:
-                pass
+                continue
 
+        # ================================
+        # REMOVE ROLES
+        # ================================
         for role in self.roles_to_remove:
             if role.managed:
                 continue
@@ -125,11 +132,17 @@ class RoleManagerView(discord.ui.View):
                 )
                 removed.append(role.name)
             except discord.HTTPException:
-                pass
+                continue
 
+        # ================================
+        # DISABLE UI
+        # ================================
         for item in self.children:
-            item.disabled = True
+            item.disabled = True # type: ignore
 
+        # ================================
+        # RESPONSE EMBED
+        # ================================
         embed = make_embed(
             title="Roles Updated",
             description=(
@@ -145,16 +158,38 @@ class RoleManagerView(discord.ui.View):
             view=self,
         )
 
+        # ================================
+        # LOGGING (ONLY HERE — FIXED)
+        # ================================
+        if added or removed:
+            try:
+                await send_mod_log(
+                    guild=self.guild,
+                    category="ROLE",
+                    title="Roles Updated",
+                    description=f"Roles updated for {self.target.mention}",
+                    level="SUCCESS",
+                    actor=self.actor,
+                    target=self.target,
+                    extra_fields={
+                        "Added": ", ".join(added) or "None",
+                        "Removed": ", ".join(removed) or "None",
+                    },
+                )
+            except Exception as e:
+                print(f"[Role Log Failed] {e}")
+
         self.stop()
 
     @discord.ui.button(
         label="Cancel",
         style=discord.ButtonStyle.danger,
     )
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def cancel(self, interaction: discord.Interaction,
+                     button: discord.ui.Button):
 
         for item in self.children:
-            item.disabled = True
+            item.disabled = True # type: ignore
 
         embed = make_embed(
             title="Role Manager Closed",
@@ -170,9 +205,8 @@ class RoleManagerView(discord.ui.View):
         self.stop()
 
     async def on_timeout(self):
-
         for item in self.children:
-            item.disabled = True
+            item.disabled = True # type: ignore
 
         try:
             if self.message:
