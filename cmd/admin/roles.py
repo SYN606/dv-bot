@@ -10,7 +10,7 @@ from utils.views.role_manager import RoleManagerView
 class Roles(BaseAdminCog):
     """
     Role management interface.
-    Admin-only.
+    Admin / Manage Roles / Bot-admin allowed.
     """
 
     COOLDOWN_RATE = 1
@@ -19,9 +19,30 @@ class Roles(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # =====================================================
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
+
+        guild = interaction.guild
+
+        if guild is None:
+            return True
+
+        if not isinstance(interaction.user, discord.Member):
+            return False
+
+        if interaction.user.id == guild.owner_id:
+            return True
+
+        perms = interaction.user.guild_permissions
+
+        if perms.administrator or perms.manage_roles:
+            return True
+
+        return await super().interaction_check(interaction)
+
     # COMMAND
-    # =====================================================
     @app_commands.command(
         name="roles",
         description="Manage roles for a member using an interactive interface",
@@ -41,9 +62,7 @@ class Roles(BaseAdminCog):
         actor = interaction.user
         bot_user = self.bot.user
 
-        # =====================================================
         # CONTEXT VALIDATION
-        # =====================================================
         if guild is None or not isinstance(actor, discord.Member):
             await interaction.response.send_message(
                 embed=make_embed(
@@ -56,9 +75,7 @@ class Roles(BaseAdminCog):
             )
             return
 
-        # =====================================================
         # SAFETY CHECKS
-        # =====================================================
         if bot_user and member.bot and member.id == bot_user.id:
             await interaction.response.send_message(
                 embed=make_embed(
@@ -109,14 +126,10 @@ class Roles(BaseAdminCog):
             )
             return
 
-        # =====================================================
         # DEFER
-        # =====================================================
         await interaction.response.defer(ephemeral=True)
 
-        # =====================================================
         # VIEW
-        # =====================================================
         view = RoleManagerView(
             bot=self.bot,
             actor=actor,
@@ -145,9 +158,7 @@ class Roles(BaseAdminCog):
         except discord.HTTPException:
             view.message = None
 
-    # =====================================================
     # ERROR HANDLER
-    # =====================================================
     async def cog_app_command_error(
         self,
         interaction: discord.Interaction,
@@ -155,7 +166,6 @@ class Roles(BaseAdminCog):
     ):
         if isinstance(error, app_commands.CommandOnCooldown):
 
-            # avoid "interaction already responded" crash
             if interaction.response.is_done():
                 await interaction.followup.send(
                     embed=make_embed(
@@ -178,8 +188,6 @@ class Roles(BaseAdminCog):
                 )
 
 
-# =====================================================
 # SETUP
-# =====================================================
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Roles(bot))

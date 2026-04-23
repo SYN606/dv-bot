@@ -11,8 +11,22 @@ from utils.logging.mod_log import send_mod_log
 logger = logging.getLogger("bot")
 
 PROFANITY_BLOCKLIST = {
-    "badword1",
-    "badword2",
+    "madarchod",
+    "bhenchod",
+    "behenchod",
+    "mc",
+    "bc",
+    "chutiya",
+    "chut",
+    "gaand",
+    "gandu",
+    "randi",
+    "kutti",
+    "kutta",
+    "lund",
+    "lavda",
+    "loda",
+    "harami",
 }
 
 
@@ -25,14 +39,37 @@ class RenameSystem(BaseAdminCog):
         self.bot = bot
 
     # =====================================================
+    # PERMISSION OVERRIDE
+    # =====================================================
+    async def cog_check(self, ctx: commands.Context) -> bool:
+        if ctx.guild is None:
+            return True
+
+        if not isinstance(ctx.author, discord.Member):
+            return False
+
+        if ctx.author.id == ctx.guild.owner_id:
+            return True
+
+        perms = ctx.author.guild_permissions
+
+        if perms.administrator or perms.manage_nicknames:
+            return True
+
+        return await super().cog_check(ctx)
+
+    # =====================================================
     # HELPERS
     # =====================================================
     def _normalize(self, text: str) -> str:
         return unicodedata.normalize("NFKC", text)
 
+    def _clean_text(self, text: str) -> str:
+        return "".join(c for c in text.lower() if c.isalnum())
+
     def _contains_profanity(self, text: str) -> bool:
-        lower = text.lower()
-        return any(word in lower for word in PROFANITY_BLOCKLIST)
+        clean = self._clean_text(text)
+        return any(word in clean for word in PROFANITY_BLOCKLIST)
 
     def _bot_can_modify(self, guild: discord.Guild,
                         target: discord.Member) -> bool:
@@ -80,9 +117,6 @@ class RenameSystem(BaseAdminCog):
         moderator: discord.Member = ctx.author
         prefix = ctx.clean_prefix
 
-        # =====================================================
-        # BOT PERMISSION CHECK
-        # =====================================================
         bot_member = guild.me
         if not bot_member or not bot_member.guild_permissions.manage_nicknames:
             return await ctx.reply(
@@ -108,15 +142,16 @@ class RenameSystem(BaseAdminCog):
             )
 
         # =====================================================
-        # TARGET RESOLUTION
+        # TARGET FIX (IMPORTANT)
         # =====================================================
         target: discord.Member
         nickname: str
 
         if ctx.message.mentions:
-            potential = ctx.message.mentions[0]
+            raw = ctx.message.mentions[0]
 
-            if not isinstance(potential, discord.Member):
+            member = guild.get_member(raw.id)
+            if not member:
                 return await ctx.reply(
                     embed=make_embed(
                         title="Invalid Target",
@@ -126,13 +161,16 @@ class RenameSystem(BaseAdminCog):
                     mention_author=False,
                 )
 
-            target = potential
-            nickname = args.replace(target.mention, "", 1).strip()
+            target = member
+            nickname = args.replace(raw.mention, "", 1).strip()
 
         else:
             target = moderator
             nickname = args.strip()
 
+        # =====================================================
+        # VALIDATION
+        # =====================================================
         if not nickname:
             return await ctx.reply(
                 embed=make_embed(
@@ -145,9 +183,6 @@ class RenameSystem(BaseAdminCog):
 
         is_self = target == moderator
 
-        # =====================================================
-        # PERMISSIONS
-        # =====================================================
         if not is_self:
             if not self._moderator_can_modify(guild, moderator, target):
                 return await ctx.reply(
@@ -220,13 +255,13 @@ class RenameSystem(BaseAdminCog):
                     target=target,
                     extra_fields={"Old Nickname": old_nick},
                 )
-            except Exception as e:
-                logger.error(f"Rename log failed: {e}")
+            except Exception:
+                pass
 
             return
 
         # =====================================================
-        # NORMAL RENAME
+        # RENAME
         # =====================================================
         nickname = self._normalize(nickname)
         nickname = " ".join(nickname.split())[:32]
@@ -245,18 +280,8 @@ class RenameSystem(BaseAdminCog):
             return await ctx.reply(
                 embed=make_embed(
                     title="Blocked Nickname",
-                    description="That nickname contains prohibited content.",
+                    description="Nickname contains prohibited content.",
                     level="ERROR",
-                ),
-                mention_author=False,
-            )
-
-        if target.display_name == nickname:
-            return await ctx.reply(
-                embed=make_embed(
-                    title="No Change",
-                    description="That nickname is already set.",
-                    level="INFO",
                 ),
                 mention_author=False,
             )
@@ -302,25 +327,8 @@ class RenameSystem(BaseAdminCog):
                     "New Nickname": nickname,
                 },
             )
-        except Exception as e:
-            logger.error(f"Rename log failed: {e}")
-
-    # =====================================================
-    # ERROR HANDLER
-    # =====================================================
-    @rename.error
-    async def rename_error(self, ctx: commands.Context, error):
-
-        if isinstance(error, commands.CommandOnCooldown):
-            await ctx.reply(
-                embed=make_embed(
-                    title="Cooldown Active",
-                    description=
-                    f"Try again in **{round(error.retry_after, 1)}s**.",
-                    level="WARNING",
-                ),
-                mention_author=False,
-            )
+        except Exception:
+            pass
 
 
 async def setup(bot: commands.Bot):

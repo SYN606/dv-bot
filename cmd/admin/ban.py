@@ -9,24 +9,42 @@ from utils.logging.notifier import ModNotifier
 
 
 class BanSystem(BaseAdminCog):
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     # =========================================================
-    # UTIL: Reply Wrapper
+    # PERMISSION OVERRIDE
+    # =========================================================
+    async def cog_check(self, ctx: commands.Context) -> bool:
+        if ctx.guild is None:
+            return True
+
+        if not isinstance(ctx.author, discord.Member):
+            return False
+
+        if ctx.author.id == ctx.guild.owner_id:
+            return True
+
+        perms = ctx.author.guild_permissions
+
+        if perms.administrator or perms.ban_members:
+            return True
+
+        return await super().cog_check(ctx)
+
+    # =========================================================
+    # UTIL: Reply
     # =========================================================
     async def _reply(self, ctx, title, description, level="ERROR"):
         return await ctx.reply(
-            embed=make_embed(
-                title=title,
-                description=description,
-                level=level,
-            ),
+            embed=make_embed(title=title, description=description,
+                             level=level),
             mention_author=False,
         )
 
     # =========================================================
-    # UTIL: Cleanup Command Message
+    # UTIL: Cleanup
     # =========================================================
     async def _cleanup(self, ctx: commands.Context):
         try:
@@ -35,70 +53,78 @@ class BanSystem(BaseAdminCog):
             pass
 
     # =========================================================
-    # RESOLVE TARGET (robust)
+    # RESOLVE TARGET
     # =========================================================
     async def resolve_target(self, ctx, user_input):
-        # Already Member
         if isinstance(user_input, discord.Member):
             return user_input
 
-        # Reply support
         if not user_input:
             ref = ctx.message.reference
             if ref and isinstance(ref.resolved, discord.Message):
                 return ref.resolved.author
 
-        # Mention support
         if ctx.message.mentions:
             return ctx.message.mentions[0]
 
-        # ID support
         try:
             user_id = int(user_input)
         except (TypeError, ValueError):
             return None
 
-        # Member (in guild)
-        member = ctx.guild.get_member(user_id)
-        if member:
-            return member
+        guild = ctx.guild
+        if guild:
+            member = guild.get_member(user_id)
+            if member:
+                return member
 
-        # External user
         try:
             return await self.bot.fetch_user(user_id)
         except (discord.NotFound, discord.Forbidden, discord.HTTPException):
             return None
 
     # =========================================================
-    # VALIDATION (hierarchy + safety)
+    # VALIDATION
     # =========================================================
     async def validate_ban(self, ctx, target):
         guild = ctx.guild
         moderator = ctx.author
+
+        if guild is None:
+            return False
+
         bot_member = guild.me
 
-        # Only check hierarchy if member
+        if not isinstance(moderator, discord.Member) or bot_member is None:
+            return False
+
         if not isinstance(target, discord.Member):
             return True
 
         if target == moderator:
-            return await self._reply(ctx, "Invalid Action", "You cannot ban yourself.")
+            return await self._reply(ctx, "Invalid Action",
+                                     "You cannot ban yourself.")
 
         if target == guild.owner:
-            return await self._reply(ctx, "Permission Denied", "Cannot ban server owner.")
+            return await self._reply(ctx, "Permission Denied",
+                                     "Cannot ban server owner.")
 
         if target == bot_member:
-            return await self._reply(ctx, "Invalid Target", "You cannot ban me.")
+            return await self._reply(ctx, "Invalid Target",
+                                     "You cannot ban me.")
 
         if moderator != guild.owner:
             if target.guild_permissions.administrator:
-                return await self._reply(ctx, "Permission Denied", "Cannot ban an administrator.")
+                return await self._reply(ctx, "Permission Denied",
+                                         "Cannot ban an administrator.")
 
             if target.top_role >= moderator.top_role:
-                return await self._reply(ctx, "Hierarchy Error", "Target has equal or higher role.")
+                return await self._reply(ctx, "Hierarchy Error",
+                                         "Target has equal or higher role.")
 
         if bot_member.top_role <= target.top_role:
-            return await self._reply(ctx, "Bot Hierarchy Error", "My role is too low.")
+            return await self._reply(ctx, "Bot Hierarchy Error",
+                                     "My role is too low.")
 
         return True
 
@@ -110,12 +136,17 @@ class BanSystem(BaseAdminCog):
     async def ban(self, ctx: commands.Context, user=None, *, reason=None):
 
         guild = ctx.guild
+        if guild is None:
+            return
+
         moderator = ctx.author
-        bot_member = guild.me # type: ignore
+        bot_member = guild.me
+
+        if bot_member is None:
+            return
 
         reason = reason or "No reason provided"
 
-        # Permission check
         if not bot_member.guild_permissions.ban_members:
             return await self._reply(
                 ctx,
@@ -123,7 +154,6 @@ class BanSystem(BaseAdminCog):
                 "I do not have permission to ban members.",
             )
 
-        # Resolve target
         target = await self.resolve_target(ctx, user)
         if not target:
             return await self._reply(
@@ -132,26 +162,23 @@ class BanSystem(BaseAdminCog):
                 "Usage: ban <user | id | reply> [reason]",
             )
 
-        # Validate
         valid = await self.validate_ban(ctx, target)
         if valid is not True:
             return
 
-        # DM notification (safe)
         if isinstance(target, discord.Member):
             try:
                 await ModNotifier.notify_ban(
                     member=target,
-                    guild_name=guild.name, # type: ignore
+                    guild_name=guild.name,
                     moderator=moderator, # type: ignore
                     reason=reason,
                 )
-            except Exception as e:
-                print(f"[Ban Notify Failed] {e}")
+            except Exception:
+                pass
 
-        # Execute ban
         try:
-            await guild.ban( # type: ignore
+            await guild.ban(
                 target,
                 reason=f"{reason} | Banned by {moderator}",
                 delete_message_seconds=0,
@@ -169,20 +196,15 @@ class BanSystem(BaseAdminCog):
                 f"HTTP Error: {e}",
             )
 
-        # Success response
-        try:
-            await self._reply(
-                ctx,
-                "User Banned",
-                f"{EMOJIS['ban']} {target}\n\n{EMOJIS['arrow_point']} Reason: {reason}",
-            )
-        except Exception as e:
-            print(f"[Reply Failed] {e}")
+        await self._reply(
+            ctx,
+            "User Banned",
+            f"{EMOJIS['ban']} {target}\n\n{EMOJIS['arrow_point']} Reason: {reason}",
+        )
 
-        # Logging
         try:
             await send_mod_log(
-                guild=guild, # type: ignore
+                guild=guild,
                 category="BAN",
                 title="User Banned",
                 description=f"{target} was banned.",
@@ -191,8 +213,8 @@ class BanSystem(BaseAdminCog):
                 target=target,
                 extra_fields={"Reason": reason},
             )
-        except Exception as e:
-            print(f"[Log Failed] {e}")
+        except Exception:
+            pass
 
         await self._cleanup(ctx)
 
@@ -204,6 +226,9 @@ class BanSystem(BaseAdminCog):
     async def unban(self, ctx: commands.Context, user=None, *, reason=None):
 
         guild = ctx.guild
+        if guild is None:
+            return
+
         moderator = ctx.author
         reason = reason or "No reason provided"
 
@@ -224,7 +249,7 @@ class BanSystem(BaseAdminCog):
             )
 
         try:
-            ban_entry = await guild.fetch_ban(discord.Object(id=user_id)) # type: ignore
+            ban_entry = await guild.fetch_ban(discord.Object(id=user_id))
         except discord.NotFound:
             return await self._reply(
                 ctx,
@@ -239,9 +264,8 @@ class BanSystem(BaseAdminCog):
                 "Failed to fetch ban entry.",
             )
 
-        # Execute unban
         try:
-            await guild.unban( # type: ignore
+            await guild.unban(
                 ban_entry.user,
                 reason=f"{reason} | Unbanned by {moderator}",
             )
@@ -258,21 +282,16 @@ class BanSystem(BaseAdminCog):
                 "An error occurred while unbanning.",
             )
 
-        # Success
-        try:
-            await self._reply(
-                ctx,
-                "User Unbanned",
-                f"{EMOJIS['success']} {ban_entry.user}\n\n{EMOJIS['arrow_point']} Reason: {reason}",
-                level="SUCCESS",
-            )
-        except Exception as e:
-            print(f"[Reply Failed] {e}")
+        await self._reply(
+            ctx,
+            "User Unbanned",
+            f"{EMOJIS['success']} {ban_entry.user}\n\n{EMOJIS['arrow_point']} Reason: {reason}",
+            level="SUCCESS",
+        )
 
-        # Logging
         try:
             await send_mod_log(
-                guild=guild, # type: ignore
+                guild=guild,
                 category="BAN",
                 title="User Unbanned",
                 description=f"{ban_entry.user} was unbanned.",
@@ -281,14 +300,11 @@ class BanSystem(BaseAdminCog):
                 target=ban_entry.user,
                 extra_fields={"Reason": reason},
             )
-        except Exception as e:
-            print(f"[Log Failed] {e}")
+        except Exception:
+            pass
 
         await self._cleanup(ctx)
 
 
-# =========================================================
-# SETUP
-# =========================================================
 async def setup(bot: commands.Bot):
     await bot.add_cog(BanSystem(bot))

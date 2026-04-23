@@ -17,9 +17,34 @@ class Purge(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    # =====================================================
+    # PERMISSION OVERRIDE
+    # =====================================================
+    async def cog_check(self, ctx: commands.Context) -> bool:
+        if ctx.guild is None:
+            return True
+
+        if not isinstance(ctx.author, discord.Member):
+            return False
+
+        # Owner
+        if ctx.author.id == ctx.guild.owner_id:
+            return True
+
+        perms = ctx.author.guild_permissions
+
+        # Allow admin OR manage messages
+        if perms.administrator or perms.manage_messages:
+            return True
+
+        # fallback → bot admin roles
+        return await super().cog_check(ctx)
+
+    # =====================================================
+    # COMMAND
+    # =====================================================
     @commands.command(name="purge")
     @commands.guild_only()
-    @commands.has_permissions(manage_messages=True)
     @commands.cooldown(1, 10, commands.BucketType.user)
     @commands.max_concurrency(1, per=commands.BucketType.guild, wait=False)
     async def purge(self, ctx: commands.Context, *args):
@@ -229,8 +254,8 @@ class Purge(BaseAdminCog):
                     "Deleted Count": deleted,
                 },
             )
-        except Exception as e:
-            print(f"[Purge Log Failed] {e}")
+        except Exception:
+            pass
 
         await asyncio.sleep(5)
 

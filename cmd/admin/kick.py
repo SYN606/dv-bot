@@ -11,20 +11,33 @@ class KickSystem(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # =========================================================
+    async def cog_check(self, ctx: commands.Context) -> bool:
+        if ctx.guild is None:
+            return True
+
+        if not isinstance(ctx.author, discord.Member):
+            return False
+
+        # Owner bypass
+        if ctx.author.id == ctx.guild.owner_id:
+            return True
+
+        perms = ctx.author.guild_permissions
+
+        if perms.administrator or perms.kick_members:
+            return True
+
+        return await super().cog_check(ctx)
+
     # UTIL: Reply Wrapper
-    # =========================================================
     async def _reply(self, ctx, title, description, level="ERROR"):
         return await ctx.reply(
             embed=make_embed(title=title, description=description, level=level),
             mention_author=False,
         )
 
-    # =========================================================
-    # UTIL: Resolve Member (robust)
-    # =========================================================
+    # UTIL: Resolve Member
     async def resolve_member(self, ctx, user_input):
-        # Direct member
         if isinstance(user_input, discord.Member):
             return user_input
 
@@ -34,11 +47,11 @@ class KickSystem(BaseAdminCog):
             if ref and isinstance(ref.resolved, discord.Message):
                 return ctx.guild.get_member(ref.resolved.author.id)
 
-        # Mention support
+        # Mention
         if ctx.message.mentions:
             return ctx.message.mentions[0]
 
-        # ID support
+        # ID
         try:
             user_id = int(user_input)
         except (TypeError, ValueError):
@@ -46,15 +59,12 @@ class KickSystem(BaseAdminCog):
 
         return ctx.guild.get_member(user_id)
 
-    # =========================================================
-    # VALIDATION (clean + reusable)
-    # =========================================================
+    # VALIDATION
     async def validate_target(self, ctx, member: discord.Member):
         guild = ctx.guild
         moderator = ctx.author
         bot_member = guild.me
 
-        # Self / owner / bot checks
         if member == moderator:
             return "You cannot kick yourself."
 
@@ -64,11 +74,9 @@ class KickSystem(BaseAdminCog):
         if member == bot_member:
             return "You cannot kick me."
 
-        # Bot permission
         if not bot_member.guild_permissions.kick_members:
             return "I do not have permission to kick members."
 
-        # Moderator hierarchy
         if moderator != guild.owner:
             if member.guild_permissions.administrator:
                 return "You cannot kick another administrator."
@@ -76,14 +84,13 @@ class KickSystem(BaseAdminCog):
             if member.top_role >= moderator.top_role:
                 return "You cannot kick someone with equal or higher role."
 
-        # Bot hierarchy
         if bot_member.top_role <= member.top_role:
             return "I cannot manage this member due to role hierarchy."
 
         return None
 
     # =========================================================
-    # KICK COMMAND
+    # COMMAND
     # =========================================================
     @commands.command(name="kick")
     @commands.guild_only()
@@ -99,9 +106,7 @@ class KickSystem(BaseAdminCog):
 
         reason = reason or "No reason provided"
 
-        # =====================================================
-        # Resolve member
-        # =====================================================
+        # Resolve
         member = await self.resolve_member(ctx, member)
 
         if not isinstance(member, discord.Member):
@@ -111,29 +116,23 @@ class KickSystem(BaseAdminCog):
                 "Usage: kick <member | id | reply> [reason]",
             )
 
-        # =====================================================
         # Validate
-        # =====================================================
         error = await self.validate_target(ctx, member)
         if error:
             return await self._reply(ctx, "Permission Denied", error)
 
-        # =====================================================
-        # DM Notification 
-        # =====================================================
+        # Notify
         try:
             await ModNotifier.notify_kick(
                 member=member,
-                guild_name=guild.name, # type: ignore
-                moderator=moderator, # type: ignore
+                guild_name=guild.name,  # type: ignore
+                moderator=moderator,  # type: ignore
                 reason=reason,
             )
-        except Exception as e:
-            print(f"[Kick Notify Failed] {e}")
+        except Exception:
+            pass
 
-        # =====================================================
-        # Execute Kick
-        # =====================================================
+        # Execute
         try:
             await member.kick(reason=f"{reason} | Kicked by {moderator}")
         except discord.Forbidden:
@@ -149,9 +148,7 @@ class KickSystem(BaseAdminCog):
                 f"HTTP Error: {e}",
             )
 
-        # =====================================================
         # Response
-        # =====================================================
         await self._reply(
             ctx,
             "User Kicked",
@@ -159,12 +156,10 @@ class KickSystem(BaseAdminCog):
             level="WARNING",
         )
 
-        # =====================================================
         # Logging
-        # =====================================================
         try:
             await send_mod_log(
-                guild=guild, # type: ignore
+                guild=guild,  # type: ignore
                 category="KICK",
                 title="User Kicked",
                 description=f"{member} was kicked.",
@@ -173,11 +168,12 @@ class KickSystem(BaseAdminCog):
                 target=member,
                 extra_fields={"Reason": reason},
             )
-        except Exception as e:
-            print(f"[Log Failed] {e}")
+        except Exception:
+            pass
 
-    # =========================================================
-    # SETUP
-    # =========================================================
+
+# =========================================================
+# SETUP
+# =========================================================
 async def setup(bot: commands.Bot):
     await bot.add_cog(KickSystem(bot))

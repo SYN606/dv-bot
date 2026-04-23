@@ -4,7 +4,9 @@ from discord.ext import commands
 from db.db_helpers.admin_roles import get_admin_roles
 
 
-# region CORE CHECK
+# =====================================================
+# CORE CHECK
+# =====================================================
 async def _member_is_bot_admin(member: discord.Member) -> bool:
     """
     Core permission resolver.
@@ -12,29 +14,44 @@ async def _member_is_bot_admin(member: discord.Member) -> bool:
     Priority:
     1. Guild owner
     2. Discord administrator permission
-    3. Custom bot-admin role
+    3. Moderation permissions (kick / ban / timeout)
+    4. Custom bot-admin roles
     """
 
-    # Guild owner
+    # 1. Guild owner
     if member.guild.owner_id == member.id:
         return True
 
-    # Discord administrator permission
-    if member.guild_permissions.administrator:
+    perms = member.guild_permissions
+
+    # 2. Discord administrator
+    if perms.administrator:
         return True
 
-    # Custom bot-admin roles
-    admin_role_ids = set(await get_admin_roles(member.guild.id))
-    member_role_ids = {role.id for role in member.roles}
+    # 3. Moderation permissions
+    if (perms.kick_members or perms.ban_members
+            or perms.moderate_members  # timeout permission
+        ):
+        return True
 
-    return bool(admin_role_ids & member_role_ids)
+    # 4. Custom bot-admin roles
+    try:
+        admin_role_ids = set(await get_admin_roles(member.guild.id))
+        member_role_ids = {role.id for role in member.roles}
+
+        if admin_role_ids & member_role_ids:
+            return True
+
+    except Exception:
+        # Fail-safe: don't break command flow if DB fails
+        pass
+
+    return False
 
 
-# endregion
-
-# region SLASH COMMANDS
-
-
+# =====================================================
+# SLASH COMMAND CHECK
+# =====================================================
 async def is_bot_admin(interaction: discord.Interaction) -> bool:
     """
     Slash-command bot admin permission check.
@@ -44,17 +61,20 @@ async def is_bot_admin(interaction: discord.Interaction) -> bool:
         return False
 
     member = interaction.guild.get_member(interaction.user.id)
+
+    # Fallback: interaction.user might already be Member
+    if member is None and isinstance(interaction.user, discord.Member):
+        member = interaction.user
+
     if member is None:
         return False
 
     return await _member_is_bot_admin(member)
 
 
-# endregion
-
-# region PREFIX / HYBRID COMMANDS
-
-
+# =====================================================
+# PREFIX / HYBRID COMMAND CHECK
+# =====================================================
 async def is_bot_admin_ctx(ctx: commands.Context) -> bool:
     """
     Prefix / hybrid command bot admin permission check.
@@ -67,6 +87,3 @@ async def is_bot_admin_ctx(ctx: commands.Context) -> bool:
         return False
 
     return await _member_is_bot_admin(ctx.author)
-
-
-# endregion

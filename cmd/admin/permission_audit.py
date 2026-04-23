@@ -24,11 +24,53 @@ class PermissionAudit(BaseAdminCog):
         self.bot = bot
 
     # =====================================================
-    # SERVER SCAN (NO SPAM VERSION)
+    # INTERNAL ANALYZER
+    # =====================================================
+    def _analyze_member(self, member: discord.Member):
+
+        perms = member.guild_permissions
+
+        dangerous = []
+        severity_score = 0
+
+        for key, (label, severity) in DANGEROUS_PERMS.items():
+            if getattr(perms, key, False):
+                dangerous.append(label)
+                severity_score += severity
+
+        if not dangerous:
+            return None
+
+        role_sources = []
+        direct = []
+
+        for key in DANGEROUS_PERMS:
+            if getattr(perms, key, False):
+                found = False
+
+                for role in member.roles:
+                    if getattr(role.permissions, key, False):
+                        role_sources.append(role.name)
+                        found = True
+
+                if not found:
+                    direct.append(key)
+
+        return {
+            "member": member,
+            "perms": dangerous,
+            "severity": severity_score,
+            "roles": list(set(role_sources)),
+            "direct": bool(direct),
+        }
+
+    # =====================================================
+    # SERVER SCAN
     # =====================================================
     @app_commands.command(
         name="perm-scan",
-        description="Scan the server for dangerous permissions.")
+        description="Scan server for dangerous permissions",
+    )
     async def perm_scan(self, interaction: discord.Interaction):
 
         guild = interaction.guild
@@ -43,116 +85,87 @@ class PermissionAudit(BaseAdminCog):
             if member.bot:
                 continue
 
-            perms = member.guild_permissions
-
-            dangerous = [(label, severity)
-                         for key, (label, severity) in DANGEROUS_PERMS.items()
-                         if getattr(perms, key, False)]
-
-            if dangerous:
-                severity_score = sum(s for _, s in dangerous)
-
-                roles_with_perms = [
-                    role.name for role in member.roles
-                    if not role.is_default() and any(
-                        getattr(role.permissions, key, False)
-                        for key in DANGEROUS_PERMS)
-                ]
-
-                flagged.append({
-                    "member": member,
-                    "perms": [d[0] for d in dangerous],
-                    "severity": severity_score,
-                    "roles": roles_with_perms,
-                })
+            data = self._analyze_member(member)
+            if data:
+                flagged.append(data)
 
         if not flagged:
             return await interaction.followup.send(
                 embed=make_embed(
                     title="Permission Scan Complete",
-                    description="No dangerous permissions found.",
+                    description="No dangerous permissions detected.",
                     level="SUCCESS",
                 ),
                 ephemeral=True,
             )
 
-        # =====================================================
         # SORT BY RISK
-        # =====================================================
-        flagged.sort(key=lambda x: -x["severity"])
+        flagged.sort(
+            key=lambda x: (-x["severity"], x["member"].top_role.position))
 
-        # =====================================================
-        # BUILD SINGLE REPORT (NO SPAM)
-        # =====================================================
+        # BUILD REPORT
         lines = []
-
-        for entry in flagged[:25]:  # limit output
+        for entry in flagged[:25]:
             member = entry["member"]
-            roles = entry["roles"]
             perms = entry["perms"]
+            roles = entry["roles"]
 
             role_text = ", ".join(roles) if roles else "Direct Permission"
 
-            lines.append(f"**{member}**\n"
-                         f"Roles: {role_text}\n" + ", ".join(perms))
+            severity_icon = "🔴" if entry["severity"] >= 5 else "🟠"
+
+            lines.append(f"{severity_icon} **{member}**\n"
+                         f"Roles: {role_text}\n"
+                         f"{', '.join(perms)}")
 
         description = "\n\n".join(lines)
 
         if len(flagged) > 25:
             description += f"\n\n...and {len(flagged) - 25} more users."
 
-        # =====================================================
         # SUMMARY
-        # =====================================================
-        high_risk = sum(1 for x in flagged if x["severity"] >= 5)
+        high = sum(1 for x in flagged if x["severity"] >= 5)
+        medium = sum(1 for x in flagged if 3 <= x["severity"] < 5)
 
         embed = make_embed(
             title="Permission Scan Report",
             description=description,
             level="WARNING",
-            footer=f"Flagged: {len(flagged)} • High Risk: {high_risk}",
+            footer=f"Total: {len(flagged)} • High: {high} • Medium: {medium}",
         )
 
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     # =====================================================
-    # SINGLE USER CHECK (IMPROVED)
+    # SINGLE USER CHECK
     # =====================================================
     @app_commands.command(
         name="perm-check",
-        description="Audit dangerous permissions of a member.")
+        description="Audit a member's dangerous permissions",
+    )
     async def perm_check(self, interaction: discord.Interaction,
                          member: discord.Member):
 
-        perms = member.guild_permissions
+        data = self._analyze_member(member)
 
-        dangerous = [
-            label for key, (label, _) in DANGEROUS_PERMS.items()
-            if getattr(perms, key, False)
-        ]
-
-        roles_with_perms = [
-            role.name for role in member.roles
-            if not role.is_default() and any(
-                getattr(role.permissions, key, False)
-                for key in DANGEROUS_PERMS)
-        ]
-
-        if not dangerous:
+        if not data:
             embed = make_embed(
                 title="Permission Inspection",
                 description=f"**{member}** has no dangerous permissions.",
                 level="SUCCESS",
             )
-        else:
-            embed = make_embed(
-                title="Permission Inspection",
-                description=(
-                    f"**{member}**\n"
-                    f"Roles: {', '.join(roles_with_perms) or 'Direct'}\n\n" +
-                    "\n".join(f"• {p}" for p in dangerous)),
-                level="WARNING",
-            )
+            return await interaction.response.send_message(embed=embed,
+                                                           ephemeral=True)
+
+        severity_icon = "🔴" if data["severity"] >= 5 else "🟠"
+
+        embed = make_embed(
+            title="Permission Inspection",
+            description=(f"{severity_icon} **{member}**\n\n"
+                         f"Roles: {', '.join(data['roles']) or 'Direct'}\n\n" +
+                         "\n".join(f"• {p}" for p in data["perms"])),
+            level="WARNING",
+        )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 

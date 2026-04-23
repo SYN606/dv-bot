@@ -52,6 +52,25 @@ class TimeoutAdmin(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    async def cog_check(self, ctx: commands.Context) -> bool:
+        if ctx.guild is None:
+            return True
+
+        if not isinstance(ctx.author, discord.Member):
+            return False
+
+        # Owner bypass
+        if ctx.author.id == ctx.guild.owner_id:
+            return True
+
+        perms = ctx.author.guild_permissions
+
+        if perms.moderate_members:
+            return True
+
+        return await super().cog_check(ctx)
+
+    # MEMBER RESOLUTION
     async def resolve_member(self, ctx, member_input) -> discord.Member | None:
         if isinstance(member_input, discord.Member):
             return member_input
@@ -75,19 +94,21 @@ class TimeoutAdmin(BaseAdminCog):
         except Exception:
             pass
 
-    # =========================================================
     # TIMEOUT
-    # =========================================================
     @commands.hybrid_command(name="timeout", description="Timeout a member")
-    @app_commands.describe(member="User to timeout",
-                           duration="Example: 10m, 2h, 1d",
-                           reason="Reason for timeout")
-    async def timeout_member(self,
-                             ctx: commands.Context,
-                             member: str | None = None,
-                             duration: str = DEFAULT_DURATION,
-                             *,
-                             reason: str = "No reason provided"):
+    @app_commands.describe(
+        member="User to timeout",
+        duration="Example: 10m, 2h, 1d",
+        reason="Reason for timeout",
+    )
+    async def timeout_member(
+        self,
+        ctx: commands.Context,
+        member: str | None = None,
+        duration: str = DEFAULT_DURATION,
+        *,
+        reason: str = "No reason provided",
+    ):
 
         if ctx.interaction is None:
             await self._cleanup(ctx)
@@ -109,25 +130,28 @@ class TimeoutAdmin(BaseAdminCog):
             return
 
         if target == moderator:
-            await ctx.send(
-                embed=make_embed(title="Invalid Action",
-                                 description="You cannot timeout yourself.",
-                                 level="ERROR"))
+            await ctx.send(embed=make_embed(
+                title="Invalid Action",
+                description="You cannot timeout yourself.",
+                level="ERROR",
+            ))
             return
 
         if not guild.me.guild_permissions.moderate_members:
-            await ctx.send(
-                embed=make_embed(title="Missing Permissions",
-                                 description="I cannot timeout members.",
-                                 level="ERROR"))
+            await ctx.send(embed=make_embed(
+                title="Missing Permissions",
+                description="I cannot timeout members.",
+                level="ERROR",
+            ))
             return
 
         seconds = parse_duration(duration)
         if seconds <= 0 or seconds > MAX_TIMEOUT_SECONDS:
-            await ctx.send(
-                embed=make_embed(title="Invalid Duration",
-                                 description="Use valid duration (max 28d).",
-                                 level="ERROR"))
+            await ctx.send(embed=make_embed(
+                title="Invalid Duration",
+                description="Use valid duration (max 28d).",
+                level="ERROR",
+            ))
             return
 
         until = discord.utils.utcnow() + timedelta(seconds=seconds)
@@ -135,15 +159,16 @@ class TimeoutAdmin(BaseAdminCog):
         try:
             await target.timeout(until, reason=reason)
         except discord.Forbidden:
-            await ctx.send(
-                embed=make_embed(title="Permission Error",
-                                 description="Cannot timeout this user.",
-                                 level="ERROR"))
+            await ctx.send(embed=make_embed(
+                title="Permission Error",
+                description="Cannot timeout this user.",
+                level="ERROR",
+            ))
             return
 
         human_time = format_duration(seconds)
 
-        # Notify
+        # Notify user
         try:
             await ModNotifier.notify_timeout(
                 member=target,
@@ -180,15 +205,15 @@ class TimeoutAdmin(BaseAdminCog):
         except Exception as e:
             print(f"[Timeout Log Failed] {e}")
 
-    # =========================================================
     # UNTIMEOUT
-    # =========================================================
     @commands.hybrid_command(name="untimeout", description="Remove timeout")
-    async def untimeout_member(self,
-                               ctx: commands.Context,
-                               member: str | None = None,
-                               *,
-                               reason: str = "No reason provided"):
+    async def untimeout_member(
+        self,
+        ctx: commands.Context,
+        member: str | None = None,
+        *,
+        reason: str = "No reason provided",
+    ):
 
         if ctx.interaction is None:
             await self._cleanup(ctx)
@@ -202,26 +227,29 @@ class TimeoutAdmin(BaseAdminCog):
         target = await self.resolve_member(ctx, member)
 
         if not target:
-            await ctx.send(
-                embed=make_embed(title="Invalid Member",
-                                 description="Provide a valid user.",
-                                 level="ERROR"))
+            await ctx.send(embed=make_embed(
+                title="Invalid Member",
+                description="Provide a valid user.",
+                level="ERROR",
+            ))
             return
 
         if not target.is_timed_out():
-            await ctx.send(
-                embed=make_embed(title="Not Timed Out",
-                                 description="User is not timed out.",
-                                 level="ERROR"))
+            await ctx.send(embed=make_embed(
+                title="Not Timed Out",
+                description="User is not timed out.",
+                level="ERROR",
+            ))
             return
 
         try:
             await target.timeout(None, reason=reason)
         except discord.Forbidden:
-            await ctx.send(
-                embed=make_embed(title="Permission Error",
-                                 description="Cannot remove timeout.",
-                                 level="ERROR"))
+            await ctx.send(embed=make_embed(
+                title="Permission Error",
+                description="Cannot remove timeout.",
+                level="ERROR",
+            ))
             return
 
         await ctx.send(embed=make_embed(
