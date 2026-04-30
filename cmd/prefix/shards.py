@@ -2,6 +2,8 @@ import time
 import discord
 from discord.ext import commands
 from typing import Optional
+import os
+import psutil  # optional but recommended
 
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
@@ -9,6 +11,9 @@ from utils.core.emojis import EMOJIS
 START_TIME = time.time()
 
 
+# =====================================================
+# UPTIME
+# =====================================================
 def format_uptime(seconds: int) -> str:
     days, seconds = divmod(seconds, 86400)
     hours, seconds = divmod(seconds, 3600)
@@ -28,45 +33,28 @@ def format_uptime(seconds: int) -> str:
 
 
 # =====================================================
-# BUTTON VIEW
+# VIEW (INTERACTIVE PANEL)
 # =====================================================
 class ShardView(discord.ui.View):
 
-    def __init__(self, bot: commands.Bot):
-        super().__init__(timeout=30)
-        self.bot = bot
+    def __init__(self, cog, author_id: int):
+        super().__init__(timeout=60)
+        self.cog = cog
+        self.author_id = author_id
 
-    @discord.ui.button(
-        label="Check Ping",
-        style=discord.ButtonStyle.primary,
-        emoji="🏓",
-    )
-    async def ping_button(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button,
-    ):
-        latency = round(self.bot.latency * 1000)
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message(
+                "You cannot use this.",
+                ephemeral=True,
+            )
+            return False
+        return True
 
-        if latency < 150:
-            status = EMOJIS["green_dot"]
-        elif latency < 300:
-            status = EMOJIS["warning"]
-        else:
-            status = EMOJIS["fail"]
-
-        embed = make_embed(
-            title="Ping Status",
-            description=f"{status} Current latency: `{latency} ms`",
-            level="INFO",
-            use_emoji=True,
-        )
-
-        if interaction.response.is_done():
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        else:
-            await interaction.response.send_message(embed=embed,
-                                                    ephemeral=True)
+    @discord.ui.button(label="🔄 Refresh", style=discord.ButtonStyle.secondary)
+    async def refresh(self, interaction: discord.Interaction, _):
+        embed = await self.cog.build_embed(interaction.guild)
+        await interaction.response.edit_message(embed=embed, view=self)
 
 
 # =====================================================
@@ -78,19 +66,9 @@ class Shards(commands.Cog):
         self.bot = bot
 
     # =====================================================
-    # COMMAND (GUILD ONLY)
+    # BUILD EMBED (REUSABLE)
     # =====================================================
-    @commands.command(
-        name="shards",
-        help="View bot diagnostics and shard status",
-    )
-    @commands.guild_only()
-    @commands.cooldown(1, 10, commands.BucketType.user)
-    async def shards(self, ctx: commands.Context) -> None:
-
-        guild = ctx.guild
-        if guild is None:
-            return
+    async def build_embed(self, guild: discord.Guild):
 
         now = int(time.time())
         uptime = format_uptime(int(now - START_TIME))
@@ -99,76 +77,88 @@ class Shards(commands.Cog):
         guilds = len(self.bot.guilds)
         users = sum((g.member_count or 0) for g in self.bot.guilds)
 
-        shard_id = guild.shard_id or 0
-        shard_count = self.bot.shard_count or 1
+        shard_id = getattr(guild, "shard_id", 0) or 0
+        shard_count = getattr(self.bot, "shard_count", 1) or 1
 
+        # =================================================
+        # SHARD LATENCY
+        # =================================================
         shard_latency: Optional[int] = None
-        if self.bot.shard_count:
-            shard = self.bot.get_shard(shard_id) # type: ignore
+        try:
+            shard = self.bot.get_shard(shard_id)  # type: ignore
             if shard:
                 shard_latency = round(shard.latency * 1000)
+        except Exception:
+            pass
 
+        # =================================================
         # STATUS
-        if latency < 150:
+        # =================================================
+        if latency < 120:
             status = EMOJIS["green_dot"]
-        elif latency < 300:
+        elif latency < 250:
             status = EMOJIS["warning"]
         else:
             status = EMOJIS["fail"]
 
+        # =================================================
+        # SYSTEM STATS (OPTIONAL)
+        # =================================================
+        ram = "N/A"
+        cpu = "N/A"
+
+        try:
+            process = psutil.Process(os.getpid())
+            ram = f"{process.memory_info().rss / 1024**2:.1f} MB"
+            cpu = f"{psutil.cpu_percent()}%"
+        except Exception:
+            pass
+
+        # =================================================
+        # FIELDS
+        # =================================================
         fields = [
-            (f"{EMOJIS['ping']} Latency", f"{status} `{latency} ms`", True),
-            (f"{EMOJIS['success']} Uptime", f"`{uptime}`", True),
-            (f"{EMOJIS['announcement']} Guilds", f"`{guilds}`", True),
-            (f"{EMOJIS['message']} Users", f"`{users}`", True),
-            (f"{EMOJIS['developer']} Shards",
-             f"`{shard_id + 1}/{shard_count}`", True),
+            ("Latency", f"{status} `{latency} ms`", True),
+            ("Uptime", f"`{uptime}`", True),
+            ("Guilds", f"`{guilds}`", True),
+            ("Users", f"`{users}`", True),
+            ("Shard", f"`{shard_id + 1}/{shard_count}`", True),
+            ("RAM", f"`{ram}`", True),
+            ("CPU", f"`{cpu}`", True),
         ]
 
         if shard_latency is not None:
-            fields.append((
-                f"{EMOJIS['curved_arrow']} Shard Latency",
-                f"`{shard_latency} ms`",
-                True,
-            ))
+            fields.append(("Shard Latency", f"`{shard_latency} ms`", True))
 
-        embed = make_embed(
-            title="Jarvis • System Diagnostics",
-            description=("All systems operational. No anomalies detected.\n\n"
-                         "*At your service.*"),
+        # =================================================
+        # DYNAMIC BOT NAME
+        # =================================================
+        bot_name = self.bot.user.name if self.bot.user else "Bot"
+
+        return make_embed(
+            title=f"{bot_name} • System Diagnostics",
+            description="All systems operational.\n\n*Realtime diagnostics panel.*",
             level="INFO",
             fields=fields,
-            footer="Developed by SYN",
+            footer=f"{bot_name} Monitoring",
             use_emoji=True,
         )
 
-        view = ShardView(self.bot)
-
-        await ctx.send(embed=embed, view=view)
-
     # =====================================================
-    # COOLDOWN HANDLER
+    # COMMAND (NO RATE LIMIT)
     # =====================================================
-    @shards.error
-    async def shards_error(self, ctx: commands.Context,
-                           error: commands.CommandError):
+    @commands.command(name="shards")
+    @commands.guild_only()
+    async def shards(self, ctx: commands.Context):
 
-        if isinstance(error, commands.CommandOnCooldown):
+        try:
+            embed = await self.build_embed(ctx.guild) # type: ignore
+            view = ShardView(self, ctx.author.id)
 
-            embed = make_embed(
-                title="Cooldown Active",
-                description=
-                (f"{EMOJIS['warning']} Slow down.\n"
-                 f"{EMOJIS['arrow_point']} Try again in `{round(error.retry_after, 1)}s`"
-                 ),
-                level="WARNING",
-                use_emoji=True,
-            )
+            await ctx.send(embed=embed, view=view)
 
-            try:
-                await ctx.send(embed=embed)
-            except discord.HTTPException:
-                pass
+        except Exception as e:
+            await ctx.send(f"Error: `{e}`")
 
 
 # =====================================================

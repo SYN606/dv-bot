@@ -8,7 +8,9 @@ from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 
 
+# =====================================================
 # VIEW
+# =====================================================
 class ServerInfoView(discord.ui.View):
 
     def __init__(self, guild: discord.Guild, author_id: int):
@@ -16,10 +18,8 @@ class ServerInfoView(discord.ui.View):
         self.guild = guild
         self.author_id = author_id
         self._cooldowns: dict[int, float] = {}
+        self.COOLDOWN = 5
 
-        self.COOLDOWN = 5  # seconds
-
-    # INTERACTION GUARD
     async def interaction_check(self,
                                 interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author_id:
@@ -34,8 +34,7 @@ class ServerInfoView(discord.ui.View):
             return False
         return True
 
-    # COOLDOWN CHECK
-    def _check_cooldown(self, user_id: int) -> float:
+    def _check_cd(self, user_id: int) -> float:
         now = time.time()
         last = self._cooldowns.get(user_id, 0)
 
@@ -46,23 +45,16 @@ class ServerInfoView(discord.ui.View):
         self._cooldowns[user_id] = now
         return 0
 
-    # BUTTON
     @discord.ui.button(
         label="More Stats",
         style=discord.ButtonStyle.secondary,
         emoji="📊",
     )
-    async def more_stats(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button,
-    ):
-        guild = self.guild
+    async def more_stats(self, interaction: discord.Interaction, _):
 
-        # cooldown
-        remaining = self._check_cooldown(interaction.user.id)
+        remaining = self._check_cd(interaction.user.id)
         if remaining > 0:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Cooldown Active",
                     description=f"Try again in `{round(remaining,1)}s`",
@@ -70,10 +62,12 @@ class ServerInfoView(discord.ui.View):
                 ),
                 ephemeral=True,
             )
+            return
 
-        # optimized counts
+        guild = self.guild
+
         humans = sum(1 for m in guild.members if not m.bot)
-        bots = guild.member_count - humans if guild.member_count else 0
+        bots = (guild.member_count or 0) - humans
 
         text_channels = len(guild.text_channels)
         voice_channels = len(guild.voice_channels)
@@ -90,20 +84,24 @@ class ServerInfoView(discord.ui.View):
             level="INFO",
         )
 
-        if interaction.response.is_done():
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        else:
-            await interaction.response.send_message(embed=embed,
-                                                    ephemeral=True)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True # type: ignore
 
 
+# =====================================================
 # COG
+# =====================================================
 class ServerInfo(BaseAdminCog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    # =====================================================
     # PERMISSIONS
+    # =====================================================
     async def cog_check(self, ctx: commands.Context) -> bool:
 
         guild = ctx.guild
@@ -121,7 +119,9 @@ class ServerInfo(BaseAdminCog):
 
         return await is_bot_admin_ctx(ctx)
 
+    # =====================================================
     # COMMAND
+    # =====================================================
     @commands.command(
         name="server-info",
         aliases=["si"],
@@ -164,7 +164,9 @@ class ServerInfo(BaseAdminCog):
 
         await ctx.send(embed=embed, view=view)
 
-    # COOLDOWN HANDLER
+    # =====================================================
+    # ERROR HANDLER
+    # =====================================================
     @server_info.error
     async def server_info_error(self, ctx, error):
 
@@ -186,6 +188,8 @@ class ServerInfo(BaseAdminCog):
             ))
 
 
+# =====================================================
 # SETUP
+# =====================================================
 async def setup(bot: commands.Bot):
     await bot.add_cog(ServerInfo(bot))

@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from utils.permissions.base_admin import BaseAdminCog
+from utils.permissions.check_perms import is_bot_admin, is_bot_admin_ctx
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import send_mod_log
@@ -25,11 +26,30 @@ class Tempban(BaseAdminCog):
         self.bot = bot
 
     # =========================================================
-    # SLASH GROUP
+    # EXTEND BASE PERMISSION (OWNER + ADMIN + BOT ADMIN)
+    # =========================================================
+    async def cog_check(self, ctx: commands.Context) -> bool:
+        allowed = await super().cog_check(ctx)
+        if allowed:
+            return True
+
+        return await is_bot_admin_ctx(ctx)
+
+    async def interaction_check(self,
+                                interaction: discord.Interaction) -> bool:
+        allowed = await super().interaction_check(interaction)
+        if allowed:
+            return True
+
+        return await is_bot_admin(interaction)
+
+    # =========================================================
+    # SLASH GROUP (UI LEVEL RESTRICTION)
     # =========================================================
     tempban_group = app_commands.Group(
         name="tempban-config",
         description="Manage tempban system",
+        default_permissions=discord.Permissions(administrator=True),
     )
 
     # ------------------ SET ROLE ------------------
@@ -42,7 +62,7 @@ class Tempban(BaseAdminCog):
             return
 
         if role >= guild.me.top_role:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Hierarchy Error",
                     description="Role must be below bot role.",
@@ -50,6 +70,7 @@ class Tempban(BaseAdminCog):
                 ),
                 ephemeral=True,
             )
+            return
 
         await set_tempban_role(guild.id, role.id)
 
@@ -75,7 +96,7 @@ class Tempban(BaseAdminCog):
         records = await get_active_tempbans(guild.id)
 
         if not records:
-            return await interaction.followup.send(
+            await interaction.followup.send(
                 embed=make_embed(
                     title="Active Tempbans",
                     description=f"{EMOJIS['success']} No active tempbans.",
@@ -83,6 +104,7 @@ class Tempban(BaseAdminCog):
                 ),
                 ephemeral=True,
             )
+            return
 
         entries = []
         for row in records:
@@ -112,28 +134,31 @@ class Tempban(BaseAdminCog):
 
         user = await self.resolve_member(ctx, user)
         if not user:
-            return await ctx.reply(embed=make_embed(
+            await ctx.reply(embed=make_embed(
                 title="Invalid User",
                 description="Provide a valid user.",
                 level="ERROR",
             ))
+            return
 
         role_id = await get_tempban_role(ctx.guild.id)
         tempban_role = ctx.guild.get_role(role_id)
 
         if not tempban_role:
-            return await ctx.reply(embed=make_embed(
+            await ctx.reply(embed=make_embed(
                 title="Not Configured",
                 description="Tempban role not set.",
                 level="WARNING",
             ))
+            return
 
         if tempban_role >= ctx.guild.me.top_role:
-            return await ctx.reply(embed=make_embed(
+            await ctx.reply(embed=make_embed(
                 title="Hierarchy Error",
                 description="Tempban role must be below bot role.",
                 level="ERROR",
             ))
+            return
 
         config = await get_verification_config(ctx.guild.id)
         verified_role = ctx.guild.get_role(
@@ -148,18 +173,20 @@ class Tempban(BaseAdminCog):
                                  reason=reason or "Tempban applied")
 
         except discord.Forbidden:
-            return await ctx.reply(embed=make_embed(
+            await ctx.reply(embed=make_embed(
                 title="Permission Error",
                 description="I cannot manage roles due to hierarchy.",
                 level="ERROR",
             ))
+            return
 
         except discord.HTTPException:
-            return await ctx.reply(embed=make_embed(
+            await ctx.reply(embed=make_embed(
                 title="Discord Error",
                 description="Failed to update roles.",
                 level="ERROR",
             ))
+            return
 
         await add_tempban(
             guild_id=ctx.guild.id,
@@ -179,13 +206,12 @@ class Tempban(BaseAdminCog):
             guild=ctx.guild,
             category="MODERATION",
             title="User Tempbanned",
-            description=(
-                f"👤 User: {user.mention} (`{user.id}`)\n"
-                f"🛡 Moderator: {ctx.author.mention}\n"
-                f"📥 Tempban Role: {tempban_role.mention}\n"
-                f"📤 Removed Verified Role: "
-                f"{verified_role.mention if verified_role else 'None'}\n"
-                f"📝 Reason: {reason or 'No reason'}"),
+            description=
+            (f"User: {user.mention} (`{user.id}`)\n"
+             f"Moderator: {ctx.author.mention}\n"
+             f"Tempban Role: {tempban_role.mention}\n"
+             f"Removed Verified Role: {verified_role.mention if verified_role else 'None'}\n"
+             f"Reason: {reason or 'No reason'}"),
             level="WARNING",
             actor=ctx.author,
         )
@@ -198,18 +224,20 @@ class Tempban(BaseAdminCog):
 
         user = await self.resolve_member(ctx, user)
         if not user:
-            return await ctx.reply(embed=make_embed(
+            await ctx.reply(embed=make_embed(
                 title="Invalid User",
                 description="Provide a valid user.",
                 level="ERROR",
             ))
+            return
 
         if not await is_tempbanned(ctx.guild.id, user.id):
-            return await ctx.reply(embed=make_embed(
+            await ctx.reply(embed=make_embed(
                 title="Not Tempbanned",
                 description=f"{user.mention} is not tempbanned.",
                 level="WARNING",
             ))
+            return
 
         role_id = await get_tempban_role(ctx.guild.id)
         tempban_role = ctx.guild.get_role(role_id)
@@ -226,18 +254,20 @@ class Tempban(BaseAdminCog):
                                          reason="Tempban removed")
 
         except discord.Forbidden:
-            return await ctx.reply(embed=make_embed(
+            await ctx.reply(embed=make_embed(
                 title="Permission Error",
                 description="I cannot update roles due to hierarchy.",
                 level="ERROR",
             ))
+            return
 
         except discord.HTTPException:
-            return await ctx.reply(embed=make_embed(
+            await ctx.reply(embed=make_embed(
                 title="Discord Error",
                 description="Failed to update roles.",
                 level="ERROR",
             ))
+            return
 
         await remove_tempban(
             guild_id=ctx.guild.id,
@@ -255,9 +285,9 @@ class Tempban(BaseAdminCog):
             guild=ctx.guild,
             category="MODERATION",
             title="Tempban Removed",
-            description=(f"👤 User: {user.mention} (`{user.id}`)\n"
-                         f"🛡 Moderator: {ctx.author.mention}\n"
-                         f"📝 Reason: {reason or 'No reason'}"),
+            description=(f"User: {user.mention} (`{user.id}`)\n"
+                         f"Moderator: {ctx.author.mention}\n"
+                         f"Reason: {reason or 'No reason'}"),
             level="SUCCESS",
             actor=ctx.author,
         )
@@ -291,6 +321,5 @@ async def setup(bot: commands.Bot):
     cog = Tempban(bot)
     await bot.add_cog(cog)
 
-    # SAFE REGISTER (NO DUPLICATE CRASH)
     if not bot.tree.get_command("tempban-config"):
         bot.tree.add_command(cog.tempban_group)

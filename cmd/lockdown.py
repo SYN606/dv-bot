@@ -22,6 +22,9 @@ SUPPORTED_CHANNELS = (
 )
 
 
+# =========================================================
+# DURATION PARSER
+# =========================================================
 def parse_duration(duration: str | None) -> int | None:
 
     if not duration:
@@ -50,9 +53,26 @@ class Lockdown(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # ─────────────────────────
+    # =========================================================
+    # OPTIONAL EXTRA HARDENING (does NOT break base)
+    # =========================================================
+    async def cog_check(self, ctx: commands.Context) -> bool:
+        # Use base logic first
+        allowed = await super().cog_check(ctx)
+        if not allowed:
+            return False
+
+        # Extra rule (optional):
+        # Example: block usage in threads if you ever want stricter control
+        # if isinstance(ctx.channel, discord.Thread):
+        #     await ctx.reply("Cannot use lockdown in threads.")
+        #     return False
+
+        return True
+
+    # =========================================================
     # LOCK CHANNEL
-    # ─────────────────────────
+    # =========================================================
     @commands.command(name="lock")
     async def lock(self, ctx: commands.Context, duration: str | None = None):
 
@@ -72,7 +92,6 @@ class Lockdown(BaseAdminCog):
             return
 
         if await is_channel_locked(guild.id, channel.id):
-
             await ctx.send(embed=make_embed(
                 title="Already Locked",
                 description=
@@ -82,18 +101,14 @@ class Lockdown(BaseAdminCog):
             return
 
         roles_to_lock = await get_security_roles(guild)
-
         snapshots = []
 
         for role_id in roles_to_lock:
-
             role = guild.get_role(role_id)
-
             if role is None:
                 continue
 
             overwrite = channel.overwrites_for(role)
-
             snapshots.append((role_id, overwrite.send_messages))
 
         await set_permission_snapshots(
@@ -104,9 +119,7 @@ class Lockdown(BaseAdminCog):
         )
 
         for role_id in roles_to_lock:
-
             role = guild.get_role(role_id)
-
             if role is None:
                 continue
 
@@ -135,9 +148,9 @@ class Lockdown(BaseAdminCog):
 
             asyncio.create_task(unlock_later())
 
-    # ─────────────────────────
+    # =========================================================
     # UNLOCK CHANNEL
-    # ─────────────────────────
+    # =========================================================
     @commands.command(name="unlock")
     async def unlock(self, ctx: commands.Context):
 
@@ -149,16 +162,15 @@ class Lockdown(BaseAdminCog):
         success = await self._unlock_channel(channel)
 
         if not success:
-
             await ctx.send(embed=make_embed(
                 title="Channel Not Locked",
                 description=f"{EMOJIS['warning']} Channel not locked.",
                 level="WARNING",
             ))
 
-    # ─────────────────────────
+    # =========================================================
     # SERVER LOCKDOWN
-    # ─────────────────────────
+    # =========================================================
     @commands.command(name="lockdown")
     async def lockdown(self, ctx: commands.Context):
 
@@ -168,7 +180,6 @@ class Lockdown(BaseAdminCog):
             return
 
         roles_to_lock = await get_security_roles(guild)
-
         locked = 0
 
         for channel in guild.channels:
@@ -182,14 +193,11 @@ class Lockdown(BaseAdminCog):
             snapshots = []
 
             for role_id in roles_to_lock:
-
                 role = guild.get_role(role_id)
-
                 if role is None:
                     continue
 
                 overwrite = channel.overwrites_for(role)
-
                 snapshots.append((role_id, overwrite.send_messages))
 
             await set_permission_snapshots(
@@ -200,9 +208,7 @@ class Lockdown(BaseAdminCog):
             )
 
             for role_id in roles_to_lock:
-
                 role = guild.get_role(role_id)
-
                 if role is None:
                     continue
 
@@ -219,9 +225,9 @@ class Lockdown(BaseAdminCog):
             level="WARNING",
         ))
 
-    # ─────────────────────────
+    # =========================================================
     # UNLOCK ENGINE
-    # ─────────────────────────
+    # =========================================================
     async def _unlock_channel(self, channel) -> bool:
 
         guild = channel.guild
@@ -235,14 +241,11 @@ class Lockdown(BaseAdminCog):
             return False
 
         for snapshot in snapshots:
-
             role = guild.get_role(snapshot.target_id)
-
             if role is None:
                 continue
 
             overwrite = channel.overwrites_for(role)
-
             overwrite.send_messages = snapshot.send_messages
 
             await channel.set_permissions(

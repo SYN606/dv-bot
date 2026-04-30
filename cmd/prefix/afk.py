@@ -4,6 +4,7 @@ from typing import Optional
 
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
+from utils.permissions.check_perms import is_bot_admin_ctx
 from db.db_helpers.afk import set_afk, remove_afk
 
 AFK_PREFIX = "[AFK] "
@@ -14,9 +15,7 @@ class AFK(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # =====================================================
     # SET AFK
-    # =====================================================
     @commands.command(name="afk", help="Mark yourself as AFK")
     async def afk(
         self,
@@ -33,7 +32,6 @@ class AFK(commands.Cog):
 
         await set_afk(ctx.guild.id, ctx.author.id, reason)
 
-        # ctx.author is guaranteed Member in guild
         author = ctx.author
         if isinstance(author, discord.Member):
             try:
@@ -59,10 +57,9 @@ class AFK(commands.Cog):
         except Exception:
             pass
 
-    # =====================================================
-    # AFK RESET
-    # =====================================================
-    @commands.command(name="afkreset", help="Reset AFK status")
+    #  AFK reset system
+    @commands.command(name="afkreset", help="Reset AFK of a user")
+    @commands.guild_only()
     async def afkreset(
         self,
         ctx: commands.Context,
@@ -72,40 +69,49 @@ class AFK(commands.Cog):
         if ctx.guild is None:
             return
 
-        # SELF RESET
+        # must provide target
         if member is None:
-            if not isinstance(ctx.author, discord.Member):
-                return
-            member = ctx.author
-            is_self = True
-        else:
-            is_self = member.id == ctx.author.id
+            await ctx.send(embed=make_embed(
+                title="Invalid Usage",
+                description="Usage: `afkreset @user`",
+                level="WARNING",
+            ))
+            return
 
-        # PERMISSION CHECK
-        if not is_self:
-            if not isinstance(ctx.author, discord.Member):
-                return
+        # prevent self usage
+        if member.id == ctx.author.id:
+            await ctx.send(embed=make_embed(
+                title="Invalid Action",
+                description="You cannot reset your own AFK manually.",
+                level="WARNING",
+            ))
+            return
 
-            if not ctx.author.guild_permissions.manage_guild:
-                embed = make_embed(
-                    title="Permission Denied",
-                    description=
-                    f"{EMOJIS['error']} You can't reset others' AFK.",
-                    level="ERROR",
-                )
-                await ctx.send(embed=embed)
-                return
+        # permission check
+        if not isinstance(ctx.author, discord.Member):
+            return
+
+        is_allowed = (ctx.author.id == ctx.guild.owner_id
+                      or ctx.author.guild_permissions.administrator
+                      or await is_bot_admin_ctx(ctx))
+
+        if not is_allowed:
+            await ctx.send(embed=make_embed(
+                title="Permission Denied",
+                description="You cannot reset others' AFK.",
+                level="ERROR",
+            ))
+            return
 
         # REMOVE AFK
         removed = await remove_afk(ctx.guild.id, member.id)
 
         if not removed:
-            embed = make_embed(
+            await ctx.send(embed=make_embed(
                 title="AFK Reset",
                 description=f"{EMOJIS['warning']} {member.mention} is not AFK.",
                 level="WARNING",
-            )
-            await ctx.send(embed=embed)
+            ))
             return
 
         # RESTORE NICKNAME
@@ -118,23 +124,17 @@ class AFK(commands.Cog):
             pass
 
         # RESPONSE
-        if is_self:
-            desc = f"{EMOJIS['okay']} Your AFK has been cleared."
-        else:
-            desc = (f"{EMOJIS['okay']} Cleared AFK for {member.mention}\n"
-                    f"{EMOJIS['arrow_point']} Reason was: {removed.reason}")
-
         embed = make_embed(
             title="AFK Reset",
-            description=desc,
+            description=(
+                f"{EMOJIS['success']} Cleared AFK for {member.mention}\n"
+                f"{EMOJIS['arrow_point']} Reason was: {removed.reason}"),
             level="SUCCESS",
         )
 
         await ctx.send(embed=embed)
 
 
-# =====================================================
 # SETUP
-# =====================================================
 async def setup(bot: commands.Bot):
     await bot.add_cog(AFK(bot))
