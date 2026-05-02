@@ -5,25 +5,21 @@ import time
 from utils.core.embeds import make_embed
 from utils.views.base_media_view import BaseMediaView
 
-# CACHE 
 _banner_cache: dict[int, tuple[float, str | None]] = {}
-CACHE_TTL = 30  # seconds
+CACHE_TTL = 30
+
+_global_last_used: dict[int, float] = {}
+
+GLOBAL_COOLDOWN_DEFAULT = 3
+GUILD_COOLDOWNS: dict[int, float] = {}
 
 
 class Banner(commands.Cog):
-    """
-    Prefix banner command.
-    Displays a user's banner (global or server-specific).
-    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # COMMAND
-    @commands.command(
-        name="banner",
-        help="Display the banner of a user",
-    )
+    @commands.command(name="banner", help="Display banner of a user or server")
     @commands.dynamic_cooldown(
         lambda ctx: None if isinstance(ctx.author, discord.Member) and ctx.
         author.guild_permissions.manage_guild else commands.Cooldown(1, 5),
@@ -32,18 +28,67 @@ class Banner(commands.Cog):
     async def banner(
         self,
         ctx: commands.Context,
+        arg: str | None = None,
         user: discord.Member | discord.User | None = None,
     ) -> None:
 
+        guild_id = ctx.guild.id if ctx.guild else 0
+
+        # per-guild cooldown
+        guild_cd = GUILD_COOLDOWNS.get(guild_id, GLOBAL_COOLDOWN_DEFAULT)
+
+        now = time.time()
+        last_used = _global_last_used.get(guild_id, 0)
+        remaining = guild_cd - (now - last_used)
+
+        if remaining > 0:
+            await ctx.reply(
+                embed=make_embed(
+                    title="Cooldown",
+                    description=
+                    f"Please wait **{remaining:.1f}s** before using this command again.",
+                    level="WARNING",
+                ),
+                mention_author=False,
+            )
+            return
+
+        _global_last_used[guild_id] = now
+
+        # server banner
+        if arg and arg.lower() == "server":
+
+            if not ctx.guild or not ctx.guild.banner:
+                await ctx.reply(
+                    embed=make_embed(
+                        title="No Banner",
+                        description="This server does not have a banner set.",
+                        level="WARNING",
+                    ),
+                    mention_author=False,
+                )
+                return
+
+            embed = make_embed(
+                title="Server Banner",
+                description=ctx.guild.name,
+                level="INFO",
+            )
+            embed.set_image(url=ctx.guild.banner.url)
+
+            await ctx.send(embed=embed)
+
+            try:
+                await ctx.message.delete()
+            except discord.HTTPException:
+                pass
+            return
+
         target = user or ctx.author
 
-        # RESOLVE MEMBER 
-        member: discord.Member | None = None
-        if ctx.guild:
-            member = ctx.guild.get_member(target.id)
+        member = ctx.guild.get_member(target.id) if ctx.guild else None
 
-        # GLOBAL BANNER 
-        now = time.time()
+        # cached global banner
         cache = _banner_cache.get(target.id)
 
         if cache and now - cache[0] < CACHE_TTL:
@@ -57,23 +102,20 @@ class Banner(commands.Cog):
             except discord.HTTPException:
                 global_banner = None
 
-        # SERVER BANNER
         server_banner = (member.guild_banner.url
                          if member and member.guild_banner else None)
 
-        # NO BANNER
         if not global_banner and not server_banner:
-
-            await ctx.send(embed=make_embed(
-                title="User Banner",
-                description=
-                f"{target.mention} does not have a banner configured.",
-                level="WARNING",
-                footer=f"Requested by {ctx.author}",
-            ))
+            await ctx.reply(
+                embed=make_embed(
+                    title="No Banner",
+                    description=f"{target.mention} does not have a banner.",
+                    level="WARNING",
+                ),
+                mention_author=False,
+            )
             return
 
-        # TOGGLE VIEW
         if global_banner and server_banner:
 
             view = BaseMediaView(
@@ -88,42 +130,39 @@ class Banner(commands.Cog):
             )
 
             embed = view.build_embed()
-
             message = await ctx.send(embed=embed, view=view)
             view.message = message
 
-        # SINGLE BANNER
         else:
-
             banner_url = server_banner or global_banner
 
             embed = make_embed(
                 title="User Banner",
-                description=f"Banner for {target.mention}.",
+                description=target.mention,
                 level="INFO",
-                footer=f"Requested by {ctx.author}",
             )
-
             embed.set_image(url=banner_url)
 
             await ctx.send(embed=embed)
 
-        # CLEANUP
         try:
             await ctx.message.delete()
         except discord.HTTPException:
             pass
 
-    # ERROR HANDLER
     @banner.error
     async def banner_error(self, ctx: commands.Context, error):
 
         if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(embed=make_embed(
-                title="Cooldown Active",
-                description=f"Try again in **{round(error.retry_after, 1)}s**.",
-                level="WARNING",
-            ))
+            await ctx.reply(
+                embed=make_embed(
+                    title="Cooldown",
+                    description=
+                    f"Try again in **{round(error.retry_after, 1)}s**.",
+                    level="WARNING",
+                ),
+                mention_author=False,
+            )
 
 
 async def setup(bot: commands.Bot):
