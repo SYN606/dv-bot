@@ -3,38 +3,34 @@ import discord
 from discord.ext import commands
 from typing import Optional
 import os
-import psutil  # optional but recommended
+import psutil
 
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 
 START_TIME = time.time()
+_global_last_used: dict[int, float] = {}
+GLOBAL_COOLDOWN = 3
 
 
-# =====================================================
-# UPTIME
-# =====================================================
 def format_uptime(seconds: int) -> str:
-    days, seconds = divmod(seconds, 86400)
-    hours, seconds = divmod(seconds, 3600)
-    minutes, seconds = divmod(seconds, 60)
+    d, seconds = divmod(seconds, 86400)
+    h, seconds = divmod(seconds, 3600)
+    m, s = divmod(seconds, 60)
 
     parts = []
-    if days:
-        parts.append(f"{days}d")
-    if hours:
-        parts.append(f"{hours}h")
-    if minutes:
-        parts.append(f"{minutes}m")
-    if seconds:
-        parts.append(f"{seconds}s")
+    if d:
+        parts.append(f"{d}d")
+    if h:
+        parts.append(f"{h}h")
+    if m:
+        parts.append(f"{m}m")
+    if s:
+        parts.append(f"{s}s")
 
     return " ".join(parts) or "0s"
 
 
-# =====================================================
-# VIEW (INTERACTIVE PANEL)
-# =====================================================
 class ShardView(discord.ui.View):
 
     def __init__(self, cog, author_id: int):
@@ -42,32 +38,33 @@ class ShardView(discord.ui.View):
         self.cog = cog
         self.author_id = author_id
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+    async def interaction_check(self,
+                                interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author_id:
             await interaction.response.send_message(
-                "You cannot use this.",
+                embed=make_embed(
+                    title="Access Denied",
+                    description="You cannot use this.",
+                    level="ERROR",
+                ),
                 ephemeral=True,
             )
             return False
         return True
 
-    @discord.ui.button(label="🔄 Refresh", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Refresh",
+                       emoji="🔄",
+                       style=discord.ButtonStyle.secondary)
     async def refresh(self, interaction: discord.Interaction, _):
         embed = await self.cog.build_embed(interaction.guild)
         await interaction.response.edit_message(embed=embed, view=self)
 
 
-# =====================================================
-# COG
-# =====================================================
 class Shards(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # =====================================================
-    # BUILD EMBED (REUSABLE)
-    # =====================================================
     async def build_embed(self, guild: discord.Guild):
 
         now = int(time.time())
@@ -80,9 +77,6 @@ class Shards(commands.Cog):
         shard_id = getattr(guild, "shard_id", 0) or 0
         shard_count = getattr(self.bot, "shard_count", 1) or 1
 
-        # =================================================
-        # SHARD LATENCY
-        # =================================================
         shard_latency: Optional[int] = None
         try:
             shard = self.bot.get_shard(shard_id)  # type: ignore
@@ -91,9 +85,6 @@ class Shards(commands.Cog):
         except Exception:
             pass
 
-        # =================================================
-        # STATUS
-        # =================================================
         if latency < 120:
             status = EMOJIS["green_dot"]
         elif latency < 250:
@@ -101,9 +92,6 @@ class Shards(commands.Cog):
         else:
             status = EMOJIS["fail"]
 
-        # =================================================
-        # SYSTEM STATS (OPTIONAL)
-        # =================================================
         ram = "N/A"
         cpu = "N/A"
 
@@ -114,9 +102,6 @@ class Shards(commands.Cog):
         except Exception:
             pass
 
-        # =================================================
-        # FIELDS
-        # =================================================
         fields = [
             ("Latency", f"{status} `{latency} ms`", True),
             ("Uptime", f"`{uptime}`", True),
@@ -130,39 +115,73 @@ class Shards(commands.Cog):
         if shard_latency is not None:
             fields.append(("Shard Latency", f"`{shard_latency} ms`", True))
 
-        # =================================================
-        # DYNAMIC BOT NAME
-        # =================================================
         bot_name = self.bot.user.name if self.bot.user else "Bot"
 
         return make_embed(
-            title=f"{bot_name} • System Diagnostics",
-            description="All systems operational.\n\n*Realtime diagnostics panel.*",
+            title=f"{bot_name} • System",
+            description="Live diagnostics",
             level="INFO",
             fields=fields,
             footer=f"{bot_name} Monitoring",
             use_emoji=True,
         )
 
-    # =====================================================
-    # COMMAND (NO RATE LIMIT)
-    # =====================================================
     @commands.command(name="shards")
     @commands.guild_only()
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def shards(self, ctx: commands.Context):
 
+        guild_id = ctx.guild.id if ctx.guild else 0
+        now = time.time()
+        last = _global_last_used.get(guild_id, 0)
+        remaining = GLOBAL_COOLDOWN - (now - last)
+
+        if remaining > 0:
+            await ctx.reply(
+                embed=make_embed(
+                    title="Cooldown",
+                    description=f"Try again in `{remaining:.1f}s`",
+                    level="WARNING",
+                ),
+                mention_author=False,
+            )
+            return
+
+        _global_last_used[guild_id] = now
+
+        embed = await self.build_embed(ctx.guild)  # type: ignore
+        view = ShardView(self, ctx.author.id)
+
+        await ctx.send(embed=embed, view=view)
+
         try:
-            embed = await self.build_embed(ctx.guild) # type: ignore
-            view = ShardView(self, ctx.author.id)
+            await ctx.message.delete()
+        except discord.HTTPException:
+            pass
 
-            await ctx.send(embed=embed, view=view)
+    @shards.error
+    async def shards_error(self, ctx, error):
 
-        except Exception as e:
-            await ctx.send(f"Error: `{e}`")
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.reply(
+                embed=make_embed(
+                    title="Cooldown",
+                    description=f"Try again in `{round(error.retry_after,1)}s`",
+                    level="WARNING",
+                ),
+                mention_author=False,
+            )
+
+        else:
+            await ctx.reply(
+                embed=make_embed(
+                    title="Error",
+                    description="Something went wrong.",
+                    level="ERROR",
+                ),
+                mention_author=False,
+            )
 
 
-# =====================================================
-# SETUP
-# =====================================================
 async def setup(bot: commands.Bot):
     await bot.add_cog(Shards(bot))
