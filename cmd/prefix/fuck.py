@@ -2,17 +2,13 @@ import random
 import discord
 from discord.ext import commands
 
-from utils.core.embeds import make_embed
+from db.static_db.roasts import ROASTS
 
-# =========================================================
-# MEMORY (ESCALATION)
-# =========================================================
-USER_ROAST_LEVEL: dict[int, int] = {}
+# MEMORY
+USER_STATE: dict[int, dict] = {}
 
 
-# =========================================================
-# ANALYZE MESSAGES
-# =========================================================
+# ANALYZE USER
 async def analyze_user(ctx: commands.Context, target: discord.Member):
 
     messages = []
@@ -27,7 +23,6 @@ async def analyze_user(ctx: commands.Context, target: discord.Member):
 
     text = " ".join(messages)
 
-    # simple signals
     if len(text) < 30:
         return "dry"
 
@@ -43,67 +38,69 @@ async def analyze_user(ctx: commands.Context, target: discord.Member):
     return "default"
 
 
-# =========================================================
-# ROAST GENERATOR
-# =========================================================
-def generate_roast(level: int, context: str) -> str:
+def pick_style(user_id: int) -> str:
+    state = USER_STATE.setdefault(user_id, {"count": 0})
 
-    openings = [
-        "sach bolu?",
-        "real talk—",
-        "ek baat clear hai—",
+    state["count"] += 1
+    count = state["count"]
+
+    if count > 6:
+        return "dark"
+    if count > 3:
+        return "sarcastic"
+    return "normal"
+
+
+def weighted_choice(items):
+    if isinstance(items, list):
+        return random.choice(items)
+
+    expanded = []
+    for k, w in items.items():
+        expanded.extend([k] * w)
+    return random.choice(expanded)
+
+
+def build_roast(level: int, context: str, style: str) -> str:
+
+    openings = ROASTS["openings"]
+
+    base_pool = list(ROASTS.get(context, ROASTS["default"]))
+
+    if style == "sarcastic":
+        base_pool.extend([
+            "haan haan perfect chal raha hai sab.",
+            "bilkul sahi direction me ja raha hai tu.",
+        ])
+
+    elif style == "dark":
+        base_pool.extend([
+            "thoda late realise karega ye sab.",
+            "ye pattern break hone wala nahi lag raha.",
+        ])
+
+    if level < 2:
+        kill_pool = ROASTS["kill_low"]
+    elif level < 5:
+        kill_pool = ROASTS["kill_mid"]
+    else:
+        kill_pool = ROASTS["kill_high"]
+
+    if level >= 4 and random.random() < 0.12:
+        return weighted_choice(ROASTS["fatal"])
+
+    parts = [
+        weighted_choice(openings),
+        weighted_choice(base_pool),
+        weighted_choice(kill_pool),
     ]
 
-    # context-based hits
-    if context == "repetitive":
-        hit = [
-            "same baat baar baar bol raha hai… kuch naya try kar.",
-            "lagta hai ek hi line pe atka hua hai.",
-        ]
-    elif context == "npc":
-        hit = [
-            "har message same template jaisa lagta hai.",
-            "reaction zyada, content kam.",
-        ]
-    elif context == "overthink":
-        hit = [
-            "itna likhne ke baad bhi point clear nahi hai.",
-            "zyada bol raha hai… par keh kuch nahi raha.",
-        ]
-    elif context == "dry":
-        hit = [
-            "itna silent rehta hai ki presence doubtful lagti hai.",
-            "conversation me hai ya nahi, samajh nahi aata.",
-        ]
-    else:
-        hit = [
-            "effort dikh raha hai… par direction missing hai.",
-            "confidence hai… par base weak lag raha hai.",
-        ]
+    if random.random() < 0.25:
+        parts.pop(random.randrange(len(parts)))
 
-    # escalation kill
-    if level < 2:
-        kill = [
-            "bas wahi issue hai.",
-            "samajh aa raha hoga.",
-        ]
-    elif level < 5:
-        kill = [
-            "aur wahi sabko dikh raha hai.",
-            "aur wahi repeat ho raha hai.",
-        ]
-    else:
-        kill = [
-            "aur honestly, change bhi nahi ho raha.",
-            "aur ye expected hi tha.",
-        ]
-
-    return f"{random.choice(openings)}\n\n{random.choice(hit)}\n\n{random.choice(kill)}"
+    return " ".join(parts)
 
 
-# =========================================================
-# COG
-# =========================================================
 class Savage(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
@@ -133,22 +130,35 @@ class Savage(commands.Cog):
         author = ctx.author
         target = await self.get_target(ctx, member)
 
-        # escalation
-        level = USER_ROAST_LEVEL.get(author.id, 0)
-        USER_ROAST_LEVEL[author.id] = level + 1
+        user_state = USER_STATE.setdefault(author.id, {"count": 0})
+        level = user_state["count"]
 
-        # analyze messages
+        if target.id == ctx.guild.owner_id and target != author:
+            roast = "galat jagah try kiya. " + build_roast(
+                level, "default", "dark")
+            await ctx.reply(roast, mention_author=False)
+            return
+
+        if (isinstance(target, discord.Member)
+                and target.guild_permissions.administrator
+                and not author.guild_permissions.administrator):
+            roast = "admin pe try kiya. ulta pad gaya. " + build_roast(
+                level, "default", "dark")
+            await ctx.reply(roast, mention_author=False)
+            return
+
+        if (target != author and isinstance(target, discord.Member)
+                and target.top_role > author.top_role):
+            roast = "reverse ho gaya. " + build_roast(level, "default", "dark")
+            await ctx.reply(roast, mention_author=False)
+            return
+
         context = await analyze_user(ctx, target)
+        style = pick_style(author.id)
 
-        roast = generate_roast(level, context)
+        roast = build_roast(level, context, style)
 
-        embed = make_embed(
-            title="Savage Mode",
-            description=roast,
-            level="WARNING",
-        )
-
-        await ctx.send(embed=embed)
+        await ctx.reply(roast, mention_author=False)
 
 
 async def setup(bot: commands.Bot):

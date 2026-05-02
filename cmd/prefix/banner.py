@@ -5,9 +5,7 @@ import time
 from utils.core.embeds import make_embed
 from utils.views.base_media_view import BaseMediaView
 
-# =====================================================
 # CACHE 
-# =====================================================
 _banner_cache: dict[int, tuple[float, str | None]] = {}
 CACHE_TTL = 30  # seconds
 
@@ -21,9 +19,7 @@ class Banner(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # =====================================================
     # COMMAND
-    # =====================================================
     @commands.command(
         name="banner",
         help="Display the banner of a user",
@@ -41,16 +37,12 @@ class Banner(commands.Cog):
 
         target = user or ctx.author
 
-        # =====================================================
-        # RESOLVE MEMBER (SAFE)
-        # =====================================================
+        # RESOLVE MEMBER 
         member: discord.Member | None = None
         if ctx.guild:
             member = ctx.guild.get_member(target.id)
 
-        # =====================================================
-        # GLOBAL BANNER (WITH CACHE)
-        # =====================================================
+        # GLOBAL BANNER 
         now = time.time()
         cache = _banner_cache.get(target.id)
 
@@ -65,15 +57,11 @@ class Banner(commands.Cog):
             except discord.HTTPException:
                 global_banner = None
 
-        # =====================================================
         # SERVER BANNER
-        # =====================================================
         server_banner = (member.guild_banner.url
                          if member and member.guild_banner else None)
 
-        # =====================================================
         # NO BANNER
-        # =====================================================
         if not global_banner and not server_banner:
 
             await ctx.send(embed=make_embed(
@@ -85,9 +73,7 @@ class Banner(commands.Cog):
             ))
             return
 
-        # =====================================================
         # TOGGLE VIEW
-        # =====================================================
         if global_banner and server_banner:
 
             view = BaseMediaView(
@@ -106,9 +92,7 @@ class Banner(commands.Cog):
             message = await ctx.send(embed=embed, view=view)
             view.message = message
 
-        # =====================================================
         # SINGLE BANNER
-        # =====================================================
         else:
 
             banner_url = server_banner or global_banner
@@ -124,17 +108,13 @@ class Banner(commands.Cog):
 
             await ctx.send(embed=embed)
 
-        # =====================================================
         # CLEANUP
-        # =====================================================
         try:
             await ctx.message.delete()
         except discord.HTTPException:
             pass
 
-    # =====================================================
     # ERROR HANDLER
-    # =====================================================
     @banner.error
     async def banner_error(self, ctx: commands.Context, error):
 
