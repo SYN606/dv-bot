@@ -88,7 +88,7 @@ async def handle_afk(message: Message) -> bool:
 
         afk_sections.append(
             f"**{user.display_name}**\n"
-            f"{EMOJIS['arrow_point']} **Reason:** {afk.reason}\n"
+            f"{EMOJIS['arrow_point']} **Reason:** {afk.afk_reason}\n"
             f"{EMOJIS['arrow_point']} **Away Since:** <t:{since_ts}:R>")
 
     # =====================================================

@@ -1,7 +1,8 @@
 import os
-import logging
 import time
 import asyncio
+import logging
+
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -36,10 +37,12 @@ DEV_GUILD_ID = os.getenv("DEV_GUILD_ID")
 
 
 def env_bool(key: str, default: bool) -> bool:
-    val = os.getenv(key)
-    if val is None:
+    value = os.getenv(key)
+
+    if value is None:
         return default
-    return val.lower() in ("true", "1", "yes")
+
+    return value.lower() in ("1", "true", "yes")
 
 
 SYNC_COMMANDS = env_bool("SYNC_COMMANDS", True)
@@ -54,7 +57,7 @@ logging.basicConfig(
     format="[%(levelname)s] %(message)s",
 )
 
-logger = logging.getLogger("bot")
+logger = logging.getLogger("digitalvigil")
 
 if DEBUG_HTTP:
     logging.getLogger("discord.http").setLevel(logging.DEBUG)
@@ -66,159 +69,257 @@ intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
-
 # BOT CLASS
 class DigitalVigilBot(commands.Bot):
-
     def __init__(self) -> None:
         super().__init__(
             command_prefix=dynamic_prefix,
             intents=intents,
             help_command=None,
+            case_insensitive=True,
         )
 
         self.presence_rotator: PresenceRotator | None = None
 
+    # SETUP HOOK
     async def setup_hook(self) -> None:
+
+        logger.info("[STARTUP] Initializing database schema...")
         await init_schema()
         self.tree.interaction_check = command_toggle_check
-
         await self.load_all_extensions()
+        logger.info(f"[STARTUP] Loaded {len(self.extensions)} extensions")
 
-        logger.info(f"Tree commands before sync: {self.tree.get_commands()}")
-
+        # COMMAND SYNC
         if SYNC_COMMANDS:
             try:
+
                 if ENV == "test" and DEV_GUILD_ID:
                     guild = discord.Object(id=int(DEV_GUILD_ID))
-                    logger.info("[DEV MODE] Syncing commands to dev guild...")
+                    logger.info(
+                        "[SYNC] Syncing commands to development guild...")
                     self.tree.copy_global_to(guild=guild)
                     synced = await self.tree.sync(guild=guild)
-                    logger.info(f"[DEV MODE] Synced {len(synced)} commands")
+                    logger.info(f"[SYNC] Synced {len(synced)} guild commands")
                 else:
-                    logger.info("[PROD MODE] Syncing globally...")
+                    logger.info("[SYNC] Syncing global commands...")
                     synced = await self.tree.sync()
-                    logger.info(f"[PROD MODE] Synced {len(synced)} commands")
+                    logger.info(f"[SYNC] Synced {len(synced)} global commands")
             except Exception as exc:
-                logger.error(f"Command sync failed: {exc}")
+                logger.exception(f"[SYNC ERROR] {exc}")
         else:
-            logger.info("Command sync disabled via ENV")
-
+            logger.info("[SYNC] Command sync disabled")
+        # Persistent Views
         self.add_view(VerifyButtonView())
 
+    # EXTENSION LOADER
     async def load_all_extensions(self) -> None:
         base_path = os.path.abspath("cmd")
-
         for root, _, files in os.walk(base_path):
             for file in files:
-                if not file.endswith(".py") or file.startswith("__"):
+                if not file.endswith(".py"):
                     continue
-
-                rel = os.path.relpath(os.path.join(root, file), base_path)
-                rel_path = rel.replace(os.sep, ".").removesuffix(".py")
-                ext = f"cmd.{rel_path}"
-
+                if file.startswith("__"):
+                    continue
+                rel = os.path.relpath(
+                    os.path.join(root, file),
+                    base_path,
+                )
+                rel_path = (rel.replace(os.sep, ".").removesuffix(".py"))
+                extension = f"cmd.{rel_path}"
                 try:
-                    await self.load_extension(ext)
-                    logger.info(f"Loaded extension: {ext}")
-                except Exception as exc:
-                    logger.error(f"Failed to load {ext}: {exc}")
+                    await self.load_extension(extension)
+                    logger.info(f"[EXTENSION] Loaded → {extension}")
 
+                except Exception as exc:
+                    logger.exception(
+                        f"[EXTENSION ERROR] Failed to load {extension}: {exc}")
+
+    # READY
     async def on_ready(self) -> None:
-        logger.info(f"Logged in as {self.user}")
+
+        logger.info(f"[READY] Logged in as {self.user} ({self.user.id})") # type: ignore
 
         try:
             await setup_verification_on_ready(self)
-        except Exception as exc:
-            logger.error(f"Verification startup failed: {exc}")
 
-        # Prevent duplicate rotator start
+        except Exception as exc:
+            logger.exception(f"[VERIFICATION STARTUP ERROR] {exc}")
+
+        # Prevent duplicate startup
         if self.presence_rotator is None:
+
             self.presence_rotator = PresenceRotator(self)
+
             await self.presence_rotator.start()
 
-        logger.info("Bot ready")
+        logger.info("[READY] Bot is fully operational")
 
-    async def on_message(self, message: discord.Message) -> None:
+    # MESSAGE PIPELINE
+    async def on_message(
+        self,
+        message: discord.Message,
+    ) -> None:
 
-        if message.guild is None or message.author.bot:
+        if message.author.bot:
+            return
+
+        if not message.guild:
             return
 
         try:
+
             message.content = normalize_prefix(message.content)
 
-            # MEDIA FILTER FIRST
+            # MEDIA ONLY
             if await enforce_media_only(message):
                 return
 
+            # STICKY
             await handle_sticky(message)
 
+            # BOT MENTION
             if self.user and self.user.mentioned_in(message):
-                await handle_bot_mention(self, message)
+
+                await handle_bot_mention(
+                    self,
+                    message,
+                )
 
         except Exception as exc:
-            logger.error(f"[PIPELINE ERROR] {exc}")
+            logger.exception(f"[PIPELINE ERROR] {exc}")
 
-        # COMMANDS FIRST
+        # COMMANDS
         await self.process_commands(message)
 
-        # AFK AFTER COMMANDS 
+        # AFK AFTER COMMANDS
         try:
             await handle_afk(message)
+
         except Exception as exc:
-            logger.error(f"[AFK ERROR] {exc}")
+            logger.exception(f"[AFK ERROR] {exc}")
+
+    # UNKNOWN COMMANDS + COMMAND ERRORS
+    async def on_command_error(
+        self,
+        ctx: commands.Context,
+        error: commands.CommandError,
+    ) -> None:
+
+        # Original error
+        error = getattr(error, "original", error)
+
+        # COMMAND NOT FOUND
+        if isinstance(error, commands.CommandNotFound):
+            await ctx.send(
+                f"Unknown command. Use `{ctx.clean_prefix}help` to view commands.",
+                # delete_after=6,
+            )
+            return
+
+        # MISSING ARGUMENTS
+        if isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send(
+                f"Missing argument: `{error.param.name}`",
+                # delete_after=8,
+            )
+            return
+
+        # MISSING PERMISSIONS
+        if isinstance(error, commands.MissingPermissions):
+            await ctx.send(
+                "You don't have permission to use this command. || SKILL ISSUE",
+                # delete_after=8,
+            )
+            return
+
+        # BOT MISSING PERMISSIONS
+        if isinstance(
+                error,
+                commands.BotMissingPermissions,
+        ):
+            perms = ", ".join(error.missing_permissions)
+            await ctx.send(
+                f"I am missing permissions: `{perms}`",
+                delete_after=10,
+            )
+            return
+
+        # COOLDOWN
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(
+                f"Slow down. Try again in `{error.retry_after:.1f}s`",
+                delete_after=6,
+            )
+            return
+
+        # CHECK FAILURE
+        if isinstance(error, commands.CheckFailure):
+            return
+
+        # UNHANDLED
+        logger.exception(f"[COMMAND ERROR] {ctx.command}: {error}")
+        try:
+            await ctx.send(
+                "Something went wrong while executing the command.",
+                delete_after=8,
+            )
+        except Exception:
+            pass
+
+    # CLEAN SHUTDOWN
+    async def close(self) -> None:
+        logger.info("[SHUTDOWN] Closing bot...")
+        try:
+            await close_database()
+            logger.info("[SHUTDOWN] Database closed")
+
+        except Exception as exc:
+            logger.exception(f"[SHUTDOWN ERROR] {exc}")
+
+        await super().close()
 
 
 # ENTRYPOINT
 def main() -> None:
 
     while True:
-        bot = DigitalVigilBot()
 
+        bot = DigitalVigilBot()
         try:
             logger.info("[STARTUP] Starting bot...")
-            bot.run(TOKEN)  # type: ignore 
-
+            bot.run(TOKEN)  # type: ignore
             logger.info("[EXIT] Bot stopped normally")
             break
-
         except KeyboardInterrupt:
-            logger.info("\n[SHUTDOWN] CTRL+C detected — shutting down...")
-
+            logger.info("\n[SHUTDOWN] CTRL+C detected")
             try:
                 asyncio.run(close_database())
-                logger.info("[SHUTDOWN] Database connection closed")
-            except Exception as e:
-                logger.warning(f"[SHUTDOWN] DB close failed: {e}")
-
+            except Exception:
+                pass
+            logger.info("[EXIT] Shutdown complete")
             break
 
         except discord.HTTPException as exc:
             if exc.status == 429:
-                logger.warning("[RATE LIMIT] Hit 429. Retrying in 60s...")
-                try:
-                    time.sleep(60)
-                except KeyboardInterrupt:
-                    raise
+                logger.warning("[RATE LIMIT] Hit Discord rate limit. "
+                               "Retrying in 60 seconds...")
+                time.sleep(60)
                 continue
-            raise
+
+            logger.exception(f"[HTTP ERROR] {exc}")
+            time.sleep(15)
 
         except Exception as exc:
-            logger.error(f"[CRASH] Bot crashed: {exc}")
-
+            logger.exception(f"[CRASH] Unhandled exception: {exc}")
             try:
                 asyncio.run(close_database())
-                logger.info("[CLEANUP] Database closed after crash")
             except Exception:
                 pass
-
             logger.info("[RESTART] Restarting in 30 seconds...")
-
-            try:
-                time.sleep(30)
-            except KeyboardInterrupt:
-                raise
+            time.sleep(30)
 
 
+# RUN
 if __name__ == "__main__":
     main()

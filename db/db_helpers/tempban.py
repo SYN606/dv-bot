@@ -1,42 +1,55 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import List
+from typing import Optional
 
 from sqlalchemy import select
+from sqlalchemy import update
+from sqlalchemy.dialects.sqlite import insert
+
 from db.engine import AsyncSessionLocal
-from db.models import TempbanConfig, TempbanRecord
+from db.models import TempbanConfig
+from db.models import TempbanRecord
 
 
-# ─────────────────────────────────────
 # CONFIG
-# ─────────────────────────────────────
-async def set_tempban_role(guild_id: int, role_id: int) -> None:
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(TempbanConfig).where(TempbanConfig.guild_id == guild_id))
-        row = result.scalar_one_or_none()
+async def set_tempban_role(
+    guild_id: int,
+    role_id: int,
+) -> None:
 
-        if row:
-            row.role_id = role_id
-        else:
-            session.add(TempbanConfig(
-                guild_id=guild_id,
-                role_id=role_id,
-            ))
+    async with AsyncSessionLocal() as session:
+
+        stmt = insert(TempbanConfig).values(
+            guild_id=guild_id,
+            role_id=role_id,
+        )
+
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[
+                TempbanConfig.guild_id,
+            ],
+            set_={
+                "role_id": role_id,
+            },
+        )
+
+        await session.execute(stmt)
 
         await session.commit()
 
 
-async def get_tempban_role(guild_id: int) -> Optional[int]:
+async def get_tempban_role(guild_id: int, ) -> Optional[int]:
+
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
+
+        return await session.scalar(
             select(TempbanConfig.role_id).where(
                 TempbanConfig.guild_id == guild_id))
-        return result.scalar_one_or_none()
 
 
-# ─────────────────────────────────────
 # TEMPBAN ACTIONS
-# ─────────────────────────────────────
+
+
 async def add_tempban(
     *,
     guild_id: int,
@@ -47,30 +60,31 @@ async def add_tempban(
 ) -> None:
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(TempbanRecord).where(
-                TempbanRecord.guild_id == guild_id,
-                TempbanRecord.user_id == user_id,
-            ))
 
-        record = result.scalar_one_or_none()
+        stmt = insert(TempbanRecord).values(
+            guild_id=guild_id,
+            user_id=user_id,
+            moderator_id=moderator_id,
+            tempban_reason=reason,
+            expires_at=expires_at,
+            active=True,
+        )
 
-        if record:
-            record.moderator_id = moderator_id
-            record.reason = reason
-            record.expires_at = expires_at
-            record.active = True
-            record.created_at = datetime.utcnow()
-        else:
-            session.add(
-                TempbanRecord(
-                    guild_id=guild_id,
-                    user_id=user_id,
-                    moderator_id=moderator_id,
-                    reason=reason,
-                    expires_at=expires_at,
-                    active=True,
-                ))
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[
+                TempbanRecord.guild_id,
+                TempbanRecord.user_id,
+            ],
+            set_={
+                "moderator_id": moderator_id,
+                "tempban_reason": reason,
+                "expires_at": expires_at,
+                "active": True,
+                "updated_at": datetime.utcnow(),
+            },
+        )
+
+        await session.execute(stmt)
 
         await session.commit()
 
@@ -83,45 +97,69 @@ async def remove_tempban(
 ) -> bool:
 
     async with AsyncSessionLocal() as session:
+
         result = await session.execute(
-            select(TempbanRecord).where(
+            update(TempbanRecord).where(
                 TempbanRecord.guild_id == guild_id,
                 TempbanRecord.user_id == user_id,
                 TempbanRecord.active.is_(True),
+            ).values(
+                active=False,
+                moderator_id=moderator_id,
+                updated_at=datetime.utcnow(),
             ))
 
-        record = result.scalar_one_or_none()
-
-        if not record:
-            return False
-
-        record.active = False
         await session.commit()
-        return True
+
+        return result.rowcount > 0 # type: ignore
 
 
-# ─────────────────────────────────────
-# CHECK STATUS
-# ─────────────────────────────────────
-async def is_tempbanned(guild_id: int, user_id: int) -> bool:
+# STATUS CHECKS
+
+
+async def is_tempbanned(
+    guild_id: int,
+    user_id: int,
+) -> bool:
+
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
+
+        return await session.scalar(
             select(TempbanRecord.guild_id).where(
                 TempbanRecord.guild_id == guild_id,
                 TempbanRecord.user_id == user_id,
                 TempbanRecord.active.is_(True),
-            ))
-        return result.first() is not None
+            )) is not None
 
 
-# ─────────────────────────────────────
 # FETCH ACTIVE TEMPBANS
-# ─────────────────────────────────────
-async def get_active_tempbans(guild_id: int) -> List[TempbanRecord]:
+
+
+async def get_active_tempbans(guild_id: int, ) -> List[TempbanRecord]:
+
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
+
+        result = await session.scalars(
             select(TempbanRecord).where(
                 TempbanRecord.guild_id == guild_id,
                 TempbanRecord.active.is_(True),
             ))
-        return result.scalars().all()
+
+        return list(result)
+
+
+# FETCH EXPIRED TEMPBANS
+
+
+async def get_expired_tempbans() -> List[TempbanRecord]:
+
+    async with AsyncSessionLocal() as session:
+
+        result = await session.scalars(
+            select(TempbanRecord).where(
+                TempbanRecord.active.is_(True),
+                TempbanRecord.expires_at.is_not(None),
+                TempbanRecord.expires_at <= datetime.utcnow(),
+            ))
+
+        return list(result)

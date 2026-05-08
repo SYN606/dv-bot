@@ -6,6 +6,7 @@ from utils.core.embeds import make_embed
 from utils.views.base_media_view import BaseMediaView
 
 _banner_cache: dict[int, tuple[float, str | None]] = {}
+
 CACHE_TTL = 30
 
 _global_last_used: dict[int, float] = {}
@@ -34,14 +35,17 @@ class Banner(commands.Cog):
 
         guild_id = ctx.guild.id if ctx.guild else 0
 
-        # per-guild cooldown
+        # resolve cooldown
         guild_cd = GUILD_COOLDOWNS.get(guild_id, GLOBAL_COOLDOWN_DEFAULT)
 
         now = time.time()
+
         last_used = _global_last_used.get(guild_id, 0)
+
         remaining = guild_cd - (now - last_used)
 
         if remaining > 0:
+
             await ctx.reply(
                 embed=make_embed(
                     title="Cooldown",
@@ -59,6 +63,7 @@ class Banner(commands.Cog):
         if arg and arg.lower() == "server":
 
             if not ctx.guild or not ctx.guild.banner:
+
                 await ctx.reply(
                     embed=make_embed(
                         title="No Banner",
@@ -74,38 +79,62 @@ class Banner(commands.Cog):
                 description=ctx.guild.name,
                 level="INFO",
             )
+
             embed.set_image(url=ctx.guild.banner.url)
+
+            embed.set_footer(
+                text=f"Action by: {ctx.author}",
+                icon_url=ctx.author.display_avatar.url,
+            )
 
             await ctx.send(embed=embed)
 
             try:
                 await ctx.message.delete()
+
             except discord.HTTPException:
                 pass
+
             return
 
+        # resolve target
         target = user or ctx.author
 
+        # resolve member
         member = ctx.guild.get_member(target.id) if ctx.guild else None
 
-        # cached global banner
+        # resolve cached banner
         cache = _banner_cache.get(target.id)
 
         if cache and now - cache[0] < CACHE_TTL:
+
             global_banner = cache[1]
+
         else:
+
             try:
+
                 fetched_user = await self.bot.fetch_user(target.id)
+
                 global_banner = (fetched_user.banner.url
                                  if fetched_user.banner else None)
-                _banner_cache[target.id] = (now, global_banner)
+
+                _banner_cache[target.id] = (
+                    now,
+                    global_banner,
+                )
+
             except discord.HTTPException:
+
                 global_banner = None
 
+        # resolve server banner
         server_banner = (member.guild_banner.url
                          if member and member.guild_banner else None)
 
+        # no banners
         if not global_banner and not server_banner:
+
             await ctx.reply(
                 embed=make_embed(
                     title="No Banner",
@@ -114,8 +143,10 @@ class Banner(commands.Cog):
                 ),
                 mention_author=False,
             )
+
             return
 
+        # both banners
         if global_banner and server_banner:
 
             view = BaseMediaView(
@@ -130,10 +161,21 @@ class Banner(commands.Cog):
             )
 
             embed = view.build_embed()
-            message = await ctx.send(embed=embed, view=view)
+
+            embed.set_footer(
+                text=f"Action by: {ctx.author}",
+                icon_url=ctx.author.display_avatar.url,
+            )
+
+            message = await ctx.send(
+                embed=embed,
+                view=view,
+            )
+
             view.message = message
 
         else:
+
             banner_url = server_banner or global_banner
 
             embed = make_embed(
@@ -141,12 +183,20 @@ class Banner(commands.Cog):
                 description=target.mention,
                 level="INFO",
             )
+
             embed.set_image(url=banner_url)
+
+            embed.set_footer(
+                text=f"Action by: {ctx.author}",
+                icon_url=ctx.author.display_avatar.url,
+            )
 
             await ctx.send(embed=embed)
 
+        # cleanup
         try:
             await ctx.message.delete()
+
         except discord.HTTPException:
             pass
 
@@ -154,6 +204,7 @@ class Banner(commands.Cog):
     async def banner_error(self, ctx: commands.Context, error):
 
         if isinstance(error, commands.CommandOnCooldown):
+
             await ctx.reply(
                 embed=make_embed(
                     title="Cooldown",

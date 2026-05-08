@@ -1,116 +1,146 @@
 from typing import Optional
+
+from sqlalchemy import delete
 from sqlalchemy import select
+from sqlalchemy import update
+from sqlalchemy.dialects.sqlite import insert
+
 from db.engine import AsyncSessionLocal
 from db.models import StickyMessage
 
 THRESHOLD = 1
 
 
-async def set_sticky(guild_id: int, channel_id: int, content: str):
+async def set_sticky(
+    guild_id: int,
+    channel_id: int,
+    content: str,
+) -> None:
+
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(StickyMessage).where(
-                StickyMessage.guild_id == guild_id,
-                StickyMessage.channel_id == channel_id,
-            ))
 
-        sticky = result.scalar_one_or_none()
+        stmt = insert(StickyMessage).values(
+            guild_id=guild_id,
+            channel_id=channel_id,
+            sticky_content=content,
+            counter=0,
+            last_message_id=None,
+        )
 
-        if sticky:
-            sticky.content = content
-            sticky.counter = 0
-            sticky.last_message_id = None
-        else:
-            session.add(
-                StickyMessage(
-                    guild_id=guild_id,
-                    channel_id=channel_id,
-                    content=content,
-                    counter=0,
-                    last_message_id=None,
-                ))
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[
+                StickyMessage.guild_id,
+                StickyMessage.channel_id,
+            ],
+            set_={
+                "sticky_content": content,
+                "counter": 0,
+                "last_message_id": None,
+            },
+        )
+
+        await session.execute(stmt)
 
         await session.commit()
 
 
-async def remove_sticky(guild_id: int, channel_id: int) -> bool:
+async def remove_sticky(
+    guild_id: int,
+    channel_id: int,
+) -> bool:
+
     async with AsyncSessionLocal() as session:
+
         result = await session.execute(
-            select(StickyMessage).where(
+            delete(StickyMessage).where(
                 StickyMessage.guild_id == guild_id,
                 StickyMessage.channel_id == channel_id,
             ))
 
-        sticky = result.scalar_one_or_none()
-        if not sticky:
-            return False
-
-        await session.delete(sticky)
         await session.commit()
-        return True
+
+        return result.rowcount > 0 # type: ignore
 
 
-async def get_sticky(guild_id: int, channel_id: int) -> Optional[str]:
+async def get_sticky(
+    guild_id: int,
+    channel_id: int,
+) -> Optional[str]:
+
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(StickyMessage.content).where(
+
+        return await session.scalar(
+            select(StickyMessage.sticky_content).where(
                 StickyMessage.guild_id == guild_id,
                 StickyMessage.channel_id == channel_id,
             ))
-
-        row = result.first()
-        return row[0] if row else None
 
 
 async def sticky_step(
     guild_id: int,
     channel_id: int,
 ) -> tuple[str, int | None] | None:
-    """
-    Single atomic DB step for sticky repost logic.
-    Returns (content, last_message_id) if repost needed.
-    """
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
+
+        sticky = await session.scalar(
             select(StickyMessage).where(
                 StickyMessage.guild_id == guild_id,
                 StickyMessage.channel_id == channel_id,
             ))
 
-        sticky = result.scalar_one_or_none()
         if not sticky:
             return None
 
-        sticky.counter += 1
+        counter = sticky.counter + 1
 
-        if sticky.counter < THRESHOLD:
+        # threshold not reached
+        if counter < THRESHOLD:
+
+            await session.execute(
+                update(StickyMessage).where(
+                    StickyMessage.guild_id == guild_id,
+                    StickyMessage.channel_id == channel_id,
+                ).values(counter=counter, ))
+
             await session.commit()
+
             return None
 
-        sticky.counter = 0
-        last_id = sticky.last_message_id
-        sticky.last_message_id = None
+        # repost trigger
+        content = sticky.sticky_content
 
-        content = sticky.content
+        last_message_id = sticky.last_message_id
+
+        await session.execute(
+            update(StickyMessage).where(
+                StickyMessage.guild_id == guild_id,
+                StickyMessage.channel_id == channel_id,
+            ).values(
+                counter=0,
+                last_message_id=None,
+            ))
 
         await session.commit()
-        return content, last_id
+
+        return (
+            content,
+            last_message_id,
+        )
 
 
 async def update_last_message(
     guild_id: int,
     channel_id: int,
     message_id: int,
-):
+) -> None:
+
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(StickyMessage).where(
+
+        await session.execute(
+            update(StickyMessage).where(
                 StickyMessage.guild_id == guild_id,
                 StickyMessage.channel_id == channel_id,
-            ))
+            ).values(last_message_id=message_id, ))
 
-        sticky = result.scalar_one_or_none()
-        if sticky:
-            sticky.last_message_id = message_id
-            await session.commit()
+        await session.commit()

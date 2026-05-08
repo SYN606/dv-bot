@@ -36,6 +36,7 @@ class Avatar(commands.Cog):
 
         now = time.time()
         last_used = _global_last_used.get(guild_id, 0)
+
         remaining = guild_cd - (now - last_used)
 
         if remaining > 0:
@@ -58,12 +59,13 @@ class Avatar(commands.Cog):
         # resolve member
         member = ctx.guild.get_member(target.id) if ctx.guild else None
 
-        # avatar resolution
+        # resolve avatars
         global_avatar = target.display_avatar.url
+
         server_avatar = (member.guild_avatar.url
                          if member and member.guild_avatar else None)
 
-        # both avatars (toggle)
+        # both avatars available
         if server_avatar:
 
             view = BaseMediaView(
@@ -78,23 +80,40 @@ class Avatar(commands.Cog):
             )
 
             embed = view.build_embed()
-            message = await ctx.send(embed=embed, view=view)
+
+            embed.set_footer(
+                text=f"Action by: {ctx.author}",
+                icon_url=ctx.author.display_avatar.url,
+            )
+
+            message = await ctx.send(
+                embed=embed,
+                view=view,
+            )
+
             view.message = message
 
         else:
-            # single avatar
+
             embed = make_embed(
                 title="User Avatar",
                 description=target.mention,
                 level="INFO",
             )
+
             embed.set_image(url=global_avatar)
+
+            embed.set_footer(
+                text=f"Action by: {ctx.author}",
+                icon_url=ctx.author.display_avatar.url,
+            )
 
             await ctx.send(embed=embed)
 
         # cleanup
         try:
             await ctx.message.delete()
+
         except discord.HTTPException:
             pass
 
@@ -102,6 +121,7 @@ class Avatar(commands.Cog):
     async def avatar_error(self, ctx: commands.Context, error):
 
         if isinstance(error, commands.CommandOnCooldown):
+
             await ctx.reply(
                 embed=make_embed(
                     title="Cooldown",

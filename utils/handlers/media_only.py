@@ -15,9 +15,7 @@ from utils.logging.mod_log import send_mod_log
 from .sticky.sticky_manager import StickyPayload, process_sticky
 
 
-# ─────────────────────────────────────
 # MEDIA REGEX
-# ─────────────────────────────────────
 MEDIA_LINK_REGEX = re.compile(
     r"^(https?:\/\/\S+\.(png|jpg|jpeg|gif|webp|mp4|mov|webm)"
     r"|https?:\/\/(tenor|giphy|imgur)\.com\/\S+)$",
@@ -27,9 +25,7 @@ MEDIA_LINK_REGEX = re.compile(
 _violation_counter: Dict[Tuple[int, int], int] = defaultdict(int)
 
 
-# ─────────────────────────────────────
 # MEDIA DETECTION
-# ─────────────────────────────────────
 def is_valid_media(message: discord.Message, *, image_only: bool) -> bool:
 
     if message.attachments:
@@ -54,9 +50,7 @@ def is_valid_media(message: discord.Message, *, image_only: bool) -> bool:
     return False
 
 
-# ─────────────────────────────────────
 # VIOLATION DECAY
-# ─────────────────────────────────────
 async def decay_violations(guild_id: int, user_id: int):
     await asyncio.sleep(300)
     _violation_counter[(guild_id, user_id)] = max(
@@ -64,9 +58,7 @@ async def decay_violations(guild_id: int, user_id: int):
     )
 
 
-# ─────────────────────────────────────
 # MAIN ENFORCER
-# ─────────────────────────────────────
 async def enforce_media_only(message: discord.Message) -> bool:
 
     guild = message.guild

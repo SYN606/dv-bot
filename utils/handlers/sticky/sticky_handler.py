@@ -1,4 +1,7 @@
+# sticky_handler.py
+
 import discord
+
 from discord import Message
 
 from db.db_helpers.sticky import (
@@ -11,24 +14,44 @@ from .sticky_manager import (
     process_sticky,
 )
 
+IGNORED_PREFIXES = (
+    "!",
+    "/",
+    "dv ",
+)
 
-async def handle_sticky(message: Message) -> bool:
 
-    # Basic guards
-    if message.guild is None or message.author.bot:
+async def handle_sticky(message: Message, ) -> bool:
+
+    # basic guards
+    if message.guild is None:
+        return False
+
+    if message.author.bot:
+        return False
+
+    if message.webhook_id:
+        return False
+
+    if (message.type != discord.MessageType.default):
+
         return False
 
     channel = message.channel
-    if not isinstance(channel, discord.TextChannel):
+
+    if not isinstance(
+            channel,
+            discord.TextChannel,
+    ):
+
         return False
 
-    # Ignore commands (clean UX)
-    if message.content.startswith(("!", "/", "dv ")):
+    # ignore commands
+    if (message.content and message.content.startswith(IGNORED_PREFIXES)):
+
         return False
 
-    # ─────────────────────────
-    # DB STEP (CORE LOGIC)
-    # ─────────────────────────
+    # db sticky step
     result = await sticky_step(
         guild_id=message.guild.id,
         channel_id=channel.id,
@@ -39,31 +62,31 @@ async def handle_sticky(message: Message) -> bool:
 
     content, last_id = result
 
-    # Prevent self-trigger (very important)
-    if last_id and message.id == last_id:
+    # prevent self trigger
+    if (last_id and message.id == last_id):
+
         return False
 
-    # ─────────────────────────
-    # BUILD PAYLOAD
-    # ─────────────────────────
+    # build sticky payload
     payload = StickyPayload(
         content=content,
         message_id=last_id,
+        use_webhook=False,
     )
 
-    # ─────────────────────────
-    # PROCESS STICKY
-    # ─────────────────────────
-    new_id = await process_sticky(channel, payload)
+    # process sticky
+    new_id = await process_sticky(
+        channel,
+        payload,
+    )
 
-    # ─────────────────────────
-    # SAVE NEW MESSAGE ID
-    # ─────────────────────────
+    # save latest sticky id
     if new_id:
+
         await update_last_message(
-            message.guild.id,
-            channel.id,
-            new_id,
+            guild_id=message.guild.id,
+            channel_id=channel.id,
+            message_id=new_id,
         )
 
     return True

@@ -1,7 +1,6 @@
 import time
 import discord
 from discord.ext import commands
-
 from utils.permissions.base_admin import BaseAdminCog
 from utils.permissions.check_perms import is_bot_admin_ctx
 from utils.core.embeds import make_embed
@@ -11,80 +10,192 @@ from utils.core.emojis import EMOJIS
 class ServerInfoView(discord.ui.View):
 
     def __init__(self, guild: discord.Guild, author_id: int):
-        super().__init__(timeout=30)
+        super().__init__(timeout=60)
+
         self.guild = guild
         self.author_id = author_id
+
         self._cooldowns: dict[int, float] = {}
+
         self.COOLDOWN = 5
 
-    async def interaction_check(self,
-                                interaction: discord.Interaction) -> bool:
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
+
         if interaction.user.id != self.author_id:
+
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Access Denied",
-                    description=f"{EMOJIS['fail']} You cannot use this.",
+                    description=
+                    f"{EMOJIS['fail']} You cannot use this interaction.",
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
+
             return False
+
         return True
 
     def _check_cd(self, user_id: int) -> float:
+
         now = time.time()
+
         last = self._cooldowns.get(user_id, 0)
+
         remaining = self.COOLDOWN - (now - last)
 
         if remaining > 0:
             return remaining
 
         self._cooldowns[user_id] = now
+
         return 0
 
-    @discord.ui.button(label="More",
-                       emoji="📊",
-                       style=discord.ButtonStyle.secondary)
-    async def more_stats(self, interaction: discord.Interaction, _):
+    @discord.ui.button(
+        label="Statistics",
+        emoji="📊",
+        style=discord.ButtonStyle.secondary,
+    )
+    async def more_stats(
+        self,
+        interaction: discord.Interaction,
+        _,
+    ):
 
         remaining = self._check_cd(interaction.user.id)
+
         if remaining > 0:
+
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Cooldown",
-                    description=f"{EMOJIS['warning']} Wait `{remaining:.1f}s`",
+                    description=
+                    f"{EMOJIS['warning']} Wait `{remaining:.1f}s` before using this again.",
                     level="WARNING",
                 ),
                 ephemeral=True,
             )
+
             return
 
         g = self.guild
 
         humans = sum(1 for m in g.members if not m.bot)
+
         bots = (g.member_count or 0) - humans
 
-        online = sum(1 for m in g.members
-                     if m.status in (discord.Status.online,
-                                     discord.Status.idle, discord.Status.dnd))
+        online = sum(1 for m in g.members if m.status in (
+            discord.Status.online,
+            discord.Status.idle,
+            discord.Status.dnd,
+        ))
 
-        text = len(g.text_channels)
-        voice = len(g.voice_channels)
+        text_channels = len(g.text_channels)
+
+        voice_channels = len(g.voice_channels)
+
+        forum_channels = len(g.forums)
+
+        stage_channels = len(g.stage_channels)
+
+        total_channels = (text_channels + voice_channels + forum_channels +
+                          stage_channels)
 
         embed = make_embed(
-            title="📊 Server Stats",
+            title="📊 Advanced Statistics",
             description=
             (f"{EMOJIS['green_dot']} Members: `{g.member_count}`\n"
-             f"{EMOJIS['developer']} Humans: `{humans}` | Bots: `{bots}`\n"
-             f"{EMOJIS['ping']} Active: `{online}`\n"
-             f"{EMOJIS['folder']} Channels: `{text + voice}` (T `{text}` | V `{voice}`)\n"
-             f"{EMOJIS['moderation']} Roles: `{len(g.roles)}`"),
+             f"{EMOJIS['developer']} Humans: `{humans}`\n"
+             f"{EMOJIS['bot']} Bots: `{bots}`\n"
+             f"{EMOJIS['ping']} Online: `{online}`\n\n"
+             f"{EMOJIS['folder']} Channels: `{total_channels}`\n"
+             f"• Text: `{text_channels}`\n"
+             f"• Voice: `{voice_channels}`\n"
+             f"• Forum: `{forum_channels}`\n"
+             f"• Stage: `{stage_channels}`\n\n"
+             f"{EMOJIS['moderation']} Roles: `{len(g.roles)}`\n"
+             f"{EMOJIS['emoji']} Emojis: `{len(g.emojis)}` / `{g.emoji_limit}`\n"
+             f"{EMOJIS['boost']} Stickers: `{len(g.stickers)}` / `{g.sticker_limit}`"
+             ),
+            level="INFO",
+            footer=f"Action by: {interaction.user}",
+        )
+
+        embed.set_footer(
+            text=f"Action by: {interaction.user}",
+            icon_url=interaction.user.display_avatar.url,
+        )
+
+        await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True,
+        )
+
+    @discord.ui.button(
+        label="Assets",
+        emoji="🖼️",
+        style=discord.ButtonStyle.secondary,
+    )
+    async def assets(
+        self,
+        interaction: discord.Interaction,
+        _,
+    ):
+
+        remaining = self._check_cd(interaction.user.id)
+
+        if remaining > 0:
+
+            await interaction.response.send_message(
+                embed=make_embed(
+                    title="Cooldown",
+                    description=
+                    f"{EMOJIS['warning']} Wait `{remaining:.1f}s` before using this again.",
+                    level="WARNING",
+                ),
+                ephemeral=True,
+            )
+
+            return
+
+        g = self.guild
+
+        embed = make_embed(
+            title="🖼️ Server Assets",
+            description=(
+                f"{EMOJIS['arrow_point']} Icon: "
+                f"{'Available' if g.icon else 'Missing'}\n"
+                f"{EMOJIS['arrow_point']} Banner: "
+                f"{'Available' if g.banner else 'Missing'}\n"
+                f"{EMOJIS['arrow_point']} Splash: "
+                f"{'Available' if g.splash else 'Missing'}\n"
+                f"{EMOJIS['arrow_point']} Discovery Splash: "
+                f"{'Available' if g.discovery_splash else 'Missing'}"),
             level="INFO",
         )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        if g.banner:
+            embed.set_image(url=g.banner.url)
+
+        elif g.icon:
+            embed.set_image(url=g.icon.url)
+
+        embed.set_footer(
+            text=f"Action by: {interaction.user}",
+            icon_url=interaction.user.display_avatar.url,
+        )
+
+        await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True,
+        )
 
     async def on_timeout(self):
+
         for item in self.children:
             item.disabled = True  # type: ignore
 
@@ -97,6 +208,7 @@ class ServerInfo(BaseAdminCog):
     async def cog_check(self, ctx: commands.Context) -> bool:
 
         g = ctx.guild
+
         if g is None:
             return False
 
@@ -113,61 +225,100 @@ class ServerInfo(BaseAdminCog):
 
     @commands.command(
         name="server-info",
-        aliases=["si"],
-        help="View server information",
+        aliases=["si", "serverinfo"],
+        help="View detailed server information",
     )
     @commands.guild_only()
     @commands.cooldown(1, 8, commands.BucketType.user)
-    @commands.max_concurrency(1, per=commands.BucketType.guild, wait=False)
+    @commands.max_concurrency(
+        1,
+        per=commands.BucketType.guild,
+        wait=False,
+    )
     async def server_info(self, ctx: commands.Context):
 
         g = ctx.guild
+
         if g is None:
             return
 
         owner = g.owner
-        created = discord.utils.format_dt(g.created_at, style="R")
+
+        created = discord.utils.format_dt(
+            g.created_at,
+            style="R",
+        )
 
         humans = sum(1 for m in g.members if not m.bot)
+
         bots = (g.member_count or 0) - humans
 
-        online = sum(1 for m in g.members
-                     if m.status in (discord.Status.online,
-                                     discord.Status.idle, discord.Status.dnd))
+        online = sum(1 for m in g.members if m.status in (
+            discord.Status.online,
+            discord.Status.idle,
+            discord.Status.dnd,
+        ))
 
         embed = make_embed(
             title=f"{EMOJIS['announcement']} {g.name}",
-            description=
-            (f"{EMOJIS['arrow_point']} Owner: {owner.mention if owner else 'Unknown'}\n"
-             f"{EMOJIS['arrow_point']} Created: {created}\n\n"
-             f"{EMOJIS['green_dot']} Members: `{g.member_count}`\n"
-             f"{EMOJIS['developer']} Humans: `{humans}` | Bots: `{bots}`\n"
-             f"{EMOJIS['ping']} Active: `{online}`\n\n"
-             f"{EMOJIS['boost']} Boosts: `{g.premium_subscription_count or 0}` (Level {g.premium_tier})\n"
-             f"{EMOJIS['okay']} Verification: `{str(g.verification_level).title()}`"
-             ),
+            description=(f"{EMOJIS['arrow_point']} Owner: "
+                         f"{owner.mention if owner else 'Unknown'}\n"
+                         f"{EMOJIS['arrow_point']} Server ID: `{g.id}`\n"
+                         f"{EMOJIS['arrow_point']} Created: {created}\n\n"
+                         f"{EMOJIS['green_dot']} Members: `{g.member_count}`\n"
+                         f"{EMOJIS['developer']} Humans: `{humans}`\n"
+                         f"{EMOJIS['bot']} Bots: `{bots}`\n"
+                         f"{EMOJIS['ping']} Online: `{online}`\n\n"
+                         f"{EMOJIS['boost']} Boosts: "
+                         f"`{g.premium_subscription_count or 0}` "
+                         f"(Level {g.premium_tier})\n"
+                         f"{EMOJIS['okay']} Verification: "
+                         f"`{str(g.verification_level).title()}`\n"
+                         f"{EMOJIS['moderation']} Roles: `{len(g.roles)}`\n"
+                         f"{EMOJIS['emoji']} Emojis: "
+                         f"`{len(g.emojis)}` / `{g.emoji_limit}`"),
             level="SYSTEM",
         )
 
         if g.icon:
             embed.set_thumbnail(url=g.icon.url)
 
-        view = ServerInfoView(g, ctx.author.id)
+        if g.banner:
+            embed.set_image(url=g.banner.url)
 
-        await ctx.send(embed=embed, view=view)
+        embed.set_footer(
+            text=f"Action by: {ctx.author}",
+            icon_url=ctx.author.display_avatar.url,
+        )
+
+        view = ServerInfoView(
+            guild=g,
+            author_id=ctx.author.id,
+        )
+
+        await ctx.send(
+            embed=embed,
+            view=view,
+        )
 
     @server_info.error
-    async def server_info_error(self, ctx, error):
+    async def server_info_error(
+        self,
+        ctx,
+        error,
+    ):
 
         if isinstance(error, commands.CommandOnCooldown):
+
             await ctx.send(embed=make_embed(
                 title="Cooldown",
-                description=
-                f"{EMOJIS['warning']} Try again in `{round(error.retry_after,1)}s`",
+                description=(f"{EMOJIS['warning']} "
+                             f"Try again in `{round(error.retry_after, 1)}s`"),
                 level="WARNING",
             ))
 
         elif isinstance(error, commands.MaxConcurrencyReached):
+
             await ctx.send(embed=make_embed(
                 title="Busy",
                 description=f"{EMOJIS['loading']} Already running.",

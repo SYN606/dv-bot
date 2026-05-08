@@ -1,4 +1,8 @@
-from sqlalchemy import select, update
+from sqlalchemy import delete
+from sqlalchemy import select
+from sqlalchemy import update
+from sqlalchemy.dialects.sqlite import insert
+
 from db.engine import AsyncSessionLocal
 from db.models import MediaOnlyChannel
 
@@ -15,71 +19,86 @@ async def enable_media_only(
 ) -> bool:
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(MediaOnlyChannel).where(
-                MediaOnlyChannel.guild_id == guild_id,
-                MediaOnlyChannel.channel_id == channel_id,
-            ))
 
-        exists = result.scalar_one_or_none()
-        if exists:
-            return False
+        stmt = insert(MediaOnlyChannel).values(
+            guild_id=guild_id,
+            channel_id=channel_id,
+            whitelist_role_id=whitelist_role_id,
+            image_only=image_only,
+            auto_mute=auto_mute,
+            nsfw_bypass=nsfw_bypass,
+        )
 
-        session.add(
-            MediaOnlyChannel(
-                guild_id=guild_id,
-                channel_id=channel_id,
-                whitelist_role_id=whitelist_role_id,
-                image_only=image_only,
-                auto_mute=auto_mute,
-                nsfw_bypass=nsfw_bypass,
-            ))
+        stmt = stmt.on_conflict_do_nothing(index_elements=[
+            MediaOnlyChannel.guild_id,
+            MediaOnlyChannel.channel_id,
+        ])
+
+        result = await session.execute(stmt)
 
         await session.commit()
-        return True
+
+        return result.rowcount > 0 # type: ignore
 
 
 # DISABLE MEDIA ONLY
-async def disable_media_only(guild_id: int, channel_id: int) -> bool:
+
+
+async def disable_media_only(
+    guild_id: int,
+    channel_id: int,
+) -> bool:
+
     async with AsyncSessionLocal() as session:
+
         result = await session.execute(
-            select(MediaOnlyChannel).where(
+            delete(MediaOnlyChannel).where(
                 MediaOnlyChannel.guild_id == guild_id,
                 MediaOnlyChannel.channel_id == channel_id,
             ))
 
-        row = result.scalar_one_or_none()
-        if not row:
-            return False
-
-        await session.delete(row)
         await session.commit()
-        return True
+
+        return result.rowcount > 0 # type: ignore
 
 
 # FETCH FULL CONFIG
+
+
 async def get_media_only_config(
     guild_id: int,
     channel_id: int,
 ) -> MediaOnlyChannel | None:
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
+
+        return await session.scalar(
             select(MediaOnlyChannel).where(
                 MediaOnlyChannel.guild_id == guild_id,
                 MediaOnlyChannel.channel_id == channel_id,
             ))
 
-        return result.scalar_one_or_none()
-
 
 # SIMPLE CHECK
-async def is_media_only(guild_id: int, channel_id: int) -> bool:
-    config = await get_media_only_config(guild_id, channel_id)
-    return config is not None
+
+
+async def is_media_only(
+    guild_id: int,
+    channel_id: int,
+) -> bool:
+
+    async with AsyncSessionLocal() as session:
+
+        return await session.scalar(
+            select(MediaOnlyChannel.guild_id).where(
+                MediaOnlyChannel.guild_id == guild_id,
+                MediaOnlyChannel.channel_id == channel_id,
+            )) is not None
 
 
 # UPDATE STICKY MESSAGE ID
+
+
 async def update_sticky_message_id(
     guild_id: int,
     channel_id: int,
@@ -87,15 +106,19 @@ async def update_sticky_message_id(
 ) -> None:
 
     async with AsyncSessionLocal() as session:
+
         await session.execute(
             update(MediaOnlyChannel).where(
                 MediaOnlyChannel.guild_id == guild_id,
                 MediaOnlyChannel.channel_id == channel_id,
             ).values(sticky_message_id=message_id))
+
         await session.commit()
 
 
 # UPDATE SETTINGS
+
+
 async def update_media_only_settings(
     guild_id: int,
     channel_id: int,
@@ -106,28 +129,45 @@ async def update_media_only_settings(
     nsfw_bypass: bool | None = None,
 ) -> bool:
 
+    values = {}
+
+    if whitelist_role_id is not None:
+        values["whitelist_role_id"] = whitelist_role_id
+
+    if image_only is not None:
+        values["image_only"] = image_only
+
+    if auto_mute is not None:
+        values["auto_mute"] = auto_mute
+
+    if nsfw_bypass is not None:
+        values["nsfw_bypass"] = nsfw_bypass
+
+    if not values:
+        return False
+
     async with AsyncSessionLocal() as session:
+
         result = await session.execute(
-            select(MediaOnlyChannel).where(
+            update(MediaOnlyChannel).where(
                 MediaOnlyChannel.guild_id == guild_id,
                 MediaOnlyChannel.channel_id == channel_id,
-            ))
-
-        row = result.scalar_one_or_none()
-        if not row:
-            return False
-
-        if whitelist_role_id is not None:
-            row.whitelist_role_id = whitelist_role_id
-
-        if image_only is not None:
-            row.image_only = image_only
-
-        if auto_mute is not None:
-            row.auto_mute = auto_mute
-
-        if nsfw_bypass is not None:
-            row.nsfw_bypass = nsfw_bypass
+            ).values(**values))
 
         await session.commit()
-        return True
+
+        return result.rowcount > 0 # type: ignore
+
+
+# FETCH ALL MEDIA CHANNELS
+
+
+async def get_media_only_channels(guild_id: int, ) -> list[int]:
+
+    async with AsyncSessionLocal() as session:
+
+        result = await session.scalars(
+            select(MediaOnlyChannel.channel_id).where(
+                MediaOnlyChannel.guild_id == guild_id))
+
+        return list(result)

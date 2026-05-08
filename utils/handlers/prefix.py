@@ -1,20 +1,26 @@
-from discord.ext import commands
-import discord
 import os
 
-# DO NOT load dotenv here.
-# It should already be loaded in your main entrypoint.
+import discord
 
-PREFIX = os.getenv("PREFIX", "dv").strip()
+from discord.ext import commands
+
+PREFIX = (os.getenv(
+    "PREFIX",
+    "dv",
+).strip())
 
 if not PREFIX:
+
     PREFIX = "dv"
 
+PREFIX_LOWER = PREFIX.lower()
 
-# region Normalize prefix usage
-def normalize_prefix(content: str) -> str:
+
+def normalize_prefix(content: str, ) -> str:
     """
-    Normalizes:
+    Normalize command prefix usage.
+
+    Examples:
     dv ping   -> dvping
     DV   ping -> dvping
     dVping    -> dvping
@@ -25,17 +31,25 @@ def normalize_prefix(content: str) -> str:
 
     stripped = content.lstrip()
 
-    if not stripped.lower().startswith(PREFIX.lower()):
+    lowered = stripped.lower()
+
+    if not lowered.startswith(PREFIX_LOWER):
+
         return content
 
-    rest = stripped[len(PREFIX):].lstrip()
-    return f"{PREFIX}{rest}"
+    rest = stripped[len(PREFIX)::].lstrip()
+
+    return (f"{PREFIX}{rest}")
 
 
-# region Dynamic Prefix Resolver
-def dynamic_prefix(bot: commands.Bot, message: discord.Message):
+def dynamic_prefix(
+    bot: commands.Bot,
+    message: discord.Message,
+):
     """
-    Case-insensitive prefix resolver.
+    Dynamic case-insensitive
+    prefix resolver.
+
     Supports:
     - dv
     - DV
@@ -43,16 +57,55 @@ def dynamic_prefix(bot: commands.Bot, message: discord.Message):
     - bot mention
     """
 
-    base_prefix = PREFIX
-
     if not message.content:
-        return commands.when_mentioned_or(base_prefix)(bot, message)
 
-    content = message.content.lstrip()
+        return commands.when_mentioned_or(PREFIX)(
+            bot,
+            message,
+        )
 
-    # Case-insensitive match
-    if content.lower().startswith(base_prefix.lower()):
-        actual = content[:len(base_prefix)]
-        return commands.when_mentioned_or(actual)(bot, message)
+    content = (message.content.lstrip())
 
-    return commands.when_mentioned_or(base_prefix)(bot, message)
+    lowered = content.lower()
+
+    # exact prefix match
+    if lowered.startswith(PREFIX_LOWER):
+
+        actual_prefix = content[:len(PREFIX)]
+
+        return commands.when_mentioned_or(actual_prefix)(
+            bot,
+            message,
+        )
+
+    return commands.when_mentioned_or(PREFIX)(
+        bot,
+        message,
+    )
+
+
+async def preprocess_message(
+    bot: commands.Bot,
+    message: discord.Message,
+) -> discord.Message:
+    """
+    Preprocess incoming message
+    for normalized prefix usage.
+
+    Converts:
+    dv ping -> dvping
+    DV ping -> dvping
+    """
+
+    if (not message.content or message.author.bot):
+
+        return message
+
+    normalized = normalize_prefix(message.content)
+
+    if normalized == message.content:
+        return message
+
+    message.content = normalized
+
+    return message
