@@ -38,9 +38,7 @@ class RenameSystem(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # =====================================================
     # PERMISSION OVERRIDE
-    # =====================================================
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
             return True
@@ -58,9 +56,7 @@ class RenameSystem(BaseAdminCog):
 
         return await super().cog_check(ctx)
 
-    # =====================================================
     # HELPERS
-    # =====================================================
     def _normalize(self, text: str) -> str:
         return unicodedata.normalize("NFKC", text)
 

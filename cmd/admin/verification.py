@@ -1,11 +1,8 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-
 from utils.permissions.base_admin import BaseAdminCog
 from utils.core.embeds import make_embed
-
-# UPDATED IMPORT 
 from utils.views.verification_views.verify_panel_view import VerificationView
 
 

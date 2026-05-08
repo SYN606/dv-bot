@@ -114,7 +114,7 @@ class Tempban(BaseAdminCog):
             entries.append(
                 f"{EMOJIS['red_dot']} {user.mention if user else row.user_id}\n"
                 f"Moderator: {mod.mention if mod else row.moderator_id}\n"
-                f"Reason: {row.reason or 'No reason'}")
+                f"Reason: {row.tempban_reason or 'No reason'}")
 
         await interaction.followup.send(
             embed=make_embed(
@@ -125,9 +125,7 @@ class Tempban(BaseAdminCog):
             ephemeral=True,
         )
 
-    # =========================================================
     # PREFIX COMMANDS
-    # =========================================================
     @commands.command(name="tempban")
     @commands.guild_only()
     async def tempban(self, ctx, user=None, *, reason=None):

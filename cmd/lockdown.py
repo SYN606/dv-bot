@@ -21,10 +21,7 @@ SUPPORTED_CHANNELS = (
     discord.ForumChannel,
 )
 
-
-# =========================================================
 # DURATION PARSER
-# =========================================================
 def parse_duration(duration: str | None) -> int | None:
 
     if not duration:
@@ -53,9 +50,7 @@ class Lockdown(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # =========================================================
-    # OPTIONAL EXTRA HARDENING (does NOT break base)
-    # =========================================================
+    # OPTIONAL EXTRA HARDENING
     async def cog_check(self, ctx: commands.Context) -> bool:
         # Use base logic first
         allowed = await super().cog_check(ctx)
@@ -70,9 +65,7 @@ class Lockdown(BaseAdminCog):
 
         return True
 
-    # =========================================================
     # LOCK CHANNEL
-    # =========================================================
     @commands.command(name="lock")
     async def lock(self, ctx: commands.Context, duration: str | None = None):
 
@@ -148,9 +141,7 @@ class Lockdown(BaseAdminCog):
 
             asyncio.create_task(unlock_later())
 
-    # =========================================================
     # UNLOCK CHANNEL
-    # =========================================================
     @commands.command(name="unlock")
     async def unlock(self, ctx: commands.Context):
 
@@ -168,9 +159,7 @@ class Lockdown(BaseAdminCog):
                 level="WARNING",
             ))
 
-    # =========================================================
     # SERVER LOCKDOWN
-    # =========================================================
     @commands.command(name="lockdown")
     async def lockdown(self, ctx: commands.Context):
 
@@ -225,9 +214,7 @@ class Lockdown(BaseAdminCog):
             level="WARNING",
         ))
 
-    # =========================================================
     # UNLOCK ENGINE
-    # =========================================================
     async def _unlock_channel(self, channel) -> bool:
 
         guild = channel.guild

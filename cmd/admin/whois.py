@@ -1,228 +1,349 @@
+import logging
+from datetime import datetime
+
 import discord
 from discord.ext import commands
-from datetime import datetime
-import time
 
-from utils.permissions.base_admin import BaseAdminCog
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 
-# =====================================================
-# CACHE
-# =====================================================
-_whois_cache: dict[int, tuple[float, discord.Embed]] = {}
-CACHE_TTL = 10  # seconds
+logger = logging.getLogger("bot")
 
-DANGEROUS_PERMS = {
-    "administrator": "Administrator",
-    "manage_guild": "Manage Server",
-    "manage_roles": "Manage Roles",
-    "manage_channels": "Manage Channels",
-    "kick_members": "Kick Members",
-    "ban_members": "Ban Members",
+BADGES = {
+    "staff": "👨‍💼 Staff",
+    "partner": "🤝 Partner",
+    "hypesquad": "🎉 HypeSquad",
+    "bug_hunter": "🐛 Bug Hunter",
+    "bug_hunter_level_2": "🐞 Bug Hunter L2",
+    "early_supporter": "💎 Early Supporter",
+    "verified_bot_developer": "👨‍💻 Early Dev",
+    "active_developer": "⚡ Active Dev",
+    "discord_certified_moderator": "🛡️ Moderator",
+    "verified_bot": "☑️ Verified Bot",
 }
 
 
-class Whois(BaseAdminCog):
+class Whois(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     # =====================================================
+    # HELPERS
+    # =====================================================
+
+    def format_timestamp(
+        self,
+        dt: datetime | None,
+    ) -> str:
+
+        if dt is None:
+            return "Unknown"
+
+        unix = int(dt.timestamp())
+
+        return f"<t:{unix}:F>\n<t:{unix}:R>"
+
+    def get_status(self, member: discord.Member) -> str:
+
+        mapping = {
+            discord.Status.online: EMOJIS["green_dot"],
+            discord.Status.idle: "🌙",
+            discord.Status.dnd: EMOJIS["red_dot"],
+            discord.Status.offline: "⚫",
+            discord.Status.invisible: "⚫",
+        }
+
+        emoji = mapping.get(member.status, "⚫")
+
+        return f"{emoji} {str(member.status).title()}"
+
+    def get_platforms(
+        self,
+        member: discord.Member,
+    ) -> str:
+
+        platforms: list[str] = []
+
+        if member.mobile_status != discord.Status.offline:
+            platforms.append("📱 Mobile")
+
+        if member.desktop_status != discord.Status.offline:
+            platforms.append("🖥️ Desktop")
+
+        if member.web_status != discord.Status.offline:
+            platforms.append("🌐 Web")
+
+        return ", ".join(platforms) if platforms else "Unknown"
+
+    def get_badges(
+        self,
+        user: discord.User | discord.Member,
+    ) -> str:
+
+        flags = user.public_flags
+
+        badges: list[str] = []
+
+        for key, label in BADGES.items():
+
+            if getattr(flags, key, False):
+                badges.append(label)
+
+        if user.bot:
+            badges.append(f"{EMOJIS['developer']} Bot")
+
+        if user.display_avatar.is_animated():
+            badges.append(f"{EMOJIS['boost']} Nitro")
+
+        return ", ".join(badges) if badges else "None"
+
+    def get_permissions(
+        self,
+        member: discord.Member,
+    ) -> str:
+
+        perms = member.guild_permissions
+
+        important: list[str] = []
+
+        if perms.administrator:
+            important.append("Administrator")
+
+        if perms.manage_guild:
+            important.append("Manage Server")
+
+        if perms.manage_roles:
+            important.append("Manage Roles")
+
+        if perms.manage_channels:
+            important.append("Manage Channels")
+
+        if perms.ban_members:
+            important.append("Ban Members")
+
+        if perms.kick_members:
+            important.append("Kick Members")
+
+        return ", ".join(important[:5]) if important else "None"
+
+    def get_activities(
+        self,
+        member: discord.Member,
+    ) -> str:
+
+        if not member.activities:
+            return "None"
+
+        activities: list[str] = []
+
+        for activity in member.activities:
+
+            if isinstance(activity, discord.CustomActivity):
+
+                if activity.emoji and activity.name:
+                    activities.append(f"{activity.emoji} {activity.name}")
+
+                elif activity.name:
+                    activities.append(activity.name)
+
+            else:
+
+                name = getattr(activity, "name", None)
+
+                if name:
+                    activities.append(str(name))
+
+        return "\n".join(activities[:3]) if activities else "None"
+
+    # =====================================================
     # COMMAND
     # =====================================================
-    @commands.command(name="whois",
-                      help="Show detailed information about a user")
-    @commands.dynamic_cooldown(
-        lambda ctx: None if isinstance(ctx.author, discord.Member) and ctx.
-        author.guild_permissions.manage_guild else commands.Cooldown(1, 5),
+
+    @commands.command(
+        name="whois",
+        aliases=["userinfo", "user", "ui"],
+    )
+    @commands.guild_only()
+    @commands.cooldown(
+        1,
+        5,
         commands.BucketType.user,
     )
-    async def whois(self, ctx: commands.Context, target: str | None = None):
-
-        if ctx.guild is None:
-            return
+    async def whois(
+        self,
+        ctx: commands.Context,
+        member: discord.Member | None = None,
+    ) -> None:
 
         guild = ctx.guild
 
-        # =====================================================
-        # RESOLVE MEMBER
-        # =====================================================
-        member: discord.Member | None = None
+        if guild is None:
+            return
 
-        if ctx.message.reference:
-            try:
-                ref = await ctx.channel.fetch_message(
-                    ctx.message.reference.message_id) # type: ignore
-                if isinstance(ref.author, discord.Member):
-                    member = ref.author
-            except Exception:
-                pass
+        target = member or ctx.author
 
-        if not member and target and target.isdigit():
-            member = guild.get_member(int(target))
+        if not isinstance(target, discord.Member):
+            return
 
-        if not member and ctx.message.mentions:
-            m = ctx.message.mentions[0]
-            if isinstance(m, discord.Member):
-                member = m
+        # Fetch banner
+        try:
+            fetched_user = await self.bot.fetch_user(target.id)
+        except Exception:
+            fetched_user = target
 
-        if not member and isinstance(ctx.author, discord.Member):
-            member = ctx.author
-
-        if not member:
-            return await ctx.send("User not found.")
-
-        # =====================================================
-        # CACHE CHECK
-        # =====================================================
-        cache_key = member.id
-        now = time.time()
-
-        cached = _whois_cache.get(cache_key)
-        if cached:
-            ts, embed = cached
-            if now - ts < CACHE_TTL:
-                return await ctx.send(embed=embed)
-
-        # =====================================================
-        # BASIC INFO
-        # =====================================================
-        created_ts = int(member.created_at.timestamp())
-        joined_ts = int(
-            member.joined_at.timestamp()) if member.joined_at else 0
-
-        # =====================================================
-        # JOIN POSITION (OPTIMIZED)
-        # =====================================================
-        members = [m for m in guild.members if m.joined_at]
-        members.sort(key=lambda m: m.joined_at) # type: ignore
+        # Join position
+        sorted_members = sorted(
+            guild.members,
+            key=lambda m: (m.joined_at or discord.utils.utcnow()),
+        )
 
         try:
-            join_position = members.index(member) + 1
+            join_position = (sorted_members.index(target) + 1)
         except ValueError:
             join_position = "Unknown"
 
-        # =====================================================
-        # ROLES
-        # =====================================================
-        roles = [r for r in member.roles if not r.is_default()]
-        roles_sorted = sorted(roles, key=lambda r: r.position, reverse=True)
+        # Roles
+        roles = [role.mention for role in reversed(target.roles[1:])]
 
-        role_mentions = [r.mention for r in roles_sorted]
+        if not roles:
+            role_text = "None"
+        else:
+            role_text = ", ".join(roles[:12])
 
-        roles_display = (
-            " ".join(role_mentions[:10]) +
-            (f" +{len(role_mentions)-10}" if len(role_mentions) > 10 else "")
-        ) if role_mentions else "None"
+            if len(roles) > 12:
+                role_text += (f" (+{len(roles)-12} more)")
 
-        # =====================================================
-        # PERMISSIONS
-        # =====================================================
-        perms = member.guild_permissions
+        # Voice
+        if target.voice and target.voice.channel:
 
-        dangerous = [
-            label for key, label in DANGEROUS_PERMS.items()
-            if getattr(perms, key, False)
-        ]
+            voice_text = (f"{target.voice.channel.mention} "
+                          f"({len(target.voice.channel.members)})")
 
-        dangerous_display = ", ".join(dangerous) or "None"
+        else:
+            voice_text = "Not connected"
 
-        # =====================================================
-        # STATUS
-        # =====================================================
-        status_map = {
-            discord.Status.online: "Online",
-            discord.Status.idle: "Idle",
-            discord.Status.dnd: "Do Not Disturb",
-            discord.Status.offline: "Offline",
-        }
+        # Boost
+        boost_text = (self.format_timestamp(target.premium_since)
+                      if target.premium_since else "Not boosting")
 
-        status = status_map.get(member.status, "Unknown")
+        # Mutuals
+        mutuals = sum(1 for g in self.bot.guilds if g.get_member(target.id))
 
-        activity = "None"
-        if member.activities:
-            act = member.activities[0]
-            activity = getattr(act, "name", str(act))
-
-        # =====================================================
-        # RISK FLAGS
-        # =====================================================
-        account_age_days = (discord.utils.utcnow() - member.created_at).days
-
-        risks = []
-        if account_age_days < 7:
-            risks.append("New Account")
-
-        if member.display_avatar == member.default_avatar:
-            risks.append("No Avatar")
-
-        risk_display = ", ".join(risks) or "None"
-
-        # =====================================================
-        # TIMEOUT
-        # =====================================================
-        timeout_status = (f"<t:{int(member.timed_out_until.timestamp())}:R>"
-                          if member.timed_out_until else "No")
-
-        # =====================================================
-        # LINKS
-        # =====================================================
-        avatar_url = member.display_avatar.url
-        banner = member.banner.url if member.banner else None
-
-        links = f"[Avatar]({avatar_url})"
-        if banner:
-            links += f" • [Banner]({banner})"
-
-        # =====================================================
-        # EMBED
-        # =====================================================
+        # Embed
         embed = make_embed(
-            title="User Info",
-            description=f"Information for {member.mention}",
+            title=f"{target}",
+            description=(f"{EMOJIS['developer']} {target.mention}\n"
+                         f"{EMOJIS['arrow_point']} `{target.id}`"),
             level="INFO",
-            fields=[
-                ("Account", f"ID: `{member.id}`\n"
-                 f"Created: <t:{created_ts}:R>", True),
-                ("Server", f"Joined: <t:{joined_ts}:R>\n"
-                 f"Position: {join_position}/{guild.member_count}", True),
-                ("Status", f"{status}\n{activity}", True),
-                ("Permissions", f"Dangerous: {dangerous_display}", True),
-                ("Moderation", f"Timed Out: {timeout_status}\n"
-                 f"Risk: {risk_display}", True),
-                (f"Roles ({len(role_mentions)})", roles_display, False),
-                ("Links", links, False),
-            ],
-            thumbnail=avatar_url,
-            footer=f"Requested by {ctx.author}",
         )
 
-        if banner:
-            embed.set_image(url=banner)
-        else:
-            embed.set_image(url=avatar_url)
+        # Color
+        if target.accent_color:
+            embed.color = target.accent_color
 
-        # =====================================================
-        # CACHE STORE
-        # =====================================================
-        _whois_cache[cache_key] = (now, embed)
+        elif target.color != discord.Color.default():
+            embed.color = target.color
 
-        await ctx.send(embed=embed)
+        # Avatar
+        embed.set_thumbnail(url=target.display_avatar.url)
 
-    # =====================================================
-    # ERROR HANDLER
-    # =====================================================
-    @whois.error
-    async def whois_error(self, ctx: commands.Context, error):
+        # Banner like comment command
+        if fetched_user.banner:
+            embed.set_image(url=fetched_user.banner.url)
 
-        if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(embed=make_embed(
-                title="Cooldown Active",
-                description=f"Try again in {round(error.retry_after, 1)}s",
-                level="WARNING",
-            ))
+        # User Info
+        embed.add_field(
+            name=f"{EMOJIS['message']} User",
+            value=(f"**Display:** {target.display_name}\n"
+                   f"**Global:** "
+                   f"{target.global_name or 'None'}\n"
+                   f"**Nickname:** "
+                   f"{target.nick or 'None'}\n"
+                   f"**Bot:** {target.bot}"),
+            inline=False,
+        )
+
+        # Dates
+        embed.add_field(
+            name=f"{EMOJIS['folder']} Created",
+            value=self.format_timestamp(target.created_at),
+            inline=True,
+        )
+
+        embed.add_field(
+            name=f"{EMOJIS['support_dot']} Joined",
+            value=self.format_timestamp(target.joined_at),
+            inline=True,
+        )
+
+        embed.add_field(
+            name=f"{EMOJIS['boost']} Boosting",
+            value=boost_text,
+            inline=True,
+        )
+
+        # Server
+        embed.add_field(
+            name=f"{EMOJIS['moderation']} Server",
+            value=(f"**Join Position:** #{join_position}\n"
+                   f"**Top Role:** "
+                   f"{target.top_role.mention}\n"
+                   f"**Roles:** {len(target.roles)-1}\n"
+                   f"**Mutuals:** {mutuals}"),
+            inline=False,
+        )
+
+        # Presence
+        embed.add_field(
+            name=f"{EMOJIS['ping']} Presence",
+            value=(f"**Status:** "
+                   f"{self.get_status(target)}\n"
+                   f"**Platforms:** "
+                   f"{self.get_platforms(target)}\n"
+                   f"**Voice:** {voice_text}"),
+            inline=False,
+        )
+
+        # Permissions
+        embed.add_field(
+            name=f"{EMOJIS['warning']} Permissions",
+            value=self.get_permissions(target),
+            inline=False,
+        )
+
+        # Badges
+        embed.add_field(
+            name=f"{EMOJIS['developer']} Badges",
+            value=self.get_badges(target),
+            inline=False,
+        )
+
+        # Activities
+        embed.add_field(
+            name=f"{EMOJIS['curved_arrow']} Activities",
+            value=self.get_activities(target),
+            inline=False,
+        )
+
+        # Roles
+        embed.add_field(
+            name=f"{EMOJIS['folder']} Roles ({len(roles)})",
+            value=role_text,
+            inline=False,
+        )
+
+        embed.set_footer(
+            text=f"Requested by {ctx.author}",
+            icon_url=ctx.author.display_avatar.url,
+        )
+
+        await ctx.reply(
+            embed=embed,
+            mention_author=False,
+        )
 
 
 async def setup(bot: commands.Bot):
+
     await bot.add_cog(Whois(bot))
