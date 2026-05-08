@@ -1,12 +1,18 @@
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import delete
-from sqlalchemy import distinct
-from sqlalchemy import select
-from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy import delete, distinct, select
 
-from db.engine import AsyncSessionLocal
+from sqlalchemy.dialects.sqlite import (
+    insert as sqlite_insert, )
+
+from sqlalchemy.dialects.postgresql import (
+    insert as postgres_insert, )
+
+from db.engine import (
+    AsyncSessionLocal,
+    DB_DIALECT,
+)
 
 from db.models import (
     ChannelPermissionSnapshot,
@@ -14,7 +20,19 @@ from db.models import (
 )
 
 
-# SECURITY ROLE DETECTION
+# Internal insert builder
+def build_insert_stmt(
+    model,
+    values: dict,
+):
+
+    if DB_DIALECT == "postgresql":
+        return postgres_insert(model).values(**values)
+
+    return sqlite_insert(model).values(**values)
+
+
+# Security role detection
 async def get_security_roles(guild, ) -> list[int]:
 
     roles = {guild.default_role.id}
@@ -36,9 +54,7 @@ async def get_security_roles(guild, ) -> list[int]:
     return list(roles)
 
 
-# SINGLE SNAPSHOT
-
-
+# Single snapshot
 async def set_permission_snapshot(
     guild_id: int,
     channel_id: int,
@@ -52,15 +68,18 @@ async def set_permission_snapshot(
 
     async with AsyncSessionLocal() as session:
 
-        stmt = insert(ChannelPermissionSnapshot).values(
-            guild_id=guild_id,
-            channel_id=channel_id,
-            target_id=target_id,
-            send_messages=send_messages,
-            connect=connect,
-            speak=speak,
-            locked_by=actor_id,
-            expires_at=expires_at,
+        stmt = build_insert_stmt(
+            ChannelPermissionSnapshot,
+            {
+                "guild_id": guild_id,
+                "channel_id": channel_id,
+                "target_id": target_id,
+                "send_messages": send_messages,
+                "connect": connect,
+                "speak": speak,
+                "locked_by": actor_id,
+                "expires_at": expires_at,
+            },
         )
 
         stmt = stmt.on_conflict_do_update(
@@ -79,13 +98,10 @@ async def set_permission_snapshot(
         )
 
         await session.execute(stmt)
-
         await session.commit()
 
 
-# BULK SNAPSHOTS
-
-
+# Bulk snapshots
 async def set_permission_snapshots(
     guild_id: int,
     channel_id: int,
@@ -108,15 +124,18 @@ async def set_permission_snapshots(
                 speak,
         ) in snapshots:
 
-            stmt = insert(ChannelPermissionSnapshot).values(
-                guild_id=guild_id,
-                channel_id=channel_id,
-                target_id=target_id,
-                send_messages=send_messages,
-                connect=connect,
-                speak=speak,
-                locked_by=actor_id,
-                expires_at=expires_at,
+            stmt = build_insert_stmt(
+                ChannelPermissionSnapshot,
+                {
+                    "guild_id": guild_id,
+                    "channel_id": channel_id,
+                    "target_id": target_id,
+                    "send_messages": send_messages,
+                    "connect": connect,
+                    "speak": speak,
+                    "locked_by": actor_id,
+                    "expires_at": expires_at,
+                },
             )
 
             stmt = stmt.on_conflict_do_update(
@@ -139,9 +158,7 @@ async def set_permission_snapshots(
         await session.commit()
 
 
-# FETCH SNAPSHOTS
-
-
+# Fetch snapshots
 async def get_permission_snapshots(
     guild_id: int,
     channel_id: int,
@@ -158,9 +175,7 @@ async def get_permission_snapshots(
         return list(result)
 
 
-# DELETE SNAPSHOTS
-
-
+# Delete snapshots
 async def remove_permission_snapshots(
     guild_id: int,
     channel_id: int,
@@ -176,11 +191,10 @@ async def remove_permission_snapshots(
 
         await session.commit()
 
-        return result.rowcount > 0 # type: ignore
+        return (getattr(result, "rowcount", 0) or 0) > 0
 
 
-# CHECK LOCK STATE
-
+# Check lock state
 async def is_channel_locked(
     guild_id: int,
     channel_id: int,
@@ -188,16 +202,16 @@ async def is_channel_locked(
 
     async with AsyncSessionLocal() as session:
 
-        return await session.scalar(
+        result = await session.scalar(
             select(ChannelPermissionSnapshot.channel_id).where(
                 ChannelPermissionSnapshot.guild_id == guild_id,
                 ChannelPermissionSnapshot.channel_id == channel_id,
-            ).limit(1)) is not None
+            ).limit(1))
+
+        return result is not None
 
 
-# FETCH LOCKED CHANNELS
-
-
+# Fetch locked channels
 async def get_locked_channels(guild_id: int, ) -> list[int]:
 
     async with AsyncSessionLocal() as session:
@@ -209,9 +223,7 @@ async def get_locked_channels(guild_id: int, ) -> list[int]:
         return list(result)
 
 
-# FETCH EXPIRED SNAPSHOTS
-
-
+# Fetch expired snapshots
 async def get_expired_snapshots(
     now: datetime, ) -> List[ChannelPermissionSnapshot]:
 

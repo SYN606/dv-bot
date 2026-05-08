@@ -1,16 +1,36 @@
 from typing import Optional
 
-from sqlalchemy import delete
-from sqlalchemy import select
-from sqlalchemy import update
-from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy import delete, select, update
 
-from db.engine import AsyncSessionLocal
+from sqlalchemy.dialects.sqlite import (
+    insert as sqlite_insert, )
+
+from sqlalchemy.dialects.postgresql import (
+    insert as postgres_insert, )
+
+from db.engine import (
+    AsyncSessionLocal,
+    DB_DIALECT,
+)
+
 from db.models import StickyMessage
 
 THRESHOLD = 1
 
 
+# Internal insert builder
+def build_insert_stmt(
+    model,
+    values: dict,
+):
+
+    if DB_DIALECT == "postgresql":
+        return postgres_insert(model).values(**values)
+
+    return sqlite_insert(model).values(**values)
+
+
+# Set sticky
 async def set_sticky(
     guild_id: int,
     channel_id: int,
@@ -19,12 +39,15 @@ async def set_sticky(
 
     async with AsyncSessionLocal() as session:
 
-        stmt = insert(StickyMessage).values(
-            guild_id=guild_id,
-            channel_id=channel_id,
-            sticky_content=content,
-            counter=0,
-            last_message_id=None,
+        stmt = build_insert_stmt(
+            StickyMessage,
+            {
+                "guild_id": guild_id,
+                "channel_id": channel_id,
+                "sticky_content": content,
+                "counter": 0,
+                "last_message_id": None,
+            },
         )
 
         stmt = stmt.on_conflict_do_update(
@@ -40,10 +63,10 @@ async def set_sticky(
         )
 
         await session.execute(stmt)
-
         await session.commit()
 
 
+# Remove sticky
 async def remove_sticky(
     guild_id: int,
     channel_id: int,
@@ -59,9 +82,10 @@ async def remove_sticky(
 
         await session.commit()
 
-        return result.rowcount > 0 # type: ignore
+        return (getattr(result, "rowcount", 0) or 0) > 0
 
 
+# Get sticky
 async def get_sticky(
     guild_id: int,
     channel_id: int,
@@ -76,6 +100,7 @@ async def get_sticky(
             ))
 
 
+# Sticky repost step
 async def sticky_step(
     guild_id: int,
     channel_id: int,
@@ -94,22 +119,21 @@ async def sticky_step(
 
         counter = sticky.counter + 1
 
-        # threshold not reached
+        # Threshold not reached
         if counter < THRESHOLD:
 
             await session.execute(
                 update(StickyMessage).where(
                     StickyMessage.guild_id == guild_id,
                     StickyMessage.channel_id == channel_id,
-                ).values(counter=counter, ))
+                ).values(counter=counter))
 
             await session.commit()
 
             return None
 
-        # repost trigger
+        # Repost trigger
         content = sticky.sticky_content
-
         last_message_id = sticky.last_message_id
 
         await session.execute(
@@ -129,6 +153,7 @@ async def sticky_step(
         )
 
 
+# Update last sticky message
 async def update_last_message(
     guild_id: int,
     channel_id: int,
@@ -141,6 +166,6 @@ async def update_last_message(
             update(StickyMessage).where(
                 StickyMessage.guild_id == guild_id,
                 StickyMessage.channel_id == channel_id,
-            ).values(last_message_id=message_id, ))
+            ).values(last_message_id=message_id))
 
         await session.commit()

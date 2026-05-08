@@ -1,28 +1,40 @@
 from typing import Optional
-
-from sqlalchemy import delete
-from sqlalchemy import select
-from sqlalchemy import update
-from sqlalchemy.dialects.sqlite import insert
-
-from db.engine import AsyncSessionLocal
+from sqlalchemy import delete, select, update
+from sqlalchemy.dialects.sqlite import (
+    insert as sqlite_insert, )
+from sqlalchemy.dialects.postgresql import (
+    insert as postgres_insert, )
+from db.engine import (
+    AsyncSessionLocal,
+    DB_DIALECT,
+)
 from db.models import ModerationLogConfig
 
 
-# SET LOG CHANNEL
+# Internal insert builder
+def build_insert_stmt(
+    model,
+    values: dict,
+):
+    if DB_DIALECT == "postgresql":
+        return postgres_insert(model).values(**values)
+    return sqlite_insert(model).values(**values)
+
+
+# Set log channel
 async def set_log_channel(
     guild_id: int,
     channel_id: int,
 ) -> None:
-
     async with AsyncSessionLocal() as session:
-
-        stmt = insert(ModerationLogConfig).values(
-            guild_id=guild_id,
-            channel_id=channel_id,
-            enabled=True,
+        stmt = build_insert_stmt(
+            ModerationLogConfig,
+            {
+                "guild_id": guild_id,
+                "channel_id": channel_id,
+                "enabled": True,
+            },
         )
-
         stmt = stmt.on_conflict_do_update(
             index_elements=[
                 ModerationLogConfig.guild_id,
@@ -34,17 +46,12 @@ async def set_log_channel(
         )
 
         await session.execute(stmt)
-
         await session.commit()
 
 
-# GET LOG CHANNEL
-
-
+# Get log channel
 async def get_log_channel(guild_id: int, ) -> Optional[int]:
-
     async with AsyncSessionLocal() as session:
-
         return await session.scalar(
             select(ModerationLogConfig.channel_id).where(
                 ModerationLogConfig.guild_id == guild_id,
@@ -52,65 +59,44 @@ async def get_log_channel(guild_id: int, ) -> Optional[int]:
             ))
 
 
-# CHECK IF ENABLED
-
-
+# Check enabled
 async def is_modlog_enabled(guild_id: int, ) -> bool:
-
     async with AsyncSessionLocal() as session:
-
-        return await session.scalar(
+        result = await session.scalar(
             select(ModerationLogConfig.guild_id).where(
                 ModerationLogConfig.guild_id == guild_id,
                 ModerationLogConfig.enabled.is_(True),
-            )) is not None
+            ))
+        return result is not None
 
 
-# ENABLE MODLOGS
-
-
+# Enable modlogs
 async def enable_modlogs(guild_id: int, ) -> bool:
-
     async with AsyncSessionLocal() as session:
-
         result = await session.execute(
             update(ModerationLogConfig).where(
                 ModerationLogConfig.guild_id == guild_id, ).values(
-                    enabled=True, ))
-
+                    enabled=True))
         await session.commit()
-
-        return result.rowcount > 0 # type: ignore
-
-
-# DISABLE MODLOGS
+        return (getattr(result, "rowcount", 0) or 0) > 0
 
 
+# Disable modlogs
 async def disable_modlogs(guild_id: int, ) -> bool:
-
     async with AsyncSessionLocal() as session:
-
         result = await session.execute(
             update(ModerationLogConfig).where(
                 ModerationLogConfig.guild_id == guild_id, ).values(
-                    enabled=False, ))
-
+                    enabled=False))
         await session.commit()
-
-        return result.rowcount > 0 # type: ignore
-
-
-# REMOVE MODLOG CONFIG
+        return (getattr(result, "rowcount", 0) or 0) > 0
 
 
+# Remove modlog config
 async def remove_log_channel(guild_id: int, ) -> bool:
-
     async with AsyncSessionLocal() as session:
-
         result = await session.execute(
             delete(ModerationLogConfig).where(
                 ModerationLogConfig.guild_id == guild_id, ))
-
         await session.commit()
-
-        return result.rowcount > 0 # type: ignore
+        return (getattr(result, "rowcount", 0) or 0) > 0

@@ -1,29 +1,43 @@
 from datetime import datetime
-from typing import List
-from typing import Optional
+from typing import List, Optional
+from sqlalchemy import select, update
+from sqlalchemy.dialects.sqlite import (
+    insert as sqlite_insert, )
+from sqlalchemy.dialects.postgresql import (
+    insert as postgres_insert, )
+from db.engine import (
+    AsyncSessionLocal,
+    DB_DIALECT,
+)
+from db.models import (
+    TempbanConfig,
+    TempbanRecord,
+)
 
-from sqlalchemy import select
-from sqlalchemy import update
-from sqlalchemy.dialects.sqlite import insert
+# Internal upsert builder
+def build_insert_stmt(
+    model,
+    values: dict,
+):
 
-from db.engine import AsyncSessionLocal
-from db.models import TempbanConfig
-from db.models import TempbanRecord
+    if DB_DIALECT == "postgresql":
+        return postgres_insert(model).values(**values)
+    return sqlite_insert(model).values(**values)
 
 
-# CONFIG
+# Set tempban role
 async def set_tempban_role(
     guild_id: int,
     role_id: int,
 ) -> None:
-
     async with AsyncSessionLocal() as session:
-
-        stmt = insert(TempbanConfig).values(
-            guild_id=guild_id,
-            role_id=role_id,
+        stmt = build_insert_stmt(
+            TempbanConfig,
+            {
+                "guild_id": guild_id,
+                "role_id": role_id,
+            },
         )
-
         stmt = stmt.on_conflict_do_update(
             index_elements=[
                 TempbanConfig.guild_id,
@@ -34,10 +48,10 @@ async def set_tempban_role(
         )
 
         await session.execute(stmt)
-
         await session.commit()
 
 
+# Get tempban role
 async def get_tempban_role(guild_id: int, ) -> Optional[int]:
 
     async with AsyncSessionLocal() as session:
@@ -47,9 +61,7 @@ async def get_tempban_role(guild_id: int, ) -> Optional[int]:
                 TempbanConfig.guild_id == guild_id))
 
 
-# TEMPBAN ACTIONS
-
-
+# Add tempban
 async def add_tempban(
     *,
     guild_id: int,
@@ -61,13 +73,16 @@ async def add_tempban(
 
     async with AsyncSessionLocal() as session:
 
-        stmt = insert(TempbanRecord).values(
-            guild_id=guild_id,
-            user_id=user_id,
-            moderator_id=moderator_id,
-            tempban_reason=reason,
-            expires_at=expires_at,
-            active=True,
+        stmt = build_insert_stmt(
+            TempbanRecord,
+            {
+                "guild_id": guild_id,
+                "user_id": user_id,
+                "moderator_id": moderator_id,
+                "tempban_reason": reason,
+                "expires_at": expires_at,
+                "active": True,
+            },
         )
 
         stmt = stmt.on_conflict_do_update(
@@ -85,10 +100,10 @@ async def add_tempban(
         )
 
         await session.execute(stmt)
-
         await session.commit()
 
 
+# Remove tempban
 async def remove_tempban(
     *,
     guild_id: int,
@@ -111,12 +126,10 @@ async def remove_tempban(
 
         await session.commit()
 
-        return result.rowcount > 0 # type: ignore
+        return (getattr(result, "rowcount", 0) or 0) > 0
 
 
-# STATUS CHECKS
-
-
+# Check tempban status
 async def is_tempbanned(
     guild_id: int,
     user_id: int,
@@ -124,17 +137,17 @@ async def is_tempbanned(
 
     async with AsyncSessionLocal() as session:
 
-        return await session.scalar(
+        result = await session.scalar(
             select(TempbanRecord.guild_id).where(
                 TempbanRecord.guild_id == guild_id,
                 TempbanRecord.user_id == user_id,
                 TempbanRecord.active.is_(True),
-            )) is not None
+            ))
+
+        return result is not None
 
 
-# FETCH ACTIVE TEMPBANS
-
-
+# Fetch active tempbans
 async def get_active_tempbans(guild_id: int, ) -> List[TempbanRecord]:
 
     async with AsyncSessionLocal() as session:
@@ -148,9 +161,7 @@ async def get_active_tempbans(guild_id: int, ) -> List[TempbanRecord]:
         return list(result)
 
 
-# FETCH EXPIRED TEMPBANS
-
-
+# Fetch expired tempbans
 async def get_expired_tempbans() -> List[TempbanRecord]:
 
     async with AsyncSessionLocal() as session:
