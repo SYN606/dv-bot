@@ -472,3 +472,120 @@ class ChannelPermissionSnapshot(
             "expires_at",
         ),
     )
+
+
+# VC MANAGER CONFIG
+class VCManagerConfig(
+        Base,
+        TimestampMixin,
+):
+
+    __tablename__ = "vc_manager_config"
+
+    guild_id: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+    )
+    enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default="0",
+    )
+    panel_channel_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
+    panel_message_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+        unique=True,
+    )
+    log_channel_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
+    drag_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default="1",
+    )
+    drag_all_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default="1",
+    )
+    role_sync_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default="1",
+    )
+    __table_args__ = (Index(
+        "idx_vc_manager_lookup",
+        "guild_id",
+        "enabled",
+    ), )
+
+    def __repr__(self) -> str:
+
+        return (f"<VCManagerConfig "
+                f"guild={self.guild_id} "
+                f"enabled={self.enabled}>")
+
+
+# VC TRACKED CHANNELS
+class VCTrackedChannel(
+        Base,
+        TimestampMixin,
+):
+
+    __tablename__ = "vc_tracked_channels"
+
+    guild_id: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+    )
+    channel_id: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+    )
+    role_id: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default="1",
+    )
+    auto_role: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default="1",
+    )
+    drag_allowed: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default="1",
+    )
+    managed_role: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default="1",
+    )
+    __table_args__ = (
+        Index(
+            "idx_vc_tracking_lookup",
+            "guild_id",
+            "channel_id",
+        ),
+        Index(
+            "idx_vc_tracking_role",
+            "guild_id",
+            "role_id",
+        ),
+    )
+    def __repr__(self) -> str:
+        return (f"<VCTrackedChannel "
+                f"guild={self.guild_id} "
+                f"channel={self.channel_id} "
+                f"role={self.role_id}>")
