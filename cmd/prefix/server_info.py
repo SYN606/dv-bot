@@ -1,6 +1,8 @@
 import time
 import discord
+
 from discord.ext import commands
+
 from utils.permissions.base_admin import BaseAdminCog
 from utils.permissions.check_perms import is_bot_admin_ctx
 from utils.core.embeds import make_embed
@@ -8,12 +10,16 @@ from utils.core.emojis import EMOJIS
 
 
 class ServerInfoView(discord.ui.View):
-
-    def __init__(self, guild: discord.Guild, author_id: int):
+    def __init__(
+        self,
+        guild: discord.Guild,
+        author_id: int,
+    ):
         super().__init__(timeout=60)
 
         self.guild = guild
         self.author_id = author_id
+        self.message: discord.Message | None = None
 
         self._cooldowns: dict[int, float] = {}
 
@@ -25,12 +31,12 @@ class ServerInfoView(discord.ui.View):
     ) -> bool:
 
         if interaction.user.id != self.author_id:
-
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Access Denied",
-                    description=
-                    f"{EMOJIS['fail']} You cannot use this interaction.",
+                    description=(
+                        f"{EMOJIS.get('fail', '❌')} You cannot use this interaction."
+                    ),
                     level="ERROR",
                 ),
                 ephemeral=True,
@@ -40,7 +46,10 @@ class ServerInfoView(discord.ui.View):
 
         return True
 
-    def _check_cd(self, user_id: int) -> float:
+    def _check_cd(
+        self,
+        user_id: int,
+    ) -> float:
 
         now = time.time()
 
@@ -63,18 +72,19 @@ class ServerInfoView(discord.ui.View):
     async def more_stats(
         self,
         interaction: discord.Interaction,
-        _,
+        _: discord.ui.Button,
     ):
 
         remaining = self._check_cd(interaction.user.id)
 
         if remaining > 0:
-
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Cooldown",
-                    description=
-                    f"{EMOJIS['warning']} Wait `{remaining:.1f}s` before using this again.",
+                    description=(
+                        f"{EMOJIS.get('warning', '⚠️')} "
+                        f"Wait `{remaining:.1f}s` before using this again."
+                    ),
                     level="WARNING",
                 ),
                 ephemeral=True,
@@ -88,11 +98,16 @@ class ServerInfoView(discord.ui.View):
 
         bots = (g.member_count or 0) - humans
 
-        online = sum(1 for m in g.members if m.status in (
-            discord.Status.online,
-            discord.Status.idle,
-            discord.Status.dnd,
-        ))
+        online = sum(
+            1
+            for m in g.members
+            if m.status
+            in (
+                discord.Status.online,
+                discord.Status.idle,
+                discord.Status.dnd,
+            )
+        )
 
         text_channels = len(g.text_channels)
 
@@ -102,27 +117,34 @@ class ServerInfoView(discord.ui.View):
 
         stage_channels = len(g.stage_channels)
 
-        total_channels = (text_channels + voice_channels + forum_channels +
-                          stage_channels)
+        total_channels = (
+            text_channels + voice_channels + forum_channels + stage_channels
+        )
 
         embed = make_embed(
             title="📊 Advanced Statistics",
-            description=
-            (f"{EMOJIS['green_dot']} Members: `{g.member_count}`\n"
-             f"{EMOJIS['developer']} Humans: `{humans}`\n"
-             f"{EMOJIS['bot']} Bots: `{bots}`\n"
-             f"{EMOJIS['ping']} Online: `{online}`\n\n"
-             f"{EMOJIS['folder']} Channels: `{total_channels}`\n"
-             f"• Text: `{text_channels}`\n"
-             f"• Voice: `{voice_channels}`\n"
-             f"• Forum: `{forum_channels}`\n"
-             f"• Stage: `{stage_channels}`\n\n"
-             f"{EMOJIS['moderation']} Roles: `{len(g.roles)}`\n"
-             f"{EMOJIS['emoji']} Emojis: `{len(g.emojis)}` / `{g.emoji_limit}`\n"
-             f"{EMOJIS['boost']} Stickers: `{len(g.stickers)}` / `{g.sticker_limit}`"
-             ),
+            description=(
+                f"{EMOJIS.get('green_dot', '🟢')} Members: "
+                f"`{g.member_count}`\n"
+                f"{EMOJIS.get('developer', '👨‍💻')} Humans: "
+                f"`{humans}`\n"
+                f"🤖 Bots: `{bots}`\n"
+                f"{EMOJIS.get('ping', '📡')} Online: "
+                f"`{online}`\n\n"
+                f"{EMOJIS.get('folder', '📁')} Channels: "
+                f"`{total_channels}`\n"
+                f"• Text: `{text_channels}`\n"
+                f"• Voice: `{voice_channels}`\n"
+                f"• Forum: `{forum_channels}`\n"
+                f"• Stage: `{stage_channels}`\n\n"
+                f"{EMOJIS.get('moderation', '🛡️')} Roles: "
+                f"`{len(g.roles)}`\n"
+                f"😀 Emojis: "
+                f"`{len(g.emojis)}` / `{g.emoji_limit}`\n"
+                f"{EMOJIS.get('boost', '🚀')} Stickers: "
+                f"`{len(g.stickers)}` / `{g.sticker_limit}`"
+            ),
             level="INFO",
-            footer=f"Action by: {interaction.user}",
         )
 
         embed.set_footer(
@@ -143,18 +165,19 @@ class ServerInfoView(discord.ui.View):
     async def assets(
         self,
         interaction: discord.Interaction,
-        _,
+        _: discord.ui.Button,
     ):
 
         remaining = self._check_cd(interaction.user.id)
 
         if remaining > 0:
-
             await interaction.response.send_message(
                 embed=make_embed(
                     title="Cooldown",
-                    description=
-                    f"{EMOJIS['warning']} Wait `{remaining:.1f}s` before using this again.",
+                    description=(
+                        f"{EMOJIS.get('warning', '⚠️')} "
+                        f"Wait `{remaining:.1f}s` before using this again."
+                    ),
                     level="WARNING",
                 ),
                 ephemeral=True,
@@ -167,14 +190,15 @@ class ServerInfoView(discord.ui.View):
         embed = make_embed(
             title="🖼️ Server Assets",
             description=(
-                f"{EMOJIS['arrow_point']} Icon: "
+                f"{EMOJIS.get('arrow_point', '➜')} Icon: "
                 f"{'Available' if g.icon else 'Missing'}\n"
-                f"{EMOJIS['arrow_point']} Banner: "
+                f"{EMOJIS.get('arrow_point', '➜')} Banner: "
                 f"{'Available' if g.banner else 'Missing'}\n"
-                f"{EMOJIS['arrow_point']} Splash: "
+                f"{EMOJIS.get('arrow_point', '➜')} Splash: "
                 f"{'Available' if g.splash else 'Missing'}\n"
-                f"{EMOJIS['arrow_point']} Discovery Splash: "
-                f"{'Available' if g.discovery_splash else 'Missing'}"),
+                f"{EMOJIS.get('arrow_point', '➜')} Discovery Splash: "
+                f"{'Available' if g.discovery_splash else 'Missing'}"
+            ),
             level="INFO",
         )
 
@@ -199,13 +223,29 @@ class ServerInfoView(discord.ui.View):
         for item in self.children:
             item.disabled = True  # type: ignore
 
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+
+            except (
+                discord.NotFound,
+                discord.Forbidden,
+                discord.HTTPException,
+            ):
+                pass
+
 
 class ServerInfo(BaseAdminCog):
-
-    def __init__(self, bot: commands.Bot):
+    def __init__(
+        self,
+        bot: commands.Bot,
+    ):
         self.bot = bot
 
-    async def cog_check(self, ctx: commands.Context) -> bool:
+    async def cog_check(
+        self,
+        ctx: commands.Context,
+    ) -> bool:
 
         g = ctx.guild
 
@@ -225,17 +265,27 @@ class ServerInfo(BaseAdminCog):
 
     @commands.command(
         name="server-info",
-        aliases=["si", "serverinfo"],
+        aliases=[
+            "serverinfo",
+            "si",
+        ],
         help="View detailed server information",
     )
     @commands.guild_only()
-    @commands.cooldown(1, 8, commands.BucketType.user)
+    @commands.cooldown(
+        1,
+        8,
+        commands.BucketType.user,
+    )
     @commands.max_concurrency(
         1,
         per=commands.BucketType.guild,
         wait=False,
     )
-    async def server_info(self, ctx: commands.Context):
+    async def server_info(
+        self,
+        ctx: commands.Context,
+    ):
 
         g = ctx.guild
 
@@ -253,30 +303,43 @@ class ServerInfo(BaseAdminCog):
 
         bots = (g.member_count or 0) - humans
 
-        online = sum(1 for m in g.members if m.status in (
-            discord.Status.online,
-            discord.Status.idle,
-            discord.Status.dnd,
-        ))
+        online = sum(
+            1
+            for m in g.members
+            if m.status
+            in (
+                discord.Status.online,
+                discord.Status.idle,
+                discord.Status.dnd,
+            )
+        )
 
         embed = make_embed(
-            title=f"{EMOJIS['announcement']} {g.name}",
-            description=(f"{EMOJIS['arrow_point']} Owner: "
-                         f"{owner.mention if owner else 'Unknown'}\n"
-                         f"{EMOJIS['arrow_point']} Server ID: `{g.id}`\n"
-                         f"{EMOJIS['arrow_point']} Created: {created}\n\n"
-                         f"{EMOJIS['green_dot']} Members: `{g.member_count}`\n"
-                         f"{EMOJIS['developer']} Humans: `{humans}`\n"
-                         f"{EMOJIS['bot']} Bots: `{bots}`\n"
-                         f"{EMOJIS['ping']} Online: `{online}`\n\n"
-                         f"{EMOJIS['boost']} Boosts: "
-                         f"`{g.premium_subscription_count or 0}` "
-                         f"(Level {g.premium_tier})\n"
-                         f"{EMOJIS['okay']} Verification: "
-                         f"`{str(g.verification_level).title()}`\n"
-                         f"{EMOJIS['moderation']} Roles: `{len(g.roles)}`\n"
-                         f"{EMOJIS['emoji']} Emojis: "
-                         f"`{len(g.emojis)}` / `{g.emoji_limit}`"),
+            title=f"{EMOJIS.get('announcement', '📢')} {g.name}",
+            description=(
+                f"{EMOJIS.get('arrow_point', '➜')} Owner: "
+                f"{owner.mention if owner else 'Unknown'}\n"
+                f"{EMOJIS.get('arrow_point', '➜')} Server ID: "
+                f"`{g.id}`\n"
+                f"{EMOJIS.get('arrow_point', '➜')} Created: "
+                f"{created}\n\n"
+                f"{EMOJIS.get('green_dot', '🟢')} Members: "
+                f"`{g.member_count}`\n"
+                f"{EMOJIS.get('developer', '👨‍💻')} Humans: "
+                f"`{humans}`\n"
+                f"🤖 Bots: `{bots}`\n"
+                f"{EMOJIS.get('ping', '📡')} Online: "
+                f"`{online}`\n\n"
+                f"{EMOJIS.get('boost', '🚀')} Boosts: "
+                f"`{g.premium_subscription_count or 0}` "
+                f"(Level {g.premium_tier})\n"
+                f"{EMOJIS.get('okay', '✅')} Verification: "
+                f"`{str(g.verification_level).title()}`\n"
+                f"{EMOJIS.get('moderation', '🛡️')} Roles: "
+                f"`{len(g.roles)}`\n"
+                f"😀 Emojis: "
+                f"`{len(g.emojis)}` / `{g.emoji_limit}`"
+            ),
             level="SYSTEM",
         )
 
@@ -296,35 +359,73 @@ class ServerInfo(BaseAdminCog):
             author_id=ctx.author.id,
         )
 
-        await ctx.send(
+        msg = await ctx.send(
             embed=embed,
             view=view,
         )
 
+        view.message = msg
+
     @server_info.error
     async def server_info_error(
         self,
-        ctx,
+        ctx: commands.Context,
         error,
     ):
 
-        if isinstance(error, commands.CommandOnCooldown):
+        if isinstance(
+            error,
+            commands.CommandOnCooldown,
+        ):
+            await ctx.send(
+                embed=make_embed(
+                    title="Cooldown",
+                    description=(
+                        f"{EMOJIS.get('warning', '⚠️')} "
+                        f"Try again in "
+                        f"`{round(error.retry_after, 1)}s`"
+                    ),
+                    level="WARNING",
+                )
+            )
 
-            await ctx.send(embed=make_embed(
-                title="Cooldown",
-                description=(f"{EMOJIS['warning']} "
-                             f"Try again in `{round(error.retry_after, 1)}s`"),
-                level="WARNING",
-            ))
+            return
 
-        elif isinstance(error, commands.MaxConcurrencyReached):
+        if isinstance(
+            error,
+            commands.MaxConcurrencyReached,
+        ):
+            await ctx.send(
+                embed=make_embed(
+                    title="Busy",
+                    description=(f"{EMOJIS.get('loading', '⏳')} Already running."),
+                    level="WARNING",
+                )
+            )
 
-            await ctx.send(embed=make_embed(
-                title="Busy",
-                description=f"{EMOJIS['loading']} Already running.",
-                level="WARNING",
-            ))
+            return
+
+        if isinstance(
+            error,
+            commands.NoPrivateMessage,
+        ):
+            await ctx.send(
+                embed=make_embed(
+                    title="Guild Only",
+                    description=(
+                        f"{EMOJIS.get('fail', '❌')} "
+                        "This command can only be used in a server."
+                    ),
+                    level="ERROR",
+                )
+            )
+
+            return
+
+        raise error
 
 
-async def setup(bot: commands.Bot):
+async def setup(
+    bot: commands.Bot,
+):
     await bot.add_cog(ServerInfo(bot))
