@@ -82,8 +82,6 @@ async def set_vc_manager_config(
 
         await session.commit()
 
-        print(f"[VC MANAGER] Config updated for {guild_id}")
-
 
 # Get manager config
 async def get_vc_manager_config(
@@ -113,11 +111,7 @@ async def is_vc_manager_enabled(
             )
         )
 
-        enabled = result is not None
-
-        print(f"[VC MANAGER] Guild={guild_id} Enabled={enabled}")
-
-        return enabled
+        return result is not None
 
 
 # Update panel
@@ -152,11 +146,7 @@ async def update_vc_panel(
 
         await session.commit()
 
-        updated = (getattr(result, "rowcount", 0) or 0) > 0
-
-        print(f"[VC MANAGER] Panel updated={updated}")
-
-        return updated
+        return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Update log channel
@@ -178,11 +168,7 @@ async def update_vc_log_channel(
 
         await session.commit()
 
-        updated = (getattr(result, "rowcount", 0) or 0) > 0
-
-        print(f"[VC MANAGER] Log channel updated={updated}")
-
-        return updated
+        return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Toggle drag
@@ -204,11 +190,7 @@ async def toggle_drag(
 
         await session.commit()
 
-        updated = (getattr(result, "rowcount", 0) or 0) > 0
-
-        print(f"[VC MANAGER] Drag enabled={enabled}")
-
-        return updated
+        return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Toggle drag all
@@ -230,11 +212,7 @@ async def toggle_drag_all(
 
         await session.commit()
 
-        updated = (getattr(result, "rowcount", 0) or 0) > 0
-
-        print(f"[VC MANAGER] Drag all enabled={enabled}")
-
-        return updated
+        return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Toggle role sync
@@ -256,11 +234,7 @@ async def toggle_role_sync(
 
         await session.commit()
 
-        updated = (getattr(result, "rowcount", 0) or 0) > 0
-
-        print(f"[VC MANAGER] Role sync enabled={enabled}")
-
-        return updated
+        return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Enable manager
@@ -286,8 +260,6 @@ async def enable_vc_manager(
 
             await session.commit()
 
-            print(f"[VC MANAGER] Created config for {guild_id}")
-
             return True
 
         # Update existing config
@@ -303,11 +275,7 @@ async def enable_vc_manager(
 
         await session.commit()
 
-        updated = (getattr(result, "rowcount", 0) or 0) > 0
-
-        print(f"[VC MANAGER] Enabled for {guild_id}")
-
-        return updated
+        return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Disable manager
@@ -328,11 +296,7 @@ async def disable_vc_manager(
 
         await session.commit()
 
-        updated = (getattr(result, "rowcount", 0) or 0) > 0
-
-        print(f"[VC MANAGER] Disabled for {guild_id}")
-
-        return updated
+        return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Delete manager
@@ -349,8 +313,4 @@ async def delete_vc_manager(
 
         await session.commit()
 
-        deleted = (getattr(result, "rowcount", 0) or 0) > 0
-
-        print(f"[VC MANAGER] Deleted config={deleted}")
-
-        return deleted
+        return (getattr(result, "rowcount", 0) or 0) > 0

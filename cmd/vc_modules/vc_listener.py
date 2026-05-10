@@ -23,12 +23,9 @@ class VCListener(
     ):
 
         self.bot = bot
-
         self.cache_ready = False
 
-        print("[VC LISTENER] Initialized")
-
-    # BUILD CACHE AFTER READY
+    # Build cache after ready
     @commands.Cog.listener()
     async def on_ready(
         self,
@@ -38,24 +35,18 @@ class VCListener(
         if self.cache_ready:
             return
 
-        print("[VC CACHE] Building caches...")
-
         for guild in self.bot.guilds:
             try:
                 await build_guild_cache(
                     guild.id,
                 )
 
-                print(f"[VC CACHE] Loaded -> {guild.name}")
-
-            except Exception as exc:
-                print(f"[VC CACHE ERROR] {guild.id}: {exc}")
+            except Exception:
+                continue
 
         self.cache_ready = True
 
-        print("[VC CACHE] All caches ready")
-
-    # VOICE STATE EVENTS
+    # Voice state events
     @commands.Cog.listener()
     async def on_voice_state_update(
         self,
@@ -64,20 +55,14 @@ class VCListener(
         after: discord.VoiceState,
     ):
 
-        print("[VC EVENT] Voice update fired")
-
         # Ignore bots
         if member.bot:
             return
 
-        enabled = await is_vc_manager_enabled(
-            member.guild.id,
-        )
-
-        print(f"[VC EVENT] Enabled={enabled}")
-
         # Ignore disabled guilds
-        if not enabled:
+        if not await is_vc_manager_enabled(
+            member.guild.id,
+        ):
             return
 
         # Ignore unchanged updates
@@ -90,17 +75,11 @@ class VCListener(
             after,
         )
 
-        print("[VC EVENT] Processed")
-
 
 async def setup(
     bot: commands.Bot,
 ):
 
-    print("[VC LISTENER] Loading cog...")
-
     await bot.add_cog(
         VCListener(bot),
     )
-
-    print("[VC LISTENER] Cog loaded")

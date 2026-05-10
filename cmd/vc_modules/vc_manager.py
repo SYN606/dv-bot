@@ -1,5 +1,9 @@
 from discord.ext import commands
 
+from utils.permissions.base_admin import (
+    BaseAdminCog,
+)
+
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 
@@ -9,7 +13,7 @@ from utils.views.vc_mod_views.manager_view import (
 
 
 class VCManager(
-    commands.Cog,
+    BaseAdminCog,
 ):
     def __init__(
         self,
@@ -25,9 +29,6 @@ class VCManager(
             "vcmanager",
         ],
         description="Manage VC automation.",
-    )
-    @commands.has_permissions(
-        administrator=True,
     )
     async def vc_manager(
         self,
@@ -48,6 +49,14 @@ class VCManager(
                 ctx.author.id,
             ),
         )
+
+
+# Strict admin only
+setattr(
+    VCManager.vc_manager,
+    "requires_admin",
+    True,
+)
 
 
 async def setup(
