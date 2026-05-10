@@ -1,27 +1,23 @@
-from utils.handlers.vc_mod_handlers.cache_handler import (
-    build_guild_cache, )
-
 from utils.handlers.vc_mod_handlers.cleanup_handler import (
-    cleanup_vc_tracking, )
+    cleanup_vc_tracking,
+)
 
 
-# Startup VC loader
-async def startup_vc_manager(bot, ) -> None:
+async def startup(
+    bot,
+) -> None:
+
+    print("[VC] Initializing VC manager...")
 
     for guild in bot.guilds:
-
         try:
+            cleaned = await cleanup_vc_tracking(
+                guild,
+            )
 
-            # Cleanup stale mappings
-            await cleanup_vc_tracking(guild)
-
-            # Build cache
-            await build_guild_cache(guild.id)
-
-            print(f"[VC] Loaded VC cache "
-                  f"for {guild.name}")
+            print(f"[VC] Cleanup completed for {guild.name} (cleaned {cleaned})")
 
         except Exception as e:
+            print(f"[VC ERROR] {guild.id}: {e}")
 
-            print(f"[VC] Failed loading "
-                  f"{guild.id}: {e}")
+    print("[VC] VC manager initialized")

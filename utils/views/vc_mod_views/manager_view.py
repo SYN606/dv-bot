@@ -24,7 +24,9 @@ class VCManagerView(
         author_id: int,
     ):
 
-        super().__init__(timeout=300)
+        super().__init__(
+            timeout=300,
+        )
 
         self.author_id = author_id
 
@@ -58,7 +60,9 @@ class VCManagerView(
         _,
     ):
 
-        configured = await is_vc_manager_enabled(interaction.guild.id)  # type: ignore
+        configured = await is_vc_manager_enabled(
+            interaction.guild.id,  # type: ignore
+        )
 
         if configured:
             await interaction.response.send_message(
@@ -82,7 +86,9 @@ class VCManagerView(
 
         await interaction.response.send_message(
             embed=embed,
-            view=VCSetupView(interaction.user.id),
+            view=VCSetupView(
+                interaction.user.id,
+            ),
             ephemeral=True,
         )
 
@@ -105,7 +111,9 @@ class VCManagerView(
 
         await interaction.response.send_message(
             embed=embed,
-            view=VCTrackingView(interaction.user.id),
+            view=VCTrackingView(
+                interaction.user.id,
+            ),
             ephemeral=True,
         )
 
@@ -120,4 +128,8 @@ class VCManagerView(
         _,
     ):
 
-        await interaction.message.delete()  # type: ignore
+        try:
+            await interaction.message.delete()  # type: ignore
+
+        except discord.HTTPException:
+            pass

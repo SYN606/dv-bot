@@ -1,37 +1,82 @@
+import logging
+
 import discord
-from utils.views.verification_views.verify_button_view import VerifyButtonView
-from db.db_helpers.verification import get_verification_config
+
+from db.db_helpers.verification import (
+    get_verification_config,
+)
+
+from utils.views.verification_views.verify_button_view import (
+    VerifyButtonView,
+)
+
+logger = logging.getLogger(
+    "Digital Vigil",
+)
 
 
-async def setup_verification_on_ready(bot: discord.Client) -> None:
-    """
-    Registers persistent verification components on bot startup.
+# =========================================
+# VERIFICATION STARTUP
+# =========================================
 
-    Must be called inside on_ready().
-    Safe for reconnect / resume.
-    """
 
-    # region REGISTER PERSISTENT UI VIEWS
+async def startup(
+    bot: discord.Client,
+) -> None:
+
+    logger.info("[VERIFICATION] Initializing verification system...")
+
+    # =====================================
+    # REGISTER PERSISTENT VIEW
+    # =====================================
+
     try:
-        bot.add_view(VerifyButtonView())
-        print("[SYSTEM] VerifyButtonView registered (persistent)")
-    except Exception as exc:
-        print(f"[SYSTEM] Failed to register VerifyButtonView: {exc}")
+        bot.add_view(
+            VerifyButtonView(),
+        )
 
-    # region VERIFICATION CONFIG SANITY LOG
+        logger.info("[VERIFICATION] Persistent verification view registered")
+
+    except Exception as exc:
+        logger.exception(f"[VERIFICATION] Failed to register VerifyButtonView: {exc}")
+
+        # CRITICAL
+        return
+
+    # =====================================
+    # LOAD GUILD CONFIGS
+    # =====================================
+
+    loaded = 0
+
     for guild in bot.guilds:
         try:
-            config = await get_verification_config(guild.id)
+            config = await get_verification_config(
+                guild.id,
+            )
 
         except Exception as exc:
-            print(f"[SYSTEM] Failed to load verification config for "
-                  f"{guild.name} ({guild.id}): {exc}")
+            logger.exception(
+                f"[VERIFICATION] "
+                f"Failed loading config for "
+                f"{guild.name} "
+                f"({guild.id}): {exc}"
+            )
+
             continue
 
         if not config:
             continue
 
-        print(f"[SYSTEM] Verification enabled in guild: "
-              f"{guild.name} ({guild.id}) | "
-              f"verify_channel={config.verify_channel_id} | "
-              f"verified_role={config.verified_role_id}")
+        logger.info(
+            f"[VERIFICATION] "
+            f"Guild={guild.name} "
+            f"verify_channel="
+            f"{config.verify_channel_id} "
+            f"verified_role="
+            f"{config.verified_role_id}"
+        )
+
+        loaded += 1
+
+    logger.info(f"[VERIFICATION] Loaded verification configs for {loaded} guilds")

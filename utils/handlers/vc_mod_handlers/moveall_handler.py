@@ -17,10 +17,12 @@ async def move_all_members(
                 target,
                 reason=reason,
             )
-
             moved += 1
 
-        except Exception:
+        except discord.Forbidden:
+            continue
+
+        except discord.HTTPException:
             continue
 
     return moved

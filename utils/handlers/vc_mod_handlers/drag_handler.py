@@ -14,8 +14,10 @@ async def drag_member(
             target,
             reason=reason,
         )
-
         return True
 
-    except Exception:
+    except discord.Forbidden:
+        return False
+
+    except discord.HTTPException:
         return False

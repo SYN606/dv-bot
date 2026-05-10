@@ -24,7 +24,7 @@ class VCManager(
             "vcm",
             "vcmanager",
         ],
-        description=("Manage VC automation."),
+        description="Manage VC automation.",
     )
     @commands.has_permissions(
         administrator=True,
@@ -44,7 +44,9 @@ class VCManager(
 
         await ctx.send(
             embed=embed,
-            view=VCManagerView(ctx.author.id),
+            view=VCManagerView(
+                ctx.author.id,
+            ),
         )
 
 
@@ -52,4 +54,6 @@ async def setup(
     bot: commands.Bot,
 ):
 
-    await bot.add_cog(VCManager(bot))
+    await bot.add_cog(
+        VCManager(bot),
+    )

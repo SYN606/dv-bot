@@ -1,7 +1,8 @@
+import asyncio
 import discord
 
-from db.db_helpers.vc_mod_helpers.vc_tracking import (
-    get_role_from_channel,
+from utils.handlers.vc_mod_handlers.cache_handler import (
+    VC_ROLE_CACHE,
 )
 
 from utils.handlers.vc_mod_handlers.vc_helpers import (
@@ -10,22 +11,72 @@ from utils.handlers.vc_mod_handlers.vc_helpers import (
 
 VCChannel = discord.VoiceChannel | discord.StageChannel
 
+VOICE_LOCKS: dict[
+    int,
+    asyncio.Lock,
+] = {}
 
-# Assign VC role
-async def sync_join_role(
+
+# GET MEMBER LOCK
+def get_lock(
+    member_id: int,
+) -> asyncio.Lock:
+
+    return VOICE_LOCKS.setdefault(
+        member_id,
+        asyncio.Lock(),
+    )
+
+
+# CENTRALIZED VC ROLE SYNC
+async def sync_member_voice_roles(
     member: discord.Member,
-    channel: VCChannel,
+    channel: VCChannel | None,
 ) -> None:
 
-    role_id = await get_role_from_channel(
+    guild_cache = VC_ROLE_CACHE.get(
         member.guild.id,
+        {},
+    )
+
+    if not guild_cache:
+        return
+
+    managed_role_ids = {
+        data["role_id"] for data in guild_cache.values() if data["managed_role"]
+    }
+
+    # Remove old VC roles
+    for role in member.roles:
+        if role.id not in managed_role_ids:
+            continue
+
+        await sync_vc_role(
+            member,
+            role,
+            assign=False,
+        )
+
+    # User disconnected
+    if channel is None:
+        return
+
+    data = guild_cache.get(
         channel.id,
     )
 
-    if not role_id:
+    if not data:
         return
 
-    role = member.guild.get_role(role_id)
+    if not data["enabled"]:
+        return
+
+    if not data["auto_role"]:
+        return
+
+    role = member.guild.get_role(
+        data["role_id"],
+    )
 
     if not role:
         return
@@ -34,48 +85,4 @@ async def sync_join_role(
         member,
         role,
         assign=True,
-    )
-
-
-# Remove VC role
-async def sync_leave_role(
-    member: discord.Member,
-    channel: VCChannel,
-) -> None:
-
-    role_id = await get_role_from_channel(
-        member.guild.id,
-        channel.id,
-    )
-
-    if not role_id:
-        return
-
-    role = member.guild.get_role(role_id)
-
-    if not role:
-        return
-
-    await sync_vc_role(
-        member,
-        role,
-        assign=False,
-    )
-
-
-# Switch VC roles
-async def sync_switch_role(
-    member: discord.Member,
-    before: VCChannel,
-    after: VCChannel,
-) -> None:
-
-    await sync_leave_role(
-        member,
-        before,
-    )
-
-    await sync_join_role(
-        member,
-        after,
     )
