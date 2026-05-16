@@ -1,98 +1,309 @@
 import discord
+
 from discord.ext import commands
 
-from utils.permissions.base_admin import BaseAdminCog
+from utils.permissions.base_admin import (
+    BaseAdminCog, )
+
 from utils.core.embeds import make_embed
-from utils.logging.mod_log import send_mod_log
-from utils.logging.notifier import ModNotifier
+from utils.core.emojis import EMOJIS
+
+from utils.logging.mod_log import (
+    send_mod_log, )
 
 
-class KickSystem(BaseAdminCog):
-    def __init__(self, bot: commands.Bot):
+class KickSystem(
+        BaseAdminCog, ):
+
+    def __init__(
+        self,
+        bot: commands.Bot,
+    ):
         self.bot = bot
 
-    async def cog_check(self, ctx: commands.Context) -> bool:
-        if ctx.guild is None:
-            return True
+    async def has_kick_permission(
+        self,
+        ctx: commands.Context,
+    ) -> bool:
+        """
+        REAL moderation permission check.
 
-        if not isinstance(ctx.author, discord.Member):
+        Allowed:
+        - Server Owner
+        - Administrator
+        - Kick Members
+        """
+
+        guild = ctx.guild
+
+        if guild is None:
             return False
 
-        # Owner bypass
-        if ctx.author.id == ctx.guild.owner_id:
+        author = ctx.author
+
+        if not isinstance(
+                author,
+                discord.Member,
+        ):
+            return False
+
+        # OWNER
+        if author.id == guild.owner_id:
             return True
 
-        perms = ctx.author.guild_permissions
+        perms = (author.guild_permissions)
 
-        if perms.administrator or perms.kick_members:
+        # ADMIN
+        if perms.administrator:
             return True
 
-        return await super().cog_check(ctx)
+        # REAL KICK PERMISSION
+        return perms.kick_members
 
-    # UTIL: Reply Wrapper
-    async def _reply(self, ctx, title, description, level="ERROR"):
-        return await ctx.reply(
-            embed=make_embed(title=title, description=description, level=level),
-            mention_author=False,
+    async def _reply(
+        self,
+        ctx: commands.Context,
+        title: str,
+        description: str,
+        level: str = "ERROR",
+    ):
+
+        embed = make_embed(
+            title=title,
+            description=description,
+            level=level,
         )
 
-    # UTIL: Resolve Member
-    async def resolve_member(self, ctx, user_input):
-        if isinstance(user_input, discord.Member):
+        try:
+
+            if ctx.interaction:
+
+                if ctx.interaction.response.is_done():
+
+                    return await ctx.interaction.followup.send(
+                        embed=embed,
+                        ephemeral=True,
+                    )
+
+                return await ctx.interaction.response.send_message(
+                    embed=embed,
+                    ephemeral=True,
+                )
+
+            return await ctx.reply(
+                embed=embed,
+                mention_author=False,
+            )
+
+        except discord.HTTPException:
+            return None
+
+    async def _cleanup(
+        self,
+        ctx: commands.Context,
+    ):
+
+        if ctx.interaction:
+            return
+
+        try:
+            await ctx.message.delete()
+
+        except (
+                discord.Forbidden,
+                discord.NotFound,
+                discord.HTTPException,
+        ):
+            pass
+
+    async def resolve_member(
+        self,
+        ctx: commands.Context,
+        user_input,
+    ):
+
+        guild = ctx.guild
+
+        if guild is None:
+            return None
+
+        # MEMBER
+        if isinstance(
+                user_input,
+                discord.Member,
+        ):
             return user_input
 
-        # Reply fallback
+        # REPLY
         if not user_input:
-            ref = ctx.message.reference
-            if ref and isinstance(ref.resolved, discord.Message):
-                return ctx.guild.get_member(ref.resolved.author.id)
 
-        # Mention
+            reference = (ctx.message.reference)
+
+            if (reference and isinstance(
+                    reference.resolved,
+                    discord.Message,
+            )):
+
+                resolved_author = (reference.resolved.author)
+
+                if isinstance(
+                        resolved_author,
+                        discord.Member,
+                ):
+                    return resolved_author
+
+                return guild.get_member(resolved_author.id, )
+
+        # MENTION
         if ctx.message.mentions:
             return ctx.message.mentions[0]
 
         # ID
         try:
-            user_id = int(user_input)
-        except (TypeError, ValueError):
+            user_id = int(user_input, )
+
+        except (
+                TypeError,
+                ValueError,
+        ):
             return None
 
-        return ctx.guild.get_member(user_id)
+        return guild.get_member(user_id, )
 
-    # VALIDATION
-    async def validate_target(self, ctx, member: discord.Member):
+    async def validate_target(
+        self,
+        ctx: commands.Context,
+        member: discord.Member,
+    ):
+
         guild = ctx.guild
+
+        if guild is None:
+            return (
+                False,
+                "Invalid guild.",
+            )
+
         moderator = ctx.author
         bot_member = guild.me
 
-        if member == moderator:
-            return "You cannot kick yourself."
+        if (not isinstance(
+                moderator,
+                discord.Member,
+        ) or bot_member is None):
 
-        if member == guild.owner:
-            return "You cannot kick the server owner."
+            return (
+                False,
+                "Invalid moderator.",
+            )
 
-        if member == bot_member:
-            return "You cannot kick me."
+        # SELF
+        if member.id == moderator.id:
 
-        if not bot_member.guild_permissions.kick_members:
-            return "I do not have permission to kick members."
+            return (
+                False,
+                "You cannot kick yourself.",
+            )
 
-        if moderator != guild.owner:
-            if member.guild_permissions.administrator:
-                return "You cannot kick another administrator."
+        # OWNER
+        if member.id == guild.owner_id:
 
-            if member.top_role >= moderator.top_role:
-                return "You cannot kick someone with equal or higher role."
+            return (
+                False,
+                "You cannot kick the server owner.",
+            )
 
-        if bot_member.top_role <= member.top_role:
-            return "I cannot manage this member due to role hierarchy."
+        # BOT
+        if member.id == bot_member.id:
 
-        return None
+            return (
+                False,
+                "You cannot kick me.",
+            )
 
-    # =========================================================
-    # COMMAND
-    # =========================================================
-    @commands.command(name="kick")
+        # BOT PERMISSIONS
+        if (not bot_member.guild_permissions.kick_members):
+
+            return (
+                False,
+                "I do not have permission to kick members.",
+            )
+
+        # ADMIN PROTECTION
+        if (moderator != guild.owner
+                and member.guild_permissions.administrator):
+
+            return (
+                False,
+                "You cannot kick another administrator.",
+            )
+
+        # USER HIERARCHY
+        if (moderator != guild.owner
+                and member.top_role >= moderator.top_role):
+
+            return (
+                False,
+                "You cannot kick someone with equal or higher role.",
+            )
+
+        # BOT HIERARCHY
+        if (bot_member.top_role <= member.top_role):
+
+            return (
+                False,
+                "I cannot manage this member due to role hierarchy.",
+            )
+
+        return (
+            True,
+            None,
+        )
+
+    async def send_kick_dm(
+        self,
+        member: discord.Member,
+        guild: discord.Guild,
+        moderator,
+        reason: str,
+    ):
+
+        try:
+
+            if reason != "No reason provided":
+
+                description = (f"{EMOJIS['warning']} "
+                               f"You were kicked from "
+                               f"**{guild.name}**\n\n"
+                               f"{EMOJIS['arrow_point']} "
+                               f"Moderator: {moderator}\n"
+                               f"{EMOJIS['arrow_point']} "
+                               f"Reason: {reason}")
+
+            else:
+
+                description = (f"{EMOJIS['warning']} "
+                               f"You were kicked from "
+                               f"**{guild.name}**.")
+
+            embed = make_embed(
+                title="You Were Kicked",
+                description=description,
+                level="WARNING",
+            )
+
+            await member.send(embed=embed, )
+
+        except (
+                discord.Forbidden,
+                discord.HTTPException,
+        ):
+            pass
+
+    @commands.hybrid_command(
+        name="kick",
+        description="Kick a member",
+    )
     @commands.guild_only()
     async def kick(
         self,
@@ -101,79 +312,132 @@ class KickSystem(BaseAdminCog):
         *,
         reason: str | None = None,
     ):
+
         guild = ctx.guild
+
+        if guild is None:
+            return
+
         moderator = ctx.author
+        bot_member = guild.me
 
-        reason = reason or "No reason provided"
+        if (not isinstance(
+                moderator,
+                discord.Member,
+        ) or bot_member is None):
+            return
 
-        # Resolve
-        member = await self.resolve_member(ctx, member)
+        # MANUAL PERMISSION CHECK
+        if not await self.has_kick_permission(ctx, ):
 
-        if not isinstance(member, discord.Member):
+            return await self._reply(
+                ctx,
+                "Permission Denied",
+                (f"{EMOJIS['fail']} "
+                 "You do not have permission "
+                 "to use this command."),
+            )
+
+        reason = (reason or "No reason provided")
+
+        # TARGET
+        member = await self.resolve_member(
+            ctx,
+            member,
+        )
+
+        if not isinstance(
+                member,
+                discord.Member,
+        ):
+
             return await self._reply(
                 ctx,
                 "Invalid User",
-                "Usage: kick <member | id | reply> [reason]",
+                ("Usage:\n"
+                 "kick <member | id | reply> "
+                 "[reason]"),
             )
 
-        # Validate
-        error = await self.validate_target(ctx, member)
-        if error:
-            return await self._reply(ctx, "Permission Denied", error)
+        # VALIDATION
+        valid, error = await self.validate_target(
+            ctx,
+            member,
+        )
 
-        # Notify
-        try:
-            await ModNotifier.notify_kick(
-                member=member,
-                guild_name=guild.name,  # type: ignore
-                moderator=moderator,  # type: ignore
-                reason=reason,
+        if not valid:
+
+            return await self._reply(
+                ctx,
+                "Permission Denied",
+                error or "Invalid target.",
             )
-        except Exception:
-            pass
 
-        # Execute
+        # SEND DM
+        await self.send_kick_dm(
+            member=member,
+            guild=guild,
+            moderator=moderator,
+            reason=reason,
+        )
+
+        # EXECUTE
         try:
-            await member.kick(reason=f"{reason} | Kicked by {moderator}")
+
+            await member.kick(reason=(f"{reason} | "
+                                      f"Kicked by {moderator}"), )
+
         except discord.Forbidden:
+
             return await self._reply(
                 ctx,
                 "Action Failed",
-                "I do not have permission to kick this user.",
+                ("I do not have permission "
+                 "to kick this user."),
             )
-        except discord.HTTPException as e:
+
+        except discord.HTTPException:
+
             return await self._reply(
                 ctx,
                 "Kick Failed",
-                f"HTTP Error: {e}",
+                ("An error occurred while "
+                 "trying to kick the user."),
             )
 
-        # Response
+        # SUCCESS
         await self._reply(
             ctx,
             "User Kicked",
-            f"{member.mention}\nReason: {reason}",
+            (f"{EMOJIS['warning']} "
+             f"{member}\n\n"
+             f"{EMOJIS['arrow_point']} "
+             f"Reason: {reason}"),
             level="WARNING",
         )
 
-        # Logging
+        # LOGGING
         try:
+
             await send_mod_log(
-                guild=guild,  # type: ignore
+                guild=guild,
                 category="KICK",
                 title="User Kicked",
-                description=f"{member} was kicked.",
+                description=(f"{member} was kicked."),
                 level="WARNING",
                 actor=moderator,
                 target=member,
-                extra_fields={"Reason": reason},
+                extra_fields={
+                    "Reason": reason,
+                },
             )
+
         except Exception:
             pass
 
+        await self._cleanup(ctx, )
 
-# =========================================================
-# SETUP
-# =========================================================
-async def setup(bot: commands.Bot):
-    await bot.add_cog(KickSystem(bot))
+
+async def setup(bot: commands.Bot, ):
+
+    await bot.add_cog(KickSystem(bot), )

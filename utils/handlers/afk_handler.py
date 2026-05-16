@@ -2,7 +2,6 @@ import os
 import time
 import discord
 from discord import Message, MessageType
-
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from db.db_helpers.afk import get_afk, remove_afk
@@ -11,7 +10,6 @@ AFK_IMAGE = os.getenv("AFK_IMAGE_URL")
 
 _afk_notice_cooldown: dict[tuple[int, int], int] = {}
 _channel_cooldown: dict[int, float] = {}
-
 AFK_NOTICE_COOLDOWN = 10
 CHANNEL_COOLDOWN = 5.0
 
@@ -62,9 +60,7 @@ async def handle_afk(message: Message) -> bool:
 
     unique_mentions = {m.id: m for m in message.mentions}.values()
 
-    # =====================================================
-    # AFK CHECK (PER USER COOLDOWN)
-    # =====================================================
+    # AFK CHECK 
     for user in unique_mentions:
 
         key = (guild_id, user.id)
@@ -91,17 +87,13 @@ async def handle_afk(message: Message) -> bool:
             f"{EMOJIS['arrow_point']} **Reason:** {afk.afk_reason}\n"
             f"{EMOJIS['arrow_point']} **Away Since:** <t:{since_ts}:R>")
 
-    # =====================================================
-    # CHANNEL THROTTLE (ANTI-SPAM)
-    # =====================================================
+    # CHANNEL THROTTLE 
     last_channel = _channel_cooldown.get(channel_id, 0)
     now_float = time.monotonic()
 
     can_send = now_float - last_channel >= CHANNEL_COOLDOWN
 
-    # =====================================================
     # SEND AFK NOTICE
-    # =====================================================
     if afk_sections and can_send:
 
         _channel_cooldown[channel_id] = now_float
@@ -126,9 +118,7 @@ async def handle_afk(message: Message) -> bool:
         except Exception:
             pass
 
-    # =====================================================
-    # REMOVE AFK (RETURN)
-    # =====================================================
+    # REMOVE AFK
     removed = await remove_afk(guild_id, message.author.id)
 
     if removed:

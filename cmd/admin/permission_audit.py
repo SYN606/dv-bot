@@ -4,6 +4,9 @@ from discord.ext import commands
 from discord import app_commands
 
 from utils.permissions.base_admin import BaseAdminCog
+from utils.permissions.check_perms import (
+    is_bot_admin, )
+
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 
@@ -103,6 +106,35 @@ class PermissionAudit(BaseAdminCog):
     ):
         self.bot = bot
 
+    async def has_permission_audit_access(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
+
+        guild = interaction.guild
+
+        if guild is None:
+            return False
+
+        user = interaction.user
+
+        if not isinstance(
+                user,
+                discord.Member,
+        ):
+            return False
+
+        # SERVER OWNER
+        if user.id == guild.owner_id:
+            return True
+
+        # SERVER ADMIN
+        if (user.guild_permissions.administrator):
+            return True
+
+        # BOT ADMIN
+        return await is_bot_admin(interaction, )
+
     def get_permission_emoji(
         self,
         level: str,
@@ -145,6 +177,7 @@ class PermissionAudit(BaseAdminCog):
                             key,
                             False,
                     ):
+
                         role_sources.append(role.mention, )
 
                 found_permissions.append({
@@ -167,6 +200,20 @@ class PermissionAudit(BaseAdminCog):
         interaction: discord.Interaction,
         member: discord.Member,
     ):
+
+        # PERMISSION CHECK
+        if not await self.has_permission_audit_access(interaction, ):
+
+            return await interaction.response.send_message(
+                embed=make_embed(
+                    title="Permission Denied",
+                    description=(f"{EMOJIS['fail']} "
+                                 "You do not have permission "
+                                 "to use this command."),
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
 
         permissions = self._analyze_member(member, )
 
@@ -202,7 +249,7 @@ class PermissionAudit(BaseAdminCog):
             for role in entry["roles"]:
 
                 if role not in unique_roles:
-                    unique_roles.append(role)
+                    unique_roles.append(role, )
 
             role_text = " • ".join(unique_roles[:2], )
 
@@ -210,9 +257,9 @@ class PermissionAudit(BaseAdminCog):
                 role_text += "..."
 
             permission_lines.append(
-                f"{self.get_permission_emoji(entry['level'])} "
-                f"**{entry['permission']}**\n"
-                f"└ {role_text}")
+                (f"{self.get_permission_emoji(entry['level'])} "
+                 f"**{entry['permission']}**\n"
+                 f"└ {role_text}"))
 
         embed = make_embed(
             title="Permission Inspection",
@@ -284,6 +331,20 @@ class PermissionAudit(BaseAdminCog):
         interaction: discord.Interaction,
     ):
 
+        # PERMISSION CHECK
+        if not await self.has_permission_audit_access(interaction, ):
+
+            return await interaction.response.send_message(
+                embed=make_embed(
+                    title="Permission Denied",
+                    description=(f"{EMOJIS['fail']} "
+                                 "You do not have permission "
+                                 "to use this command."),
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
+
         guild = interaction.guild
 
         if guild is None:
@@ -312,7 +373,7 @@ class PermissionAudit(BaseAdminCog):
 
             preview = " • ".join([(f"{self.get_permission_emoji(x['level'])} "
                                    f"{x['permission']}")
-                                  for x in permissions[:3]], )
+                                  for x in permissions[:3]])
 
             if len(permissions) > 3:
                 preview += "..."
@@ -366,7 +427,7 @@ class PermissionAudit(BaseAdminCog):
             reverse=True,
         )
 
-        description = "\n\n".join([x[2] for x in results[:20]], )
+        description = "\n\n".join([x[2] for x in results[:20]])
 
         if len(results) > 20:
 
@@ -375,6 +436,7 @@ class PermissionAudit(BaseAdminCog):
                             f"And **{len(results) - 20}** more users.")
 
         if len(description) > 3500:
+
             description = (description[:3500] + "\n\n...")
 
         embed = make_embed(
@@ -397,4 +459,5 @@ class PermissionAudit(BaseAdminCog):
 
 
 async def setup(bot: commands.Bot, ):
+
     await bot.add_cog(PermissionAudit(bot), )

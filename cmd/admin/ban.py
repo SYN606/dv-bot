@@ -1,310 +1,566 @@
 import discord
+
 from discord.ext import commands
 
-from utils.permissions.base_admin import BaseAdminCog
+from utils.permissions.base_admin import (
+    BaseAdminCog, )
+
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
-from utils.logging.mod_log import send_mod_log
-from utils.logging.notifier import ModNotifier
+
+from utils.logging.mod_log import (
+    send_mod_log, )
 
 
-class BanSystem(BaseAdminCog):
+class BanSystem(
+        BaseAdminCog, ):
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(
+        self,
+        bot: commands.Bot,
+    ):
         self.bot = bot
 
-    # =========================================================
-    # PERMISSION OVERRIDE
-    # =========================================================
-    async def cog_check(self, ctx: commands.Context) -> bool:
-        if ctx.guild is None:
-            return True
+    async def has_ban_permission(
+        self,
+        ctx: commands.Context,
+    ) -> bool:
+        """
+        REAL moderation permission check.
 
-        if not isinstance(ctx.author, discord.Member):
+        Allowed:
+        - Server Owner
+        - Administrator
+        - Ban Members
+        """
+
+        guild = ctx.guild
+
+        if guild is None:
             return False
 
-        if ctx.author.id == ctx.guild.owner_id:
+        author = ctx.author
+
+        if not isinstance(
+                author,
+                discord.Member,
+        ):
+            return False
+
+        # OWNER
+        if author.id == guild.owner_id:
             return True
 
-        perms = ctx.author.guild_permissions
+        perms = (author.guild_permissions)
 
-        if perms.administrator or perms.ban_members:
+        # ADMIN
+        if perms.administrator:
             return True
 
-        return await super().cog_check(ctx)
+        # REAL BAN PERMISSION
+        return perms.ban_members
 
-    # =========================================================
-    # UTIL: Reply
-    # =========================================================
-    async def _reply(self, ctx, title, description, level="ERROR"):
-        return await ctx.reply(
-            embed=make_embed(title=title, description=description,
-                             level=level),
-            mention_author=False,
+    async def _reply(
+        self,
+        ctx: commands.Context,
+        title: str,
+        description: str,
+        level: str = "ERROR",
+    ):
+
+        embed = make_embed(
+            title=title,
+            description=description,
+            level=level,
         )
 
-    # =========================================================
-    # UTIL: Cleanup
-    # =========================================================
-    async def _cleanup(self, ctx: commands.Context):
+        try:
+
+            if ctx.interaction:
+                if ctx.interaction.response.is_done():
+                    return await ctx.interaction.followup.send(
+                        embed=embed,
+                        ephemeral=True,
+                    )
+                return await ctx.interaction.response.send_message(
+                    embed=embed,
+                    ephemeral=True,
+                )
+            return await ctx.reply(
+                embed=embed,
+                mention_author=False,
+            )
+        except discord.HTTPException:
+            return None
+
+    async def _cleanup(
+        self,
+        ctx: commands.Context,
+    ):
+
+        if ctx.interaction:
+            return
         try:
             await ctx.message.delete()
-        except (discord.Forbidden, discord.NotFound):
+        except (
+                discord.Forbidden,
+                discord.NotFound,
+                discord.HTTPException,
+        ):
             pass
 
-    # =========================================================
-    # RESOLVE TARGET
-    # =========================================================
-    async def resolve_target(self, ctx, user_input):
-        if isinstance(user_input, discord.Member):
+    async def resolve_target(
+        self,
+        ctx: commands.Context,
+        user_input,
+    ):
+
+        guild = ctx.guild
+        if guild is None:
+            return None
+        # MEMBER
+        if isinstance(
+                user_input,
+                discord.Member,
+        ):
             return user_input
-
+        # REPLY
         if not user_input:
-            ref = ctx.message.reference
-            if ref and isinstance(ref.resolved, discord.Message):
-                return ref.resolved.author
-
+            reference = (ctx.message.reference)
+            if (reference and isinstance(
+                    reference.resolved,
+                    discord.Message,
+            )):
+                resolved_author = (reference.resolved.author)
+                if isinstance(
+                        resolved_author,
+                        discord.Member,
+                ):
+                    return resolved_author
+                return guild.get_member(resolved_author.id, )
+        # MENTION
         if ctx.message.mentions:
             return ctx.message.mentions[0]
 
+        # ID
         try:
-            user_id = int(user_input)
-        except (TypeError, ValueError):
+            user_id = int(user_input, )
+        except (
+                TypeError,
+                ValueError,
+        ):
+            return None
+        member = guild.get_member(user_id, )
+        if member:
+            return member
+        try:
+            return await self.bot.fetch_user(user_id, )
+        except (
+                discord.NotFound,
+                discord.Forbidden,
+                discord.HTTPException,
+        ):
             return None
 
+    async def validate_ban(
+        self,
+        ctx: commands.Context,
+        target,
+    ):
         guild = ctx.guild
-        if guild:
-            member = guild.get_member(user_id)
-            if member:
-                return member
-
-        try:
-            return await self.bot.fetch_user(user_id)
-        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-            return None
-
-    # =========================================================
-    # VALIDATION
-    # =========================================================
-    async def validate_ban(self, ctx, target):
-        guild = ctx.guild
-        moderator = ctx.author
-
         if guild is None:
-            return False
-
+            return (
+                False,
+                "Invalid guild.",
+            )
+        moderator = ctx.author
         bot_member = guild.me
+        if (not isinstance(
+                moderator,
+                discord.Member,
+        ) or bot_member is None):
+            return (
+                False,
+                "Invalid moderator.",
+            )
+        # USER OBJECT
+        if not isinstance(
+                target,
+                discord.Member,
+        ):
+            return (
+                True,
+                None,
+            )
+        # SELF
+        if target.id == moderator.id:
+            return (
+                False,
+                "You cannot ban yourself.",
+            )
+        # OWNER
+        if target.id == guild.owner_id:
 
-        if not isinstance(moderator, discord.Member) or bot_member is None:
-            return False
+            return (
+                False,
+                "You cannot ban the server owner.",
+            )
 
-        if not isinstance(target, discord.Member):
-            return True
+        # BOT
+        if target.id == bot_member.id:
+            return (
+                False,
+                "You cannot ban me.",
+            )
+        # ADMIN PROTECTION
+        if (moderator != guild.owner
+                and target.guild_permissions.administrator):
+            return (
+                False,
+                "You cannot ban another administrator.",
+            )
+        # USER HIERARCHY
+        if (moderator != guild.owner
+                and target.top_role >= moderator.top_role):
+            return (
+                False,
+                "Target has equal or higher role.",
+            )
+        # BOT HIERARCHY
+        if (bot_member.top_role <= target.top_role):
+            return (
+                False,
+                "My role is too low.",
+            )
+        return (
+            True,
+            None,
+        )
 
-        if target == moderator:
-            return await self._reply(ctx, "Invalid Action",
-                                     "You cannot ban yourself.")
+    async def send_ban_dm(
+        self,
+        target: discord.abc.User,
+        guild: discord.Guild,
+        moderator,
+        reason: str,
+    ):
+        try:
+            if reason != "No reason provided":
+                description = (f"{EMOJIS['ban']} "
+                               f"You were banned from "
+                               f"**{guild.name}**\n\n"
+                               f"{EMOJIS['arrow_point']} "
+                               f"Moderator: {moderator}\n"
+                               f"{EMOJIS['arrow_point']} "
+                               f"Reason: {reason}")
 
-        if target == guild.owner:
-            return await self._reply(ctx, "Permission Denied",
-                                     "Cannot ban server owner.")
+            else:
+                description = (f"{EMOJIS['ban']} "
+                               f"You were banned from "
+                               f"**{guild.name}**.")
+            embed = make_embed(
+                title="You Were Banned",
+                description=description,
+                level="ERROR",
+            )
+            await target.send(embed=embed, )  # type: ignore
+        except (
+                discord.Forbidden,
+                discord.HTTPException,
+        ):
+            pass
 
-        if target == bot_member:
-            return await self._reply(ctx, "Invalid Target",
-                                     "You cannot ban me.")
-
-        if moderator != guild.owner:
-            if target.guild_permissions.administrator:
-                return await self._reply(ctx, "Permission Denied",
-                                         "Cannot ban an administrator.")
-
-            if target.top_role >= moderator.top_role:
-                return await self._reply(ctx, "Hierarchy Error",
-                                         "Target has equal or higher role.")
-
-        if bot_member.top_role <= target.top_role:
-            return await self._reply(ctx, "Bot Hierarchy Error",
-                                     "My role is too low.")
-
-        return True
-
-    # =========================================================
-    # BAN COMMAND
-    # =========================================================
-    @commands.command(name="ban")
+    @commands.hybrid_command(
+        name="ban",
+        description="Ban a member",
+    )
     @commands.guild_only()
-    async def ban(self, ctx: commands.Context, user=None, *, reason=None):
+    async def ban(
+        self,
+        ctx: commands.Context,
+        user=None,
+        *,
+        reason: str | None = None,
+    ):
 
         guild = ctx.guild
+
         if guild is None:
             return
 
         moderator = ctx.author
         bot_member = guild.me
 
-        if bot_member is None:
+        if (not isinstance(
+                moderator,
+                discord.Member,
+        ) or bot_member is None):
             return
 
-        reason = reason or "No reason provided"
+        # MANUAL PERMISSION CHECK
+        if not await self.has_ban_permission(ctx, ):
 
-        if not bot_member.guild_permissions.ban_members:
+            return await self._reply(
+                ctx,
+                "Permission Denied",
+                (f"{EMOJIS['fail']} "
+                 "You do not have permission "
+                 "to use this command."),
+            )
+
+        reason = (reason or "No reason provided")
+
+        # BOT PERMISSION CHECK
+        if (not bot_member.guild_permissions.ban_members):
+
             return await self._reply(
                 ctx,
                 "Permission Error",
-                "I do not have permission to ban members.",
+                ("I do not have permission "
+                 "to ban members."),
             )
 
-        target = await self.resolve_target(ctx, user)
+        # TARGET
+        target = await self.resolve_target(
+            ctx,
+            user,
+        )
+
         if not target:
+
             return await self._reply(
                 ctx,
                 "User Not Found",
-                "Usage: ban <user | id | reply> [reason]",
+                ("Usage:\n"
+                 "ban <user | id | reply> "
+                 "[reason]"),
             )
 
-        valid = await self.validate_ban(ctx, target)
-        if valid is not True:
-            return
+        # VALIDATION
+        valid, error = await self.validate_ban(
+            ctx,
+            target,
+        )
 
-        if isinstance(target, discord.Member):
-            try:
-                await ModNotifier.notify_ban(
-                    member=target,
-                    guild_name=guild.name,
-                    moderator=moderator, # type: ignore
-                    reason=reason,
-                )
-            except Exception:
-                pass
+        if not valid:
 
+            return await self._reply(
+                ctx,
+                "Permission Denied",
+                error or "Invalid target.",
+            )
+
+        # SEND DM
+        await self.send_ban_dm(
+            target=target,
+            guild=guild,
+            moderator=moderator,
+            reason=reason,
+        )
+
+        # EXECUTE
         try:
+
             await guild.ban(
                 target,
-                reason=f"{reason} | Banned by {moderator}",
+                reason=(f"{reason} | "
+                        f"Banned by {moderator}"),
                 delete_message_seconds=0,
             )
+
         except discord.Forbidden:
+
             return await self._reply(
                 ctx,
                 "Action Failed",
-                "I do not have permission to ban this user.",
+                ("I do not have permission "
+                 "to ban this user."),
             )
-        except discord.HTTPException as e:
+
+        except discord.HTTPException:
+
             return await self._reply(
                 ctx,
                 "Ban Failed",
-                f"HTTP Error: {e}",
+                ("An error occurred while "
+                 "trying to ban the user."),
             )
 
+        # SUCCESS
         await self._reply(
             ctx,
             "User Banned",
-            f"{EMOJIS['ban']} {target}\n\n{EMOJIS['arrow_point']} Reason: {reason}",
+            (f"{EMOJIS['ban']} "
+             f"{target}\n\n"
+             f"{EMOJIS['arrow_point']} "
+             f"Reason: {reason}"),
+            level="ERROR",
         )
 
+        # LOGGING
         try:
+
             await send_mod_log(
                 guild=guild,
                 category="BAN",
                 title="User Banned",
-                description=f"{target} was banned.",
+                description=(f"{target} was banned."),
                 level="ERROR",
                 actor=moderator,
                 target=target,
-                extra_fields={"Reason": reason},
+                extra_fields={
+                    "Reason": reason,
+                },
             )
+
         except Exception:
             pass
 
-        await self._cleanup(ctx)
+        await self._cleanup(ctx, )
 
-    # =========================================================
-    # UNBAN COMMAND
-    # =========================================================
-    @commands.command(name="unban")
+    @commands.hybrid_command(
+        name="unban",
+        description="Unban a member",
+    )
     @commands.guild_only()
-    async def unban(self, ctx: commands.Context, user=None, *, reason=None):
+    async def unban(
+        self,
+        ctx: commands.Context,
+        user=None,
+        *,
+        reason: str | None = None,
+    ):
 
         guild = ctx.guild
+
         if guild is None:
             return
 
         moderator = ctx.author
-        reason = reason or "No reason provided"
+
+        if not isinstance(
+                moderator,
+                discord.Member,
+        ):
+            return
+
+        # MANUAL PERMISSION CHECK
+        if not await self.has_ban_permission(ctx, ):
+
+            return await self._reply(
+                ctx,
+                "Permission Denied",
+                (f"{EMOJIS['fail']} "
+                 "You do not have permission "
+                 "to use this command."),
+            )
+
+        reason = (reason or "No reason provided")
 
         if not user:
+
             return await self._reply(
                 ctx,
                 "Missing User",
-                "Usage: unban <user id> [reason]",
+                ("Usage:\n"
+                 "unban <user id> "
+                 "[reason]"),
             )
 
         try:
-            user_id = int(user)
+            user_id = int(user, )
+
         except ValueError:
+
             return await self._reply(
                 ctx,
                 "Invalid ID",
                 "Please provide a valid user ID.",
             )
 
+        # FETCH
         try:
-            ban_entry = await guild.fetch_ban(discord.Object(id=user_id))
+
+            ban_entry = await guild.fetch_ban(discord.Object(id=user_id, ))
+
         except discord.NotFound:
+
             return await self._reply(
                 ctx,
                 "Not Banned",
                 "That user is not banned.",
                 level="WARNING",
             )
+
         except discord.HTTPException:
+
             return await self._reply(
                 ctx,
                 "Error",
                 "Failed to fetch ban entry.",
             )
 
+        # EXECUTE
         try:
+
             await guild.unban(
                 ban_entry.user,
-                reason=f"{reason} | Unbanned by {moderator}",
+                reason=(f"{reason} | "
+                        f"Unbanned by {moderator}"),
             )
+
         except discord.Forbidden:
+
             return await self._reply(
                 ctx,
                 "Permission Error",
-                "I do not have permission to unban users.",
+                ("I do not have permission "
+                 "to unban users."),
             )
+
         except discord.HTTPException:
+
             return await self._reply(
                 ctx,
                 "Unban Failed",
-                "An error occurred while unbanning.",
+                ("An error occurred while "
+                 "unbanning."),
             )
 
+        # SUCCESS
         await self._reply(
             ctx,
             "User Unbanned",
-            f"{EMOJIS['success']} {ban_entry.user}\n\n{EMOJIS['arrow_point']} Reason: {reason}",
+            (f"{EMOJIS['success']} "
+             f"{ban_entry.user}\n\n"
+             f"{EMOJIS['arrow_point']} "
+             f"Reason: {reason}"),
             level="SUCCESS",
         )
 
+        # LOGGING
         try:
+
             await send_mod_log(
                 guild=guild,
                 category="BAN",
                 title="User Unbanned",
-                description=f"{ban_entry.user} was unbanned.",
+                description=(f"{ban_entry.user} "
+                             f"was unbanned."),
                 level="SUCCESS",
                 actor=moderator,
                 target=ban_entry.user,
-                extra_fields={"Reason": reason},
+                extra_fields={
+                    "Reason": reason,
+                },
             )
+
         except Exception:
             pass
 
-        await self._cleanup(ctx)
+        await self._cleanup(ctx, )
 
 
-async def setup(bot: commands.Bot):
-    await bot.add_cog(BanSystem(bot))
+async def setup(bot: commands.Bot, ):
+
+    await bot.add_cog(BanSystem(bot), )

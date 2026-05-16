@@ -21,16 +21,16 @@ class AFK(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        reason: str = "AFK",
+        afk_reason: str = "AFK",
     ) -> None:
 
         if ctx.guild is None:
             return
 
-        reason = reason.strip() or "AFK"
-        reason = reason[:200]
+        afk_reason = afk_reason.strip() or "AFK"
+        afk_reason = afk_reason[:200]
 
-        await set_afk(ctx.guild.id, ctx.author.id, reason)
+        await set_afk(ctx.guild.id, ctx.author.id, afk_reason)
 
         author = ctx.author
         if isinstance(author, discord.Member):
@@ -46,7 +46,7 @@ class AFK(commands.Cog):
         embed = make_embed(
             title="AFK Enabled",
             description=(f"{EMOJIS['okay']} {ctx.author.mention} is now AFK.\n"
-                         f"{EMOJIS['arrow_point']} Reason: {reason}"),
+                         f"{EMOJIS['arrow_point']} Reason: {afk_reason}"),
             level="SUCCESS",
         )
 
@@ -128,7 +128,7 @@ class AFK(commands.Cog):
             title="AFK Reset",
             description=(
                 f"{EMOJIS['success']} Cleared AFK for {member.mention}\n"
-                f"{EMOJIS['arrow_point']} Reason was: {removed.reason}"),
+                f"{EMOJIS['arrow_point']} Reason was: {removed.afk_reason}"),
             level="SUCCESS",
         )
 
