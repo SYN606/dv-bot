@@ -1,6 +1,7 @@
 import os
-from dotenv import load_dotenv
+from typing import Any
 from urllib.parse import quote_plus
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -9,139 +10,157 @@ from sqlalchemy.ext.asyncio import (
 
 load_dotenv()
 
-ENV = os.getenv(
-    "ENV",
-    "dev",
+# DATABASE MODE
+DB_TYPE = os.getenv(
+    "DB_TYPE",
+    "sqlite",
 ).lower()
+# ROOT DIRECTORY
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # SQLITE
 def build_sqlite_url() -> str:
 
-    base_dir = os.path.dirname(
-        os.path.dirname(
-            os.path.abspath(__file__)
-        )
+    db_folder = os.path.join(
+        ROOT_DIR,
+        ".DB_DND",
     )
-    db_dir = os.path.join(
-        base_dir,
-        "db",
-    )
+
     os.makedirs(
-        db_dir,
+        db_folder,
         exist_ok=True,
     )
-    db_path = os.path.join(
-        db_dir,
+
+    db_name = os.getenv(
+        "SQLITE_NAME",
         "bot.db",
     )
-    return (
-        f"sqlite+aiosqlite:///{db_path}"
+
+    db_path = os.path.join(
+        db_folder,
+        db_name,
     )
 
+    return (f"sqlite+aiosqlite:///{db_path}")
 
-# POSTGRES
-def build_postgres_url() -> str:
 
-    db_url = os.getenv(
-        "DATABASE_URL"
-    )
-    if db_url:
-        return db_url
-    
+# GENERIC DATABASE URL
+def build_database_url() -> str:
+
+    # DIRECT URL
+    direct_url = os.getenv("DATABASE_URL")
+
+    if direct_url:
+        return direct_url
+
     db_user = os.getenv("DB_USER")
     db_pass = os.getenv("DB_PASS")
     db_host = os.getenv("DB_HOST")
-    db_port = os.getenv(
-        "DB_PORT",
-        "5432",
-    )
-    db_name = os.getenv(
-        "DB_DATABASE"
-    )
+    db_port = os.getenv("DB_PORT")
+    db_name = os.getenv("DB_NAME")
     if not all([
-        db_user,
-        db_pass,
-        db_host,
-        db_name,
+            db_user,
+            db_pass,
+            db_host,
+            db_name,
     ]):
-        raise RuntimeError(
-            "PostgreSQL configuration missing."
-        )
+        raise RuntimeError("Database configuration missing.")
+    # SAFE CAST
+    password = quote_plus(str(db_pass))
+    # POSTGRES
+    if DB_TYPE == "postgres":
+        port = db_port or "5432"
+        return ("postgresql+asyncpg://"
+                f"{db_user}:"
+                f"{password}@"
+                f"{db_host}:"
+                f"{port}/"
+                f"{db_name}")
 
-    return (
-        "postgresql+asyncpg://"
-        f"{db_user}:"
-        f"{quote_plus(db_pass)}@" # type: ignore
-        f"{db_host}:"
-        f"{db_port}/"
-        f"{db_name}"
-    )
+    # MYSQL
+    if DB_TYPE == "mysql":
+        port = db_port or "3306"
+        return ("mysql+aiomysql://"
+                f"{db_user}:"
+                f"{password}@"
+                f"{db_host}:"
+                f"{port}/"
+                f"{db_name}")
+
+    raise RuntimeError(f"Unsupported DB_TYPE: {DB_TYPE}")
 
 
-# RESOLVE DATABASE
-if ENV == "dev":
-    DATABASE_URL = build_sqlite_url()
-    DB_MODE = "sqlite"
+# DATABASE URL
+if DB_TYPE == "sqlite":
 
+    DATABASE_URL = (build_sqlite_url())
 else:
-    DATABASE_URL = build_postgres_url()
-    DB_MODE = "postgres"
+    DATABASE_URL = (build_database_url())
+# ENGINE CONFIG
+ENGINE_KWARGS: dict[
+    str,
+    Any,
+] = {
+    "echo": False,
+    "future": True,
+}
+# SQLITE
+if DB_TYPE == "sqlite":
+    ENGINE_KWARGS["connect_args"] = {
+        "check_same_thread": False,
+    }
+# POSTGRES
+elif DB_TYPE == "postgres":
+    ENGINE_KWARGS.update({
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_timeout": 30,
+        "pool_recycle": 1800,
+        "pool_pre_ping": True,
+        "connect_args": {
+            "ssl": "require",
+        },
+    })
 
+# MYSQL
+elif DB_TYPE == "mysql":
+    ENGINE_KWARGS.update({
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_timeout": 30,
+        "pool_recycle": 1800,
+        "pool_pre_ping": True,
+    })
 
 # ENGINE
-if DB_MODE == "postgres":
-
-    engine = create_async_engine(
-        DATABASE_URL,
-        echo=False,
-        future=True,
-        pool_size=10,
-        max_overflow=20,
-        pool_timeout=30,
-        pool_recycle=1800,
-        pool_pre_ping=True,
-        connect_args={
-            "ssl": "require"
-        },
-    )
-
-    print(
-        "[DB] PostgreSQL "
-        "(Neon SSL enabled)"
-    )
-
-else:
-    engine = create_async_engine(
-        DATABASE_URL,
-        echo=False,
-        future=True,
-        connect_args={
-            "check_same_thread": False
-        },
-    )
-    print(
-        "[DB] SQLite (dev mode)"
-    )
-
+engine = create_async_engine(
+    DATABASE_URL,
+    **ENGINE_KWARGS,
+)
 
 # DIALECT
-DB_DIALECT = engine.dialect.name
-
+DB_DIALECT = (engine.dialect.name)
 
 # SESSION
-AsyncSessionLocal = async_sessionmaker(
+AsyncSessionLocal = (async_sessionmaker(
     bind=engine,
     expire_on_commit=False,
     class_=AsyncSession,
-)
+))
+
+# LOGGING
+print(f"[DB] Using "
+      f"{DB_TYPE.upper()} "
+      f"database")
+
+print(f"[DB] Dialect: "
+      f"{DB_DIALECT}")
 
 
 # CLEANUP
 async def close_database():
-
     try:
         await engine.dispose()
-
     except Exception:
         pass
