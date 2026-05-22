@@ -413,7 +413,6 @@ class ModerationLogConfig(
                 f"channel={self.channel_id}>")
 
 
-# CHANNEL LOCK SNAPSHOTS
 class ChannelPermissionSnapshot(
         Base,
         TimestampMixin,
@@ -436,42 +435,21 @@ class ChannelPermissionSnapshot(
         primary_key=True,
     )
 
-    send_messages: Mapped[bool | None] = mapped_column(
+    permission_name: Mapped[str] = mapped_column(
+        String(64),
+        primary_key=True,
+    )
+
+    permission_value: Mapped[bool | None] = mapped_column(
         Boolean,
         nullable=True,
     )
 
-    connect: Mapped[bool | None] = mapped_column(
-        Boolean,
-        nullable=True,
-    )
-
-    speak: Mapped[bool | None] = mapped_column(
-        Boolean,
-        nullable=True,
-    )
-
-    locked_by: Mapped[int] = mapped_column(
-        BigInteger,
-        nullable=False,
-    )
-
-    expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime,
-        nullable=True,
-    )
-
-    __table_args__ = (
-        Index(
-            "idx_channel_snapshot_lookup",
-            "guild_id",
-            "channel_id",
-        ),
-        Index(
-            "idx_channel_snapshot_expiry",
-            "expires_at",
-        ),
-    )
+    __table_args__ = (Index(
+        "idx_channel_snapshot_lookup",
+        "guild_id",
+        "channel_id",
+    ), )
 
 
 # VC MANAGER CONFIG
@@ -584,6 +562,7 @@ class VCTrackedChannel(
             "role_id",
         ),
     )
+
     def __repr__(self) -> str:
         return (f"<VCTrackedChannel "
                 f"guild={self.guild_id} "
