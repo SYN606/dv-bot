@@ -1,9 +1,14 @@
 import asyncio
+
 import discord
+
 from discord.ext import commands
-from utils.permissions.base_admin import BaseAdminCog
+
+from utils.permissions.base_admin import (BaseAdminCog, admin_command)
+
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
+
 from db.db_helpers.channel_permissions import (apply_channel_permissions,
                                                has_channel_snapshots,
                                                restore_channel_permissions,
@@ -12,15 +17,17 @@ from db.db_helpers.channel_permissions import (apply_channel_permissions,
 SUPPORTED_CHANNELS = (discord.TextChannel, discord.ForumChannel)
 
 
-def parse_duration(duration: str | None, ) -> int | None:
+def parse_duration(duration: str | None) -> int | None:
 
     if not duration:
         return None
+
     unit = duration[-1].lower()
     value = duration[:-1]
 
     if not value.isdigit():
         return None
+
     amount = int(value)
 
     if unit == "s":
@@ -49,12 +56,11 @@ class Lockdown(BaseAdminCog):
                      level: str = "ERROR") -> None:
 
         try:
-            await ctx.reply(
-                embed=make_embed(title=title,
-                                 description=description,
-                                 level=level),
-                mention_author=False,
-            )
+
+            await ctx.reply(embed=make_embed(title=title,
+                                             description=description,
+                                             level=level),
+                            mention_author=False)
 
         except discord.HTTPException:
             pass
@@ -64,38 +70,26 @@ class Lockdown(BaseAdminCog):
                             reason: str) -> bool:
 
         try:
-            return await restore_channel_permissions(
-                channel,
-                reason=reason,
-            )
 
-        except (
-                discord.Forbidden,
-                discord.NotFound,
-                discord.HTTPException,
-        ):
+            return await restore_channel_permissions(channel, reason=reason)
+
+        except discord.HTTPException:
             return False
 
     async def _safe_apply(self, channel: (discord.TextChannel
                                           | discord.ForumChannel), *,
-                          permissions: dict[
-                              str,
-                              bool | None,
-                          ], reason: str) -> bool:
+                          permissions: dict[str,
+                                            bool | None], reason: str) -> bool:
 
         try:
-            await apply_channel_permissions(
-                channel,
-                permissions,
-                reason=reason,
-            )
+
+            await apply_channel_permissions(channel,
+                                            permissions,
+                                            reason=reason)
+
             return True
 
-        except (
-                discord.Forbidden,
-                discord.NotFound,
-                discord.HTTPException,
-        ):
+        except discord.HTTPException:
             return False
 
     async def _safe_snapshot(self, channel: (discord.TextChannel
@@ -103,36 +97,33 @@ class Lockdown(BaseAdminCog):
                              permissions: list[str]) -> bool:
 
         try:
-            await snapshot_channel_permissions(
-                channel,
-                permissions,
-            )
+
+            await snapshot_channel_permissions(channel, permissions)
+
             return True
+
         except discord.HTTPException:
             return False
 
     async def _lock_channel(self, channel: (discord.TextChannel
                                             | discord.ForumChannel),
                             actor: discord.Member) -> bool:
+
         guild = channel.guild
-        if await has_channel_snapshots(
-                guild.id,
-                channel.id,
-        ):
+
+        if await has_channel_snapshots(guild.id, channel.id):
             return False
 
-        snapshotted = await self._safe_snapshot(channel,
-                                                permissions=[
-                                                    "send_messages",
-                                                    "send_messages_in_threads",
-                                                ])
+        snapshotted = await self._safe_snapshot(
+            channel, permissions=["send_messages", "send_messages_in_threads"])
 
         if not snapshotted:
             return False
+
         applied = await self._safe_apply(channel,
                                          permissions={
                                              "send_messages": False,
-                                             "send_messages_in_threads": False,
+                                             "send_messages_in_threads": False
                                          },
                                          reason=f"Locked by {actor}")
 
@@ -144,18 +135,21 @@ class Lockdown(BaseAdminCog):
                               actor: discord.Member | None = None) -> bool:
 
         reason = "Unlocked"
+
         if actor:
+
             reason = (f"Unlocked by "
                       f"{actor}")
 
         return await self._safe_restore(channel, reason=reason)
 
-    @commands.command(name="lock", )
+    @admin_command(name="lock")
     @commands.cooldown(2, 5, commands.BucketType.guild)
     @commands.max_concurrency(1, per=commands.BucketType.channel, wait=False)
     async def lock(self, ctx: commands.Context, duration: str | None = None):
 
         channel = ctx.channel
+
         if not isinstance(channel, SUPPORTED_CHANNELS):
             return
 
@@ -169,7 +163,8 @@ class Lockdown(BaseAdminCog):
         if me is None:
             return
 
-        permissions = channel.permissions_for(me, )
+        permissions = channel.permissions_for(me)
+
         if not permissions.manage_channels:
 
             await self._reply(ctx,
@@ -184,6 +179,7 @@ class Lockdown(BaseAdminCog):
         success = await self._lock_channel(channel, actor)
 
         if not success:
+
             await self._reply(ctx,
                               title="Already Locked",
                               description=(f"{EMOJIS['warning']} "
@@ -201,14 +197,16 @@ class Lockdown(BaseAdminCog):
                                        f"{actor.mention}."),
                           level="WARNING")
 
-        seconds = parse_duration(duration, )
+        seconds = parse_duration(duration)
 
         if seconds:
 
             async def unlock_later():
 
                 try:
-                    await asyncio.sleep(seconds, )
+
+                    await asyncio.sleep(seconds)
+
                     await self._safe_restore(channel,
                                              reason="Automatic unlock")
 
@@ -217,13 +215,13 @@ class Lockdown(BaseAdminCog):
 
             asyncio.create_task(unlock_later())
 
-    lock.admin_command = True  # type: ignore
-
-    @commands.command(name="unlock")
+    @admin_command(name="unlock")
     @commands.cooldown(2, 5, commands.BucketType.guild)
     @commands.max_concurrency(1, per=commands.BucketType.channel, wait=False)
     async def unlock(self, ctx: commands.Context):
+
         channel = ctx.channel
+
         if not isinstance(channel, SUPPORTED_CHANNELS):
             return
 
@@ -238,6 +236,7 @@ class Lockdown(BaseAdminCog):
             return
 
         permissions = channel.permissions_for(me)
+
         if not permissions.manage_channels:
 
             await self._reply(ctx,
@@ -249,10 +248,7 @@ class Lockdown(BaseAdminCog):
 
             return
 
-        success = await self._unlock_channel(
-            channel,
-            actor,
-        )
+        success = await self._unlock_channel(channel, actor)
 
         if not success:
 
@@ -265,6 +261,7 @@ class Lockdown(BaseAdminCog):
                               level="WARNING")
 
             return
+
         await self._reply(ctx,
                           title="Channel Unlocked",
                           description=(f"{EMOJIS['success']} "
@@ -272,13 +269,13 @@ class Lockdown(BaseAdminCog):
                                        f"{actor.mention}."),
                           level="SUCCESS")
 
-    unlock.admin_command = True  # type: ignore
-
     @lock.error
     @unlock.error
     async def lockdown_error(self, ctx: commands.Context,
                              error: commands.CommandError):
+
         if isinstance(error, commands.CommandOnCooldown):
+
             await self._reply(ctx,
                               title="Slow Down",
                               description=(f"{EMOJIS['warning']} "
@@ -288,10 +285,8 @@ class Lockdown(BaseAdminCog):
 
             return
 
-        if isinstance(
-                error,
-                commands.MaxConcurrencyReached,
-        ):
+        if isinstance(error, commands.MaxConcurrencyReached):
+
             await self._reply(ctx,
                               title="Channel Busy",
                               description=(f"{EMOJIS['warning']} "
@@ -301,8 +296,20 @@ class Lockdown(BaseAdminCog):
                               level="WARNING")
 
             return
+
+        if isinstance(error, commands.CheckFailure):
+
+            await self._reply(ctx,
+                              title="Access Denied",
+                              description=(f"{EMOJIS['warning']} "
+                                           "You do not have permission "
+                                           "to use this command."),
+                              level="WARNING")
+
+            return
+
         raise error
 
 
-async def setup(bot: commands.Bot, ):
-    await bot.add_cog(Lockdown(bot), )
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Lockdown(bot))
