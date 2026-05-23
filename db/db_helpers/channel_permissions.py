@@ -1,27 +1,11 @@
+import asyncio
 import discord
-
-from sqlalchemy import (
-    delete,
-    distinct,
-    select,
-)
-
-from sqlalchemy.dialects.postgresql import (
-    insert as postgres_insert, )
-
-from sqlalchemy.dialects.sqlite import (
-    insert as sqlite_insert, )
-
-from db.engine import (
-    AsyncSessionLocal,
-    DB_DIALECT,
-)
-
-from db.models import (
-    ChannelPermissionSnapshot, )
-
-from db.db_helpers.verification import (
-    get_verification_config, )
+from sqlalchemy import (delete, distinct, select)
+from sqlalchemy.dialects.postgresql import (insert as postgres_insert)
+from sqlalchemy.dialects.sqlite import (insert as sqlite_insert)
+from db.engine import (AsyncSessionLocal, DB_DIALECT)
+from db.models import (ChannelPermissionSnapshot)
+from db.db_helpers.verification import (get_verification_config)
 
 
 # Internal insert builder
@@ -29,27 +13,70 @@ def build_insert_stmt(
     model,
     values: dict,
 ):
-
     if DB_DIALECT == "postgresql":
-
         return postgres_insert(model, ).values(**values, )
-
     return sqlite_insert(model, ).values(**values, )
+
+
+# Safe overwrite updater
+async def safe_set_permissions(
+        channel: discord.abc.GuildChannel,
+        target: discord.Role,
+        *,
+        overwrite: (discord.PermissionOverwrite
+                    | None),
+        reason: str,
+) -> bool:
+    for _ in range(3):
+        try:
+            await channel.set_permissions(
+                target,
+                overwrite=overwrite,
+                reason=reason,
+            )
+            # Prevent overwrite spam
+            await asyncio.sleep(0.45, )
+            return True
+        except discord.HTTPException as error:
+            # 429 handling
+            if getattr(
+                    error,
+                    "status",
+                    None,
+            ) == 429:
+                retry_after = getattr(
+                    error,
+                    "retry_after",
+                    2,
+                )
+                await asyncio.sleep(float(retry_after), )
+                continue
+            return False
+
+    return False
 
 
 # Resolve target roles
 async def get_target_roles(guild: discord.Guild, ) -> list[discord.Role]:
-
+    roles: list[discord.Role] = [
+        guild.default_role,
+    ]
     verification = await get_verification_config(guild.id, )
+    if not verification:
+        return roles
+    verified_role_id = (verification.verified_role_id)
 
-    if (verification and verification.verified_role_id):
+    if not verified_role_id:
+        return roles
 
-        role = guild.get_role(verification.verified_role_id, )
+    verified_role = guild.get_role(verified_role_id, )
+    if verified_role is None:
+        return roles
 
-        if role:
-            return [role]
+    if verified_role.id != guild.default_role.id:
+        roles.append(verified_role, )
 
-    return [guild.default_role]
+    return roles
 
 
 # Create snapshots
@@ -67,13 +94,11 @@ async def create_permission_snapshots(
         return
 
     async with AsyncSessionLocal() as session:
-
         for (
                 target_id,
                 permission_name,
                 permission_value,
         ) in snapshots:
-
             stmt = build_insert_stmt(
                 ChannelPermissionSnapshot,
                 {
@@ -92,9 +117,7 @@ async def create_permission_snapshots(
                 ChannelPermissionSnapshot.target_id,
                 ChannelPermissionSnapshot.permission_name,
             ], )
-
             await session.execute(stmt, )
-
         await session.commit()
 
 
@@ -105,13 +128,11 @@ async def get_permission_snapshots(
 ) -> list[ChannelPermissionSnapshot]:
 
     async with AsyncSessionLocal() as session:
-
         result = await session.scalars(
             select(ChannelPermissionSnapshot, ).where(
                 ChannelPermissionSnapshot.guild_id == guild_id,
                 ChannelPermissionSnapshot.channel_id == channel_id,
             ), )
-
         return list(result, )
 
 
@@ -122,7 +143,6 @@ async def remove_permission_snapshots(
 ) -> bool:
 
     async with AsyncSessionLocal() as session:
-
         result = await session.execute(
             delete(ChannelPermissionSnapshot, ).where(
                 ChannelPermissionSnapshot.guild_id == guild_id,
@@ -130,7 +150,6 @@ async def remove_permission_snapshots(
             ), )
 
         await session.commit()
-
         return (getattr(
             result,
             "rowcount",
@@ -145,13 +164,11 @@ async def has_channel_snapshots(
 ) -> bool:
 
     async with AsyncSessionLocal() as session:
-
         result = await session.scalar(
             select(ChannelPermissionSnapshot.channel_id, ).where(
                 ChannelPermissionSnapshot.guild_id == guild_id,
                 ChannelPermissionSnapshot.channel_id == channel_id,
             ).limit(1, ), )
-
         return result is not None
 
 
@@ -159,11 +176,9 @@ async def has_channel_snapshots(
 async def get_snapshot_channels(guild_id: int, ) -> list[int]:
 
     async with AsyncSessionLocal() as session:
-
         result = await session.scalars(
             select(distinct(ChannelPermissionSnapshot.channel_id, ), ).where(
                 ChannelPermissionSnapshot.guild_id == guild_id, ), )
-
         return list(result, )
 
 
@@ -174,17 +189,11 @@ async def snapshot_channel_permissions(
 ) -> None:
 
     guild = channel.guild
-
     roles = await get_target_roles(guild, )
-
     snapshots = []
-
     for role in roles:
-
         overwrite = channel.overwrites_for(role, )
-
         for permission in permissions:
-
             snapshots.append((
                 role.id,
                 permission,
@@ -193,7 +202,6 @@ async def snapshot_channel_permissions(
                     permission,
                 ),
             ))
-
     await create_permission_snapshots(
         guild.id,
         channel.id,
@@ -213,18 +221,10 @@ async def apply_channel_permissions(
 ) -> None:
 
     guild = channel.guild
-
     roles = await get_target_roles(guild, )
-
     for role in roles:
-
         overwrite = channel.overwrites_for(role, )
-
-        for (
-                permission,
-                value,
-        ) in permissions.items():
-
+        for (permission, value) in permissions.items():
             setattr(
                 overwrite,
                 permission,
@@ -242,11 +242,16 @@ async def apply_channel_permissions(
                 overwrite.create_private_threads = (
                     permissions["send_messages"])
 
-        await channel.set_permissions(
-            role,
-            overwrite=overwrite,
-            reason=reason,
-        )
+        try:
+            await safe_set_permissions(
+                channel,
+                role,
+                overwrite=overwrite,
+                reason=reason,
+            )
+
+        except discord.HTTPException:
+            continue
 
 
 # Restore permissions
@@ -255,35 +260,24 @@ async def restore_channel_permissions(
     *,
     reason: str,
 ) -> bool:
-
     guild = channel.guild
-
     snapshots = await get_permission_snapshots(
         guild.id,
         channel.id,
     )
-
     if not snapshots:
         return False
-
     grouped: dict[
         int,
         list[ChannelPermissionSnapshot],
     ] = {}
-
     for snapshot in snapshots:
         grouped.setdefault(
             snapshot.target_id,
             [],
         ).append(snapshot, )
-
-    for (
-            target_id,
-            entries,
-    ) in grouped.items():
-
+    for (target_id, entries) in grouped.items():
         role = guild.get_role(target_id, )
-
         if role is None:
             continue
 
@@ -295,26 +289,26 @@ async def restore_channel_permissions(
                 entry.permission_name,
                 entry.permission_value,
             )
+
         try:
             if overwrite.is_empty():
-                await channel.set_permissions(
+                await safe_set_permissions(
+                    channel,
                     role,
                     overwrite=None,
                     reason=reason,
                 )
             else:
-                await channel.set_permissions(
+                await safe_set_permissions(
+                    channel,
                     role,
                     overwrite=overwrite,
                     reason=reason,
                 )
-
         except discord.HTTPException:
             continue
-
     await remove_permission_snapshots(
         guild.id,
         channel.id,
     )
-
     return True

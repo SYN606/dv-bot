@@ -55,6 +55,83 @@ class Hide(
         except discord.HTTPException:
             pass
 
+    async def _safe_restore(
+        self,
+        channel: (discord.TextChannel
+                  | discord.ForumChannel
+                  | discord.VoiceChannel
+                  | discord.StageChannel),
+        *,
+        reason: str,
+    ) -> bool:
+
+        try:
+
+            return await restore_channel_permissions(
+                channel,
+                reason=reason,
+            )
+
+        except (
+                discord.Forbidden,
+                discord.NotFound,
+                discord.HTTPException,
+        ):
+            return False
+
+    async def _safe_apply(
+        self,
+        channel: (discord.TextChannel
+                  | discord.ForumChannel
+                  | discord.VoiceChannel
+                  | discord.StageChannel),
+        *,
+        permissions: dict[
+            str,
+            bool | None,
+        ],
+        reason: str,
+    ) -> bool:
+
+        try:
+
+            await apply_channel_permissions(
+                channel,
+                permissions,
+                reason=reason,
+            )
+
+            return True
+
+        except (
+                discord.Forbidden,
+                discord.NotFound,
+                discord.HTTPException,
+        ):
+            return False
+
+    async def _safe_snapshot(
+        self,
+        channel: (discord.TextChannel
+                  | discord.ForumChannel
+                  | discord.VoiceChannel
+                  | discord.StageChannel),
+        *,
+        permissions: list[str],
+    ) -> bool:
+
+        try:
+
+            await snapshot_channel_permissions(
+                channel,
+                permissions,
+            )
+
+            return True
+
+        except discord.HTTPException:
+            return False
+
     async def _hide_channel(
         self,
         channel: (discord.TextChannel
@@ -72,22 +149,25 @@ class Hide(
         ):
             return False
 
-        await snapshot_channel_permissions(
+        snapshotted = await self._safe_snapshot(
             channel,
-            [
+            permissions=[
                 "view_channel",
             ],
         )
 
-        await apply_channel_permissions(
+        if not snapshotted:
+            return False
+
+        applied = await self._safe_apply(
             channel,
-            {
+            permissions={
                 "view_channel": False,
             },
             reason=f"Hidden by {actor}",
         )
 
-        return True
+        return applied
 
     async def _unhide_channel(
         self,
@@ -98,12 +178,22 @@ class Hide(
         actor: discord.Member,
     ) -> bool:
 
-        return await restore_channel_permissions(
+        return await self._safe_restore(
             channel,
             reason=f"Unhidden by {actor}",
         )
 
     @commands.command(name="hide", )
+    @commands.cooldown(
+        2,
+        5,
+        commands.BucketType.guild,
+    )
+    @commands.max_concurrency(
+        1,
+        per=commands.BucketType.channel,
+        wait=False,
+    )
     async def hide(
         self,
         ctx: commands.Context,
@@ -125,6 +215,26 @@ class Hide(
         ):
             return
 
+        me = ctx.guild.me  # type: ignore
+
+        if me is None:
+            return
+
+        permissions = channel.permissions_for(me, )
+
+        if not permissions.manage_channels:
+
+            await self._reply(
+                ctx,
+                title="Missing Permissions",
+                description=(f"{EMOJIS['warning']} "
+                             "I need `Manage Channels` "
+                             "permission."),
+                level="WARNING",
+            )
+
+            return
+
         success = await self._hide_channel(
             channel,
             actor,
@@ -136,7 +246,9 @@ class Hide(
                 ctx,
                 title="Already Hidden",
                 description=(f"{EMOJIS['warning']} "
-                             "This channel is already hidden."),
+                             "This channel is already "
+                             "hidden or I could not "
+                             "edit its permissions."),
                 level="WARNING",
             )
 
@@ -151,7 +263,19 @@ class Hide(
             level="WARNING",
         )
 
+    hide.admin_command = True # type: ignore
+
     @commands.command(name="unhide", )
+    @commands.cooldown(
+        2,
+        5,
+        commands.BucketType.guild,
+    )
+    @commands.max_concurrency(
+        1,
+        per=commands.BucketType.channel,
+        wait=False,
+    )
     async def unhide(
         self,
         ctx: commands.Context,
@@ -173,6 +297,26 @@ class Hide(
         ):
             return
 
+        me = ctx.guild.me  # type: ignore
+
+        if me is None:
+            return
+
+        permissions = channel.permissions_for(me, )
+
+        if not permissions.manage_channels:
+
+            await self._reply(
+                ctx,
+                title="Missing Permissions",
+                description=(f"{EMOJIS['warning']} "
+                             "I need `Manage Channels` "
+                             "permission."),
+                level="WARNING",
+            )
+
+            return
+
         success = await self._unhide_channel(
             channel,
             actor,
@@ -184,7 +328,9 @@ class Hide(
                 ctx,
                 title="Not Hidden",
                 description=(f"{EMOJIS['warning']} "
-                             "This channel is not hidden."),
+                             "This channel is not hidden "
+                             "or I could not restore "
+                             "its permissions."),
                 level="WARNING",
             )
 
@@ -198,6 +344,51 @@ class Hide(
                          f"{actor.mention}."),
             level="SUCCESS",
         )
+
+    unhide.admin_command = True # type: ignore
+
+    @hide.error
+    @unhide.error
+    async def hide_error(
+        self,
+        ctx: commands.Context,
+        error: commands.CommandError,
+    ):
+
+        if isinstance(
+                error,
+                commands.CommandOnCooldown,
+        ):
+
+            await self._reply(
+                ctx,
+                title="Slow Down",
+                description=(f"{EMOJIS['warning']} "
+                             "You are using this "
+                             "command too quickly."),
+                level="WARNING",
+            )
+
+            return
+
+        if isinstance(
+                error,
+                commands.MaxConcurrencyReached,
+        ):
+
+            await self._reply(
+                ctx,
+                title="Channel Busy",
+                description=(f"{EMOJIS['warning']} "
+                             "A hide operation is "
+                             "already running for "
+                             "this channel."),
+                level="WARNING",
+            )
+
+            return
+
+        raise error
 
 
 async def setup(bot: commands.Bot, ):
