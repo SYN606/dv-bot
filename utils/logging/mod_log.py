@@ -1,61 +1,38 @@
 import asyncio
 import discord
 from typing import Optional, Dict, Any, Tuple
-
 from sqlalchemy import select
-
 from db.engine import AsyncSessionLocal
 from db.models import ModerationLogConfig
 from utils.core.embeds import make_embed
 
-# Cache: guild_id -> channel_id
 _log_cache: dict[int, int] = {}
-
-# Anti-spam tracker (dedupe key -> timestamp)
 _recent_logs: dict[Tuple[int, str, Optional[int]], float] = {}
-
-# Cooldown (seconds)
 LOG_COOLDOWN = 1.5
 
 
-async def send_mod_log(
-    *,
-    guild: discord.Guild,
-    category: str,
-    title: str,
-    description: str,
-    level: str = "INFO",
-    actor: Optional[discord.abc.User] = None,
-    target: Optional[discord.abc.User] = None,
-    extra_fields: Optional[Dict[str, Any]] = None,
-) -> None:
+async def send_mod_log(*,
+                       guild: discord.Guild,
+                       category: str,
+                       title: str,
+                       description: str,
+                       level: str = "INFO",
+                       actor: Optional[discord.abc.User] = None,
+                       target: Optional[discord.abc.User] = None,
+                       extra_fields: Optional[Dict[str, Any]] = None) -> None:
 
     try:
-        # =====================================================
-        # DEDUPLICATION (MAIN FIX)
-        # =====================================================
+        # DEDUPLICATION
         now = asyncio.get_event_loop().time()
-
-        dedupe_key = (
-            guild.id,
-            category,
-            target.id if target else None,
-        )
-
+        dedupe_key = (guild.id, category, target.id if target else None)
         last_time = _recent_logs.get(dedupe_key, 0)
-
         if now - last_time < LOG_COOLDOWN:
-            return  # skip duplicate log
-
+            return
         _recent_logs[dedupe_key] = now
-
-        # Cleanup old keys (prevent memory leak)
         if len(_recent_logs) > 500:
             _recent_logs.clear()
 
-        # =====================================================
-        # GET CHANNEL (cache + db)
-        # =====================================================
+        # GET CHANNEL
         channel_id: Optional[int] = _log_cache.get(guild.id)
 
         if channel_id is None:
@@ -85,16 +62,12 @@ async def send_mod_log(
         if not isinstance(channel, discord.TextChannel):
             return
 
-        # =====================================================
         # PERMISSIONS
-        # =====================================================
         perms = channel.permissions_for(guild.me)
         if not perms.send_messages or not perms.embed_links:
             return
 
-        # =====================================================
         # BUILD EMBED
-        # =====================================================
         fields = []
 
         if actor:
@@ -109,23 +82,17 @@ async def send_mod_log(
                     continue
                 fields.append((str(name), str(value), False))
 
-        embed = make_embed(
-            title=title,
-            description=description,
-            level=level,
-            fields=fields if fields else None,
-            footer=f"Guild ID: {guild.id}",
-        )
+        embed = make_embed(title=title,
+                           description=description,
+                           level=level,
+                           fields=fields if fields else None,
+                           footer=f"Guild ID: {guild.id}")
 
         embed.timestamp = discord.utils.utcnow()
 
-        # =====================================================
         # SEND
-        # =====================================================
-        await channel.send(
-            embed=embed,
-            allowed_mentions=discord.AllowedMentions.none(),
-        )
+        await channel.send(embed=embed,
+                           allowed_mentions=discord.AllowedMentions.none())
 
     except (discord.Forbidden, discord.NotFound):
         return

@@ -88,32 +88,24 @@ class Lockdown(BaseAdminCog):
                                             reason=reason)
 
             return True
-
         except discord.HTTPException:
             return False
 
     async def _safe_snapshot(self, channel: (discord.TextChannel
                                              | discord.ForumChannel), *,
                              permissions: list[str]) -> bool:
-
         try:
-
             await snapshot_channel_permissions(channel, permissions)
-
             return True
-
         except discord.HTTPException:
             return False
 
     async def _lock_channel(self, channel: (discord.TextChannel
                                             | discord.ForumChannel),
                             actor: discord.Member) -> bool:
-
         guild = channel.guild
-
         if await has_channel_snapshots(guild.id, channel.id):
             return False
-
         snapshotted = await self._safe_snapshot(
             channel, permissions=["send_messages", "send_messages_in_threads"])
 
@@ -133,11 +125,8 @@ class Lockdown(BaseAdminCog):
                               channel: (discord.TextChannel
                                         | discord.ForumChannel),
                               actor: discord.Member | None = None) -> bool:
-
         reason = "Unlocked"
-
         if actor:
-
             reason = (f"Unlocked by "
                       f"{actor}")
 
@@ -147,39 +136,31 @@ class Lockdown(BaseAdminCog):
     @commands.cooldown(2, 5, commands.BucketType.guild)
     @commands.max_concurrency(1, per=commands.BucketType.channel, wait=False)
     async def lock(self, ctx: commands.Context, duration: str | None = None):
-
+        try:
+            await ctx.message.delete()
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+            pass
         channel = ctx.channel
-
         if not isinstance(channel, SUPPORTED_CHANNELS):
             return
-
         actor = ctx.author
-
         if not isinstance(actor, discord.Member):
             return
 
         me = ctx.guild.me  # type: ignore
-
         if me is None:
             return
-
         permissions = channel.permissions_for(me)
-
         if not permissions.manage_channels:
-
             await self._reply(ctx,
                               title="Missing Permissions",
                               description=(f"{EMOJIS['warning']} "
                                            "I need `Manage Channels` "
                                            "permission."),
                               level="WARNING")
-
             return
-
         success = await self._lock_channel(channel, actor)
-
         if not success:
-
             await self._reply(ctx,
                               title="Already Locked",
                               description=(f"{EMOJIS['warning']} "
@@ -189,27 +170,20 @@ class Lockdown(BaseAdminCog):
                               level="WARNING")
 
             return
-
         await self._reply(ctx,
                           title="Channel Locked",
                           description=(f"{EMOJIS['announcement']} "
                                        f"{channel.mention} locked by "
                                        f"{actor.mention}."),
                           level="WARNING")
-
         seconds = parse_duration(duration)
-
         if seconds:
 
             async def unlock_later():
-
                 try:
-
                     await asyncio.sleep(seconds)
-
                     await self._safe_restore(channel,
                                              reason="Automatic unlock")
-
                 except Exception:
                     pass
 
@@ -219,39 +193,31 @@ class Lockdown(BaseAdminCog):
     @commands.cooldown(2, 5, commands.BucketType.guild)
     @commands.max_concurrency(1, per=commands.BucketType.channel, wait=False)
     async def unlock(self, ctx: commands.Context):
+        try:
+            await ctx.message.delete()
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+            pass
 
         channel = ctx.channel
-
         if not isinstance(channel, SUPPORTED_CHANNELS):
             return
-
         actor = ctx.author
-
         if not isinstance(actor, discord.Member):
             return
-
         me = ctx.guild.me  # type: ignore
-
         if me is None:
             return
-
         permissions = channel.permissions_for(me)
-
         if not permissions.manage_channels:
-
             await self._reply(ctx,
                               title="Missing Permissions",
                               description=(f"{EMOJIS['warning']} "
                                            "I need `Manage Channels` "
                                            "permission."),
                               level="WARNING")
-
             return
-
         success = await self._unlock_channel(channel, actor)
-
         if not success:
-
             await self._reply(ctx,
                               title="Not Locked",
                               description=(f"{EMOJIS['warning']} "
@@ -259,9 +225,7 @@ class Lockdown(BaseAdminCog):
                                            "or I could not restore "
                                            "its permissions."),
                               level="WARNING")
-
             return
-
         await self._reply(ctx,
                           title="Channel Unlocked",
                           description=(f"{EMOJIS['success']} "
@@ -269,24 +233,20 @@ class Lockdown(BaseAdminCog):
                                        f"{actor.mention}."),
                           level="SUCCESS")
 
-    @lock.error
-    @unlock.error
+    @lock.error  # type: ignore
+    @unlock.error  # type: ignore
     async def lockdown_error(self, ctx: commands.Context,
                              error: commands.CommandError):
-
         if isinstance(error, commands.CommandOnCooldown):
-
             await self._reply(ctx,
                               title="Slow Down",
                               description=(f"{EMOJIS['warning']} "
                                            "You are using this "
                                            "command too quickly."),
                               level="WARNING")
-
             return
 
         if isinstance(error, commands.MaxConcurrencyReached):
-
             await self._reply(ctx,
                               title="Channel Busy",
                               description=(f"{EMOJIS['warning']} "
@@ -294,11 +254,9 @@ class Lockdown(BaseAdminCog):
                                            "is already running "
                                            "for this channel."),
                               level="WARNING")
-
             return
 
         if isinstance(error, commands.CheckFailure):
-
             await self._reply(ctx,
                               title="Access Denied",
                               description=(f"{EMOJIS['warning']} "
@@ -307,7 +265,6 @@ class Lockdown(BaseAdminCog):
                               level="WARNING")
 
             return
-
         raise error
 
 

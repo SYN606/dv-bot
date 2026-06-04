@@ -54,15 +54,11 @@ class BaseAdminCog(commands.Cog):
 
         if command is None:
             return True
-
         config_mode = getattr(command.callback, "config_command", False)
-
         admin_mode = getattr(command.callback, "admin_command", False)
-
         # NO ACCESS CONTROL
         if not config_mode and not admin_mode:
             return True
-
         return await self._has_access(member=author,
                                       guild=guild,
                                       config_mode=config_mode,
@@ -70,32 +66,24 @@ class BaseAdminCog(commands.Cog):
 
     async def interaction_check(  # type: ignore
             self, interaction: discord.Interaction) -> bool:
-
         guild = interaction.guild
 
         if guild is None:
             return True
-
         user = interaction.user
-
         if not isinstance(user, discord.Member):
             return False
-
         command = interaction.command
-
         if command is None:
             return True
 
         callback = getattr(command, "callback", None)
-
         config_mode = getattr(callback, "config_command", False)
-
         admin_mode = getattr(callback, "admin_command", False)
 
         # NO ACCESS CONTROL
         if not config_mode and not admin_mode:
             return True
-
         return await self._has_access(member=user,
                                       guild=guild,
                                       config_mode=config_mode,
@@ -109,9 +97,7 @@ class BaseAdminCog(commands.Cog):
                         slash: bool = False):
 
         try:
-
             prefix = "/" if slash else ""
-
             await send_mod_log(guild=guild,
                                category="CONFIG",
                                title="Admin Command Used",
@@ -124,7 +110,6 @@ class BaseAdminCog(commands.Cog):
             pass
 
     async def cog_after_invoke(self, ctx: commands.Context):
-
         guild = ctx.guild
 
         if guild is None:
@@ -134,7 +119,6 @@ class BaseAdminCog(commands.Cog):
             return
 
         command = ctx.command
-
         if (command is None or getattr(command, "skip_auto_log", False)):
             return
 
@@ -148,7 +132,6 @@ class BaseAdminCog(commands.Cog):
                                         command: discord.app_commands.Command):
 
         guild = interaction.guild
-
         if guild is None:
             return
 

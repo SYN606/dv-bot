@@ -1,9 +1,6 @@
 import discord
-
 from discord.ext import commands
-
-from db.db_helpers.admin_roles import (
-    get_admin_roles, )
+from db.db_helpers.admin_roles import (get_admin_roles)
 
 # CACHE
 _ADMIN_ROLE_CACHE: dict[int, set[int]] = {}

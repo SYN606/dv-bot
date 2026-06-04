@@ -2,55 +2,27 @@ import os
 from typing import Any
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
+                                    create_async_engine)
 
 load_dotenv()
 
-# DATABASE MODE
-DB_TYPE = os.getenv(
-    "DB_TYPE",
-    "sqlite",
-).lower()
-# ROOT DIRECTORY
+DB_TYPE = os.getenv("DB_TYPE", "sqlite").lower()
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # SQLITE
 def build_sqlite_url() -> str:
-
-    db_folder = os.path.join(
-        ROOT_DIR,
-        ".DB_DND",
-    )
-
-    os.makedirs(
-        db_folder,
-        exist_ok=True,
-    )
-
-    db_name = os.getenv(
-        "SQLITE_NAME",
-        "bot.db",
-    )
-
-    db_path = os.path.join(
-        db_folder,
-        db_name,
-    )
-
+    db_folder = os.path.join(ROOT_DIR, ".DB_DND")
+    os.makedirs(db_folder, exist_ok=True)
+    db_name = os.getenv("SQLITE_NAME", "bot.db")
+    db_path = os.path.join(db_folder, db_name)
     return (f"sqlite+aiosqlite:///{db_path}")
 
 
 # GENERIC DATABASE URL
 def build_database_url() -> str:
-
-    # DIRECT URL
     direct_url = os.getenv("DATABASE_URL")
-
     if direct_url:
         return direct_url
 
@@ -59,16 +31,9 @@ def build_database_url() -> str:
     db_host = os.getenv("DB_HOST")
     db_port = os.getenv("DB_PORT")
     db_name = os.getenv("DB_NAME")
-    if not all([
-            db_user,
-            db_pass,
-            db_host,
-            db_name,
-    ]):
+    if not all([db_user, db_pass, db_host, db_name]):
         raise RuntimeError("Database configuration missing.")
-    # SAFE CAST
     password = quote_plus(str(db_pass))
-    # POSTGRES
     if DB_TYPE == "postgres":
         port = db_port or "5432"
         return ("postgresql+asyncpg://"
@@ -77,8 +42,6 @@ def build_database_url() -> str:
                 f"{db_host}:"
                 f"{port}/"
                 f"{db_name}")
-
-    # MYSQL
     if DB_TYPE == "mysql":
         port = db_port or "3306"
         return ("mysql+aiomysql://"
@@ -91,26 +54,14 @@ def build_database_url() -> str:
     raise RuntimeError(f"Unsupported DB_TYPE: {DB_TYPE}")
 
 
-# DATABASE URL
 if DB_TYPE == "sqlite":
 
     DATABASE_URL = (build_sqlite_url())
 else:
     DATABASE_URL = (build_database_url())
-# ENGINE CONFIG
-ENGINE_KWARGS: dict[
-    str,
-    Any,
-] = {
-    "echo": False,
-    "future": True,
-}
-# SQLITE
+ENGINE_KWARGS: dict[str, Any] = {"echo": False, "future": True}
 if DB_TYPE == "sqlite":
-    ENGINE_KWARGS["connect_args"] = {
-        "check_same_thread": False,
-    }
-# POSTGRES
+    ENGINE_KWARGS["connect_args"] = {"check_same_thread": False}
 elif DB_TYPE == "postgres":
     ENGINE_KWARGS.update({
         "pool_size": 10,
@@ -119,46 +70,31 @@ elif DB_TYPE == "postgres":
         "pool_recycle": 1800,
         "pool_pre_ping": True,
         "connect_args": {
-            "ssl": "require",
-        },
+            "ssl": "require"
+        }
     })
-
-# MYSQL
 elif DB_TYPE == "mysql":
     ENGINE_KWARGS.update({
         "pool_size": 10,
         "max_overflow": 20,
         "pool_timeout": 30,
         "pool_recycle": 1800,
-        "pool_pre_ping": True,
+        "pool_pre_ping": True
     })
 
-# ENGINE
-engine = create_async_engine(
-    DATABASE_URL,
-    **ENGINE_KWARGS,
-)
-
-# DIALECT
+engine = create_async_engine(DATABASE_URL, **ENGINE_KWARGS)
 DB_DIALECT = (engine.dialect.name)
 
-# SESSION
-AsyncSessionLocal = (async_sessionmaker(
-    bind=engine,
-    expire_on_commit=False,
-    class_=AsyncSession,
-))
-
-# LOGGING
+AsyncSessionLocal = (async_sessionmaker(bind=engine,
+                                        expire_on_commit=False,
+                                        class_=AsyncSession))
 print(f"[DB] Using "
       f"{DB_TYPE.upper()} "
       f"database")
-
 print(f"[DB] Dialect: "
       f"{DB_DIALECT}")
 
 
-# CLEANUP
 async def close_database():
     try:
         await engine.dispose()

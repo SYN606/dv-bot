@@ -1,126 +1,73 @@
-from sqlalchemy import (
-    delete,
-    select,
-    update,
-)
-
-from sqlalchemy.dialects.postgresql import (
-    insert as postgres_insert,
-)
-
-from sqlalchemy.dialects.sqlite import (
-    insert as sqlite_insert,
-)
-
-from db.engine import (
-    AsyncSessionLocal,
-    DB_DIALECT,
-)
-
-from db.models import (
-    VCManagerConfig,
-)
+from sqlalchemy import (delete, select, update)
+from sqlalchemy.dialects.postgresql import (insert as postgres_insert)
+from sqlalchemy.dialects.sqlite import (insert as sqlite_insert)
+from db.engine import (AsyncSessionLocal, DB_DIALECT)
+from db.models import (VCManagerConfig)
 
 
 # Internal insert builder
-def build_insert_stmt(
-    model,
-    values: dict,
-):
-
+def build_insert_stmt(model, values: dict):
     if DB_DIALECT == "postgresql":
-        return postgres_insert(
-            model,
-        ).values(
-            **values,
-        )
-
-    return sqlite_insert(
-        model,
-    ).values(
-        **values,
-    )
+        return postgres_insert(model, ).values(**values)
+    return sqlite_insert(model, ).values(**values)
 
 
 # Set manager config
-async def set_vc_manager_config(
-    guild_id: int,
-    *,
-    panel_channel_id: int | None = None,
-    panel_message_id: int | None = None,
-    log_channel_id: int | None = None,
-    enabled: bool = True,
-) -> None:
+async def set_vc_manager_config(guild_id: int,
+                                *,
+                                panel_channel_id: int | None = None,
+                                panel_message_id: int | None = None,
+                                log_channel_id: int | None = None,
+                                enabled: bool = True) -> None:
 
     async with AsyncSessionLocal() as session:
         stmt = build_insert_stmt(
-            VCManagerConfig,
-            {
+            VCManagerConfig, {
                 "guild_id": guild_id,
                 "panel_channel_id": panel_channel_id,
                 "panel_message_id": panel_message_id,
                 "log_channel_id": log_channel_id,
-                "enabled": enabled,
-            },
-        )
+                "enabled": enabled
+            })
 
         stmt = stmt.on_conflict_do_update(
-            index_elements=[
-                VCManagerConfig.guild_id,
-            ],
+            index_elements=[VCManagerConfig.guild_id],
             set_={
                 "panel_channel_id": panel_channel_id,
                 "panel_message_id": panel_message_id,
                 "log_channel_id": log_channel_id,
-                "enabled": enabled,
-            },
-        )
+                "enabled": enabled
+            })
 
-        await session.execute(
-            stmt,
-        )
-
+        await session.execute(stmt)
         await session.commit()
 
 
 # Get manager config
-async def get_vc_manager_config(
-    guild_id: int,
-) -> VCManagerConfig | None:
+async def get_vc_manager_config(guild_id: int) -> VCManagerConfig | None:
 
     async with AsyncSessionLocal() as session:
         return await session.scalar(
-            select(VCManagerConfig).where(
-                VCManagerConfig.guild_id == guild_id,
-            )
+            select(VCManagerConfig).where(VCManagerConfig.guild_id == guild_id)
         )
 
 
 # Check enabled
-async def is_vc_manager_enabled(
-    guild_id: int,
-) -> bool:
-
+async def is_vc_manager_enabled(guild_id: int, ) -> bool:
     async with AsyncSessionLocal() as session:
         result = await session.scalar(
-            select(
-                VCManagerConfig.guild_id,
-            ).where(
+            select(VCManagerConfig.guild_id, ).where(
                 VCManagerConfig.guild_id == guild_id,
-                VCManagerConfig.enabled.is_(True),
-            )
-        )
+                VCManagerConfig.enabled.is_(True)))
 
         return result is not None
 
 
 # Update panel
-async def update_vc_panel(
-    guild_id: int,
-    *,
-    panel_channel_id: int | None = None,
-    panel_message_id: int | None = None,
-) -> bool:
+async def update_vc_panel(guild_id: int,
+                          *,
+                          panel_channel_id: int | None = None,
+                          panel_message_id: int | None = None) -> bool:
 
     values = {}
 
@@ -135,14 +82,8 @@ async def update_vc_panel(
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            update(VCManagerConfig)
-            .where(
-                VCManagerConfig.guild_id == guild_id,
-            )
-            .values(
-                **values,
-            )
-        )
+            update(VCManagerConfig).where(
+                VCManagerConfig.guild_id == guild_id, ).values(**values))
 
         await session.commit()
 
@@ -150,113 +91,69 @@ async def update_vc_panel(
 
 
 # Update log channel
-async def update_vc_log_channel(
-    guild_id: int,
-    channel_id: int | None,
-) -> bool:
+async def update_vc_log_channel(guild_id: int, channel_id: int | None) -> bool:
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            update(VCManagerConfig)
-            .where(
-                VCManagerConfig.guild_id == guild_id,
-            )
-            .values(
-                log_channel_id=channel_id,
-            )
-        )
+            update(VCManagerConfig).where(
+                VCManagerConfig.guild_id == guild_id, ).values(
+                    log_channel_id=channel_id))
 
         await session.commit()
-
         return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Toggle drag
-async def toggle_drag(
-    guild_id: int,
-    enabled: bool,
-) -> bool:
+async def toggle_drag(guild_id: int, enabled: bool) -> bool:
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            update(VCManagerConfig)
-            .where(
-                VCManagerConfig.guild_id == guild_id,
-            )
-            .values(
-                drag_enabled=enabled,
-            )
-        )
+            update(VCManagerConfig).where(
+                VCManagerConfig.guild_id == guild_id, ).values(
+                    drag_enabled=enabled))
 
         await session.commit()
-
         return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Toggle drag all
-async def toggle_drag_all(
-    guild_id: int,
-    enabled: bool,
-) -> bool:
+async def toggle_drag_all(guild_id: int, enabled: bool) -> bool:
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            update(VCManagerConfig)
-            .where(
-                VCManagerConfig.guild_id == guild_id,
-            )
-            .values(
-                drag_all_enabled=enabled,
-            )
-        )
-
+            update(VCManagerConfig).where(
+                VCManagerConfig.guild_id == guild_id).values(
+                    drag_all_enabled=enabled))
         await session.commit()
-
         return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Toggle role sync
-async def toggle_role_sync(
-    guild_id: int,
-    enabled: bool,
-) -> bool:
+async def toggle_role_sync(guild_id: int, enabled: bool) -> bool:
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            update(VCManagerConfig)
-            .where(
-                VCManagerConfig.guild_id == guild_id,
-            )
-            .values(
-                role_sync_enabled=enabled,
-            )
-        )
-
+            update(VCManagerConfig).where(
+                VCManagerConfig.guild_id == guild_id, ).values(
+                    role_sync_enabled=enabled, ))
         await session.commit()
-
         return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Enable manager
-async def enable_vc_manager(
-    guild_id: int,
-) -> bool:
+async def enable_vc_manager(guild_id: int, ) -> bool:
 
     async with AsyncSessionLocal() as session:
         existing = await session.scalar(
             select(VCManagerConfig).where(
-                VCManagerConfig.guild_id == guild_id,
-            )
-        )
+                VCManagerConfig.guild_id == guild_id, ))
 
         # Create config if missing
         if not existing:
-            session.add(
-                VCManagerConfig(
-                    guild_id=guild_id,
-                    enabled=True,
-                )
-            )
+            session.add(VCManagerConfig(
+                guild_id=guild_id,
+                enabled=True,
+            ))
 
             await session.commit()
 
@@ -264,53 +161,28 @@ async def enable_vc_manager(
 
         # Update existing config
         result = await session.execute(
-            update(VCManagerConfig)
-            .where(
-                VCManagerConfig.guild_id == guild_id,
-            )
-            .values(
-                enabled=True,
-            )
-        )
-
+            update(VCManagerConfig).where(
+                VCManagerConfig.guild_id == guild_id, ).values(enabled=True))
         await session.commit()
-
         return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Disable manager
-async def disable_vc_manager(
-    guild_id: int,
-) -> bool:
-
+async def disable_vc_manager(guild_id: int) -> bool:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            update(VCManagerConfig)
-            .where(
-                VCManagerConfig.guild_id == guild_id,
-            )
-            .values(
-                enabled=False,
-            )
-        )
-
+            update(VCManagerConfig).where(
+                VCManagerConfig.guild_id == guild_id, ).values(enabled=False))
         await session.commit()
-
         return (getattr(result, "rowcount", 0) or 0) > 0
 
 
 # Delete manager
-async def delete_vc_manager(
-    guild_id: int,
-) -> bool:
-
+async def delete_vc_manager(guild_id: int) -> bool:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            delete(VCManagerConfig).where(
-                VCManagerConfig.guild_id == guild_id,
-            )
+            delete(VCManagerConfig).where(VCManagerConfig.guild_id == guild_id)
         )
 
         await session.commit()
-
         return (getattr(result, "rowcount", 0) or 0) > 0

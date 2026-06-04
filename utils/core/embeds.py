@@ -117,8 +117,6 @@ def _build_title(
 
 
 # EMBED FACTORY
-
-
 def make_embed(
     *,
     title: str,

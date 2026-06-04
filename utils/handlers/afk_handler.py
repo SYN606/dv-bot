@@ -39,8 +39,7 @@ async def handle_afk(message: Message) -> bool:
     if message.type != MessageType.default:
         return False
 
-    bot = message.guild._state._get_client(
-    )  # still internal but safer context not needed
+    bot = message.guild._state._get_client()
     prefix = await bot.get_prefix(message)  # type: ignore
 
     # ignore commands (safe check)
@@ -60,7 +59,7 @@ async def handle_afk(message: Message) -> bool:
 
     unique_mentions = {m.id: m for m in message.mentions}.values()
 
-    # AFK CHECK 
+    # AFK CHECK
     for user in unique_mentions:
 
         key = (guild_id, user.id)
@@ -87,22 +86,17 @@ async def handle_afk(message: Message) -> bool:
             f"{EMOJIS['arrow_point']} **Reason:** {afk.afk_reason}\n"
             f"{EMOJIS['arrow_point']} **Away Since:** <t:{since_ts}:R>")
 
-    # CHANNEL THROTTLE 
+    # CHANNEL THROTTLE
     last_channel = _channel_cooldown.get(channel_id, 0)
     now_float = time.monotonic()
-
     can_send = now_float - last_channel >= CHANNEL_COOLDOWN
 
     # SEND AFK NOTICE
     if afk_sections and can_send:
-
         _channel_cooldown[channel_id] = now_float
-
-        embed = make_embed(
-            title=f"{EMOJIS['announcement']} AFK Notice",
-            description="\n\n".join(afk_sections),
-            level="INFO",
-        )
+        embed = make_embed(title=f"{EMOJIS['announcement']} AFK Notice",
+                           description="\n\n".join(afk_sections),
+                           level="INFO")
 
         embed.set_footer(text="They will be notified when they return.")
 
@@ -113,8 +107,7 @@ async def handle_afk(message: Message) -> bool:
             await message.reply(
                 embed=embed,
                 mention_author=False,
-                allowed_mentions=discord.AllowedMentions.none(),
-            )
+                allowed_mentions=discord.AllowedMentions.none())
         except Exception:
             pass
 
@@ -144,16 +137,13 @@ async def handle_afk(message: Message) -> bool:
             (f"{EMOJIS['okay']} Your AFK status has been removed.\n\n"
              f"{EMOJIS['arrow_point']} **AFK Duration:** {format_duration(duration)}\n"
              f"{EMOJIS['arrow_point']} **Away Since:** <t:{since_ts}:R>"),
-            level="SUCCESS",
-        )
+            level="SUCCESS")
 
         try:
             await message.reply(
                 embed=embed,
                 mention_author=False,
-                allowed_mentions=discord.AllowedMentions.none(),
-            )
+                allowed_mentions=discord.AllowedMentions.none())
         except Exception:
             pass
-
     return handled

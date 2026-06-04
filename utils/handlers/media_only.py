@@ -3,24 +3,16 @@ import re
 import asyncio
 from collections import defaultdict
 from typing import Dict, Tuple
-
-from db.db_helpers.media_only import (
-    get_media_only_config,
-    update_sticky_message_id,
-)
+from db.db_helpers.media_only import (get_media_only_config,
+                                      update_sticky_message_id)
 from utils.views.media_only_views import build_media_only_sticky_embed
 from utils.logging.mod_log import send_mod_log
-
-# IMPORT CENTRAL STICKY ENGINE
 from .sticky.sticky_manager import StickyPayload, process_sticky
-
 
 # MEDIA REGEX
 MEDIA_LINK_REGEX = re.compile(
     r"^(https?:\/\/\S+\.(png|jpg|jpeg|gif|webp|mp4|mov|webm)"
-    r"|https?:\/\/(tenor|giphy|imgur)\.com\/\S+)$",
-    re.IGNORECASE,
-)
+    r"|https?:\/\/(tenor|giphy|imgur)\.com\/\S+)$", re.IGNORECASE)
 
 _violation_counter: Dict[Tuple[int, int], int] = defaultdict(int)
 
@@ -30,10 +22,8 @@ def is_valid_media(message: discord.Message, *, image_only: bool) -> bool:
 
     if message.attachments:
         if image_only:
-            return any(
-                a.content_type and a.content_type.startswith("image/")
-                for a in message.attachments
-            )
+            return any(a.content_type and a.content_type.startswith("image/")
+                       for a in message.attachments)
         return True
 
     for embed in message.embeds:
@@ -54,8 +44,7 @@ def is_valid_media(message: discord.Message, *, image_only: bool) -> bool:
 async def decay_violations(guild_id: int, user_id: int):
     await asyncio.sleep(300)
     _violation_counter[(guild_id, user_id)] = max(
-        0, _violation_counter[(guild_id, user_id)] - 1
-    )
+        0, _violation_counter[(guild_id, user_id)] - 1)
 
 
 # MAIN ENFORCER
@@ -80,7 +69,8 @@ async def enforce_media_only(message: discord.Message) -> bool:
     # Whitelist role
     if config.whitelist_role_id:
         if isinstance(message.author, discord.Member):
-            if any(role.id == config.whitelist_role_id for role in message.author.roles):
+            if any(role.id == config.whitelist_role_id
+                   for role in message.author.roles):
                 return False
 
     # Allow commands
@@ -96,32 +86,22 @@ async def enforce_media_only(message: discord.Message) -> bool:
                 pass
         return False
 
-    # ─────────────────────────
     # VALID MEDIA
-    # ─────────────────────────
     if is_valid_media(message, image_only=config.image_only):
 
-        payload = StickyPayload(
-            embed=build_media_only_sticky_embed(),
-            message_id=config.sticky_message_id,
-            use_webhook=True,
-            webhook_name="MediaOnlySticky",
-        )
+        payload = StickyPayload(embed=build_media_only_sticky_embed(),
+                                message_id=config.sticky_message_id,
+                                use_webhook=True,
+                                webhook_name="MediaOnlySticky")
 
         new_id = await process_sticky(channel, payload, cooldown=10)
 
         if new_id:
-            await update_sticky_message_id(
-                guild.id,
-                channel.id,
-                new_id,
-            )
+            await update_sticky_message_id(guild.id, channel.id, new_id)
 
         return False
 
-    # ─────────────────────────
     # INVALID → DELETE
-    # ─────────────────────────
     try:
         await message.delete()
     except (discord.Forbidden, discord.NotFound):
@@ -138,10 +118,8 @@ async def enforce_media_only(message: discord.Message) -> bool:
         mute_role = discord.utils.get(guild.roles, name="Muted")
         if mute_role and isinstance(message.author, discord.Member):
             try:
-                await message.author.add_roles(
-                    mute_role,
-                    reason="Media-only violations",
-                )
+                await message.author.add_roles(mute_role,
+                                               reason="Media-only violations")
             except discord.Forbidden:
                 pass
 
@@ -151,34 +129,24 @@ async def enforce_media_only(message: discord.Message) -> bool:
             guild=guild,
             category="MEDIA",
             title="Media-Only Violation",
-            description=(
-                f"User: {message.author.mention}\n"
-                f"Channel: {channel.mention}\n"
-                f"Violations: {_violation_counter[key]}"
-            ),
+            description=(f"User: {message.author.mention}\n"
+                         f"Channel: {channel.mention}\n"
+                         f"Violations: {_violation_counter[key]}"),
             level="WARNING",
-            actor=message.author,
-        )
+            actor=message.author)
     except Exception:
         pass
 
     # ─────────────────────────
     # UPDATE STICKY AFTER VIOLATION
     # ─────────────────────────
-    payload = StickyPayload(
-        embed=build_media_only_sticky_embed(),
-        message_id=config.sticky_message_id,
-        use_webhook=True,
-        webhook_name="MediaOnlySticky",
-    )
+    payload = StickyPayload(embed=build_media_only_sticky_embed(),
+                            message_id=config.sticky_message_id,
+                            use_webhook=True,
+                            webhook_name="MediaOnlySticky")
 
     new_id = await process_sticky(channel, payload, cooldown=10)
 
     if new_id:
-        await update_sticky_message_id(
-            guild.id,
-            channel.id,
-            new_id,
-        )
-
+        await update_sticky_message_id(guild.id, channel.id, new_id)
     return True

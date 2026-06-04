@@ -1,12 +1,8 @@
 import discord
-
 from discord.ext import commands
-
 from utils.permissions.base_admin import (BaseAdminCog, admin_command)
-
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
-
 from db.db_helpers.channel_permissions import (apply_channel_permissions,
                                                has_channel_snapshots,
                                                restore_channel_permissions,
@@ -19,7 +15,6 @@ SUPPORTED_CHANNELS = (discord.TextChannel, discord.ForumChannel,
 class Hide(BaseAdminCog):
 
     def __init__(self, bot: commands.Bot):
-
         self.bot = bot
 
     async def _reply(self,
@@ -28,9 +23,7 @@ class Hide(BaseAdminCog):
                      title: str,
                      description: str,
                      level: str = "ERROR") -> None:
-
         try:
-
             await ctx.reply(embed=make_embed(title=title,
                                              description=description,
                                              level=level),
@@ -46,9 +39,7 @@ class Hide(BaseAdminCog):
                             reason: str) -> bool:
 
         try:
-
             return await restore_channel_permissions(channel, reason=reason)
-
         except discord.HTTPException:
             return False
 
@@ -60,13 +51,10 @@ class Hide(BaseAdminCog):
                                             bool | None], reason: str) -> bool:
 
         try:
-
             await apply_channel_permissions(channel,
                                             permissions,
                                             reason=reason)
-
             return True
-
         except discord.HTTPException:
             return False
 
@@ -75,13 +63,9 @@ class Hide(BaseAdminCog):
                                              | discord.VoiceChannel
                                              | discord.StageChannel), *,
                              permissions: list[str]) -> bool:
-
         try:
-
             await snapshot_channel_permissions(channel, permissions)
-
             return True
-
         except discord.HTTPException:
             return False
 
@@ -90,22 +74,16 @@ class Hide(BaseAdminCog):
                                             | discord.VoiceChannel
                                             | discord.StageChannel),
                             actor: discord.Member) -> bool:
-
         guild = channel.guild
-
         if await has_channel_snapshots(guild.id, channel.id):
             return False
-
         snapshotted = await self._safe_snapshot(channel,
                                                 permissions=["view_channel"])
-
         if not snapshotted:
             return False
-
         applied = await self._safe_apply(channel,
                                          permissions={"view_channel": False},
                                          reason=f"Hidden by {actor}")
-
         return applied
 
     async def _unhide_channel(self, channel: (discord.TextChannel
@@ -113,7 +91,6 @@ class Hide(BaseAdminCog):
                                               | discord.VoiceChannel
                                               | discord.StageChannel),
                               actor: discord.Member) -> bool:
-
         return await self._safe_restore(channel, reason=f"Unhidden by {actor}")
 
     @admin_command(name="hide")
@@ -121,38 +98,35 @@ class Hide(BaseAdminCog):
     @commands.max_concurrency(1, per=commands.BucketType.channel, wait=False)
     async def hide(self, ctx: commands.Context):
 
-        channel = ctx.channel
+        try:
+            await ctx.message.delete()
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+            pass
 
+        channel = ctx.channel
         if not isinstance(channel, SUPPORTED_CHANNELS):
             return
 
         actor = ctx.author
-
         if not isinstance(actor, discord.Member):
             return
 
         me = ctx.guild.me  # type: ignore
-
         if me is None:
             return
 
         permissions = channel.permissions_for(me)
-
         if not permissions.manage_channels:
-
             await self._reply(ctx,
                               title="Missing Permissions",
                               description=(f"{EMOJIS['warning']} "
                                            "I need `Manage Channels` "
                                            "permission."),
                               level="WARNING")
-
             return
 
         success = await self._hide_channel(channel, actor)
-
         if not success:
-
             await self._reply(ctx,
                               title="Already Hidden",
                               description=(f"{EMOJIS['warning']} "
@@ -160,7 +134,6 @@ class Hide(BaseAdminCog):
                                            "hidden or I could not "
                                            "edit its permissions."),
                               level="WARNING")
-
             return
 
         await self._reply(ctx,
@@ -174,26 +147,25 @@ class Hide(BaseAdminCog):
     @commands.cooldown(2, 5, commands.BucketType.guild)
     @commands.max_concurrency(1, per=commands.BucketType.channel, wait=False)
     async def unhide(self, ctx: commands.Context):
+        try:
+            await ctx.message.delete()
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+            pass
 
         channel = ctx.channel
-
         if not isinstance(channel, SUPPORTED_CHANNELS):
             return
-
         actor = ctx.author
 
         if not isinstance(actor, discord.Member):
             return
 
         me = ctx.guild.me  # type: ignore
-
         if me is None:
             return
 
         permissions = channel.permissions_for(me)
-
         if not permissions.manage_channels:
-
             await self._reply(ctx,
                               title="Missing Permissions",
                               description=(f"{EMOJIS['warning']} "
@@ -204,9 +176,7 @@ class Hide(BaseAdminCog):
             return
 
         success = await self._unhide_channel(channel, actor)
-
         if not success:
-
             await self._reply(ctx,
                               title="Not Hidden",
                               description=(f"{EMOJIS['warning']} "
@@ -224,8 +194,8 @@ class Hide(BaseAdminCog):
                                        f"{actor.mention}."),
                           level="SUCCESS")
 
-    @hide.error
-    @unhide.error
+    @hide.error  # type: ignore
+    @unhide.error  # type: ignore
     async def hide_error(self, ctx: commands.Context,
                          error: commands.CommandError):
 
@@ -241,7 +211,6 @@ class Hide(BaseAdminCog):
             return
 
         if isinstance(error, commands.MaxConcurrencyReached):
-
             await self._reply(ctx,
                               title="Channel Busy",
                               description=(f"{EMOJIS['warning']} "
@@ -253,7 +222,6 @@ class Hide(BaseAdminCog):
             return
 
         if isinstance(error, commands.CheckFailure):
-
             await self._reply(ctx,
                               title="Access Denied",
                               description=(f"{EMOJIS['warning']} "
@@ -262,7 +230,6 @@ class Hide(BaseAdminCog):
                               level="WARNING")
 
             return
-
         raise error
 
 
