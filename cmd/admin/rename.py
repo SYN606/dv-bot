@@ -44,12 +44,9 @@ class RenameSystem(BaseAdminCog):
     async def _reply(self, ctx: commands.Context, *, title: str,
                      description: str, level: str):
         await self._delete_command(ctx)
-        return await ctx.reply(embed=make_embed(
-            title=title,
-            description=description,
-            level=level,
-        ),
-                               mention_author=False)
+        return await ctx.channel.send(
+            embed=make_embed(title=title, description=description, level=level)
+        )
 
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
@@ -95,7 +92,7 @@ class RenameSystem(BaseAdminCog):
             return True
         return (target.top_role < moderator.top_role)
 
-    @commands.command(name="rename")
+    @commands.command(name="rename", aliases=["nick", "setnick"])
     @commands.guild_only()
     @commands.cooldown(COOLDOWN_RATE, COOLDOWN_PER, commands.BucketType.user)
     async def rename(self, ctx: commands.Context, *, args: str | None = None):
@@ -106,6 +103,8 @@ class RenameSystem(BaseAdminCog):
             return
         moderator: discord.Member = ctx.author
         prefix = ctx.clean_prefix
+        invoked_with = ctx.invoked_with  
+
         if self.bot.user is None:
             return
         bot_member = guild.get_member(self.bot.user.id)
@@ -121,9 +120,9 @@ class RenameSystem(BaseAdminCog):
                 ctx,
                 title="Missing Nickname",
                 description=(f"Usage:\n"
-                             f"`{prefix}rename <nickname>`\n"
-                             f"`{prefix}rename @user <nickname>`\n"
-                             f"`{prefix}rename reset`"),
+                             f"`{prefix}{invoked_with} <nickname>`\n"
+                             f"`{prefix}{invoked_with} @user <nickname>`\n"
+                             f"`{prefix}{invoked_with} reset`"),
                 level="WARNING")
         target: discord.Member
         nickname: str

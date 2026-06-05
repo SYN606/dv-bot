@@ -39,12 +39,22 @@ class Purge(BaseAdminCog):
                      level: str = "ERROR",
                      delete_after: int = 8):
         try:
-            return await ctx.reply(embed=make_embed(title=title,
-                                                    description=description,
-                                                    level=level,
-                                                    use_emoji=True),
-                                   mention_author=False,
-                                   delete_after=delete_after)
+            emoji_key = level.lower()
+            system_emoji = EMOJIS.get(
+                emoji_key, "") if emoji_key in EMOJIS else EMOJIS.get(
+                    "warning", "")
+
+            formatted_description = f"{system_emoji} {description}".strip(
+            ) if system_emoji else description
+
+            return await ctx.channel.send(
+                embed=make_embed(
+                    title=title,
+                    description=formatted_description,
+                    level=level,
+                    use_emoji=False
+                ),
+                delete_after=delete_after)
         except discord.HTTPException:
             return None
 
@@ -56,13 +66,10 @@ class Purge(BaseAdminCog):
 
     async def resolve_target(self,
                              ctx: commands.Context) -> discord.Member | None:
-
-        # MENTION DETECTION
         if ctx.message.mentions:
             member = ctx.message.mentions[0]
             if isinstance(member, discord.Member):
                 return member
-        # REPLY TARGET DETECTION
         reference = ctx.message.reference
         if (reference and isinstance(reference.resolved, discord.Message)):
             author = reference.resolved.author
@@ -82,6 +89,7 @@ class Purge(BaseAdminCog):
             scan_limit = self.MAX_SCAN
         else:
             scan_limit = min(amount + 50, self.MAX_SCAN)
+
         async for msg in channel.history(limit=scan_limit):
             if exclude and msg.id == exclude:
                 continue
@@ -110,7 +118,6 @@ class Purge(BaseAdminCog):
 
         deleted = 0
 
-        # Bulk delete for fresh text objects
         while young:
             batch = young[:100]
             young = young[100:]
@@ -136,6 +143,8 @@ class Purge(BaseAdminCog):
     @commands.cooldown(1, 3, commands.BucketType.member)
     @commands.max_concurrency(1, per=commands.BucketType.guild, wait=False)
     async def purge(self, ctx: commands.Context, *args):
+        member = await self.resolve_target(ctx)
+
         await self._cleanup(ctx)
 
         guild = ctx.guild
@@ -174,7 +183,6 @@ class Purge(BaseAdminCog):
                 level="ERROR",
             )
 
-        member = None
         amount = None
 
         if not args:
@@ -186,8 +194,6 @@ class Purge(BaseAdminCog):
                  "`reply + purge <amount>`"),
                 level="WARNING",
             )
-
-        member = await self.resolve_target(ctx)
 
         for arg in args:
             if arg.isdigit():
@@ -231,7 +237,6 @@ class Purge(BaseAdminCog):
             messages=messages_to_delete,
         )
 
-        # USER NOTIFICATION
         target_string = f"from {member.mention}" if member else "from this channel"
         await self._reply(
             ctx,
@@ -241,20 +246,23 @@ class Purge(BaseAdminCog):
             delete_after=5,
         )
 
-        await send_mod_log(
-            guild=guild,
-            category="CONFIG",
-            title="Channel Clean Purge",
-            description=
-            f"Bulk deleted **{deleted_count}** messages in {channel.mention}.",
-            level="SUCCESS",
-            actor=moderator,
-            target=member,
-            extra_fields={
-                "Channel ID": channel.id,
-                "Requested Target": amount,
-                "Actual Deleted": deleted_count
-            })
+        try:
+            await send_mod_log(
+                guild=guild,
+                category="CONFIG",
+                title="Channel Clean Purge",
+                description=
+                f"Bulk deleted **{deleted_count}** messages in {channel.mention}.",
+                level="SUCCESS",
+                actor=moderator,
+                target=member,
+                extra_fields={
+                    "Channel ID": channel.id,
+                    "Requested Target": amount,
+                    "Actual Deleted": deleted_count
+                })
+        except Exception:
+            pass
 
     @purge.error
     async def purge_error(self, ctx: commands.Context,
@@ -268,7 +276,6 @@ class Purge(BaseAdminCog):
                 level="WARNING",
                 delete_after=4)
 
-        # Active operation race conditions protection
         if isinstance(error, commands.MaxConcurrencyReached):
             await self._cleanup(ctx)
             return await self._reply(

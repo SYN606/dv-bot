@@ -24,11 +24,17 @@ class Whois(BaseAdminCog):
         return f"<t:{unix}:F>\n<t:{unix}:R>"
 
     def get_permissions(self, member: discord.Member) -> str:
-        perms = member.guild_permissions
-        important: list[str] = []
+        # Check for explicit server owner status
+        if member.guild and member.id == member.guild.owner_id:
+            return "Server Owner, Administrator"
 
+        perms = member.guild_permissions
+
+        # If they are an Administrator, they implicitly hold all permissions
         if perms.administrator:
-            important.append("Administrator")
+            return "Administrator"
+
+        important: list[str] = []
         if perms.manage_guild:
             important.append("Manage Server")
         if perms.manage_roles:
@@ -162,7 +168,7 @@ class Whois(BaseAdminCog):
         except (discord.Forbidden, discord.NotFound):
             pass
 
-    @whois.error # type: ignore
+    @whois.error  # type: ignore
     async def whois_error(self, ctx: commands.Context,
                           error: Exception) -> None:
         if isinstance(error, commands.CheckFailure):

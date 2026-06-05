@@ -86,11 +86,18 @@ class ServerInfoView(discord.ui.View):
                                      discord.Status.idle, discord.Status.dnd))
 
         desc = (
-            f"{EMOJIS.get('green_dot', '🟢')} Members: `{g.member_count}`\n👨 Humans: `{humans}`\n🤖 Bots: `{bots}`\n📡 Online: `{online}`\n\n"
-            f"📁 Channels: `{len(g.channels)}`\n💬 Text: `{len(g.text_channels)}`\n🔊 Voice: `{len(g.voice_channels)}`\n"
-            f"🧵 Forums: `{len(g.forums)}`\n🎤 Stages: `{len(g.stage_channels)}`\n\n"
-            f"🛡️ Roles: `{len(g.roles)}`\n😀 Emojis: `{len(g.emojis)}`\n📌 Stickers: `{len(g.stickers)}`"
-        )
+            f"{EMOJIS.get('green_dot', '🟢')} Members: `{g.member_count}`\n"
+            f"{EMOJIS.get('developer', '👨')} Humans: `{humans}`\n"
+            f"🤖 Bots: `{bots}`\n"
+            f"📡 Online: `{online}`\n\n"
+            f"{EMOJIS.get('folder', '📁')} Channels: `{len(g.channels)}`\n"
+            f"{EMOJIS.get('message', '💬')} Text: `{len(g.text_channels)}`\n"
+            f"🔊 Voice: `{len(g.voice_channels)}`\n"
+            f"🧵 Forums: `{len(g.forums)}`\n"
+            f"🎤 Stages: `{len(g.stage_channels)}`\n\n"
+            f"{EMOJIS.get('moderation', '🛡️')} Roles: `{len(g.roles)}`\n"
+            f"😀 Emojis: `{len(g.emojis)}`\n"
+            f"📌 Stickers: `{len(g.stickers)}`")
         embed = make_embed(title="📊 Server Statistics",
                            description=desc,
                            level="INFO")
@@ -165,8 +172,7 @@ class ServerInfo(BaseAdminCog):
     )
     @commands.guild_only()
     @commands.check(is_admin_tier)
-    @discord.app_commands.default_permissions(
-        administrator=True)  # <-- Fixed attribute name
+    @discord.app_commands.default_permissions(administrator=True)
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def server_info(self, ctx: commands.Context):
         try:
@@ -180,10 +186,13 @@ class ServerInfo(BaseAdminCog):
         created = discord.utils.format_dt(g.created_at, style="R")
 
         desc = (
-            f"👑 Owner: {owner.mention if owner else 'Unknown'}\n🆔 ID: `{g.id}`\n📅 Created: {created}\n\n"
-            f"👥 Members: `{g.member_count}`\n🚀 Boosts: `{g.premium_subscription_count or 0}` (Level {g.premium_tier})\n"
-            f"🛡️ Verification: `{str(g.verification_level).title()}`\n🌍 Preferred Locale: `{g.preferred_locale}`"
-        )
+            f"👑 Owner: {owner.mention if owner else 'Unknown'}\n"
+            f"{EMOJIS.get('arrow_point', '➡️')} ID: `{g.id}`\n"
+            f"{EMOJIS.get('support_dot', '🔹')} Created: {created}\n\n"
+            f"{EMOJIS.get('green_dot', '🟢')} Members: `{g.member_count}`\n"
+            f"{EMOJIS.get('boost', '🚀')} Boosts: `{g.premium_subscription_count or 0}` (Level {g.premium_tier})\n"
+            f"{EMOJIS.get('moderation', '🛡️')} Verification: `{str(g.verification_level).title()}`\n"
+            f"🌍 Preferred Locale: `{g.preferred_locale}`")
         embed = make_embed(title=f"{EMOJIS.get('announcement', '📢')} {g.name}",
                            description=desc,
                            level="SYSTEM")
