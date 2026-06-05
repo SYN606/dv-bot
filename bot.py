@@ -8,24 +8,14 @@ from discord.ext import commands
 from dotenv import load_dotenv
 from db.schema import init_schema
 from db.engine import close_database
-from utils.handlers.prefix import (
-    dynamic_prefix,
-    normalize_prefix,
-)
-from utils.core.interaction_check import (
-    command_toggle_check, )
-from utils.handlers.media_only import (
-    enforce_media_only, )
-from utils.handlers.sticky.sticky_handler import (
-    handle_sticky, )
-from utils.handlers.afk_handler import (
-    handle_afk, )
-from utils.handlers.mention import (
-    handle_bot_mention, )
-from utils.core.presence import (
-    PresenceRotator, )
+from utils.handlers.prefix import (dynamic_prefix, normalize_prefix)
+from utils.core.interaction_check import (command_toggle_check)
+from utils.handlers.media_only import (enforce_media_only)
+from utils.handlers.sticky.sticky_handler import (handle_sticky)
+from utils.handlers.afk_handler import (handle_afk)
+from utils.handlers.mention import (handle_bot_mention)
+from utils.core.presence import (PresenceRotator)
 
-# ENV
 env_loaded = load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
@@ -34,7 +24,6 @@ if not env_loaded:
     print("[ENV] .env not found → running in DEV mode")
 else:
     ENV = os.getenv("ENV", "prod").lower()
-
 DEV_GUILD_ID = os.getenv("DEV_GUILD_ID")
 
 
@@ -51,7 +40,6 @@ DEBUG_HTTP = env_bool("DEBUG_HTTP", False)
 if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN not found in environment")
 
-# LOGGING
 logging.basicConfig(
     level=logging.INFO,
     format="[%(levelname)s] %(message)s",
@@ -63,7 +51,6 @@ if DEBUG_HTTP:
 
 logger.info(f"[ENV] Running in {ENV.upper()} mode")
 
-# INTENTS (Cleaned: Voice States Intent Removed)
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
@@ -81,18 +68,15 @@ class DigitalVigilBot(commands.Bot):
         )
         self.presence_rotator: PresenceRotator | None = None
 
-    # SETUP HOOK
     async def setup_hook(self) -> None:
         logger.info("[STARTUP] Initializing database schema...")
         await init_schema()
         self.tree.interaction_check = command_toggle_check
 
-        # Load commands & startup modules
         await self.load_all_extensions()
         await self.load_startup_modules()
         logger.info(f"[STARTUP] Loaded {len(self.extensions)} extensions")
 
-        # COMMAND SYNC
         if SYNC_COMMANDS:
             try:
                 if ENV == "test" and DEV_GUILD_ID:
@@ -183,29 +167,23 @@ class DigitalVigilBot(commands.Bot):
         try:
             message.content = normalize_prefix(message.content)
 
-            # MEDIA ONLY
             if await enforce_media_only(message):
                 return
 
-            # STICKY
             await handle_sticky(message)
 
-            # BOT MENTION
             if self.user and self.user.mentioned_in(message):
                 await handle_bot_mention(self, message)
         except Exception as exc:
             logger.exception(f"[PIPELINE ERROR] {exc}")
 
-        # COMMANDS
         await self.process_commands(message)
 
-        # AFK AFTER COMMANDS
         try:
             await handle_afk(message)
         except Exception as exc:
             logger.exception(f"[AFK ERROR] {exc}")
 
-    # COMMAND ERRORS
     async def on_command_error(self, ctx: commands.Context,
                                error: commands.CommandError) -> None:
         error = getattr(error, "original", error)
@@ -234,7 +212,6 @@ class DigitalVigilBot(commands.Bot):
         except Exception:
             pass
 
-    # CLEAN SHUTDOWN
     async def close(self) -> None:
         logger.info("[SHUTDOWN] Closing bot...")
         try:
@@ -245,7 +222,6 @@ class DigitalVigilBot(commands.Bot):
         await super().close()
 
 
-# ENTRYPOINT WITH GRACEFUL RECOVERY LOGIC
 def main() -> None:
     while True:
         bot = DigitalVigilBot()

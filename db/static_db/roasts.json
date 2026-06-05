@@ -1,0 +1,468 @@
+{
+  "power_weights": {
+    "is_owner": 10000,
+    "administrator": 500,
+    "manage_guild": 150,
+    "manage_roles": 120,
+    "manage_messages": 80,
+    "kick_members": 50,
+    "ban_members": 50,
+    "moderate_members": 40,
+    "role_multiplier": 2,
+    "booster_bonus": 15
+  },
+  "analysis_profiles": {
+    "dry": { "max_chars": 25 },
+    "repetitive": { "ratio_threshold": 2.7 },
+    "npc": {
+      "keywords": [
+        "lol",
+        "lmao",
+        "xd",
+        "haha",
+        "bro",
+        "fr",
+        "real",
+        "bruh",
+        "damn",
+        "kya",
+        "nice"
+      ]
+    },
+    "overthink": { "min_chars": 350 },
+    "motivation": {
+      "keywords": [
+        "sigma",
+        "mindset",
+        "grind",
+        "discipline",
+        "hustle",
+        "success",
+        "focus",
+        "growth",
+        "wealth",
+        "routine"
+      ]
+    },
+    "discord_kitten": {
+      "keywords": [
+        "uwu",
+        "owo",
+        ":3",
+        "mrrp",
+        "pout",
+        "meow",
+        "daddy",
+        "cute",
+        "rawr",
+        "hehew",
+        "yamete"
+      ]
+    },
+    "confused": { "min_questions": 5 },
+    "gamer": {
+      "keywords": [
+        "ez",
+        "skill issue",
+        "ranked",
+        "clutch",
+        "top frag",
+        "noob",
+        "ping",
+        "lag",
+        "thrower",
+        "smurf",
+        "hardstuck",
+        "aim",
+        "lobby"
+      ]
+    },
+    "crypto_bro": {
+      "keywords": [
+        "crypto",
+        "nft",
+        "btc",
+        "eth",
+        "solana",
+        "pump",
+        "dump",
+        "bullish",
+        "moon",
+        "wagmi",
+        "airdrop",
+        "hodl",
+        "liquidity"
+      ]
+    },
+    "developer": {
+      "keywords": [
+        "code",
+        "bug",
+        "python",
+        "github",
+        "git",
+        "api",
+        "backend",
+        "frontend",
+        "linux",
+        "stack",
+        "docker",
+        "prod",
+        "env"
+      ]
+    },
+    "anime_weeb": {
+      "keywords": [
+        "anime",
+        "manga",
+        "waifu",
+        "gojo",
+        "naruto",
+        "otaku",
+        "sub",
+        "dub",
+        "canon",
+        "arc",
+        "cosplay",
+        "senpai",
+        "crunchyroll"
+      ]
+    },
+    "simp": {
+      "keywords": [
+        "please reply",
+        "dm me",
+        "she",
+        "her",
+        "gorgeous",
+        "beautiful",
+        "queen",
+        "reply back",
+        "story",
+        "angle",
+        "crush"
+      ]
+    },
+    "instagram_reels": {
+      "keywords": [
+        "reel",
+        "feed",
+        "algorithm",
+        "trending",
+        "audio",
+        "viewcount",
+        "shadowban",
+        "explore",
+        "post",
+        "viral"
+      ]
+    },
+    "linux_ricer": {
+      "keywords": [
+        "arch",
+        "neofetch",
+        "wm",
+        "hyprland",
+        "dotfiles",
+        "kernel",
+        "gentoo",
+        "ricing",
+        "terminal",
+        "bash",
+        "i3"
+      ]
+    },
+    "ghosted": {
+      "keywords": [
+        "seen",
+        "left on read",
+        "unreplied",
+        "no response",
+        "blocked me",
+        "active now",
+        "ignored",
+        "story views"
+      ]
+    },
+    "skibidi_brainrot": {
+      "keywords": [
+        "rizz",
+        "gyatt",
+        "skibidi",
+        "ohio",
+        "fanum",
+        "tax",
+        "mewing",
+        "mog",
+        "sigmas",
+        "baby john",
+        "alpha"
+      ]
+    }
+  },
+  "style_thresholds": {
+    "dark_toxicity": 7,
+    "dark_count": 12,
+    "sarcastic_count": 5
+  },
+  "style_modifiers": {
+    "sarcastic": [
+      "career definitely stable lag raha hai.",
+      "future bright hai bas light band hai.",
+      "confidence illegal level ka hai.",
+      "ye sab voluntarily kar raha hai 😭",
+      "talents hidden hain aur hidden hi rahein toh accha hai.",
+      "IQ test karwao, single digits me record banega.",
+      "is level ka delusion backup plan ke sath aata hai kya?",
+      "options bohot hain life me, bas saare galat hain.",
+      "is performance pe stand-up comedy special milna chahiye.",
+      "itna dimaag agar sahi jagah lagata toh aaj rent khud pay kar raha hota.",
+      "bhai ka swag self-certified hai, market value zero hai.",
+      "pure system ka standalone generic piece lag raha hai."
+    ],
+    "dark": [
+      "ye phase lamba chalne wala hai.",
+      "recovery impossible lag rahi hai.",
+      "future observer mode me hai.",
+      "damage permanent lag raha hai.",
+      "bhagwan bhi dekh ke bol raha hoga 'error code 404'.",
+      "tera potential bottomless pit jaisa hai—sirf downfall.",
+      "jo thodi bohot izzat bachi thi, wo bhi legacy waste ho gayi.",
+      "asliyat ye hai ki tera koi comeback arc nahi hai.",
+      "genetic error lag raha hai ab toh ye behaviour.",
+      "tera character development reverse gear me lock ho chuka hai.",
+      "is incident ke baad tera opinion structure officially void declare kar diya gaya hai.",
+      "society ke liye ek statistical warning ban chuka hai tu."
+    ]
+  },
+  "self_roasts": [
+    "khud pe hi command use kar diya 💀",
+    "andar se toot chuka hai kya.",
+    "self destruction arc chal raha hai.",
+    "therapy cheaper padti shayad.",
+    "enemy detect nahi hua toh khud pe chala diya 😭",
+    "friendly fire setting on hai kya teri life me?",
+    "khud ko roast karke sympathy lene ka plan hai?",
+    "targeting logic seekh le pehle, khud ko hi collateral damage bana diya.",
+    "is action ke baad mirror dekhne ka self-respect bacha hai?"
+  ],
+  "bot_roasts": [
+    "bots ko bhi nahi chhod raha 😭",
+    "machine pe dominance dikha raha hai.",
+    "AI oppression chal raha hai.",
+    "insano se argument jeet nahi pata toh metal boxes se lad raha hai?",
+    "AI text generation bhi teri real life se zyada interesting hai.",
+    "meri source code file me bhi tere se zyada logic hai.",
+    "server racks ka electricity bill waste ho raha hai tere messages process karne me."
+  ],
+  "anti_harassment": "bhai usko chain se jeene de 😭",
+  "reverse_prefixes": {
+    "boss": "server ke final boss pe command use kar diya. ",
+    "admin": "authority difference zyada tha. ",
+    "luck": "ulta expose ho gaya 😭 "
+  },
+  "escalations": {
+    "combo": " obsession thodi kam kar.",
+    "toxicity": " ek hi bande pe focused hai 😭"
+  },
+  "one_liners": [
+    "crazy work.",
+    "disaster behavior.",
+    "unemployed activities.",
+    "confidence unmatched.",
+    "catastrophic performance.",
+    "absolute zero impact.",
+    "pure comedy layout.",
+    "generational loss.",
+    "embarrassing presence.",
+    "system-level clown.",
+    "unprecedented downfall.",
+    "cooked beyond repairs.",
+    "legendary failure metrics."
+  ],
+  "system_responses": {
+    "cooldown_msg": "cooldown active • `{remaining:.1f}s`",
+    "default_fallback": "Unmatched operational sequence metric.",
+    "config_missing": "[SAVAGE] Unified database config missing at: {path}",
+    "config_error": "[SAVAGE] Error reading integrated database configuration layout: {error}",
+    "self_fallback": "Self targeting parameters active.",
+    "bot_fallback": "Automated client block detected.",
+    "harass_fallback": "Safety parameters met."
+  },
+  "output_templates": {
+    "honestly": "honestly? {roast}",
+    "recover": "{target} recover kar paega kya isse 💀\n\n{roast}",
+    "fatal": "{target} caught a fatal hit 😭\n{roast}",
+    "analysis": "analysis complete:\n{roast}"
+  },
+  "roasts_pool": {
+    "openings": [
+      "bhai sun,",
+      "teri baatein sunkar",
+      "tujhe dekh ke lagta hai",
+      "itna confidence lata kaha se hai,",
+      "pura data scan karne ke baad,",
+      "honest opinion du toh,",
+      "bina kisi personal hatred ke bolu toh,",
+      "tera background validation check karne ke baad,",
+      "ye dekhne se pehle mai mute kyu nahi ho gaya,"
+    ],
+    "fatal": [
+      "uninstall karke soja bhai, kuch nahi bacha tera.",
+      "pure server ke samne ye beizzati permanent rahegi.",
+      "is account se logout karle, next janam me naya scale try karna.",
+      "pure data core me tera option list invalid set ho chuka hai.",
+      "tera public respect parameter negative integers me cross kar gaya hai.",
+      "is attack ke baad server logs se tera existential file format delete ho jana chahiye."
+    ],
+    "kill_low": [
+      "thoda sudhar ja.",
+      "kya chal raha hai ye?",
+      "bas itna hi tha?",
+      "koshish acchi thi par output zero hai.",
+      "kuch naya system dhoond, ye outdated lag raha hai.",
+      "typing seekhne ki hard requirement hai teri."
+    ],
+    "kill_mid": [
+      "koi sense hai is baat ki? 😭",
+      "delusion se bahar aa ab.",
+      "screentime kam kar apna, dimaag shrink ho raha hai.",
+      "baatein aisi hain ki mute button dhoondna pad raha hai.",
+      "attention span gold-fish se kam ho chuka hai tera.",
+      "real world validation missing hai tabhi yahan load badha raha hai."
+    ],
+    "kill_high": [
+      "chhod de bhai, therapy lele.",
+      "unreal downfall chal raha hai tera.",
+      "tere as-paas ke log bohot patient hain, sabko award milna chahiye.",
+      "tujhe block list me top spot milna chahiye for continuous public disturbance.",
+      "tu server ke data footprint par ek permanent dark spot ban chuka hai.",
+      "itna toxic layout leke kaise sustain kar leta hai khud ko?"
+    ],
+    "default": [
+      "gajab hi chal raha hai tera life me.",
+      "poora NPC behavior hai.",
+      "kuch solid dhoond ke la, ye general behavior boring ho chuka hai.",
+      "tera graph baseline se bhi neeche chal raha hai constant.",
+      "background asset ban ke reh gaya hai tu chat matrix me.",
+      "normal conversation me bhi system crash behavior dikhata hai."
+    ],
+    "gamer": [
+      "0.5 K/D leke gyan mat baat.",
+      "hardstuck hoke baitha hai dynamic ban raha hai.",
+      "aimbot lagane ke baad bhi tera score board clear nahi hota.",
+      "gaming chair badalne se tera skill issue check nahi hoga.",
+      "discord status me competitive matches ka flex chal raha hai aur screen par absolute bottom position hai.",
+      "ping check karne se tera built-in execution delay change nahi hoga."
+    ],
+    "npc": [
+      "dialogue badal le thoda apna.",
+      "main character energy zero hai teri.",
+      "server me sirf content background noise badhane ke liye rakha hai tujhe.",
+      "tera response structure loops pe generate ho raha hai background asset jaisa.",
+      "har dusre message me 'real' aur 'fr' likhne ke alawa logic system built-in nahi hai kya?",
+      "teri individual opinion standard population metrics me compile hi nahi hoti."
+    ],
+    "dry": [
+      "itne dry replies se accha mat hi bol.",
+      "typing seekh le pehle, ye half-word dry textual inputs se attention nahi milegi.",
+      "conversational skills me dry spell chal raha hai tera permanent.",
+      "'hm', 'ok', 'nice' ke bahar tera linguistic core engine block ho chuka hai.",
+      "itne dry character output pe toh text channel bhi update hone se mana kar de."
+    ],
+    "repetitive": [
+      "ek hi baat baar baar loop pe chala raha hai.",
+      "vocabulary limited hai toh vocabulary app download karle.",
+      "same template har chat thread me use karna band kar ab.",
+      "tera response index duplicate keys error de raha hai constant.",
+      "baatein badal le, server commands se zyada repetitive lag raha hai tu."
+    ],
+    "overthink": [
+      "paragraph likhne se baatein sach nahi ho jati.",
+      "itni details likh raha hai jaise court case ka response chal raha ho.",
+      "essay writing competition nahi chal raha, dynamic context short rakh.",
+      "itni structural breakdown explanations load kar raha hai jaise tera opinion matters.",
+      "itna over-analysis agar job applications me karta toh corporate sector me survival ho jata."
+    ],
+    "motivation": [
+      "ye cringe reels dekhna band kar pehle.",
+      "cold shower aur sigma content se real life rent pay nahi hota.",
+      "hustle capital zero hai aur baatein billionaire mindset ki chal rahi hain.",
+      "5 AM routine ka schedule status par chal raha hai aur neend dopehar ke 2 baje khulti hai.",
+      "drop-shipping aur crypto scams ke motivational videos dekh ke dimaag fuse ho chuka hai tera."
+    ],
+    "discord_kitten": [
+      "server me ye sab harkatein mat kar bhai.",
+      "uwu custom tags lagane se attention validation real nahi ho jati.",
+      "e-dating server nahi hai ye, regular text format use kar.",
+      "roles panel me custom pink tags milne se real world profile clean nahi hoti.",
+      "voice channel me voice changer filter glitch ho raha hai tera, debug kar pehle."
+    ],
+    "aggressive": [
+      "caps lock on karne se darr nahi lagta kisi ko.",
+      "keyboard violence badhane se teri physical baseline real nahi ho jayegi.",
+      "gussa control kar, text message me shout karne se log sirf haste hain.",
+      "screen ke peeche baith ke typing speed badhane se toxicity control nahi hogi.",
+      "itna aag ugal raha hai jaise graphics card overheat ho gaya ho tera."
+    ],
+    "confused": [
+      "tujhe khud nahi pata tu bol kya raha hai.",
+      "sawaal itne hain jaise investigation chal rahi ho, dimaag blank hai kya?",
+      "confusion clear kar pehle, logic execution crash ho chuka hai tera.",
+      "har decision matrix me internal exception error throw karta hai tu.",
+      "tujhe map data ki zarurat hai, reality check se bohot door bhatak gaya hai."
+    ],
+    "crypto_bro": [
+      "portfolio red me chal raha hai aur gyan dynamic market ka de raha hai.",
+      "shiba inu coin drop hone ke baad se dimaag ka core stability hila hua hai tera.",
+      "gas fees dene ke paise nahi hain par financial freedom ke sapne hain.",
+      "meme coins pump karne ka scheme chala raha hai jabki wallet balance double digits me flat hai.",
+      "NFT purchase history dekh ke tera net worth asset negative validation parameters me ja chuka hai."
+    ],
+    "developer": [
+      "indentation error thik karle pehle, pure script crash ho rahi hai teri.",
+      "stack overflow se copy paste karke khud ko software engineer samajh raha hai?",
+      "code compilation errors se lamba tera explanation validation rehta hai.",
+      "local branch clean nahi ho rahi aur globally commit karne chala hai runtime values.",
+      "semi-colon lagana bhool jata hai aur automation bot system build karne ke khwab dekh raha hai."
+    ],
+    "anime_weeb": [
+      "2D characters ke peeche real life collapse ho rahi hai teri.",
+      "japanese subtitles padhne se tera real-world perception automatic strong nahi hoga.",
+      "waifu collection drop kar aur thodi dhoop dekh ke aa bahar.",
+      "shounen power scaling discuss karne se teri personal failure scale chup nahi sakti.",
+      "profile banner par filter assets change karne se real-world face dynamic restore nahi hoga."
+    ],
+    "simp": [
+      "dm status read hone ka wait karte karte tera age bracket limit break ho jayega.",
+      "double text notification send karne se attention block drop nahi hoga.",
+      "server notifications check karna chhod de, ignore list me added hai tu generic.",
+      "har notification tone par phone screen par crash hota hai jaise life backup wahi bacha ho.",
+      "validation currency invest karne se conversion rate hamesha zero hi milega tujhe."
+    ],
+    "instagram_reels": [
+      "brainrot scroll matrix me fasa hua hai tu generation level par.",
+      "unemployed layout ka proof chahiye toh tera screen time metric check karwa lo.",
+      "background trend music loops tere dimaag me continuous registry block create kar chuke hain.",
+      "views aur reach zero hai par creator status active rakhne ka mental disorder chal raha hai."
+    ],
+    "linux_ricer": [
+      "window manager configure karne me 18 ghante waste kiye aur practical code execute zero hai.",
+      "neofetch screenshot share karne ke alawa network footprint me tera data rate baseline drop hai.",
+      "custom color themes inject karne se real world ambient environment change nahi hota.",
+      "system update configuration errors crash kar chuki hain par superiority complex high chal raha hai."
+    ],
+    "ghosted": [
+      "typing status show hone se pehle hi unki block criteria updates final ho chuki thin.",
+      "unka 'active now' status kisi aur module block ke sath interactive execution mode me chal raha hai.",
+      "delivered check notifications standard delay templates me permanently hold pe rakh di gayi hain.",
+      "seen status check karne ke liye page access tracking matrix install karke baitha hai depressed character."
+    ],
+    "skibidi_brainrot": [
+      "dimaag ka processor format karwao pehle, terminology system contaminated hai tera.",
+      "rizz check definitions copy paste karne se validation dynamic update nahi hoti.",
+      "alpha tags validation process check karo, backend structure totally hollow hai.",
+      "internet linguistic garbage consume karte karte identity status background joke ban gaya hai tera."
+    ]
+  }
+}

@@ -1,0 +1,322 @@
+{
+  "categories": [
+    {
+      "id": "admin",
+      "name": "Administration",
+      "emoji": "🛡️",
+      "description": "Server configuration, security auditing, management tools, and administrative overrides.",
+      "commands": [
+        {
+          "name": "adminrole",
+          "aliases": [],
+          "description": "Configures or displays authorized administrative/bot developer roles for the bot override system.",
+          "usage": "adminrole <add/remove/list> [role]",
+          "examples": ["adminrole add @Staff", "adminrole list"],
+          "permissions": "Guild Owner / Bot Admin",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "mediaonly",
+          "aliases": ["media"],
+          "description": "Toggles an automated enforcement lock on a channel restricting text-only messages.",
+          "usage": "mediaonly <enable/disable/list> [#channel]",
+          "examples": ["mediaonly enable #memes"],
+          "permissions": "Manage Channels",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "permaudit",
+          "aliases": ["permission_audit"],
+          "description": "Runs a structural check on server permissions to detect hazardous configuration flaws.",
+          "usage": "permaudit",
+          "examples": ["permaudit"],
+          "permissions": "Administrator Only",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "purge",
+          "aliases": ["clear"],
+          "description": "Bulk deletes messages matching standard filters from the current channel.",
+          "usage": "purge <amount> [user]",
+          "examples": ["purge 50", "purge 20 @Spammer"],
+          "permissions": "Manage Messages",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "rename",
+          "aliases": ["setname"],
+          "description": "Updates a member's server nickname or targets channel name profiles cleanly.",
+          "usage": "rename <member/channel> <new name>",
+          "examples": ["rename @User Local Nickname"],
+          "permissions": "Manage Nicknames / Manage Channels",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "role",
+          "aliases": ["roles"],
+          "description": "Utility system to add, remove, strip, or audit user role updates.",
+          "usage": "role <give/take> <@user> <@role>",
+          "examples": ["role give @User @Verified"],
+          "permissions": "Manage Roles",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "setuplog",
+          "aliases": ["setup_log"],
+          "description": "Initializes or updates the text channel endpoint map for target mod logs.",
+          "usage": "setuplog [#channel]",
+          "examples": ["setuplog #mod-logs"],
+          "permissions": "Administrator Only",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "sticky",
+          "aliases": [],
+          "description": "Pins an explicit message block to the absolute bottom of a text chat channel loop.",
+          "usage": "sticky <message>",
+          "examples": ["sticky Read the rules before typing"],
+          "permissions": "Manage Messages",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "verification",
+          "aliases": ["verify-config"],
+          "description": "Links the core verified role database entry used by the verification gates.",
+          "usage": "verification set <@role>",
+          "examples": ["verification set @Member"],
+          "permissions": "Administrator Only",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "whois",
+          "aliases": ["userinfo", "ui"],
+          "description": "Generates a detailed profile inspection layout displaying join metrics, IDs, and roles.",
+          "usage": "whois [@user/id]",
+          "examples": ["whois @Username", "whois 123456789012345678"],
+          "permissions": "None",
+          "is_prefix": true,
+          "is_slash": false
+        }
+      ]
+    },
+    {
+      "id": "channels",
+      "name": "Channel Management",
+      "emoji": "📁",
+      "description": "Commands to adjust accessibility, clean up context visibility, or lock chats.",
+      "commands": [
+        {
+          "name": "hide",
+          "aliases": ["unhide"],
+          "description": "Alters channel permissions to instantly mask or reveal it to the @everyone level.",
+          "usage": "hide [#channel] / unhide [#channel]",
+          "examples": ["hide", "unhide #announcements"],
+          "permissions": "Manage Channels",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "lockdown",
+          "aliases": ["lock", "unlock"],
+          "description": "Freezes message execution updates across a single targeted channel structure or lifts it.",
+          "usage": "lockdown [enable/disable] [#channel]",
+          "examples": ["lockdown enable", "lockdown disable #general"],
+          "permissions": "Manage Channels",
+          "is_prefix": true,
+          "is_slash": false
+        }
+      ]
+    },
+    {
+      "id": "moderation",
+      "name": "Moderation",
+      "emoji": "🔨",
+      "description": "Core punitive tracking systems used by the safety team to maintain server balance.",
+      "commands": [
+        {
+          "name": "ban",
+          "aliases": [],
+          "description": "Permanently seals a member out of the guild space and triggers mod log dispatch.",
+          "usage": "ban <@user/id> [reason]",
+          "examples": ["ban @BadActor Exploits and raids"],
+          "permissions": "Ban Members",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "kick",
+          "aliases": [],
+          "description": "Removes a member from the server safely while shooting an embed notice to their DMs.",
+          "usage": "kick <@user/id> [reason]",
+          "examples": ["kick @DisruptiveUser Advertising via DMs"],
+          "permissions": "Kick Members",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "tempban",
+          "aliases": ["tb", "jail"],
+          "description": "Applies a temporary constraint loop on a user via a dedicated isolation role configuration.",
+          "usage": "tempban <@user/id> [duration] [reason]",
+          "examples": ["tempban @Username 2h Toxicity", "tempban @Spammer 1d"],
+          "permissions": "Bot Admin / Manage Roles",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "timeout",
+          "aliases": ["mute", "to"],
+          "description": "Enforces a strict native communications restriction timeline lock on a target.",
+          "usage": "timeout <@user/id> <duration> [reason]",
+          "examples": ["timeout @Username 30m Micro-spamming"],
+          "permissions": "Moderate Members",
+          "is_prefix": true,
+          "is_slash": false
+        }
+      ]
+    },
+    {
+      "id": "prefix",
+      "name": "General Utility",
+      "emoji": "✨",
+      "description": "Standard user actions, configuration components, and metadata readers.",
+      "commands": [
+        {
+          "name": "afk",
+          "aliases": [],
+          "description": "Caches a status block to automatically trigger back-references when tagged by users.",
+          "usage": "afk [status message]",
+          "examples": ["afk Studying for exams"],
+          "permissions": "None",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "avatar",
+          "aliases": ["av", "pfp"],
+          "description": "Generates a clear image embed block isolating a target user's current avatar graphic.",
+          "usage": "avatar [@user]",
+          "examples": ["avatar", "avatar @Username"],
+          "permissions": "None",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "banner",
+          "aliases": [],
+          "description": "Extracts and displays a profile banner asset block from a targeted account.",
+          "usage": "banner [@user]",
+          "examples": ["banner @Username"],
+          "permissions": "None",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "fuck",
+          "aliases": [],
+          "description": "High-intensity meme or explicit response script utility.",
+          "usage": "fuck [@user]",
+          "examples": ["fuck @Friend"],
+          "permissions": "None",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "ping",
+          "aliases": ["latency"],
+          "description": "Measures and prints current heartbeat connection latency to the Discord gateway.",
+          "usage": "ping",
+          "examples": ["ping"],
+          "permissions": "None",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "serverinfo",
+          "aliases": ["si", "guildinfo"],
+          "description": "Generates a clean dashboard summary isolating vanity levels, booster data, and member tallies.",
+          "usage": "serverinfo",
+          "examples": ["serverinfo"],
+          "permissions": "None",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "shards",
+          "aliases": ["shardinfo"],
+          "description": "Audits internal cluster configurations showing ping levels and state indices for diagnostic validation.",
+          "usage": "shards",
+          "examples": ["shards"],
+          "permissions": "None",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "steal",
+          "aliases": ["addemoji"],
+          "description": "Copies a raw external custom emoji payload directly down into the local guild assets list.",
+          "usage": "steal <emoji_expression> [custom_name]",
+          "examples": ["steal :pepe_hype: super_pepe"],
+          "permissions": "Manage Guild Expressions",
+          "is_prefix": true,
+          "is_slash": false
+        }
+      ]
+    },
+    {
+      "id": "vc_modules",
+      "name": "Voice Management",
+      "emoji": "🔊",
+      "description": "Voice configuration actions used to manipulate room structures or connections.",
+      "commands": [
+        {
+          "name": "drag",
+          "aliases": ["grab"],
+          "description": "Pulls a specific target member forcefully from another audio lounge directly into yours.",
+          "usage": "drag <@user>",
+          "examples": ["drag @Username"],
+          "permissions": "Move Members",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "moveall",
+          "aliases": ["massmove"],
+          "description": "Migrates every active speaker inside your current session directly into a targeted alternative room.",
+          "usage": "moveall <voice_channel_id/name>",
+          "examples": ["moveall Lounge B"],
+          "permissions": "Move Members",
+          "is_prefix": true,
+          "is_slash": false
+        }
+      ]
+    },
+    {
+      "id": "hybrid_cmd",
+      "name": "System Help",
+      "emoji": "📖",
+      "description": "Hybrid commands usable across prefix styles and slash entry formats alike.",
+      "commands": [
+        {
+          "name": "help",
+          "aliases": ["h"],
+          "description": "Launches the interactive modular interface menu reading data directly out of this system layout mapping.",
+          "usage": "/help [command] or help [command]",
+          "examples": ["/help", "help tempban"],
+          "permissions": "None",
+          "is_prefix": true,
+          "is_slash": true
+        }
+      ]
+    }
+  ]
+}

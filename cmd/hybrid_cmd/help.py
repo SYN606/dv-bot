@@ -1,66 +1,51 @@
 from __future__ import annotations
 import os
-import time
+import json
+import logging
 from dotenv import load_dotenv
 import discord
 from discord import app_commands
 from discord.ext import commands
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
-from utils.permissions.check_perms import is_bot_admin, is_bot_admin_ctx
+from utils.permissions.check_perms import is_bot_admin_ctx
 from utils.permissions.protected_commands import PROTECTED_COMMANDS
 from db.db_helpers.channel_command_restrict import get_restricted_commands
 
+logger = logging.getLogger("Digital Vigital")
+
 load_dotenv()
 BANNER_GIF = os.getenv("HELP_BANNER_GIF")
-
-COMMAND_CATEGORIES: dict[str, str] = {
-    "ban": "Moderation",
-    "kick": "Moderation",
-    "tempban": "Moderation",
-    "timeout": "Moderation",
-    "purge": "Moderation",
-    "lockdown": "Moderation",
-    "verification": "Verification",
-    "roles": "Roles",
-    "adminrole": "Roles",
-    "help": "System",
-    "command": "System",
-    "ping": "Utility",
-    "avatar": "Utility",
-    "banner": "Utility",
-    "server_info": "Utility",
-    "shards": "Utility",
-    "afk": "Utility",
-    "vc_manager": "Voice",
-    "drag": "Voice",
-    "moveall": "Voice"
-}
+JSON_PATH = os.path.join("db", "static_db", "helps.json")
 
 CATEGORY_EMOJIS = {
-    "Moderation": EMOJIS.get("moderation", "🛡️"),
-    "Verification": EMOJIS.get("okay", "✅"),
-    "Roles": EMOJIS.get("green_dot", "🟢"),
-    "System": EMOJIS.get("developer", "⚙️"),
-    "Utility": EMOJIS.get("ping", "⚡"),
-    "Voice": "🎧",
-    "General": EMOJIS.get("arrow_point", "🔹")
+    "admin": EMOJIS.get("moderation", "🛡️"),
+    "channels": EMOJIS.get("channels", "📁"),
+    "moderation": EMOJIS.get("moderation", "🔨"),
+    "prefix": EMOJIS.get("ping", "✨"),
+    "vc_modules": "🔊",
+    "hybrid_cmd": "📖",
+    "general": EMOJIS.get("arrow_point", "🔹")
 }
 
 
 class HelpDropdown(discord.ui.Select):
 
-    def __init__(self, categories: list[str],
-                 grouped_commands: dict[str, list[dict]], author_id: int):
-        self.grouped_commands = grouped_commands
+    def __init__(self, categories: list[dict], author_id: int,
+                 ctx_prefix: str):
+        self.categories_map = {cat["id"]: cat for cat in categories}
         self.author_id = author_id
+        self.ctx_prefix = ctx_prefix
 
         options = [
             discord.SelectOption(
-                label=cat,
-                emoji=CATEGORY_EMOJIS.get(cat, "🔹"),
-                description=f"View commands inside {cat} module.")
-            for cat in categories if cat in grouped_commands
+                label=cat["name"],
+                value=cat["id"],
+                emoji=cat.get("emoji") or CATEGORY_EMOJIS.get(cat["id"], "🔹"),
+                description=cat.get(
+                    "description",
+                    f"Explore {cat['name']} command set.")[:100])
+            for cat in categories if cat["commands"]
         ]
         super().__init__(placeholder="📂 Select a category to explore...",
                          min_values=1,
@@ -76,17 +61,43 @@ class HelpDropdown(discord.ui.Select):
                                                     ephemeral=True)
             return
 
-        cat = self.values[0]
-        cmds = self.grouped_commands[cat]
+        cat_id = self.values[0]
+        category_data = self.categories_map[cat_id]
+        cmds = category_data["commands"]
 
-        desc = f"### {CATEGORY_EMOJIS.get(cat, '🔹')} {cat} Commands\n"
+        emoji_header = category_data.get("emoji") or CATEGORY_EMOJIS.get(
+            cat_id, "🔹")
+        desc = f"### {emoji_header} {category_data['name']} Commands\n"
+
+        arrow_emoji = EMOJIS.get("arrow_point", "🔹")
+
         for c in cmds:
-            desc += f"🔹 `/{c['qualified']}`\n> {c['description']}\n\n"
+            # Dynamically determine prefix signature
+            prefix_char = "/" if c.get("is_slash") else self.ctx_prefix
+            aliases_str = f" *[Aliases: {', '.join(c['aliases'])}]*" if c.get(
+                "aliases") else ""
+
+            # Injecting an intentional space between the prefix block and the command text name string
+            desc += f"{arrow_emoji} `{prefix_char} {c['name']}`{aliases_str}\n"
+            desc += f"> {c.get('description', 'No description provided.')}\n"
+
+            # Mirror the explicit formatting gap layout structural update into your usage guide lines
+            raw_usage = c.get("usage", "N/A")
+            usage_str = raw_usage if c.get("is_slash") else raw_usage.replace(
+                "!", f"{self.ctx_prefix} ")
+
+            # Catch edge-case scenarios where slash options usages are raw formatted as `/name` instead of `/ name`
+            if c.get("is_slash") and raw_usage.startswith("/"):
+                usage_str = f"/ {raw_usage[1:]}"
+
+            desc += f"> **Usage:** `{usage_str}`\n\n"
 
         embed = make_embed(title="Help Center Directory",
                            description=desc,
                            level="INFO")
-        if BANNER_GIF: embed.set_image(url=BANNER_GIF)
+        if BANNER_GIF:
+            embed.set_image(url=BANNER_GIF)
+
         embed.set_footer(
             text="Digital Vigital • Use menu to switch categories",
             icon_url=interaction.user.display_avatar.url)
@@ -96,15 +107,16 @@ class HelpDropdown(discord.ui.Select):
 
 class HelpDropdownView(discord.ui.View):
 
-    def __init__(self, categories: list[str],
-                 grouped_commands: dict[str, list[dict]], author_id: int):
+    def __init__(self, categories: list[dict], author_id: int,
+                 ctx_prefix: str):
         super().__init__(timeout=60)
         self.message: discord.Message | None = None
-        self.add_item(HelpDropdown(categories, grouped_commands, author_id))
+        self.add_item(HelpDropdown(categories, author_id, ctx_prefix))
 
     async def on_timeout(self) -> None:
         for item in self.children:
-            if isinstance(item, discord.ui.Select): item.disabled = True
+            if isinstance(item, discord.ui.Select):
+                item.disabled = True
         if self.message:
             try:
                 await self.message.edit(view=self)
@@ -117,30 +129,32 @@ class Help(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self._cache: list[dict] = []
+        self._static_data: dict = {"categories": []}
 
-    def build_cache(self):
-        cache = []
-        for cmd in self.bot.tree.walk_commands():
-            if not isinstance(cmd, app_commands.Command): continue
-            base = cmd.name.lower()
-            cache.append({
-                "qualified": cmd.qualified_name.lower(),
-                "base": base,
-                "description": cmd.description or "No description provided.",
-                "category": COMMAND_CATEGORIES.get(base, "General")
-            })
-        self._cache = sorted(cache,
-                             key=lambda x: (x["category"], x["qualified"]))
+    def load_static_help(self) -> bool:
+        try:
+            if os.path.exists(JSON_PATH):
+                with open(JSON_PATH, "r", encoding="utf-8") as f:
+                    self._static_data = json.load(f)
+                return True
+            else:
+                logger.error(
+                    f"[HELP] Data asset dictionary not located at path: {JSON_PATH}"
+                )
+                return False
+        except Exception as e:
+            logger.error(
+                f"[HELP] Exception parsed unpacking helps.json definition files: {e}"
+            )
+            return False
 
     @commands.Cog.listener()
     async def on_ready(self):
-        self.build_cache()
+        self.load_static_help()
 
-    async def _get_authorized_commands(
-            self, user_id: int, guild: discord.Guild | None,
-            channel: discord.abc.GuildChannel | None,
-            is_admin: bool) -> dict[str, list[dict]]:
+    async def _get_authorized_help_tree(self, guild: discord.Guild | None,
+                                        channel: discord.abc.GuildChannel
+                                        | None, is_admin: bool) -> list[dict]:
         restricted: set[str] = set()
         if guild and channel:
             try:
@@ -149,13 +163,25 @@ class Help(commands.Cog):
             except Exception:
                 pass
 
-        grouped: dict[str, list[dict]] = {}
-        for cmd in self._cache:
-            if cmd["base"] in restricted and not is_admin: continue
-            if cmd["qualified"] in PROTECTED_COMMANDS and not is_admin:
-                continue
-            grouped.setdefault(cmd["category"], []).append(cmd)
-        return grouped
+        filtered_categories = []
+        for category in self._static_data.get("categories", []):
+            filtered_cmds = []
+
+            for cmd in category.get("commands", []):
+                base_name = cmd["name"].split()[0].lower()
+                if base_name in restricted and not is_admin:
+                    continue
+                if cmd["name"].lower() in PROTECTED_COMMANDS and not is_admin:
+                    continue
+
+                filtered_cmds.append(cmd)
+
+            if filtered_cmds:
+                cat_copy = category.copy()
+                cat_copy["commands"] = filtered_cmds
+                filtered_categories.append(cat_copy)
+
+        return filtered_categories
 
     @commands.hybrid_command(
         name="help",
@@ -163,6 +189,8 @@ class Help(commands.Cog):
         "Show structured and filtered interactive bot command directory.")
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def help(self, ctx: commands.Context):
+        self.load_static_help()
+
         is_admin = False
         if ctx.guild:
             try:
@@ -170,18 +198,14 @@ class Help(commands.Cog):
             except Exception:
                 pass
 
-        grouped = await self._get_authorized_commands(ctx.author.id, ctx.guild,
-                                                      ctx.channel, is_admin) # type: ignore
-        ordered_categories = [
-            "Moderation", "Voice", "Verification", "Roles", "Utility",
-            "System", "General"
-        ]
-
-        # Build clean index dashboard statistics description
-        total_visible = sum(len(cmds) for cmds in grouped.values())
+        authorized_tree = await self._get_authorized_help_tree(
+            ctx.guild, ctx.channel, is_admin)  # type: ignore
+        total_visible = sum(len(cat["commands"]) for cat in authorized_tree)
+        current_prefix = ctx.clean_prefix if ctx.clean_prefix else "!"
+        system_emoji = EMOJIS.get("ping", "⚡")
         stats_desc = (
-            f"⚡ **System Status:** Operational\n"
-            f"📂 **Available Modules:** `{len(grouped)}`\n"
+            f"{system_emoji} **System Status:** Operational\n"
+            f"📂 **Available Modules:** `{len(authorized_tree)}`\n"
             f"📊 **Visible Commands:** `{total_visible}` (Filtered by Permissions)\n\n"
             f"Select a command module from the drop-down selection list below to view individual descriptions and structural execution choices syntax."
         )
@@ -189,11 +213,12 @@ class Help(commands.Cog):
         embed = make_embed(title="Digital Vigital • Help Center",
                            description=stats_desc,
                            level="INFO")
-        if BANNER_GIF: embed.set_image(url=BANNER_GIF)
+        if BANNER_GIF:
+            embed.set_image(url=BANNER_GIF)
+
         embed.set_footer(text=f"Requested by: {ctx.author}",
                          icon_url=ctx.author.display_avatar.url)
-
-        view = HelpDropdownView(ordered_categories, grouped, ctx.author.id)
+        view = HelpDropdownView(authorized_tree, ctx.author.id, current_prefix)
 
         if ctx.interaction:
             await ctx.interaction.response.send_message(embed=embed,

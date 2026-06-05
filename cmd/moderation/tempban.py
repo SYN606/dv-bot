@@ -1,599 +1,379 @@
 import discord
-
 from discord import app_commands
 from discord.ext import commands
+from datetime import timedelta, datetime
+import re
 
 from utils.permissions.base_admin import BaseAdminCog
-from utils.permissions.check_perms import (
-    is_bot_admin_ctx, )
-
+from utils.permissions.check_perms import is_bot_admin_ctx
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
-
 from utils.logging.mod_log import send_mod_log
 
 from db.db_helpers.tempban import (
-    get_active_tempbans,
     set_tempban_role,
     get_tempban_role,
     add_tempban,
     remove_tempban,
     is_tempbanned,
 )
+from db.db_helpers.verification import get_verification_config
 
-from db.db_helpers.verification import (
-    get_verification_config, )
+TIME_REGEX = re.compile(r"(\d+)([smhd])")
+TIME_MULTIPLIERS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+DEFAULT_DURATION = "10m"
+
+
+def parse_duration(duration: str) -> int:
+    matches = TIME_REGEX.findall(duration.lower())
+    if not matches:
+        return 0
+    return sum(int(value) * TIME_MULTIPLIERS[unit] for value, unit in matches)
+
+
+def format_duration(seconds: int) -> str:
+    parts = []
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+
+    if days: parts.append(f"{days}d")
+    if hours: parts.append(f"{hours}h")
+    if minutes: parts.append(f"{minutes}m")
+    if seconds: parts.append(f"{seconds}s")
+    return " ".join(parts) or "0s"
 
 
 class Tempban(BaseAdminCog):
 
-    def __init__(
-        self,
-        bot: commands.Bot,
-    ):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    async def has_tempban_permission(
-        self,
-        ctx: commands.Context,
-    ) -> bool:
-
+    async def has_tempban_permission(self, ctx: commands.Context) -> bool:
         guild = ctx.guild
-
         if guild is None:
             return True
-
         author = ctx.author
-
-        if not isinstance(
-                author,
-                discord.Member,
-        ):
+        if not isinstance(author, discord.Member):
             return False
-
-        # SERVER OWNER
-        if author.id == guild.owner_id:
+        if author.id == guild.owner_id or author.guild_permissions.administrator:
             return True
+        return await is_bot_admin_ctx(ctx)
 
-        perms = (author.guild_permissions)
-
-        # SERVER ADMINISTRATOR
-        if perms.administrator:
-            return True
-
-        # BOT ADMIN
-        return await is_bot_admin_ctx(ctx, )
-
-    async def resolve_member(
-        self,
-        ctx,
-        user_input,
-    ):
-
-        if isinstance(
-                user_input,
-                discord.Member,
-        ):
+    async def resolve_member(self, ctx: commands.Context,
+                             user_input) -> discord.Member | None:
+        if isinstance(user_input, discord.Member):
             return user_input
-
         if user_input:
-
             try:
-
                 return await commands.MemberConverter().convert(
-                    ctx,
-                    user_input,
-                )
-
+                    ctx, str(user_input))
             except commands.BadArgument:
                 return None
-
         return None
 
-    async def _cleanup(
-        self,
-        ctx,
-    ):
+    async def validate_target(
+            self, *, moderator: discord.Member,
+            target: discord.Member) -> tuple[bool, str | None]:
+        guild = moderator.guild
+        bot_member = guild.me
 
+        if bot_member is None:
+            return False, "Bot member unavailable."
+        if target.bot:
+            return False, "You cannot tempban bots."
+        if target.id == moderator.id:
+            return False, "You cannot tempban yourself."
+        if target.id == guild.owner_id:
+            return False, "You cannot tempban the server owner."
+        if target.id == bot_member.id:
+            return False, "You cannot tempban me."
+        if not bot_member.guild_permissions.manage_roles:
+            return False, "I need `Manage Roles` permission."
+        if moderator != guild.owner and target.guild_permissions.administrator:
+            return False, "You cannot tempban another administrator."
+        if moderator != guild.owner and target.top_role >= moderator.top_role:
+            return False, "Target has equal or higher role than you."
+        if target.top_role >= bot_member.top_role:
+            return False, "I cannot manage this user due to role hierarchy."
+        return True, None
+
+    async def _safe_send(self, ctx: commands.Context,
+                         embed: discord.Embed) -> discord.Message | None:
+        try:
+            return await ctx.send(embed=embed)
+        except discord.HTTPException:
+            try:
+                return await ctx.channel.send(embed=embed)
+            except discord.HTTPException:
+                return None
+
+    async def _cleanup(self, ctx: commands.Context) -> None:
+        if ctx.interaction or not ctx.message:
+            return
         try:
             await ctx.message.delete()
-
-        except (
-                discord.Forbidden,
-                discord.NotFound,
-        ):
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             pass
 
     tempban_group = app_commands.Group(
         name="tempban-config",
         description="Manage tempban system",
-        default_permissions=discord.Permissions(administrator=True, ),
+        default_permissions=discord.Permissions(administrator=True),
     )
 
-    @tempban_group.command(
-        name="set",
-        description="Set tempban role",
-    )
-    async def set_role(
-        self,
-        interaction: discord.Interaction,
-        role: discord.Role,
-    ):
-
+    @tempban_group.command(name="set", description="Set tempban role")
+    async def set_role(self, interaction: discord.Interaction,
+                       role: discord.Role):
         guild = interaction.guild
-
-        if guild is None:
+        if guild is None or guild.me is None:
             return
 
-        if guild.me is None:
-            return
+        if role >= guild.me.top_role:
+            return await interaction.response.send_message(embed=make_embed(
+                title="Hierarchy Error",
+                description="Role must be below bot role.",
+                level="ERROR"),
+                                                           ephemeral=True)
 
-        if (role >= guild.me.top_role):
+        await set_tempban_role(guild.id, role.id)
+        await interaction.response.send_message(embed=make_embed(
+            title="Tempban Role Set",
+            description=f"{EMOJIS['success']} {role.mention} configured.",
+            level="SUCCESS"),
+                                                ephemeral=True)
 
-            await interaction.response.send_message(
-                embed=make_embed(
-                    title="Hierarchy Error",
-                    description=("Role must be below "
-                                 "bot role."),
-                    level="ERROR",
-                ),
-                ephemeral=True,
-            )
-
-            return
-
-        await set_tempban_role(
-            guild.id,
-            role.id,
-        )
-
-        await interaction.response.send_message(
-            embed=make_embed(
-                title="Tempban Role Set",
-                description=(f"{EMOJIS['success']} "
-                             f"{role.mention} configured."),
-                level="SUCCESS",
-            ),
-            ephemeral=True,
-        )
-
-    @tempban_group.command(
-        name="list",
-        description="List active tempbans",
-    )
-    async def list_tempbans(
-        self,
-        interaction: discord.Interaction,
-    ):
-
-        guild = interaction.guild
-
-        if guild is None:
-            return
-
-        await interaction.response.defer(ephemeral=True, )
-
-        records = await get_active_tempbans(guild.id, )
-
-        if not records:
-
-            await interaction.followup.send(
-                embed=make_embed(
-                    title="Active Tempbans",
-                    description=(f"{EMOJIS['success']} "
-                                 "No active tempbans."),
-                    level="INFO",
-                ),
-                ephemeral=True,
-            )
-
-            return
-
-        entries = []
-
-        for row in records:
-
-            user = guild.get_member(row.user_id, )
-
-            mod = guild.get_member(row.moderator_id, )
-
-            entries.append((f"{EMOJIS['red_dot']} "
-                            f"{user.mention if user else row.user_id}\n"
-                            f"Moderator: "
-                            f"{mod.mention if mod else row.moderator_id}\n"
-                            f"Reason: "
-                            f"{row.tempban_reason or 'No reason'}"))
-
-        await interaction.followup.send(
-            embed=make_embed(
-                title="Active Tempbans",
-                description="\n\n".join(entries[:10], ),
-                level="INFO",
-            ),
-            ephemeral=True,
-        )
-
-    @commands.command(name="tempban", )
+    @commands.command(name="tempban", aliases=["tb", "jail"])
     @commands.guild_only()
-    async def tempban(
-        self,
-        ctx: commands.Context,
-        user=None,
-        *,
-        reason=None,
-    ):
-
-        if not await self.has_tempban_permission(ctx, ):
-
-            return await ctx.reply(
+    async def tempban(self,
+                      ctx: commands.Context,
+                      user=None,
+                      duration: str = DEFAULT_DURATION,
+                      *,
+                      reason: str = "No reason provided"):
+        if not await self.has_tempban_permission(ctx):
+            return await self._safe_send(
+                ctx,
                 embed=make_embed(
                     title="Permission Denied",
-                    description=(f"{EMOJIS['fail']} "
-                                 "You do not have permission "
-                                 "to use this command."),
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
+                    description=f"{EMOJIS['fail']} Missing permissions.",
+                    level="ERROR"))
 
         guild = ctx.guild
-
-        if guild is None:
+        moderator = ctx.author
+        if guild is None or guild.me is None or not isinstance(
+                moderator, discord.Member):
             return
 
-        if guild.me is None:
-            return
-
-        user = await self.resolve_member(
-            ctx,
-            user,
-        )
-
+        user = await self.resolve_member(ctx, user)
         if not user:
+            return await self._safe_send(
+                ctx,
+                embed=make_embed(title="Invalid User",
+                                 description="Provide a valid user.",
+                                 level="ERROR"))
 
-            await ctx.reply(
+        # Centralized Hierarchy & Bot Validation
+        valid, error = await self.validate_target(moderator=moderator,
+                                                  target=user)
+        if not valid:
+            return await self._safe_send(
+                ctx,
+                embed=make_embed(title="Permission Denied",
+                                 description=error or "Invalid target.",
+                                 level="ERROR"))
+
+        # Process Duration
+        seconds = parse_duration(duration)
+        if seconds <= 0:
+            full_reason = f"{duration} {reason}" if reason != "No reason provided" else duration
+            seconds = parse_duration(DEFAULT_DURATION)
+            human_duration = format_duration(seconds)
+            reason = full_reason
+        else:
+            human_duration = format_duration(seconds)
+
+        # Config Validation
+        role_id = await get_tempban_role(guild.id)
+        tempban_role = guild.get_role(role_id) if role_id else None
+        if not tempban_role or tempban_role >= guild.me.top_role:
+            return await self._safe_send(
+                ctx,
                 embed=make_embed(
-                    title="Invalid User",
-                    description=("Provide a valid user."),
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
+                    title="Configuration Error",
+                    description="Tempban role is missing or misconfigured.",
+                    level="ERROR"))
 
-            return
+        config = await get_verification_config(guild.id)
+        verified_role = guild.get_role(
+            config.verified_role_id
+        ) if config and config.verified_role_id else None
 
-        role_id = await get_tempban_role(guild.id, )
+        expiry_dt = discord.utils.utcnow() + timedelta(seconds=seconds)
 
-        if role_id is None:
-
-            await ctx.reply(
-                embed=make_embed(
-                    title="Not Configured",
-                    description=("Tempban role not set."),
-                    level="WARNING",
-                ),
-                mention_author=False,
-            )
-
-            return
-
-        tempban_role = guild.get_role(role_id, )
-
-        if not tempban_role:
-
-            await ctx.reply(
-                embed=make_embed(
-                    title="Role Missing",
-                    description=("Configured tempban role "
-                                 "no longer exists."),
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
-
-            return
-
-        if (tempban_role >= guild.me.top_role):
-
-            await ctx.reply(
-                embed=make_embed(
-                    title="Hierarchy Error",
-                    description=("Tempban role must be "
-                                 "below bot role."),
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
-
-            return
-
-        config = await get_verification_config(guild.id, )
-
-        verified_role = (guild.get_role(config.verified_role_id, )
-                         if config and config.verified_role_id else None)
-
-        # SEND DM
+        # Notify Target Member via DM
         try:
-
             embed = make_embed(
                 title="You Were Tempbanned",
-                description=(f"{EMOJIS['warning']} "
-                             f"You were tempbanned in "
-                             f"**{guild.name}**\n\n"
-                             f"{EMOJIS['arrow_point']} "
-                             f"Moderator: {ctx.author}\n"
-                             f"{EMOJIS['arrow_point']} "
-                             f"Reason: "
-                             f"{reason or 'No reason'}"),
+                description=
+                (f"{EMOJIS['warning']} You were tempbanned in **{guild.name}**\n\n"
+                 f"{EMOJIS['arrow_point']} **Moderator:** {moderator}\n"
+                 f"{EMOJIS['arrow_point']} **Duration:** {human_duration}\n"
+                 f"{EMOJIS['arrow_point']} **Reason:** {reason}"),
                 level="WARNING",
             )
-
-            await user.send(embed=embed, )
-
-        except (
-                discord.Forbidden,
-                discord.HTTPException,
-        ):
+            await user.send(embed=embed)
+        except (discord.Forbidden, discord.HTTPException):
             pass
 
+        # Update Roles
         try:
-
-            if (verified_role and verified_role in user.roles):
-
-                await user.remove_roles(
-                    verified_role,
-                    reason="Tempban applied",
-                )
-
+            if verified_role and verified_role in user.roles:
+                await user.remove_roles(verified_role,
+                                        reason="Tempban applied")
             await user.add_roles(
                 tempban_role,
-                reason=(reason or "Tempban applied"),
-            )
-
+                reason=f"Tempban applied | Duration: {human_duration}")
         except discord.Forbidden:
-
-            await ctx.reply(
+            return await self._safe_send(
+                ctx,
                 embed=make_embed(
                     title="Permission Error",
-                    description=("I cannot manage roles "
-                                 "due to hierarchy."),
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
-
-            return
-
+                    description="Hierarchy role error. Check role positions.",
+                    level="ERROR"))
         except discord.HTTPException:
+            return await self._safe_send(
+                ctx,
+                embed=make_embed(title="Discord Error",
+                                 description="Failed to change member roles.",
+                                 level="ERROR"))
 
-            await ctx.reply(
-                embed=make_embed(
-                    title="Discord Error",
-                    description=("Failed to update roles."),
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
+        # Save Action & Send Response logs
+        await add_tempban(guild_id=guild.id,
+                          user_id=user.id,
+                          moderator_id=moderator.id,
+                          reason=reason,
+                          expires_at=expiry_dt)
 
-            return
-
-        await add_tempban(
-            guild_id=guild.id,
-            user_id=user.id,
-            moderator_id=ctx.author.id,
-            reason=(reason or "No reason"),
-        )
-
-        await ctx.reply(
+        await self._safe_send(
+            ctx,
             embed=make_embed(
                 title="User Tempbanned",
-                description=(f"{EMOJIS['ban']} "
-                             f"{user.mention}\n"
-                             f"Reason: "
-                             f"{reason or 'No reason'}"),
+                description=(
+                    f"{EMOJIS['ban']} {user.mention}\n\n"
+                    f"{EMOJIS['arrow_point']} **Duration:** {human_duration}\n"
+                    f"{EMOJIS['arrow_point']} **Reason:** {reason}"),
                 level="SUCCESS",
-            ),
-            mention_author=False,
-        )
+            ))
 
         await send_mod_log(
             guild=guild,
             category="MODERATION",
             title="User Tempbanned",
-            description=(
-                f"User: {user.mention} "
-                f"(`{user.id}`)\n"
-                f"Moderator: "
-                f"{ctx.author.mention}\n"
-                f"Tempban Role: "
-                f"{tempban_role.mention}\n"
-                f"Removed Verified Role: "
-                f"{verified_role.mention if verified_role else 'None'}\n"
-                f"Reason: "
-                f"{reason or 'No reason'}"),
+            description=f"{moderator.mention} tempbanned {user.mention}",
             level="WARNING",
-            actor=ctx.author,
-        )
+            actor=moderator,
+            target=user,
+            extra_fields={
+                "Duration": human_duration,
+                "Reason": reason,
+                "Expires At": f"<t:{int(expiry_dt.timestamp())}:F>"
+            })
+        await self._cleanup(ctx)
 
-        await self._cleanup(ctx, )
-
-    @commands.command(name="untempban", )
+    @commands.command(name="untempban", aliases=["untb", "unjail"])
     @commands.guild_only()
-    async def untempban(
-        self,
-        ctx: commands.Context,
-        user=None,
-        *,
-        reason=None,
-    ):
-
-        if not await self.has_tempban_permission(ctx, ):
-
-            return await ctx.reply(
+    async def untempban(self,
+                        ctx: commands.Context,
+                        user=None,
+                        *,
+                        reason: str = "No reason provided"):
+        if not await self.has_tempban_permission(ctx):
+            return await self._safe_send(
+                ctx,
                 embed=make_embed(
                     title="Permission Denied",
-                    description=(f"{EMOJIS['fail']} "
-                                 "You do not have permission "
-                                 "to use this command."),
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
+                    description=f"{EMOJIS['fail']} Missing permissions.",
+                    level="ERROR"))
 
         guild = ctx.guild
-
-        if guild is None:
+        moderator = ctx.author
+        if guild is None or not isinstance(moderator, discord.Member):
             return
 
-        user = await self.resolve_member(
-            ctx,
-            user,
-        )
-
+        user = await self.resolve_member(ctx, user)
         if not user:
+            return await self._safe_send(
+                ctx,
+                embed=make_embed(title="Invalid User",
+                                 description="Provide a valid user.",
+                                 level="ERROR"))
 
-            await ctx.reply(
-                embed=make_embed(
-                    title="Invalid User",
-                    description=("Provide a valid user."),
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
-
-            return
-
-        if not await is_tempbanned(
-                guild.id,
-                user.id,
-        ):
-
-            await ctx.reply(
+        if not await is_tempbanned(guild.id, user.id):
+            return await self._safe_send(
+                ctx,
                 embed=make_embed(
                     title="Not Tempbanned",
-                    description=(f"{user.mention} "
-                                 "is not tempbanned."),
-                    level="WARNING",
-                ),
-                mention_author=False,
-            )
+                    description=
+                    f"{user.mention} is not active in tempban status.",
+                    level="WARNING"))
 
-            return
-
-        role_id = await get_tempban_role(guild.id, )
-
-        if role_id is None:
-
-            await ctx.reply(
-                embed=make_embed(
-                    title="Not Configured",
-                    description=("Tempban role not set."),
-                    level="WARNING",
-                ),
-                mention_author=False,
-            )
-
-            return
-
-        tempban_role = guild.get_role(role_id, )
-
+        role_id = await get_tempban_role(guild.id)
+        tempban_role = guild.get_role(role_id) if role_id else None
         if not tempban_role:
-
-            await ctx.reply(
-                embed=make_embed(
-                    title="Role Missing",
-                    description=("Configured tempban role "
-                                 "no longer exists."),
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
-
-            return
+            return await self._safe_send(
+                ctx,
+                embed=make_embed(title="Role Missing",
+                                 description="Tempban role does not exist.",
+                                 level="ERROR"))
 
         try:
-
-            await user.remove_roles(tempban_role, )
-
-            config = await get_verification_config(guild.id, )
-
-            if (config and config.verified_role_id):
-
-                verified_role = guild.get_role(config.verified_role_id, )
-
+            await user.remove_roles(tempban_role,
+                                    reason=f"Untempban by {moderator}")
+            config = await get_verification_config(guild.id)
+            if config and config.verified_role_id:
+                verified_role = guild.get_role(config.verified_role_id)
                 if verified_role:
-
-                    await user.add_roles(
-                        verified_role,
-                        reason="Tempban removed",
-                    )
-
+                    await user.add_roles(verified_role,
+                                         reason="Tempban lifted")
         except discord.Forbidden:
-
-            await ctx.reply(
+            return await self._safe_send(
+                ctx,
                 embed=make_embed(
                     title="Permission Error",
-                    description=("I cannot update roles "
-                                 "due to hierarchy."),
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
-
-            return
-
+                    description="Cannot manage user roles due to hierarchy.",
+                    level="ERROR"))
         except discord.HTTPException:
+            return await self._safe_send(
+                ctx,
+                embed=make_embed(title="Discord Error",
+                                 description="Failed updating roles.",
+                                 level="ERROR"))
 
-            await ctx.reply(
-                embed=make_embed(
-                    title="Discord Error",
-                    description=("Failed to update roles."),
-                    level="ERROR",
-                ),
-                mention_author=False,
-            )
+        await remove_tempban(guild_id=guild.id,
+                             user_id=user.id,
+                             moderator_id=moderator.id)
 
-            return
-
-        await remove_tempban(
-            guild_id=guild.id,
-            user_id=user.id,
-            moderator_id=ctx.author.id,
-        )
-
-        await ctx.reply(
+        await self._safe_send(
+            ctx,
             embed=make_embed(
                 title="Tempban Removed",
-                description=(f"{EMOJIS['success']} "
-                             f"{user.mention}"),
-                level="SUCCESS",
-            ),
-            mention_author=False,
-        )
+                description=
+                f"{EMOJIS['success']} Active tempban lifted from {user.mention}.",
+                level="SUCCESS"))
 
         await send_mod_log(
             guild=guild,
             category="MODERATION",
             title="Tempban Removed",
-            description=(f"User: {user.mention} "
-                         f"(`{user.id}`)\n"
-                         f"Moderator: "
-                         f"{ctx.author.mention}\n"
-                         f"Reason: "
-                         f"{reason or 'No reason'}"),
+            description=
+            f"{moderator.mention} removed active tempban from {user.mention}",
             level="SUCCESS",
-            actor=ctx.author,
-        )
+            actor=moderator,
+            target=user,
+            extra_fields={"Reason": reason})
+        await self._cleanup(ctx)
 
-        await self._cleanup(ctx, )
 
-
-async def setup(bot: commands.Bot, ):
-
-    cog = Tempban(bot, )
-
-    await bot.add_cog(cog, )
-
-    if not bot.tree.get_command("tempban-config", ):
-
-        bot.tree.add_command(cog.tempban_group, )
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Tempban(bot))
