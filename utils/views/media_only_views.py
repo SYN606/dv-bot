@@ -12,9 +12,7 @@ from db.db_helpers.media_only import (
 STICKY_TAG = "MEDIA_ONLY_STICKY_NOTICE"
 
 
-# =====================================================
 # STICKY EMBED
-# =====================================================
 def build_media_only_sticky_embed() -> discord.Embed:
     return make_embed(
         title="Media-Only Channel",

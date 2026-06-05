@@ -11,7 +11,6 @@ class AssetLinks(discord.ui.View):
 
     def __init__(self, guild: discord.Guild):
         super().__init__(timeout=None)
-
         if guild.icon:
             self.add_item(
                 discord.ui.Button(label="Server Avatar",
@@ -36,11 +35,7 @@ class AssetLinks(discord.ui.View):
 
 class ServerInfoView(discord.ui.View):
 
-    def __init__(
-        self,
-        guild: discord.Guild,
-        author_id: int,
-    ):
+    def __init__(self, guild: discord.Guild, author_id: int):
         super().__init__(timeout=60)
         self.guild = guild
         self.author_id = author_id
@@ -48,29 +43,21 @@ class ServerInfoView(discord.ui.View):
         self._cooldowns: dict[int, float] = {}
         self.COOLDOWN = 5
 
-    async def interaction_check(
-        self,
-        interaction: discord.Interaction,
-    ) -> bool:
-
+    async def interaction_check(self,
+                                interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author_id:
             await interaction.response.send_message(embed=make_embed(
                 title="Access Denied",
                 description=
-                (f"{EMOJIS.get('fail', '❌')} You cannot use this interaction."
-                 ),
+                f"{EMOJIS.get('fail', '❌')} You cannot use this interaction.",
                 level="ERROR"),
                                                     ephemeral=True)
             return False
         return True
 
-    def _check_cd(
-        self,
-        user_id: int,
-    ) -> float:
+    def _check_cd(self, user_id: int) -> float:
         now = time.time()
-        last = self._cooldowns.get(user_id, 0)
-        remaining = self.COOLDOWN - (now - last)
+        remaining = self.COOLDOWN - (now - self._cooldowns.get(user_id, 0))
         if remaining > 0:
             return remaining
         self._cooldowns[user_id] = now
@@ -81,17 +68,16 @@ class ServerInfoView(discord.ui.View):
                        style=discord.ButtonStyle.secondary)
     async def more_stats(self, interaction: discord.Interaction,
                          _: discord.ui.Button):
-
         remaining = self._check_cd(interaction.user.id)
         if remaining > 0:
             await interaction.response.send_message(embed=make_embed(
                 title="Cooldown",
-                description=(
-                    f"{EMOJIS.get('warning', '⚠️')} "
-                    f"Wait `{remaining:.1f}s` before using this again."),
+                description=
+                f"{EMOJIS.get('warning', '⚠️')} Wait `{remaining:.1f}s` before using this again.",
                 level="WARNING"),
                                                     ephemeral=True)
             return
+
         g = self.guild
         humans = sum(1 for m in g.members if not m.bot)
         bots = (g.member_count or 0) - humans
@@ -99,26 +85,17 @@ class ServerInfoView(discord.ui.View):
                      if m.status in (discord.Status.online,
                                      discord.Status.idle, discord.Status.dnd))
 
-        embed = make_embed(
-            title="📊 Server Statistics",
-            description=(f"{EMOJIS.get('green_dot', '🟢')} Members: "
-                         f"`{g.member_count}`\n"
-                         f"👨 Humans: `{humans}`\n"
-                         f"🤖 Bots: `{bots}`\n"
-                         f"📡 Online: `{online}`\n\n"
-                         f"📁 Channels: `{len(g.channels)}`\n"
-                         f"💬 Text: `{len(g.text_channels)}`\n"
-                         f"🔊 Voice: `{len(g.voice_channels)}`\n"
-                         f"🧵 Forums: `{len(g.forums)}`\n"
-                         f"🎤 Stages: `{len(g.stage_channels)}`\n\n"
-                         f"🛡️ Roles: `{len(g.roles)}`\n"
-                         f"😀 Emojis: `{len(g.emojis)}`\n"
-                         f"📌 Stickers: `{len(g.stickers)}`"),
-            level="INFO")
-
-        embed.set_footer(text=f"Action by: {interaction.user}",
+        desc = (
+            f"{EMOJIS.get('green_dot', '🟢')} Members: `{g.member_count}`\n👨 Humans: `{humans}`\n🤖 Bots: `{bots}`\n📡 Online: `{online}`\n\n"
+            f"📁 Channels: `{len(g.channels)}`\n💬 Text: `{len(g.text_channels)}`\n🔊 Voice: `{len(g.voice_channels)}`\n"
+            f"🧵 Forums: `{len(g.forums)}`\n🎤 Stages: `{len(g.stage_channels)}`\n\n"
+            f"🛡️ Roles: `{len(g.roles)}`\n😀 Emojis: `{len(g.emojis)}`\n📌 Stickers: `{len(g.stickers)}`"
+        )
+        embed = make_embed(title="📊 Server Statistics",
+                           description=desc,
+                           level="INFO")
+        embed.set_footer(text=f"Requested by: {interaction.user}",
                          icon_url=interaction.user.display_avatar.url)
-
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @discord.ui.button(label="Assets",
@@ -126,47 +103,38 @@ class ServerInfoView(discord.ui.View):
                        style=discord.ButtonStyle.secondary)
     async def assets(self, interaction: discord.Interaction,
                      _: discord.ui.Button):
-
         remaining = self._check_cd(interaction.user.id)
         if remaining > 0:
             await interaction.response.send_message(embed=make_embed(
                 title="Cooldown",
-                description=(
-                    f"{EMOJIS.get('warning', '⚠️')} "
-                    f"Wait `{remaining:.1f}s` before using this again."),
+                description=
+                f"{EMOJIS.get('warning', '⚠️')} Wait `{remaining:.1f}s` before using this again.",
                 level="WARNING"),
                                                     ephemeral=True)
             return
+
         g = self.guild
         assets = []
-        if g.icon:
-            assets.append("🖼️ Server Avatar")
-        if g.banner:
-            assets.append("🌌 Server Banner")
-        if g.splash:
-            assets.append("✨ Invite Splash")
-        if g.discovery_splash:
-            assets.append("🚀 Discovery Splash")
-        if not assets:
-            assets.append("No server assets available.")
+        if g.icon: assets.append("🖼️ Server Avatar")
+        if g.banner: assets.append("🌌 Server Banner")
+        if g.splash: assets.append("✨ Invite Splash")
+        if g.discovery_splash: assets.append("🚀 Discovery Splash")
+        if not assets: assets.append("No server assets available.")
 
         embed = make_embed(title="🖼️ Server Assets",
                            description="\n".join(assets),
                            level="INFO")
-        if g.banner:
-            embed.set_image(url=g.banner.url)
-        elif g.icon:
-            embed.set_image(url=g.icon.url)
-        embed.set_footer(text=f"Action by: {interaction.user}",
+        embed.set_image(
+            url=g.banner.url if g.banner else (g.icon.url if g.icon else None))
+        embed.set_footer(text=f"Requested by: {interaction.user}",
                          icon_url=interaction.user.display_avatar.url)
-
         await interaction.response.send_message(embed=embed,
                                                 view=AssetLinks(g),
                                                 ephemeral=True)
 
-    async def on_timeout(self):
+    async def on_timeout(self) -> None:
         for item in self.children:
-            item.disabled = True  # type: ignore
+            if isinstance(item, discord.ui.Button): item.disabled = True
         if self.message:
             try:
                 await self.message.edit(view=self)
@@ -178,25 +146,28 @@ class ServerInfoView(discord.ui.View):
 class ServerInfo(BaseAdminCog):
 
     def __init__(self, bot: commands.Bot):
+        super().__init__()
         self.bot = bot
 
-    async def cog_check(self, ctx: commands.Context) -> bool:
-        g = ctx.guild
-        if g is None:
+    @staticmethod
+    async def is_admin_tier(ctx: commands.Context) -> bool:
+        if ctx.guild is None or not isinstance(ctx.author, discord.Member):
             return False
-        if not isinstance(ctx.author, discord.Member):
-            return False
-        if ctx.author.id == g.owner_id:
-            return True
-        if ctx.author.guild_permissions.administrator:
+        if ctx.author.id == ctx.guild.owner_id or ctx.author.guild_permissions.administrator:
             return True
         return await is_bot_admin_ctx(ctx)
 
-    @commands.command(name="server-info",
-                      aliases=["serverinfo", "si"],
-                      help="View detailed server information")
+    @commands.command(
+        name="server-info",
+        aliases=["serverinfo", "si"],
+        help=
+        "[Admin Only] View detailed structural configuration and server statistics."
+    )
     @commands.guild_only()
-    @commands.cooldown(1, 8, commands.BucketType.user)
+    @commands.check(is_admin_tier)
+    @discord.app_commands.default_permissions(
+        administrator=True)  # <-- Fixed attribute name
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def server_info(self, ctx: commands.Context):
         try:
             await ctx.message.delete()
@@ -204,38 +175,27 @@ class ServerInfo(BaseAdminCog):
             pass
 
         g = ctx.guild
-        if g is None:
-            return
+        if g is None: return
         owner = g.owner
         created = discord.utils.format_dt(g.created_at, style="R")
 
-        embed = make_embed(
-            title=f"{EMOJIS.get('announcement', '📢')} {g.name}",
-            description=(f"👑 Owner: "
-                         f"{owner.mention if owner else 'Unknown'}\n"
-                         f"🆔 ID: `{g.id}`\n"
-                         f"📅 Created: {created}\n\n"
-                         f"👥 Members: `{g.member_count}`\n"
-                         f"🚀 Boosts: "
-                         f"`{g.premium_subscription_count or 0}` "
-                         f"(Level {g.premium_tier})\n"
-                         f"🛡️ Verification: "
-                         f"`{str(g.verification_level).title()}`\n"
-                         f"🌍 Preferred Locale: `{g.preferred_locale}`"),
-            level="SYSTEM")
-        if g.icon:
-            embed.set_thumbnail(url=g.icon.url)
-
-        if g.banner:
-            embed.set_image(url=g.banner.url)
-
-        embed.set_footer(text=f"Action by: {ctx.author}",
+        desc = (
+            f"👑 Owner: {owner.mention if owner else 'Unknown'}\n🆔 ID: `{g.id}`\n📅 Created: {created}\n\n"
+            f"👥 Members: `{g.member_count}`\n🚀 Boosts: `{g.premium_subscription_count or 0}` (Level {g.premium_tier})\n"
+            f"🛡️ Verification: `{str(g.verification_level).title()}`\n🌍 Preferred Locale: `{g.preferred_locale}`"
+        )
+        embed = make_embed(title=f"{EMOJIS.get('announcement', '📢')} {g.name}",
+                           description=desc,
+                           level="SYSTEM")
+        if g.icon: embed.set_thumbnail(url=g.icon.url)
+        if g.banner: embed.set_image(url=g.banner.url)
+        embed.set_footer(text=f"Executed by: {ctx.author}",
                          icon_url=ctx.author.display_avatar.url)
-        view = ServerInfoView(guild=g, author_id=ctx.author.id)
 
+        view = ServerInfoView(guild=g, author_id=ctx.author.id)
         msg = await ctx.send(embed=embed, view=view)
         view.message = msg
 
 
-async def setup(bot: commands.Bot, ):
+async def setup(bot: commands.Bot):
     await bot.add_cog(ServerInfo(bot))
