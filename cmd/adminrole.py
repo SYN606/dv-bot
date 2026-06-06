@@ -14,137 +14,173 @@ class AdminRole(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # GROUP
     adminrole = app_commands.Group(
-        name="adminrole", description="Manage bot admin roles (Owner only)")
+        name="adminrole",
+        description=
+        "Manage authorized server administration/bot developer roles.",
+        default_permissions=discord.Permissions(administrator=True))
 
-    # COMMON VALIDATION
     async def _validate(
         self, interaction: discord.Interaction
     ) -> tuple[discord.Guild, discord.Member] | None:
-
         guild = interaction.guild
         user = interaction.user
 
         if guild is None or not isinstance(user, discord.Member):
-            await interaction.response.send_message("Invalid context.",
-                                                    ephemeral=True)
+            await interaction.response.send_message(
+                f"{EMOJIS.get('error', '❌')} This command can only be executed within a server guild.",
+                ephemeral=True)
             return None
 
         if user.id != guild.owner_id:
             await interaction.response.send_message(
-                "Only server owner can use this.", ephemeral=True)
+                f"{EMOJIS.get('error', '❌')} Administrative override configurations are restricted strictly to the Server Owner.",
+                ephemeral=True)
             return None
 
         return guild, user
 
-    # ADD ROLE
-    @adminrole.command(name="add", description="Add an admin role")
+    @adminrole.command(
+        name="add",
+        description=
+        "Authorize a role for administrative bot override permissions.")
+    @app_commands.describe(
+        role="The target role to grant administrative bot status.")
     async def add(self, interaction: discord.Interaction, role: discord.Role):
         validated = await self._validate(interaction)
         if not validated:
             return
         guild, user = validated
 
-        # VALIDATION
         if role.is_default():
-            await interaction.response.send_message("Cannot use @everyone.",
-                                                    ephemeral=True)
+            await interaction.response.send_message(
+                f"{EMOJIS.get('warning', '⚠️')} Cannot assign the default `@everyone` profile as an admin role.",
+                ephemeral=True)
             return
+
         if role.managed:
             await interaction.response.send_message(
-                "Cannot use bot/integration roles.", ephemeral=True)
+                f"{EMOJIS.get('warning', '⚠️')} Managed external application or bot integration roles cannot be registered.",
+                ephemeral=True)
             return
+
         bot_member = guild.me
         if bot_member:
             if not bot_member.guild_permissions.manage_roles:
                 await interaction.response.send_message(
-                    "I need Manage Roles permission.", ephemeral=True)
+                    f"{EMOJIS.get('error', '❌')} I lack the `Manage Roles` application permission within this guild hierarchy.",
+                    ephemeral=True)
                 return
 
             if role >= bot_member.top_role:
                 await interaction.response.send_message(
-                    "My role is too low to manage this role.", ephemeral=True)
+                    f"{EMOJIS.get('error', '❌')} Action denied: Target role position is equal to or higher than my highest role positioning.",
+                    ephemeral=True)
                 return
 
-        if role >= user.top_role:
+        if role >= user.top_role and user.id != guild.owner_id:
             await interaction.response.send_message(
-                "You cannot configure roles higher than your own.",
+                f"{EMOJIS.get('error', '❌')} Action denied: You cannot configure roles higher than or equal to your own top status position.",
                 ephemeral=True)
             return
 
-        # DB ACTION
         added = await add_admin_role(guild.id, role.id)
+
         await interaction.response.send_message(embed=make_embed(
-            title="Admin Role Added",
-            description=(f"{EMOJIS['success']} {role.mention} added." if added
-                         else f"{EMOJIS['warning']} Already configured."),
+            title="Admin Role Configured",
+            description=
+            (f"{EMOJIS['success']} Authorized {role.mention} as a bot administrator override."
+             if added else
+             f"{EMOJIS['warning']} Role {role.mention} is already registered in the system."
+             ),
             level="SUCCESS" if added else "WARNING",
         ),
                                                 ephemeral=True)
 
-    # REMOVE ROLE
-    @adminrole.command(name="remove", description="Remove an admin role")
+    @adminrole.command(
+        name="remove",
+        description=
+        "Revoke administrative bot override authorization from a role.")
+    @app_commands.describe(
+        role="The target role to strip bot administrative permissions from.")
     async def remove(self, interaction: discord.Interaction,
                      role: discord.Role):
         validated = await self._validate(interaction)
         if not validated:
             return
         guild, _ = validated
+
         removed = await remove_admin_role(guild.id, role.id)
+
         await interaction.response.send_message(embed=make_embed(
-            title="Admin Role Removed",
-            description=(f"{EMOJIS['success']} {role.mention} removed." if
-                         removed else f"{EMOJIS['warning']} Not configured."),
+            title="Admin Role Deauthorized",
+            description=
+            (f"{EMOJIS['success']} Stripped bot administrative overrides from {role.mention} cleanly."
+             if removed else
+             f"{EMOJIS['warning']} Target role {role.name} was not flagged as an authorized administrator profile."
+             ),
             level="SUCCESS" if removed else "WARNING"),
                                                 ephemeral=True)
 
-    # LIST ROLES
-    @adminrole.command(name="list", description="List admin roles")
+    @adminrole.command(
+        name="list",
+        description=
+        "Display all custom administrative role definitions for this server.")
     async def list_roles(self, interaction: discord.Interaction):
         validated = await self._validate(interaction)
         if not validated:
             return
         guild, _ = validated
+
         role_ids = await get_admin_roles(guild.id)
         roles: list[str] = []
+
         for role_id in role_ids:
             role = guild.get_role(role_id)
             if role:
                 roles.append(role.mention)
-        description = ("\n".join(roles) if roles else
-                       f"{EMOJIS['warning']} No roles configured.")
+
+        description = (
+            "\n".join(roles) if roles else
+            f"{EMOJIS['warning']} No role configurations discovered within database schemas."
+        )
+
         await interaction.response.send_message(embed=make_embed(
-            title="Admin Roles", description=description, level="INFO"),
+            title="Configured Bot Administrators",
+            description=description,
+            level="INFO"),
                                                 ephemeral=True)
 
-    # RESET ROLES
-    @adminrole.command(name="reset", description="Clear all admin roles")
+    @adminrole.command(
+        name="reset",
+        description=
+        "Wipe all configured administrative roles from the database.")
     async def reset(self, interaction: discord.Interaction):
         validated = await self._validate(interaction)
         if not validated:
             return
         guild, _ = validated
+
         role_ids = await get_admin_roles(guild.id)
         if not role_ids:
             await interaction.response.send_message(embed=make_embed(
-                title="Nothing to Reset",
-                description=f"{EMOJIS['warning']} No admin roles configured.",
+                title="Registry Already Clear",
+                description=
+                f"{EMOJIS['warning']} No admin roles are configured for this guild entity.",
                 level="WARNING"),
                                                     ephemeral=True)
             return
 
-        # Faster removal
         await asyncio.gather(*(remove_admin_role(guild.id, role_id)
                                for role_id in role_ids))
 
         await interaction.response.send_message(embed=make_embed(
-            title="Admin Roles Reset",
-            description=f"{EMOJIS['success']} All admin roles cleared.",
+            title="Registry Flush Complete",
+            description=
+            f"{EMOJIS['success']} Flushed all administrative role records cleanly from database caches.",
             level="SUCCESS"),
                                                 ephemeral=True)
 
 
-# SETUP
 async def setup(bot: commands.Bot):
     await bot.add_cog(AdminRole(bot))

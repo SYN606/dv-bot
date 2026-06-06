@@ -15,6 +15,7 @@ from utils.handlers.sticky.sticky_handler import (handle_sticky)
 from utils.handlers.afk_handler import (handle_afk)
 from utils.handlers.mention import (handle_bot_mention)
 from utils.core.presence import (PresenceRotator)
+from utils.core.embeds import make_embed  # Ensure this import is available here
 
 env_loaded = load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -188,8 +189,25 @@ class DigitalVigilBot(commands.Bot):
     async def on_command_error(self, ctx: commands.Context,
                                error: commands.CommandError) -> None:
         error = getattr(error, "original", error)
+
+        # Graceful handling for Unknown / Invalid Prefixed Text Strings
         if isinstance(error, commands.CommandNotFound):
+            invoked_with = ctx.invoked_with or "Unknown"
+            try:
+                await ctx.send(
+                    embed=make_embed(
+                        title="Command Not Found",
+                        description=
+                        f"The command `{invoked_with}` does not exist. Use `/` slash commands to browse available systems.",
+                        level="WARNING",
+                        footer=f"Requested by {ctx.author}"),
+                    delete_after=
+                    10.0  # Self-destruct after 10s to minimize server text clutter
+                )
+            except Exception:
+                pass
             return
+
         if isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(f"Missing argument: `{error.param.name}`")
             return
@@ -266,6 +284,5 @@ def main() -> None:
             time.sleep(30)
 
 
-# Run Bot Engine
 if __name__ == "__main__":
     main()

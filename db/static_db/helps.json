@@ -59,12 +59,31 @@
         {
           "name": "role",
           "aliases": ["roles"],
-          "description": "Utility system to add, remove, strip, or audit user role updates.",
-          "usage": "role <give/take> <@user> <@role>",
-          "examples": ["role give @User @Verified"],
+          "description": "Utility system to assign or strip security and cosmetic roles from server members.",
+          "usage": "/role <add/remove>",
+          "examples": [
+            "/role add user: @User role: @Verified",
+            "/role remove user: @Spammer role: @Muted"
+          ],
           "permissions": "Manage Roles",
-          "is_prefix": true,
-          "is_slash": false
+          "is_prefix": false,
+          "is_slash": true,
+          "subcommands": [
+            {
+              "name": "add",
+              "alias": ["give", "a"],
+              "description": "Assigns a specific target server role to a member seamlessly.",
+              "usage": "/role add <user> <role>",
+              "examples": ["/role add user: @Username role: @Member"]
+            },
+            {
+              "name": "remove",
+              "alias": ["take", "r"],
+              "description": "Strips an active server role away from a targeted member.",
+              "usage": "/role remove <user> <role>",
+              "examples": ["/role remove user: @Username role: @Staff"]
+            }
+          ]
         },
         {
           "name": "setuplog",
@@ -79,12 +98,37 @@
         {
           "name": "sticky",
           "aliases": [],
-          "description": "Pins an explicit message block to the absolute bottom of a text chat channel loop.",
-          "usage": "sticky <message>",
-          "examples": ["sticky Read the rules before typing"],
-          "permissions": "Manage Messages",
-          "is_prefix": true,
-          "is_slash": false
+          "description": "Manage automated channel sticky message layouts via server slash commands.",
+          "usage": "/sticky <set/disable/status>",
+          "examples": [
+            "/sticky set message: Read the rules channel: #general",
+            "/sticky disable"
+          ],
+          "permissions": "Manage Channels",
+          "is_prefix": false,
+          "is_slash": true,
+          "subcommands": [
+            {
+              "name": "set",
+              "description": "Enable or update an embed sticky message in a specific text channel.",
+              "usage": "/sticky set <message> [channel]",
+              "examples": [
+                "/sticky set message: Welcome to the server! channel: #welcome"
+              ]
+            },
+            {
+              "name": "disable",
+              "description": "Turn off sticky message processing and clear properties from a channel.",
+              "usage": "/sticky disable [channel]",
+              "examples": ["/sticky disable channel: #general"]
+            },
+            {
+              "name": "status",
+              "description": "Query and view the active string configuration layout for a channel.",
+              "usage": "/sticky status [channel]",
+              "examples": ["/sticky status"]
+            }
+          ]
         },
         {
           "name": "verification",
@@ -321,7 +365,7 @@
           "aliases": ["h"],
           "description": "Launches the interactive modular interface menu reading data directly out of this system layout mapping.",
           "usage": "/help [command] or help [command]",
-          "examples": ["/help", "help tempban"],
+          "examples": ["/help", "help role"],
           "permissions": "None",
           "is_prefix": true,
           "is_slash": true

@@ -1,22 +1,14 @@
 import discord
-from discord import app_commands
 from discord.ext import commands
-from datetime import timedelta, datetime
+from datetime import timedelta
 import re
-
 from utils.permissions.base_admin import BaseAdminCog
 from utils.permissions.check_perms import is_bot_admin_ctx
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import send_mod_log
-
-from db.db_helpers.tempban import (
-    set_tempban_role,
-    get_tempban_role,
-    add_tempban,
-    remove_tempban,
-    is_tempbanned,
-)
+from db.db_helpers.tempban import (set_tempban_role, get_tempban_role,
+                                   add_tempban, remove_tempban, is_tempbanned)
 from db.db_helpers.verification import get_verification_config
 
 TIME_REGEX = re.compile(r"(\d+)([smhd])")
@@ -110,38 +102,55 @@ class Tempban(BaseAdminCog):
 
     async def _cleanup(self, ctx: commands.Context) -> None:
         try:
-            # Force attempt cleanup across execution types where context message exists
             if ctx.message:
                 await ctx.message.delete()
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             pass
 
-    tempban_group = app_commands.Group(
-        name="tempban-config",
-        description="Manage tempban system",
-        default_permissions=discord.Permissions(administrator=True),
-    )
+    @commands.command(name="tempban-role")
+    @commands.guild_only()
+    async def set_role(self,
+                       ctx: commands.Context,
+                       role: discord.Role = None):  # type: ignore
+        if not await self.has_tempban_permission(ctx):
+            return await self._safe_send(
+                ctx,
+                embed=make_embed(
+                    title="Permission Denied",
+                    description=
+                    f"{EMOJIS['fail']} Only Administrators can configure system roles.",
+                    level="ERROR"))
 
-    @tempban_group.command(name="set", description="Set tempban role")
-    async def set_role(self, interaction: discord.Interaction,
-                       role: discord.Role):
-        guild = interaction.guild
+        guild = ctx.guild
         if guild is None or guild.me is None:
             return
 
+        if not role:
+            return await self._safe_send(
+                ctx,
+                embed=make_embed(
+                    title="Missing Argument",
+                    description="Please specify a valid server role.",
+                    level="ERROR"))
+
         if role >= guild.me.top_role:
-            return await interaction.response.send_message(embed=make_embed(
-                title="Hierarchy Error",
-                description="Role must be below bot role.",
-                level="ERROR"),
-                                                           ephemeral=True)
+            return await self._safe_send(
+                ctx,
+                embed=make_embed(
+                    title="Hierarchy Error",
+                    description=
+                    "Role must be positioned safely below the bot's role hierarchy.",
+                    level="ERROR"))
 
         await set_tempban_role(guild.id, role.id)
-        await interaction.response.send_message(embed=make_embed(
-            title="Tempban Role Set",
-            description=f"{EMOJIS['success']} {role.mention} configured.",
-            level="SUCCESS"),
-                                                ephemeral=True)
+        await self._safe_send(
+            ctx,
+            embed=make_embed(
+                title="Tempban Role Set",
+                description=
+                f"{EMOJIS['success']} {role.mention} successfully registered as the isolation role.",
+                level="SUCCESS"))
+        await self._cleanup(ctx)
 
     @commands.command(name="tempban", aliases=["tb", "jail"])
     @commands.guild_only()
@@ -156,7 +165,8 @@ class Tempban(BaseAdminCog):
                 ctx,
                 embed=make_embed(
                     title="Permission Denied",
-                    description=f"{EMOJIS['fail']} Missing permissions.",
+                    description=
+                    f"{EMOJIS['fail']} Missing required moderation overrides.",
                     level="ERROR"))
 
         guild = ctx.guild
@@ -169,21 +179,21 @@ class Tempban(BaseAdminCog):
         if not user:
             return await self._safe_send(
                 ctx,
-                embed=make_embed(title="Invalid User",
-                                 description="Provide a valid user.",
-                                 level="ERROR"))
+                embed=make_embed(
+                    title="Invalid User",
+                    description="Provide a valid user mention, ID, or name.",
+                    level="ERROR"))
 
-        # Centralized Hierarchy & Bot Validation
         valid, error = await self.validate_target(moderator=moderator,
                                                   target=user)
         if not valid:
             return await self._safe_send(
                 ctx,
                 embed=make_embed(title="Permission Denied",
-                                 description=error or "Invalid target.",
+                                 description=error
+                                 or "Invalid target operations context.",
                                  level="ERROR"))
 
-        # Process Duration
         seconds = parse_duration(duration)
         if seconds <= 0:
             full_reason = f"{duration} {reason}" if reason != "No reason provided" else duration
@@ -193,7 +203,6 @@ class Tempban(BaseAdminCog):
         else:
             human_duration = format_duration(seconds)
 
-        # Config Validation
         role_id = await get_tempban_role(guild.id)
         tempban_role = guild.get_role(role_id) if role_id else None
         if not tempban_role or tempban_role >= guild.me.top_role:
@@ -201,22 +210,21 @@ class Tempban(BaseAdminCog):
                 ctx,
                 embed=make_embed(
                     title="Configuration Error",
-                    description="Tempban role is missing or misconfigured.",
+                    description=
+                    "Tempban isolation role is unconfigured or out-ranked.",
                     level="ERROR"))
 
         config = await get_verification_config(guild.id)
         verified_role = guild.get_role(
             config.verified_role_id
         ) if config and config.verified_role_id else None
-
         expiry_dt = discord.utils.utcnow() + timedelta(seconds=seconds)
 
-        # Notify Target Member via DM
         try:
             embed = make_embed(
                 title="You Were Tempbanned",
                 description=
-                (f"{EMOJIS['warning']} You were tempbanned in **{guild.name}**\n\n"
+                (f"{EMOJIS['warning']} You were tempbanned inside **{guild.name}**\n\n"
                  f"{EMOJIS['arrow_point']} **Moderator:** {moderator}\n"
                  f"{EMOJIS['arrow_point']} **Duration:** {human_duration}\n"
                  f"{EMOJIS['arrow_point']} **Reason:** {reason}"),
@@ -226,11 +234,11 @@ class Tempban(BaseAdminCog):
         except (discord.Forbidden, discord.HTTPException):
             pass
 
-        # Update Roles
         try:
             if verified_role and verified_role in user.roles:
-                await user.remove_roles(verified_role,
-                                        reason="Tempban applied")
+                await user.remove_roles(
+                    verified_role,
+                    reason="Tempban tracking constraints applied.")
             await user.add_roles(
                 tempban_role,
                 reason=f"Tempban applied | Duration: {human_duration}")
@@ -239,16 +247,17 @@ class Tempban(BaseAdminCog):
                 ctx,
                 embed=make_embed(
                     title="Permission Error",
-                    description="Hierarchy role error. Check role positions.",
+                    description=
+                    "Hierarchy allocation mismatch. Drag bot role higher.",
                     level="ERROR"))
         except discord.HTTPException:
             return await self._safe_send(
                 ctx,
-                embed=make_embed(title="Discord Error",
-                                 description="Failed to change member roles.",
-                                 level="ERROR"))
+                embed=make_embed(
+                    title="Discord Error",
+                    description="Failed mutating target's role matrix.",
+                    level="ERROR"))
 
-        # Save Action & Send Response logs
         await add_tempban(guild_id=guild.id,
                           user_id=user.id,
                           moderator_id=moderator.id,
@@ -260,7 +269,7 @@ class Tempban(BaseAdminCog):
             embed=make_embed(
                 title="User Tempbanned",
                 description=(
-                    f"{EMOJIS['ban']} {user.mention}\n\n"
+                    f"{EMOJIS['ban']} {user.mention} isolated successfully.\n\n"
                     f"{EMOJIS['arrow_point']} **Duration:** {human_duration}\n"
                     f"{EMOJIS['arrow_point']} **Reason:** {reason}"),
                 level="SUCCESS",
@@ -279,8 +288,6 @@ class Tempban(BaseAdminCog):
                 "Reason": reason,
                 "Expires At": f"<t:{int(expiry_dt.timestamp())}:F>"
             })
-
-        # Cleanup invocation message immediately following successful completion
         await self._cleanup(ctx)
 
     @commands.command(name="untempban", aliases=["untb", "unjail"])
@@ -295,7 +302,8 @@ class Tempban(BaseAdminCog):
                 ctx,
                 embed=make_embed(
                     title="Permission Denied",
-                    description=f"{EMOJIS['fail']} Missing permissions.",
+                    description=
+                    f"{EMOJIS['fail']} Missing required moderation overrides.",
                     level="ERROR"))
 
         guild = ctx.guild
@@ -307,9 +315,10 @@ class Tempban(BaseAdminCog):
         if not user:
             return await self._safe_send(
                 ctx,
-                embed=make_embed(title="Invalid User",
-                                 description="Provide a valid user.",
-                                 level="ERROR"))
+                embed=make_embed(
+                    title="Invalid User",
+                    description="Provide a valid user identity reference.",
+                    level="ERROR"))
 
         if not await is_tempbanned(guild.id, user.id):
             return await self._safe_send(
@@ -317,7 +326,7 @@ class Tempban(BaseAdminCog):
                 embed=make_embed(
                     title="Not Tempbanned",
                     description=
-                    f"{user.mention} is not active in tempban status.",
+                    f"{user.mention} holds no active isolation lock records.",
                     level="WARNING"))
 
         role_id = await get_tempban_role(guild.id)
@@ -325,32 +334,37 @@ class Tempban(BaseAdminCog):
         if not tempban_role:
             return await self._safe_send(
                 ctx,
-                embed=make_embed(title="Role Missing",
-                                 description="Tempban role does not exist.",
-                                 level="ERROR"))
+                embed=make_embed(
+                    title="Role Missing",
+                    description=
+                    "Tempban schema role identity could not be retrieved.",
+                    level="ERROR"))
 
         try:
-            await user.remove_roles(tempban_role,
-                                    reason=f"Untempban by {moderator}")
+            await user.remove_roles(
+                tempban_role, reason=f"Untempban manual lift by {moderator}")
             config = await get_verification_config(guild.id)
             if config and config.verified_role_id:
                 verified_role = guild.get_role(config.verified_role_id)
                 if verified_role:
-                    await user.add_roles(verified_role,
-                                         reason="Tempban lifted")
+                    await user.add_roles(
+                        verified_role,
+                        reason="Tempban recovery cycle completed.")
         except discord.Forbidden:
             return await self._safe_send(
                 ctx,
                 embed=make_embed(
                     title="Permission Error",
-                    description="Cannot manage user roles due to hierarchy.",
+                    description=
+                    "Failed dropping constraints due to hierarchy positioning layers.",
                     level="ERROR"))
         except discord.HTTPException:
             return await self._safe_send(
                 ctx,
-                embed=make_embed(title="Discord Error",
-                                 description="Failed updating roles.",
-                                 level="ERROR"))
+                embed=make_embed(
+                    title="Discord Error",
+                    description="Failed updating core member profiles.",
+                    level="ERROR"))
 
         await remove_tempban(guild_id=guild.id,
                              user_id=user.id,
@@ -361,7 +375,7 @@ class Tempban(BaseAdminCog):
             embed=make_embed(
                 title="Tempban Removed",
                 description=
-                f"{EMOJIS['success']} Active tempban lifted from {user.mention}.",
+                f"{EMOJIS['success']} Active tempban lifted cleanly from {user.mention}.",
                 level="SUCCESS"))
 
         await send_mod_log(
@@ -369,13 +383,11 @@ class Tempban(BaseAdminCog):
             category="MODERATION",
             title="Tempban Removed",
             description=
-            f"{moderator.mention} removed active tempban from {user.mention}",
+            f"{moderator.mention} dropped active isolation metrics from {user.mention}",
             level="SUCCESS",
             actor=moderator,
             target=user,
             extra_fields={"Reason": reason})
-
-        # Cleanup invocation message immediately following successful completion
         await self._cleanup(ctx)
 
 
