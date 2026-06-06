@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import os
+import time
 import discord
 from discord import Message
 from discord.ui import Button
@@ -17,63 +18,69 @@ _mention_locks: dict[int, asyncio.Lock] = {}
 
 class MentionView(View):
 
-    def __init__(self, bot: discord.Client, author_id: int):
+    def __init__(self, bot: discord.Client,
+                 author: discord.User | discord.Member):
         super().__init__(timeout=60)
         self.bot = bot
-        self.author_id = author_id
+        self.author = author
         self.message: discord.Message | None = None
 
     async def interaction_check(self,
                                 interaction: discord.Interaction) -> bool:
-        if (interaction.user.id != self.author_id):
-            await interaction.response.send_message(embed=make_embed(
+        if interaction.user.id != self.author.id:
+            embed = make_embed(
                 title="Access Denied",
-                description=("Only the command author "
-                             "can use these buttons."),
+                description=
+                "Only the command author can use these operational buttons.",
                 level="WARNING",
-            ),
+            )
+            embed.set_footer(text=f"Action by : {self.author}",
+                             icon_url=self.author.display_avatar.url)
+            await interaction.response.send_message(embed=embed,
                                                     ephemeral=True)
             return False
         return True
 
-    @discord.ui.button(label="Help",
+    @discord.ui.button(label="Help Menu",
                        style=discord.ButtonStyle.primary,
                        emoji="📘")
     async def help_button(self, interaction: discord.Interaction, _: Button):
-        await interaction.response.send_message(embed=make_embed(
+        embed = make_embed(
             title="Help Menu",
-            description=("Use `/help` to explore "
-                         "all commands."),
+            description="Use `/help` to explore all modules and commands.",
             level="INFO",
-        ),
-                                                ephemeral=True)
+        )
+        embed.set_footer(text=f"Action by : {self.author}",
+                         icon_url=self.author.display_avatar.url)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @discord.ui.button(label="Ping",
                        style=discord.ButtonStyle.secondary,
                        emoji="🏓")
     async def ping_button(self, interaction: discord.Interaction, _: Button):
         latency = round(self.bot.latency * 1000)
-
-        await interaction.response.send_message(embed=make_embed(
+        embed = make_embed(
             title="Pong",
-            description=(f"Gateway latency: "
-                         f"`{latency} ms`"),
+            description=f"Gateway Network Latency: `{latency} ms`",
             level="INFO",
-        ),
-                                                ephemeral=True)
+        )
+        embed.set_footer(text=f"Action by : {self.author}",
+                         icon_url=self.author.display_avatar.url)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @discord.ui.button(label="Setup",
+    @discord.ui.button(label="System Configuration",
                        style=discord.ButtonStyle.secondary,
                        emoji="⚙️")
     async def setup_button(self, interaction: discord.Interaction, _: Button):
-
-        await interaction.response.send_message(embed=make_embed(
+        embed = make_embed(
             title="Quick Setup",
-            description=("Use `/setup_log` "
-                         "to configure moderation logs."),
+            description=
+            "Use `/verification` or `/setup_log` to configure operational settings.",
             level="INFO",
-        ),
-                                                ephemeral=True)
+        )
+        embed.set_footer(text=f"Action by : {self.author}",
+                         icon_url=self.author.display_avatar.url)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def on_timeout(self) -> None:
         for item in self.children:
@@ -88,24 +95,13 @@ class MentionView(View):
             pass
 
 
-async def handle_bot_mention(
-    bot: discord.Client,
-    message: Message,
-) -> bool:
-
-    if bot.user is None:
+async def handle_bot_mention(bot: discord.Client, message: Message) -> bool:
+    if bot.user is None or message.author.bot or message.webhook_id:
         return False
 
-    if message.author.bot:
+    if message.type != discord.MessageType.default or not message.guild:
         return False
 
-    if message.webhook_id:
-        return False
-
-    if (message.type != discord.MessageType.default):
-        return False
-    if not message.guild:
-        return False
     content = message.content.strip()
     valid_mentions = {f"<@{bot.user.id}>", f"<@!{bot.user.id}>"}
     if content not in valid_mentions:
@@ -113,34 +109,40 @@ async def handle_bot_mention(
 
     guild_id = message.guild.id
     lock = _mention_locks.setdefault(guild_id, asyncio.Lock())
+
     async with lock:
         now = asyncio.get_running_loop().time()
         last = _mention_cooldown.get(guild_id, 0)
-        if (now - last < MENTION_COOLDOWN):
+        if now - last < MENTION_COOLDOWN:
             return True
         _mention_cooldown[guild_id] = now
+
         latency_ms = round(bot.latency * 1000)
-        embed = make_embed(title="Digital Vigital",
-                           description=(f"{EMOJIS['green_dot']} "
-                                        f"**Online** • "
-                                        f"`{latency_ms} ms`\n\n"
-                                        f"{EMOJIS['arrow_point']} "
-                                        f"Use `/help` to "
-                                        f"explore commands\n"
-                                        f"{EMOJIS['arrow_point']} "
-                                        f"Use `/verification` "
-                                        f"to setup systems\n\n"
-                                        f"{EMOJIS['developer']} "
-                                        f"**Developer**\n"
-                                        f"**S Y N** • "
-                                        f"https://syn606.wtf/"),
-                           level="SYSTEM",
-                           footer=("Built for performance • "
-                                   "Modular • Reliable"))
+        total_guilds = len(bot.guilds)
+        total_users = sum(len(g.members) for g in bot.guilds)
+
+        embed = make_embed(
+            title="Digital Vigital • System Overview",
+            description=
+            (f"{EMOJIS.get('green_dot', '🟢')} **Bot Operational Infrastructure**\n"
+             f"┕ Network Latency: `{latency_ms} ms` • Status: `Idle`\n\n"
+             f"{EMOJIS.get('arrow_point', '➡️')} **Quick Directory Lookup**\n"
+             f"┕ Use `/help` to view all available commands.\n"
+             f"┕ Use `/verification` to set up server protection.\n\n"
+             f"📊 **Cluster Metrics**\n"
+             f"┕ Servers: `{total_guilds:,}` | Users Seen: `{total_users:,}`\n\n"
+             f"{EMOJIS.get('developer', '👨‍💻')} **Developer Platform**\n"
+             f"┕ **S Y N** • [Developer Portal](https://syn606.wtf/)"),
+            level="SYSTEM")
+
+        embed.set_footer(
+            text=f"Action by : {message.author} • Performance Engineered",
+            icon_url=message.author.display_avatar.url)
 
         if MENTION_GIF:
             embed.set_image(url=MENTION_GIF)
-        view = MentionView(bot=bot, author_id=message.author.id)
+
+        view = MentionView(bot=bot, author=message.author)
 
         try:
             sent = await message.reply(
@@ -149,6 +151,14 @@ async def handle_bot_mention(
                 mention_author=False,
                 allowed_mentions=discord.AllowedMentions.none())
             view.message = sent
+
+            try:
+                await message.delete()
+            except (discord.Forbidden, discord.NotFound,
+                    discord.HTTPException):
+                pass
+
         except (discord.Forbidden, discord.HTTPException):
             return True
+
     return True

@@ -72,21 +72,17 @@ class HelpDropdown(discord.ui.Select):
         arrow_emoji = EMOJIS.get("arrow_point", "🔹")
 
         for c in cmds:
-            # Dynamically determine prefix signature
             prefix_char = "/" if c.get("is_slash") else self.ctx_prefix
             aliases_str = f" *[Aliases: {', '.join(c['aliases'])}]*" if c.get(
                 "aliases") else ""
 
-            # Injecting an intentional space between the prefix block and the command text name string
             desc += f"{arrow_emoji} `{prefix_char} {c['name']}`{aliases_str}\n"
             desc += f"> {c.get('description', 'No description provided.')}\n"
 
-            # Mirror the explicit formatting gap layout structural update into your usage guide lines
             raw_usage = c.get("usage", "N/A")
             usage_str = raw_usage if c.get("is_slash") else raw_usage.replace(
                 "!", f"{self.ctx_prefix} ")
 
-            # Catch edge-case scenarios where slash options usages are raw formatted as `/name` instead of `/ name`
             if c.get("is_slash") and raw_usage.startswith("/"):
                 usage_str = f"/ {raw_usage[1:]}"
 
@@ -99,7 +95,7 @@ class HelpDropdown(discord.ui.Select):
             embed.set_image(url=BANNER_GIF)
 
         embed.set_footer(
-            text="Digital Vigital • Use menu to switch categories",
+            text=f"Action by : {interaction.user} • Digital Vigital",
             icon_url=interaction.user.display_avatar.url)
 
         await interaction.response.edit_message(embed=embed)
@@ -216,7 +212,8 @@ class Help(commands.Cog):
         if BANNER_GIF:
             embed.set_image(url=BANNER_GIF)
 
-        embed.set_footer(text=f"Requested by: {ctx.author}",
+        # Added 'Action by' line syntax formatting structure to primary parent dashboard initialization reply state
+        embed.set_footer(text=f"Action by : {ctx.author}",
                          icon_url=ctx.author.display_avatar.url)
         view = HelpDropdownView(authorized_tree, ctx.author.id, current_prefix)
 

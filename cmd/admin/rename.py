@@ -41,12 +41,22 @@ class RenameSystem(BaseAdminCog):
         except (discord.Forbidden, discord.NotFound):
             pass
 
-    async def _reply(self, ctx: commands.Context, *, title: str,
-                     description: str, level: str):
+    async def _reply(self,
+                     ctx: commands.Context,
+                     *,
+                     title: str,
+                     description: str,
+                     level: str,
+                     show_footer: bool = True):
         await self._delete_command(ctx)
-        return await ctx.channel.send(
-            embed=make_embed(title=title, description=description, level=level)
-        )
+
+        embed = make_embed(title=title, description=description, level=level)
+
+        if show_footer:
+            embed.set_footer(text=f"Action by : {ctx.author}",
+                             icon_url=ctx.author.display_avatar.url)
+
+        return await ctx.channel.send(embed=embed)
 
     async def cog_check(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
@@ -103,7 +113,7 @@ class RenameSystem(BaseAdminCog):
             return
         moderator: discord.Member = ctx.author
         prefix = ctx.clean_prefix
-        invoked_with = ctx.invoked_with  
+        invoked_with = ctx.invoked_with
 
         if self.bot.user is None:
             return
@@ -113,7 +123,7 @@ class RenameSystem(BaseAdminCog):
             return await self._reply(
                 ctx,
                 title="Missing Permissions",
-                description=("I need Manage Nicknames permission."),
+                description="I need Manage Nicknames permission.",
                 level="ERROR")
         if not args:
             return await self._reply(
@@ -133,7 +143,7 @@ class RenameSystem(BaseAdminCog):
                 return await self._reply(
                     ctx,
                     title="Invalid Target",
-                    description=("User must be in this server."),
+                    description="User must be in this server.",
                     level="ERROR")
             target = member
             nickname = args.replace(raw.mention, "", 1).strip()
@@ -141,25 +151,24 @@ class RenameSystem(BaseAdminCog):
             target = moderator
             nickname = args.strip()
         if not nickname:
-            return await self._reply(
-                ctx,
-                title="Missing Nickname",
-                description=("Please provide a nickname."),
-                level="ERROR")
+            return await self._reply(ctx,
+                                     title="Missing Nickname",
+                                     description="Please provide a nickname.",
+                                     level="ERROR")
         is_self = target == moderator
         if not is_self:
             if not self._moderator_can_modify(guild, moderator, target):
                 return await self._reply(
                     ctx,
                     title="Permission Denied",
-                    description=("You cannot modify this user."),
+                    description="You cannot modify this user.",
                     level="ERROR")
 
         if not self._bot_can_modify(guild, target):
             return await self._reply(
                 ctx,
                 title="Role Hierarchy Issue",
-                description=("My role is too low to modify this user."),
+                description="My role is too low to modify this user.",
                 level="ERROR")
 
         if nickname.lower() == "reset":
@@ -168,36 +177,32 @@ class RenameSystem(BaseAdminCog):
                 return await self._reply(
                     ctx,
                     title="No Nickname Set",
-                    description=("That user does not have a nickname."),
+                    description="That user does not have a nickname.",
                     level="INFO")
 
             old_nick = target.display_name
 
             try:
-
                 await target.edit(nick=None,
-                                  reason=(f"Nickname reset by "
-                                          f"{moderator}"))
+                                  reason=f"Nickname reset by {moderator}")
 
             except discord.Forbidden:
-
                 return await self._reply(
                     ctx,
                     title="Missing Permissions",
-                    description=("I cannot change this nickname."),
+                    description="I cannot change this nickname.",
                     level="ERROR")
 
             except discord.HTTPException:
-
                 return await self._reply(
                     ctx,
                     title="Discord Error",
-                    description=("Failed to update nickname."),
+                    description="Failed to update nickname.",
                     level="ERROR")
 
             await self._reply(ctx,
                               title="Nickname Reset",
-                              description=(f"{EMOJIS['success']} "
+                              description=(f"{EMOJIS.get('success', '✅')} "
                                            f"Nickname removed for "
                                            f"{target.mention}."),
                               level="SUCCESS")
@@ -220,60 +225,53 @@ class RenameSystem(BaseAdminCog):
                 logger.exception("Failed to send rename moderation log")
 
             return
+
         # RENAME
         nickname = self._normalize(nickname)
-
         nickname = re.sub(r"[\u200B-\u200D\uFEFF]", "", nickname)
-
         nickname = " ".join(nickname.split())[:32]
 
         if ("@everyone" in nickname or "@here" in nickname):
             return await self._reply(
                 ctx,
                 title="Invalid Nickname",
-                description=("Mass mentions are not allowed."),
+                description="Mass mentions are not allowed.",
                 level="ERROR")
 
         if self._contains_profanity(nickname):
             return await self._reply(
                 ctx,
                 title="Blocked Nickname",
-                description=("Nickname contains prohibited content."),
+                description="Nickname contains prohibited content.",
                 level="ERROR")
 
         old_nick = target.display_name
 
         try:
-
             await target.edit(nick=nickname,
-                              reason=(f"Nickname changed by "
-                                      f"{moderator}"))
+                              reason=f"Nickname changed by {moderator}")
 
         except discord.Forbidden:
-
             return await self._reply(
                 ctx,
                 title="Missing Permissions",
-                description=("I cannot change this nickname."),
+                description="I cannot change this nickname.",
                 level="ERROR")
 
         except discord.HTTPException:
-
-            return await self._reply(
-                ctx,
-                title="Discord Error",
-                description=("Failed to update nickname."),
-                level="ERROR")
+            return await self._reply(ctx,
+                                     title="Discord Error",
+                                     description="Failed to update nickname.",
+                                     level="ERROR")
 
         await self._reply(ctx,
                           title="Nickname Updated",
-                          description=(f"{EMOJIS['success']} "
+                          description=(f"{EMOJIS.get('success', '✅')} "
                                        f"{target.mention} is now "
                                        f"**{nickname}**."),
                           level="SUCCESS")
 
         try:
-
             await send_mod_log(guild=guild,
                                category="MODERATION",
                                title="Nickname Changed",

@@ -193,10 +193,20 @@
         {
           "name": "afk",
           "aliases": [],
-          "description": "Caches a status block to automatically trigger back-references when tagged by users.",
+          "description": "Caches an AFK status block to automatically trigger back-references when tagged by users.",
           "usage": "afk [status message]",
           "examples": ["afk Studying for exams"],
           "permissions": "None",
+          "is_prefix": true,
+          "is_slash": false
+        },
+        {
+          "name": "afk reset",
+          "aliases": [],
+          "description": "Administratively forces clearance of a target user's active AFK state parameters.",
+          "usage": "afk reset <@user>",
+          "examples": ["afk reset @Username"],
+          "permissions": "Administrator / Bot Admin",
           "is_prefix": true,
           "is_slash": false
         },

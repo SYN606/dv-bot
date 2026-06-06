@@ -12,6 +12,14 @@ class VCMoveAll(BaseAdminCog):
         super().__init__()
         self.bot = bot
 
+    async def _cleanup(self, ctx: commands.Context):
+        if ctx.interaction:
+            return
+        try:
+            await ctx.message.delete()
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+            pass
+
     @commands.hybrid_command(
         name="moveall",
         aliases=["dragall"],
@@ -29,30 +37,39 @@ class VCMoveAll(BaseAdminCog):
 
         # Same VC Check
         if source.id == target.id:
-            await ctx.send(embed=make_embed(
-                title=f"{EMOJIS['warning']} Same Channel",
+            embed = make_embed(
+                title=f"{EMOJIS.get('warning', '⚠️')} Same Channel",
                 description=
                 "Source and target voice channels cannot be the same.",
-                level="WARNING"))
+                level="WARNING")
+            embed.set_footer(text=f"Action by : {author}",
+                             icon_url=author.display_avatar.url)
+            await ctx.send(embed=embed)
             return
 
         # Empty source VC Check
         if not source.members:
-            await ctx.send(embed=make_embed(
-                title=f"{EMOJIS['warning']} Empty Voice Channel",
+            embed = make_embed(
+                title=f"{EMOJIS.get('warning', '⚠️')} Empty Voice Channel",
                 description="No users found in the source VC.",
-                level="WARNING"))
+                level="WARNING")
+            embed.set_footer(text=f"Action by : {author}",
+                             icon_url=author.display_avatar.url)
+            await ctx.send(embed=embed)
             return
 
         # Moderator permissions check (Both channels)
         if not source.permissions_for(
                 author).move_members or not target.permissions_for(
                     author).move_members:
-            await ctx.send(embed=make_embed(
-                title=f"{EMOJIS['fail']} Missing Permissions",
+            embed = make_embed(
+                title=f"{EMOJIS.get('fail', '❌')} Missing Permissions",
                 description=
                 "You do not have permission to move members between these voice channels.",
-                level="ERROR"))
+                level="ERROR")
+            embed.set_footer(text=f"Action by : {author}",
+                             icon_url=author.display_avatar.url)
+            await ctx.send(embed=embed)
             return
 
         # Bot permissions check (Both channels)
@@ -60,46 +77,68 @@ class VCMoveAll(BaseAdminCog):
         if not bot_member or not source.permissions_for(
                 bot_member).move_members or not target.permissions_for(
                     bot_member).move_members:
-            await ctx.send(embed=make_embed(
-                title=f"{EMOJIS['fail']} Bot Missing Permissions",
+            embed = make_embed(
+                title=f"{EMOJIS.get('fail', '❌')} Bot Missing Permissions",
                 description=
                 "I do not have permission to move members between these voice channels.",
-                level="ERROR"))
+                level="ERROR")
+            embed.set_footer(text=f"Action by : {author}",
+                             icon_url=author.display_avatar.url)
+            await ctx.send(embed=embed)
             return
 
         # Execute Bulk Move Action
         moved = await move_all_members(source, target)
 
         if moved <= 0:
-            await ctx.send(embed=make_embed(
-                title=f"{EMOJIS['fail']} Move Failed",
+            embed = make_embed(
+                title=f"{EMOJIS.get('fail', '❌')} Move Failed",
                 description=
                 "Unable to move members. Check connectivity or settings.",
-                level="ERROR"))
+                level="ERROR")
+            embed.set_footer(text=f"Action by : {author}",
+                             icon_url=author.display_avatar.url)
+            await ctx.send(embed=embed)
             return
 
-        await ctx.send(embed=make_embed(
-            title=f"{EMOJIS['success']} Members Moved",
+        embed = make_embed(
+            title=f"{EMOJIS.get('success', '✅')} Members Moved",
             description=
-            f"{EMOJIS['arrow_point']} Moved `{moved}` users from {source.mention} to {target.mention}",
-            level="SUCCESS"))
+            f"{EMOJIS.get('arrow_point', '➡️')} Moved `{moved}` users from {source.mention} to {target.mention}",
+            level="SUCCESS")
+        embed.set_footer(text=f"Action by : {author}",
+                         icon_url=author.display_avatar.url)
+        await ctx.send(embed=embed)
+
+        # Cleanup text invocation safely if necessary
+        await self._cleanup(ctx)
 
     # Centralized Error Processing Hook
     @moveall.error
     async def moveall_error(self, ctx: commands.Context,
                             error: commands.CommandError):
+        author = ctx.author
+
         if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(embed=make_embed(
-                title=f"{EMOJIS['warning']} Command On Cooldown",
+            embed = make_embed(
+                title=f"{EMOJIS.get('warning', '⚠️')} Command On Cooldown",
                 description=
                 f"Please wait `{error.retry_after:.1f}s` before using this command again.",
-                level="WARNING"))
+                level="WARNING")
+            embed.set_footer(text=f"Action by : {author}",
+                             icon_url=author.display_avatar.url)
+            await ctx.send(embed=embed)
+
         elif isinstance(error, commands.MaxConcurrencyReached):
-            await ctx.send(embed=make_embed(
-                title=f"{EMOJIS['warning']} Command Busy",
+            embed = make_embed(
+                title=f"{EMOJIS.get('warning', '⚠️')} Command Busy",
                 description=
                 "Another bulk migration operation is already running on this server.",
-                level="WARNING"))
+                level="WARNING")
+            embed.set_footer(text=f"Action by : {author}",
+                             icon_url=author.display_avatar.url)
+            await ctx.send(embed=embed)
+
         elif isinstance(error, commands.CheckFailure):
             pass
 

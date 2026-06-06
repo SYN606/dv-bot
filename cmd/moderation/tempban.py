@@ -109,10 +109,10 @@ class Tempban(BaseAdminCog):
                 return None
 
     async def _cleanup(self, ctx: commands.Context) -> None:
-        if ctx.interaction or not ctx.message:
-            return
         try:
-            await ctx.message.delete()
+            # Force attempt cleanup across execution types where context message exists
+            if ctx.message:
+                await ctx.message.delete()
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             pass
 
@@ -279,6 +279,8 @@ class Tempban(BaseAdminCog):
                 "Reason": reason,
                 "Expires At": f"<t:{int(expiry_dt.timestamp())}:F>"
             })
+
+        # Cleanup invocation message immediately following successful completion
         await self._cleanup(ctx)
 
     @commands.command(name="untempban", aliases=["untb", "unjail"])
@@ -372,6 +374,8 @@ class Tempban(BaseAdminCog):
             actor=moderator,
             target=user,
             extra_fields={"Reason": reason})
+
+        # Cleanup invocation message immediately following successful completion
         await self._cleanup(ctx)
 
 

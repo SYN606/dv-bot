@@ -61,8 +61,14 @@ class TimeoutAdmin(BaseAdminCog):
                      *,
                      title: str,
                      description: str,
-                     level: str = "ERROR") -> None:
+                     level: str = "ERROR",
+                     show_footer: bool = False) -> None:
         embed = make_embed(title=title, description=description, level=level)
+
+        if show_footer:
+            embed.set_footer(text=f"Action by : {ctx.author}",
+                             icon_url=ctx.author.display_avatar.url)
+
         try:
             if ctx.interaction:
                 interaction = ctx.interaction
@@ -73,15 +79,19 @@ class TimeoutAdmin(BaseAdminCog):
                     await interaction.response.send_message(embed=embed,
                                                             ephemeral=True)
             else:
-                await ctx.reply(embed=embed, mention_author=False)
+                try:
+                    await ctx.reply(embed=embed, mention_author=False)
+                except (discord.NotFound, discord.HTTPException):
+                    # Fallback safely if the user invocation message was already wiped
+                    await ctx.channel.send(embed=embed)
         except discord.HTTPException:
             pass
 
     async def _cleanup(self, ctx: commands.Context) -> None:
-        if ctx.interaction:
-            return
         try:
-            await ctx.message.delete()
+            # Force attempt cleanup across all environments (Prefix, Hybrid, Slash Contexts)
+            if ctx.message:
+                await ctx.message.delete()
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             pass
 
@@ -95,14 +105,14 @@ class TimeoutAdmin(BaseAdminCog):
             return value
 
         if not value:
-            reference = ctx.message.reference
-            if reference and isinstance(reference.resolved, discord.Message):
-                author = reference.resolved.author
+            if ctx.message and ctx.message.reference and isinstance(
+                    ctx.message.reference.resolved, discord.Message):
+                author = ctx.message.reference.resolved.author
                 if isinstance(author, discord.Member):
                     return author
                 return guild.get_member(author.id)
 
-        if ctx.message.mentions:
+        if ctx.message and ctx.message.mentions:
             mention = ctx.message.mentions[0]
             if isinstance(mention, discord.Member):
                 return mention
@@ -153,11 +163,11 @@ class TimeoutAdmin(BaseAdminCog):
                               duration: str, reason: str) -> None:
         try:
             description = (
-                f"{EMOJIS['warning']} You were timed out in **{guild.name}**\n\n"
-                f"{EMOJIS['arrow_point']} **Moderator:** {moderator}\n"
-                f"{EMOJIS['arrow_point']} **Duration:** {duration}")
+                f"{EMOJIS.get('warning', '⚠️')} You were timed out in **{guild.name}**\n\n"
+                f"{EMOJIS.get('arrow_point', '➡️')} **Moderator:** {moderator}\n"
+                f"{EMOJIS.get('arrow_point', '➡️')} **Duration:** {duration}")
             if reason != "No reason provided":
-                description += f"\n{EMOJIS['arrow_point']} **Reason:** {reason}"
+                description += f"\n{EMOJIS.get('arrow_point', '➡️')} **Reason:** {reason}"
 
             embed = make_embed(title="You Were Timed Out",
                                description=description,
@@ -192,7 +202,7 @@ class TimeoutAdmin(BaseAdminCog):
                 ctx,
                 title="Permission Denied",
                 description=
-                f"{EMOJIS['fail']} You do not have permission to use this command."
+                f"{EMOJIS.get('fail', '❌')} You do not have permission to use this command."
             )
 
         target = await self.resolve_member(ctx, member)
@@ -216,9 +226,6 @@ class TimeoutAdmin(BaseAdminCog):
                 title="Invalid Duration",
                 description="Use a valid duration (max 28d).")
 
-        # Command executes validation smoothly -> Clean up text invocation immediately
-        await self._cleanup(ctx)
-
         human_duration = format_duration(seconds)
         until = discord.utils.utcnow() + timedelta(seconds=seconds)
 
@@ -240,14 +247,19 @@ class TimeoutAdmin(BaseAdminCog):
                                      title="Timeout Failed",
                                      description="Failed to timeout the user.")
 
+        # Sent safely before the invocation trigger is destroyed
         await self._reply(
             ctx,
             title="User Timed Out",
-            description=(
-                f"{EMOJIS['warning']} {target.mention}\n\n"
-                f"{EMOJIS['arrow_point']} **Duration:** {human_duration}\n"
-                f"{EMOJIS['arrow_point']} **Reason:** {reason}"),
-            level="WARNING")
+            description=
+            (f"{EMOJIS.get('warning', '⚠️')} {target.mention}\n\n"
+             f"{EMOJIS.get('arrow_point', '➡️')} **Duration:** {human_duration}\n"
+             f"{EMOJIS.get('arrow_point', '➡️')} **Reason:** {reason}"),
+            level="WARNING",
+            show_footer=True)
+
+        # Execution cleanup complete across all platform calls
+        await self._cleanup(ctx)
 
         try:
             await send_mod_log(guild=guild,
@@ -286,7 +298,7 @@ class TimeoutAdmin(BaseAdminCog):
                 ctx,
                 title="Permission Denied",
                 description=
-                f"{EMOJIS['fail']} You do not have permission to use this command."
+                f"{EMOJIS.get('fail', '❌')} You do not have permission to use this command."
             )
 
         target = await self.resolve_member(ctx, member)
@@ -307,9 +319,6 @@ class TimeoutAdmin(BaseAdminCog):
                                      title="Permission Denied",
                                      description=(error or "Invalid target."))
 
-        # Command executes validation smoothly -> Clean up text invocation immediately
-        await self._cleanup(ctx)
-
         try:
             await target.timeout(
                 None, reason=f"{reason} | Timeout removed by {moderator}")
@@ -323,12 +332,18 @@ class TimeoutAdmin(BaseAdminCog):
                                      title="Timeout Removal Failed",
                                      description="Failed to remove timeout.")
 
+        # Sent safely before the invocation trigger is destroyed
         await self._reply(
             ctx,
             title="Timeout Removed",
-            description=(f"{EMOJIS['success']} {target.mention}\n\n"
-                         f"{EMOJIS['arrow_point']} **Reason:** {reason}"),
-            level="SUCCESS")
+            description=(
+                f"{EMOJIS.get('success', '✅')} {target.mention}\n\n"
+                f"{EMOJIS.get('arrow_point', '➡️')} **Reason:** {reason}"),
+            level="SUCCESS",
+            show_footer=True)
+
+        # Execution cleanup complete across all platform calls
+        await self._cleanup(ctx)
 
         try:
             await send_mod_log(

@@ -33,8 +33,14 @@ class BanSystem(BaseAdminCog):
                      ctx: commands.Context,
                      title: str,
                      description: str,
-                     level: str = "ERROR"):
+                     level: str = "ERROR",
+                     show_footer: bool = False):
         embed = make_embed(title=title, description=description, level=level)
+
+        if show_footer:
+            embed.set_footer(text=f"Action by : {ctx.author}",
+                             icon_url=ctx.author.display_avatar.url)
+
         try:
             if ctx.interaction:
                 if ctx.interaction.response.is_done():
@@ -42,15 +48,20 @@ class BanSystem(BaseAdminCog):
                                                                ephemeral=True)
                 return await ctx.interaction.response.send_message(
                     embed=embed, ephemeral=True)
-            return await ctx.reply(embed=embed, mention_author=False)
+
+            try:
+                return await ctx.reply(embed=embed, mention_author=False)
+            except (discord.NotFound, discord.HTTPException):
+                # Fallback safely if the context message was wiped or missing
+                return await ctx.channel.send(embed=embed)
         except discord.HTTPException:
             return None
 
     async def _cleanup(self, ctx: commands.Context):
-        if ctx.interaction:
-            return
         try:
-            await ctx.message.delete()
+            # Force attempt cleanup across execution types where context message exists
+            if ctx.message:
+                await ctx.message.delete()
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             pass
 
@@ -63,14 +74,14 @@ class BanSystem(BaseAdminCog):
             return user_input
 
         if not user_input:
-            reference = ctx.message.reference
-            if reference and isinstance(reference.resolved, discord.Message):
-                resolved_author = reference.resolved.author
+            if ctx.message and ctx.message.reference and isinstance(
+                    ctx.message.reference.resolved, discord.Message):
+                resolved_author = ctx.message.reference.resolved.author
                 if isinstance(resolved_author, discord.Member):
                     return resolved_author
                 return guild.get_member(resolved_author.id)
 
-        if ctx.message.mentions:
+        if ctx.message and ctx.message.mentions:
             return ctx.message.mentions[0]
 
         try:
@@ -125,16 +136,16 @@ class BanSystem(BaseAdminCog):
         try:
             if reason != "No reason provided":
                 description = (
-                    f"{EMOJIS['ban']} You were banned from **{guild.name}**\n\n"
-                    f"{EMOJIS['arrow_point']} **Moderator:** {moderator}\n"
-                    f"{EMOJIS['arrow_point']} **Reason:** {reason}")
+                    f"{EMOJIS.get('ban', '🔨')} You were banned from **{guild.name}**\n\n"
+                    f"{EMOJIS.get('arrow_point', '➡️')} **Moderator:** {moderator}\n"
+                    f"{EMOJIS.get('arrow_point', '➡️')} **Reason:** {reason}")
             else:
-                description = f"{EMOJIS['ban']} You were banned from **{guild.name}**."
+                description = f"{EMOJIS.get('ban', '🔨')} You were banned from **{guild.name}**."
 
             embed = make_embed(title="You Were Banned",
                                description=description,
                                level="ERROR")
-            await target.send(embed=embed) # type: ignore
+            await target.send(embed=embed)  # type: ignore
         except (discord.Forbidden, discord.HTTPException):
             pass
 
@@ -157,7 +168,7 @@ class BanSystem(BaseAdminCog):
         if not await self.has_ban_permission(ctx):
             return await self._reply(
                 ctx, "Permission Denied",
-                f"{EMOJIS['fail']} You do not have permission to use this command."
+                f"{EMOJIS.get('fail', '❌')} You do not have permission to use this command."
             )
 
         reason = reason or "No reason provided"
@@ -178,9 +189,6 @@ class BanSystem(BaseAdminCog):
             return await self._reply(ctx, "Permission Denied", error
                                      or "Invalid target user.")
 
-        # Delete the trigger command immediately after validation passes
-        await self._cleanup(ctx)
-
         await self.send_ban_dm(target=target,
                                guild=guild,
                                moderator=moderator,
@@ -199,11 +207,16 @@ class BanSystem(BaseAdminCog):
                 ctx, "Ban Failed",
                 "An error occurred while attempting to ban this user.")
 
+        # Confirmation reply sent safely before cleanup
         await self._reply(
             ctx,
             "User Banned",
-            f"{EMOJIS['ban']} **{target}** has been banned.\n\n{EMOJIS['arrow_point']} **Reason:** {reason}",
-            level="ERROR")
+            f"{EMOJIS.get('ban', '🔨')} **{target}** has been banned.\n\n{EMOJIS.get('arrow_point', '➡️')} **Reason:** {reason}",
+            level="ERROR",
+            show_footer=True)
+
+        # Cleanup invocation message immediately following successful completion
+        await self._cleanup(ctx)
 
         try:
             await send_mod_log(guild=guild,
@@ -235,7 +248,7 @@ class BanSystem(BaseAdminCog):
         if not await self.has_ban_permission(ctx):
             return await self._reply(
                 ctx, "Permission Denied",
-                f"{EMOJIS['fail']} You do not have permission to use this command."
+                f"{EMOJIS.get('fail', '❌')} You do not have permission to use this command."
             )
 
         reason = reason or "No reason provided"
@@ -262,9 +275,6 @@ class BanSystem(BaseAdminCog):
             return await self._reply(ctx, "Error",
                                      "Failed to fetch the ban entry records.")
 
-        # Delete the trigger command immediately after validation passes
-        await self._cleanup(ctx)
-
         try:
             await guild.unban(ban_entry.user,
                               reason=f"{reason} | Unbanned by {moderator}")
@@ -277,11 +287,16 @@ class BanSystem(BaseAdminCog):
                 ctx, "Unban Failed",
                 "An error occurred while attempting to unban this user.")
 
+        # Confirmation reply sent safely before cleanup
         await self._reply(
             ctx,
             "User Unbanned",
-            f"{EMOJIS['success']} **{ban_entry.user}** has been unbanned.\n\n{EMOJIS['arrow_point']} **Reason:** {reason}",
-            level="SUCCESS")
+            f"{EMOJIS.get('success', '✅')} **{ban_entry.user}** has been unbanned.\n\n{EMOJIS.get('arrow_point', '➡️')} **Reason:** {reason}",
+            level="SUCCESS",
+            show_footer=True)
+
+        # Cleanup invocation message immediately following successful completion
+        await self._cleanup(ctx)
 
         try:
             await send_mod_log(guild=guild,

@@ -33,8 +33,14 @@ class KickSystem(BaseAdminCog):
                      ctx: commands.Context,
                      title: str,
                      description: str,
-                     level: str = "ERROR"):
+                     level: str = "ERROR",
+                     show_footer: bool = False):
         embed = make_embed(title=title, description=description, level=level)
+
+        if show_footer:
+            embed.set_footer(text=f"Action by : {ctx.author}",
+                             icon_url=ctx.author.display_avatar.url)
+
         try:
             if ctx.interaction:
                 if ctx.interaction.response.is_done():
@@ -42,19 +48,25 @@ class KickSystem(BaseAdminCog):
                                                                ephemeral=True)
                 return await ctx.interaction.response.send_message(
                     embed=embed, ephemeral=True)
-            return await ctx.reply(embed=embed, mention_author=False)
+
+            try:
+                return await ctx.reply(embed=embed, mention_author=False)
+            except (discord.NotFound, discord.HTTPException):
+                # Fallback to normal message send if the original command message was deleted
+                return await ctx.channel.send(embed=embed)
         except discord.HTTPException:
             return None
 
     async def _cleanup(self, ctx: commands.Context):
-        if ctx.interaction:
-            return
         try:
-            await ctx.message.delete()
+            # Force attempt cleanup across execution types where context message exists
+            if ctx.message:
+                await ctx.message.delete()
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             pass
 
-    async def resolve_member(self, ctx: commands.Context, user_input):
+    async def resolve_member(self, ctx: commands.Context,
+                             user_input) -> discord.Member | None:
         guild = ctx.guild
         if guild is None:
             return None
@@ -63,15 +75,15 @@ class KickSystem(BaseAdminCog):
             return user_input
 
         if not user_input:
-            reference = ctx.message.reference
-            if reference and isinstance(reference.resolved, discord.Message):
-                resolved_author = reference.resolved.author
+            if ctx.message and ctx.message.reference and isinstance(
+                    ctx.message.reference.resolved, discord.Message):
+                resolved_author = ctx.message.reference.resolved.author
                 if isinstance(resolved_author, discord.Member):
                     return resolved_author
                 return guild.get_member(resolved_author.id)
 
-        if ctx.message.mentions:
-            return ctx.message.mentions[0]
+        if ctx.message and ctx.message.mentions:
+            return ctx.message.mentions[0]  # type: ignore
 
         try:
             user_id = int(user_input)
@@ -119,11 +131,11 @@ class KickSystem(BaseAdminCog):
         try:
             if reason != "No reason provided":
                 description = (
-                    f"{EMOJIS['warning']} You were kicked from **{guild.name}**\n\n"
-                    f"{EMOJIS['arrow_point']} **Moderator:** {moderator}\n"
-                    f"{EMOJIS['arrow_point']} **Reason:** {reason}")
+                    f"{EMOJIS.get('warning', '⚠️')} You were kicked from **{guild.name}**\n\n"
+                    f"{EMOJIS.get('arrow_point', '➡️')} **Moderator:** {moderator}\n"
+                    f"{EMOJIS.get('arrow_point', '➡️')} **Reason:** {reason}")
             else:
-                description = f"{EMOJIS['warning']} You were kicked from **{guild.name}**."
+                description = f"{EMOJIS.get('warning', '⚠️')} You were kicked from **{guild.name}**."
 
             embed = make_embed(title="You Were Kicked",
                                description=description,
@@ -151,7 +163,7 @@ class KickSystem(BaseAdminCog):
         if not await self.has_kick_permission(ctx):
             return await self._reply(
                 ctx, "Permission Denied",
-                f"{EMOJIS['fail']} You do not have permission to use this command."
+                f"{EMOJIS.get('fail', '❌')} You do not have permission to use this command."
             )
 
         reason = reason or "No reason provided"
@@ -166,9 +178,6 @@ class KickSystem(BaseAdminCog):
         if not valid:
             return await self._reply(ctx, "Permission Denied", error
                                      or "Invalid target.")
-
-        # Delete command message immediately upon successful validation
-        await self._cleanup(ctx)
 
         await self.send_kick_dm(member=member,
                                 guild=guild,
@@ -189,8 +198,12 @@ class KickSystem(BaseAdminCog):
         await self._reply(
             ctx,
             "User Kicked",
-            f"{EMOJIS['warning']} **{member}** has been kicked.\n\n{EMOJIS['arrow_point']} **Reason:** {reason}",
-            level="WARNING")
+            f"{EMOJIS.get('warning', '⚠️')} **{member}** has been kicked.\n\n{EMOJIS.get('arrow_point', '➡️')} **Reason:** {reason}",
+            level="WARNING",
+            show_footer=True)
+
+        # Cleanup invocation message immediately following successful completion
+        await self._cleanup(ctx)
 
         try:
             await send_mod_log(guild=guild,

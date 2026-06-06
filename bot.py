@@ -56,7 +56,7 @@ intents.members = True
 intents.message_content = True
 
 
-# BOT CLASS
+# --- BOT CORE CLASS ---
 class DigitalVigilBot(commands.Bot):
 
     def __init__(self) -> None:
@@ -95,7 +95,7 @@ class DigitalVigilBot(commands.Bot):
         else:
             logger.info("[SYNC] Command sync disabled")
 
-    # EXTENSION LOADER
+    # --- DYNAMIC EXTENSION LOADER ---
     async def load_all_extensions(self) -> None:
         base_path = os.path.abspath("cmd")
         for root, _, files in os.walk(base_path):
@@ -113,7 +113,7 @@ class DigitalVigilBot(commands.Bot):
                     logger.exception(
                         f"[EXTENSION ERROR] Failed to load {extension}: {exc}")
 
-    # STARTUP MODULE LOADER
+    # --- STARTUP HOOK SUBSYSTEMS ---
     async def load_startup_modules(self) -> None:
         base_path = os.path.abspath("utils/startups")
 
@@ -149,17 +149,18 @@ class DigitalVigilBot(commands.Bot):
                 except Exception as exc:
                     logger.exception(f"[STARTUP ERROR] {module}: {exc}")
 
-    # READY
+    # --- CONNECTIVITY GATEWAY INITIALIZATION ---
     async def on_ready(self) -> None:
         logger.info(
             f"[READY] Logged in as {self.user} ({self.user.id})"  # type: ignore
         )
+
         if self.presence_rotator is None:
             self.presence_rotator = PresenceRotator(self)
-            await self.presence_rotator.start()
+            self.presence_rotator.start()
+
         logger.info("[READY] Bot is fully operational")
 
-    # MESSAGE PIPELINE
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot or not message.guild:
             return
@@ -214,6 +215,8 @@ class DigitalVigilBot(commands.Bot):
 
     async def close(self) -> None:
         logger.info("[SHUTDOWN] Closing bot...")
+        if self.presence_rotator:
+            self.presence_rotator.stop()
         try:
             await close_database()
             logger.info("[SHUTDOWN] Database closed")
@@ -236,7 +239,7 @@ def main() -> None:
             logger.info(
                 "\n[SHUTDOWN] CTRL+C detected. Cleaning up execution...")
             try:
-                asyncio.run(close_database())
+                asyncio.get_event_loop().run_until_complete(close_database())
             except Exception:
                 pass
             logger.info("[EXIT] Shutdown complete")
@@ -255,7 +258,7 @@ def main() -> None:
         except Exception as exc:
             logger.exception(f"[CRASH] Unhandled exception occurred: {exc}")
             try:
-                asyncio.run(close_database())
+                asyncio.get_event_loop().run_until_complete(close_database())
             except Exception:
                 pass
 
@@ -263,6 +266,6 @@ def main() -> None:
             time.sleep(30)
 
 
-# RUN
+# Run Bot Engine
 if __name__ == "__main__":
     main()

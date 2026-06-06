@@ -198,7 +198,7 @@ class ServerInfo(BaseAdminCog):
                            level="SYSTEM")
         if g.icon: embed.set_thumbnail(url=g.icon.url)
         if g.banner: embed.set_image(url=g.banner.url)
-        embed.set_footer(text=f"Executed by: {ctx.author}",
+        embed.set_footer(text=f"Action by: {ctx.author}",
                          icon_url=ctx.author.display_avatar.url)
 
         view = ServerInfoView(guild=g, author_id=ctx.author.id)
