@@ -28,7 +28,6 @@ def format_duration(seconds: int) -> str:
     days, seconds = divmod(seconds, 86400)
     hours, seconds = divmod(seconds, 3600)
     minutes, seconds = divmod(seconds, 60)
-
     if days: parts.append(f"{days}d")
     if hours: parts.append(f"{hours}h")
     if minutes: parts.append(f"{minutes}m")
@@ -272,7 +271,7 @@ class Tempban(BaseAdminCog):
                     f"{EMOJIS['ban']} {user.mention} isolated successfully.\n\n"
                     f"{EMOJIS['arrow_point']} **Duration:** {human_duration}\n"
                     f"{EMOJIS['arrow_point']} **Reason:** {reason}"),
-                level="SUCCESS",
+                level="SUCCESS"
             ))
 
         await send_mod_log(
