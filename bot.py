@@ -15,7 +15,7 @@ from utils.handlers.sticky.sticky_handler import (handle_sticky)
 from utils.handlers.afk_handler import (handle_afk)
 from utils.handlers.mention import (handle_bot_mention)
 from utils.core.presence import (PresenceRotator)
-from utils.core.embeds import make_embed  # Ensure this import is available here
+from utils.core.embeds import make_embed 
 
 env_loaded = load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")

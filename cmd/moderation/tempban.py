@@ -28,10 +28,10 @@ def format_duration(seconds: int) -> str:
     days, seconds = divmod(seconds, 86400)
     hours, seconds = divmod(seconds, 3600)
     minutes, seconds = divmod(seconds, 60)
-    if days: parts.append(f"{days}d")
-    if hours: parts.append(f"{hours}h")
-    if minutes: parts.append(f"{minutes}m")
-    if seconds: parts.append(f"{seconds}s")
+    if days: parts.append(f"{days}d")  # noqa: E701
+    if hours: parts.append(f"{hours}h")  # noqa: E701
+    if minutes: parts.append(f"{minutes}m")  # noqa: E701
+    if seconds: parts.append(f"{seconds}s")  # noqa: E701
     return " ".join(parts) or "0s"
 
 
