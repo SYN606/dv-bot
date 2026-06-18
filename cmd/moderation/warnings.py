@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from utils.permissions.base_admin import BaseAdminCog
+from utils.permissions.base_admin import BaseAdminCog, admin_command
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import send_mod_log
@@ -17,20 +17,6 @@ from db.db_helpers.warnings import (
 class WarnSystem(BaseAdminCog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-
-    async def has_warn_permission(self, ctx: commands.Context) -> bool:
-        guild = ctx.guild
-        if guild is None:
-            return False
-        author = ctx.author
-        if not isinstance(author, discord.Member):
-            return False
-        if author.id == guild.owner_id:
-            return True
-        perms = author.guild_permissions
-        if perms.administrator:
-            return True
-        return perms.manage_messages
 
     async def _reply(
         self,
@@ -49,7 +35,7 @@ class WarnSystem(BaseAdminCog):
                 )
             try:
                 return await ctx.reply(embed=embed, mention_author=False)
-            except discord.NotFound, discord.HTTPException:
+            except (discord.NotFound, discord.HTTPException):  # FIXED: Wrapped in parentheses
                 return await ctx.channel.send(embed=embed)
         except discord.HTTPException:
             return None
@@ -58,7 +44,7 @@ class WarnSystem(BaseAdminCog):
         try:
             if ctx.message:
                 await ctx.message.delete()
-        except discord.Forbidden, discord.NotFound, discord.HTTPException:
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):  # FIXED: Wrapped in parentheses
             pass
 
     async def resolve_target(
@@ -84,14 +70,14 @@ class WarnSystem(BaseAdminCog):
                 return ctx.message.mentions[0]
             try:
                 user_id = int(str(user_input))
-            except TypeError, ValueError:
+            except (TypeError, ValueError):  
                 return None
             member = guild.get_member(user_id)
             if member:
                 return member
             try:
                 return await self.bot.fetch_user(user_id)
-            except discord.NotFound, discord.Forbidden, discord.HTTPException:
+            except (discord.NotFound, discord.Forbidden, discord.HTTPException):  
                 return None
         except Exception:
             return None
@@ -121,13 +107,11 @@ class WarnSystem(BaseAdminCog):
         return True, None
 
     # PURE PREFIX MODERATION ENGINE WITH COOLDOWNS
-    @commands.command(
+    @admin_command(
         name="warn", description="Issue a formal text warning infraction to a member"
     )
     @commands.guild_only()
-    @commands.cooldown(
-        1, 3.0, commands.BucketType.guild
-    ) 
+    @commands.cooldown(1, 3.0, commands.BucketType.guild)
     async def legacy_warn(
         self,
         ctx: commands.Context,
@@ -138,12 +122,6 @@ class WarnSystem(BaseAdminCog):
         try:
             if ctx.guild is None or ctx.guild.id is None:
                 return
-            if not await self.has_warn_permission(ctx):
-                return await self._reply(
-                    ctx,
-                    "Permission Denied",
-                    f"{EMOJIS.get('fail', '❌')} Missing Authorization.",
-                )
 
             if not reason or reason.strip() == "":
                 return await self._reply(
@@ -225,20 +203,16 @@ class WarnSystem(BaseAdminCog):
         except Exception:
             pass
 
-    @commands.command(
+    @admin_command(
         name="warnings",
         aliases=["warnlist", "warns"],
         description="Check tracking logs for a member",
     )
     @commands.guild_only()
-    @commands.cooldown(
-        2, 5.0, commands.BucketType.user
-    )
+    @commands.cooldown(2, 5.0, commands.BucketType.user)
     async def legacy_warnings(self, ctx: commands.Context, user: Optional[str] = None):
         try:
             if ctx.guild is None:
-                return
-            if not await self.has_warn_permission(ctx):
                 return
 
             resolved_target = await self.resolve_target(ctx, user)
@@ -277,18 +251,16 @@ class WarnSystem(BaseAdminCog):
         except Exception:
             pass
 
-    @commands.command(
+    @admin_command(
         name="delwarn",
         description="Remove an infraction tracking row sequence by numerical ID key",
-        aliases=["dw"]
+        aliases=["dw"],
     )
     @commands.guild_only()
     @commands.cooldown(2, 4.0, commands.BucketType.user)
     async def delwarn(self, ctx: commands.Context, warn_id: int):
         try:
             if ctx.guild is None or ctx.guild.id is None:
-                return
-            if not await self.has_warn_permission(ctx):
                 return
 
             try:
@@ -329,15 +301,13 @@ class WarnSystem(BaseAdminCog):
         except Exception:
             pass
 
-    @commands.command(
+    @admin_command(
         name="clearwarnings",
         description="Wipe a member's moderation warning index completely clean",
-        aliases=["clswarns"]
+        aliases=["clswarns"],
     )
     @commands.guild_only()
-    @commands.cooldown(
-        1, 10.0, commands.BucketType.guild
-    ) 
+    @commands.cooldown(1, 10.0, commands.BucketType.guild)
     async def clearwarnings(self, ctx: commands.Context, user: Optional[str] = None):
         try:
             if (
@@ -346,16 +316,6 @@ class WarnSystem(BaseAdminCog):
                 or not isinstance(ctx.author, discord.Member)
             ):
                 return
-
-            if (
-                not ctx.author.guild_permissions.moderate_members
-                and not ctx.author.id == ctx.guild.owner_id
-            ):
-                return await self._reply(
-                    ctx,
-                    "Permission Denied",
-                    f"{EMOJIS.get('fail', '❌')} Missing profile role-management clearance.",
-                )
 
             target = await self.resolve_target(ctx, user)
             if target is None:
@@ -404,6 +364,13 @@ class WarnSystem(BaseAdminCog):
                 ctx,
                 "Rate Limit Enforced",
                 f"{EMOJIS.get('fail', '❌')} System cooling down. Try again in **{error.retry_after:.1f}s**.",
+                level="ERROR",
+            )
+        elif isinstance(error, commands.CheckFailure):
+            await self._reply(
+                ctx,
+                "Permission Denied",
+                f"{EMOJIS.get('fail', '❌')} Missing Staff Authorization.",
                 level="ERROR",
             )
         elif isinstance(error, commands.NoPrivateMessage):
