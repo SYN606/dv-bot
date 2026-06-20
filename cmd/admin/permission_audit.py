@@ -1,8 +1,9 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+from typing import Union
 from utils.permissions.base_admin import BaseAdminCog
-from utils.permissions.check_perms import (is_bot_admin)
+from utils.permissions.check_perms import is_bot_admin
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 
@@ -27,240 +28,139 @@ PERMISSIONS = {
     "priority_speaker": ("Priority Speaker", "green"),
     "manage_emojis_and_stickers": ("Manage Emojis & Stickers", "green"),
     "manage_expressions": ("Manage Expressions", "green"),
-    "create_instant_invite": ("Create Invite", "green")
+    "create_instant_invite": ("Create Invite", "green"),
 }
+
+EmojiType = Union[str, discord.PartialEmoji]
 
 
 class PermissionAudit(BaseAdminCog):
-
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     async def has_permission_audit_access(
-            self, interaction: discord.Interaction) -> bool:
-
-        guild = interaction.guild
-
-        if guild is None:
-            return False
-
+        self, interaction: discord.Interaction
+    ) -> bool:
         user = interaction.user
-
-        if not isinstance(user, discord.Member):
+        if not isinstance(user, discord.Member) or not interaction.guild:
             return False
-
-        # SERVER OWNER
-        if user.id == guild.owner_id:
+        if (
+            user.id == interaction.guild.owner_id
+            or user.guild_permissions.administrator
+        ):
             return True
-
-        # SERVER ADMIN
-        if (user.guild_permissions.administrator):
+        if await is_bot_admin(interaction):
             return True
+        if (
+            user.guild_permissions.moderate_members
+            and user.guild_permissions.manage_nicknames
+            and user.guild_permissions.manage_messages
+        ):
+            return True
+        return False
 
-        # BOT ADMIN
-        return await is_bot_admin(interaction)
-
-    def get_permission_emoji(
-        self,
-        level: str,
-    ):
-
+    def get_permission_emoji(self, level: str) -> EmojiType:
         if level == "red":
-            return EMOJIS["red_dot"]
-
+            return EMOJIS.get("red_dot", "🔴")
         if level == "yellow":
-            return EMOJIS["warning"]
+            return EMOJIS.get("warning", "⚠️")
+        return EMOJIS.get("green_dot", "🟢")
 
-        return EMOJIS["green_dot"]
-
-    def _analyze_member(self, member: discord.Member):
-
+    def _analyze_member(self, member: discord.Member) -> list[dict]:
+        # PERMISSIONS is now accessed globally from this file
         perms = member.guild_permissions
-
-        found_permissions = []
-
+        found = []
         for key, (label, level) in PERMISSIONS.items():
-
             if getattr(perms, key, False):
+                sources = [
+                    r.mention
+                    for r in member.roles
+                    if getattr(r.permissions, key, False)
+                ]
+                found.append(
+                    {
+                        "permission": label,
+                        "level": level,
+                        "roles": sources if sources else ["Direct Permission"],
+                    }
+                )
+        return found
 
-                role_sources = []
-
-                for role in member.roles:
-
-                    if getattr(role.permissions, key, False):
-
-                        role_sources.append(role.mention)
-
-                found_permissions.append({
-                    "permission":
-                    label,
-                    "level":
-                    level,
-                    "roles":
-                    (role_sources if role_sources else ["Direct Permission"])
-                })
-
-        return found_permissions
-
-    @app_commands.command(name="perm-check",
-                          description="Check member permissions")
-    async def perm_check(self, interaction: discord.Interaction,
-                         member: discord.Member):
-
-        # PERMISSION CHECK
+    @app_commands.command(name="perm-check", description="Audit a member's permissions")
+    async def perm_check(
+        self, interaction: discord.Interaction, member: discord.Member
+    ):
         if not await self.has_permission_audit_access(interaction):
+            return await interaction.response.send_message(
+                embed=make_embed(
+                    title="Access Denied",
+                    description="Requires Senior Moderator status.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
 
-            return await interaction.response.send_message(embed=make_embed(
-                title="Permission Denied",
-                description=(f"{EMOJIS['fail']} "
-                             "You do not have permission "
-                             "to use this command."),
-                level="ERROR"),
-                                                           ephemeral=True)
+        data = self._analyze_member(member)
+        if not data:
+            return await interaction.response.send_message(
+                embed=make_embed(
+                    title="Clean Audit",
+                    description=f"{member.display_name} has no flagged permissions.",
+                    level="SUCCESS",
+                ),
+                ephemeral=True,
+            )
 
-        permissions = self._analyze_member(member)
+        embed = make_embed(
+            title=f"Audit: {member.display_name}",
+            description=f"Flagged {len(data)} permissions.",
+            level="WARNING",
+        )
+        groups = {"red": [], "yellow": [], "green": []}
+        for p in data:
+            emoji = self.get_permission_emoji(p["level"])
+            roles = " • ".join(p["roles"][:2])
+            if len(p["roles"]) > 2:
+                roles += "..."
+            groups[p["level"]].append(f"{emoji} **{p['permission']}**\n└ `{roles}`")
 
-        if not permissions:
+        for level, lines in groups.items():
+            if lines:
+                embed.add_field(
+                    name=f"{level.upper()} RISK", value="\n".join(lines), inline=False
+                )
 
-            embed = make_embed(title="Permission Inspection",
-                               description=(f"{EMOJIS['success']} "
-                                            f"**{member.display_name}** "
-                                            f"has no important permissions."),
-                               level="SUCCESS")
-
-            embed.set_thumbnail(url=member.display_avatar.url)
-
-            return await interaction.response.send_message(embed=embed,
-                                                           ephemeral=True)
-
-        red_count = sum(1 for x in permissions if x["level"] == "red")
-        yellow_count = sum(1 for x in permissions if x["level"] == "yellow")
-        green_count = sum(1 for x in permissions if x["level"] == "green")
-        permission_lines = []
-        for entry in permissions:
-            unique_roles = []
-            for role in entry["roles"]:
-                if role not in unique_roles:
-                    unique_roles.append(role)
-            role_text = " • ".join(unique_roles[:2])
-            if len(unique_roles) > 2:
-                role_text += "..."
-            permission_lines.append(
-                (f"{self.get_permission_emoji(entry['level'])} "
-                 f"**{entry['permission']}**\n"
-                 f"└ {role_text}"))
-        embed = make_embed(title="Permission Inspection",
-                           description=(f"{EMOJIS['moderation']} "
-                                        f"Permissions for "
-                                        f"**{member.display_name}**"),
-                           level="WARNING")
-        chunks = []
-        current_chunk = ""
-        for line in permission_lines:
-            if (len(current_chunk) + len(line) + 2) > 900:
-                chunks.append(current_chunk)
-                current_chunk = line
-            else:
-                if current_chunk:
-                    current_chunk += "\n\n"
-                current_chunk += line
-        if current_chunk:
-            chunks.append(current_chunk)
-        chunks = chunks[:3]
-        for index, chunk in enumerate(chunks):
-            embed.add_field(
-                name=(f"{EMOJIS['warning']} Permissions" if index == 0 else
-                      (f"{EMOJIS['warning']} "
-                       f"Permissions Cont.")),
-                value=chunk,
-                inline=False)
-        embed.add_field(name=(f"{EMOJIS['folder']} Summary"),
-                        value=(f"{EMOJIS['red_dot']} "
-                               f"Critical: `{red_count}`\n"
-                               f"{EMOJIS['warning']} "
-                               f"Moderate: `{yellow_count}`\n"
-                               f"{EMOJIS['green_dot']} "
-                               f"Low Risk: `{green_count}`"),
-                        inline=False)
-        embed.set_thumbnail(url=member.display_avatar.url, )
-        embed.set_footer(text=f"ID: {member.id}", )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        embed.set_footer(text=f"User ID: {member.id}")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="perm-scan",
-                          description="Scan server permissions")
+    @app_commands.command(
+        name="perm-scan", description="Scan server for permissioned users"
+    )
     async def perm_scan(self, interaction: discord.Interaction):
-
-        # PERMISSION CHECK
         if not await self.has_permission_audit_access(interaction):
+            return await interaction.response.send_message(
+                embed=make_embed(title="Access Denied", level="ERROR"), ephemeral=True
+            )
 
-            return await interaction.response.send_message(embed=make_embed(
-                title="Permission Denied",
-                description=(f"{EMOJIS['fail']} "
-                             "You do not have permission "
-                             "to use this command."),
-                level="ERROR"),
-                                                           ephemeral=True)
-        guild = interaction.guild
-        if guild is None:
-            return
         await interaction.response.defer(ephemeral=True)
         results = []
-        for member in guild.members:
+        for member in interaction.guild.members: # type: ignore
             if member.bot:
                 continue
-            permissions = self._analyze_member(member)
-            if not permissions:
-                continue
-            red_count = sum(1 for x in permissions if x["level"] == "red")
-            yellow_count = sum(1 for x in permissions
-                               if x["level"] == "yellow")
-            green_count = sum(1 for x in permissions if x["level"] == "green")
-            preview = " • ".join([(f"{self.get_permission_emoji(x['level'])} "
-                                   f"{x['permission']}")
-                                  for x in permissions[:3]])
-            if len(permissions) > 3:
-                preview += "..."
-            role_names = []
-            for entry in permissions:
-                for role in entry["roles"]:
-                    if role not in role_names:
-                        role_names.append(role)
-            role_preview = " • ".join(role_names[:2])
-            if len(role_names) > 2:
-                role_preview += "..."
-            results.append((red_count, yellow_count,
-                            (f"{EMOJIS['arrow_point']} "
-                             f"**{member.display_name}**\n"
-                             f"└ Roles: {role_preview}\n"
-                             f"└ {preview}\n"
-                             f"└ "
-                             f"{EMOJIS['red_dot']} `{red_count}` "
-                             f"{EMOJIS['warning']} `{yellow_count}` "
-                             f"{EMOJIS['green_dot']} `{green_count}`")))
-        if not results:
-            embed = make_embed(
-                title="Permission Scan",
-                description=(f"{EMOJIS['success']} "
-                             f"No important permissions found."),
-                level="SUCCESS")
-
-            return await interaction.followup.send(embed=embed, ephemeral=True)
+            data = self._analyze_member(member)
+            if data:
+                red = sum(1 for x in data if x["level"] == "red")
+                yellow = sum(1 for x in data if x["level"] == "yellow")
+                results.append((red, yellow, member.display_name))
 
         results.sort(key=lambda x: (x[0], x[1]), reverse=True)
-        description = "\n\n".join([x[2] for x in results[:20]])
-        if len(results) > 20:
-            description += (f"\n\n"
-                            f"{EMOJIS['arrow_white']} "
-                            f"And **{len(results) - 20}** more users.")
-        if len(description) > 3500:
-            description = (description[:3500] + "\n\n...")
-        embed = make_embed(title="Permission Scan",
-                           description=description,
-                           level="WARNING")
-        embed.set_footer(text=(f"Users With Permissions: "
-                               f"{len(results)}"))
-        if guild.icon:
-            embed.set_thumbnail(url=guild.icon.url, )
+        desc = "\n".join([f"**{r[2]}** | 🔴`{r[0]}` ⚠️`{r[1]}`" for r in results[:20]])
+        embed = make_embed(
+            title="Permission Scan Summary",
+            description=desc or "No members found.",
+            level="WARNING",
+        )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
 
