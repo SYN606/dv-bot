@@ -43,7 +43,7 @@ class WarnSystem(BaseAdminCog):
         try:
             if ctx.message:
                 await ctx.message.delete()
-        except discord.Forbidden, discord.NotFound, discord.HTTPException:
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             pass
 
     async def resolve_target(
@@ -81,7 +81,7 @@ class WarnSystem(BaseAdminCog):
             return member
         try:
             return await self.bot.fetch_user(user_id)
-        except discord.NotFound, discord.Forbidden, discord.HTTPException:
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
             return None
 
     async def validate_warn(
