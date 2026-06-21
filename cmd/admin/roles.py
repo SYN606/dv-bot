@@ -60,7 +60,7 @@ class Roles(BaseAdminCog):
         try:
             if ctx.message:
                 await ctx.message.delete()
-        except discord.Forbidden, discord.HTTPException:
+        except (discord.Forbidden, discord.HTTPException):
             pass
 
     @commands.group(name="role", invoke_without_command=True)
@@ -69,7 +69,7 @@ class Roles(BaseAdminCog):
         await ctx.send(
             embed=make_embed(
                 title="Syntax",
-                description="Use `!role add <user> <role>` or `!role remove <user> <role>`",
+                description="Use `dv role add <user> <role>` or `!role remove <user> <role>`",
                 level="WARNING",
             )
         )

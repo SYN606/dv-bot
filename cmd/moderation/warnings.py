@@ -34,7 +34,7 @@ class WarnSystem(BaseAdminCog):
                 )
             try:
                 return await ctx.reply(embed=embed, mention_author=False)
-            except discord.NotFound, discord.HTTPException:
+            except (discord.NotFound, discord.HTTPException):
                 return await ctx.channel.send(embed=embed)
         except discord.HTTPException:
             return None
@@ -73,7 +73,7 @@ class WarnSystem(BaseAdminCog):
 
         try:
             user_id = int(str(user_input))
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             return None
 
         member = guild.get_member(user_id)
