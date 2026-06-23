@@ -10,7 +10,6 @@ logger = logging.getLogger("Digital Vigital")
 async def startup(bot: discord.Client, ) -> None:
     logger.info("[VERIFICATION] Initializing verification system...")
 
-    # REGISTER PERSISTENT VIEW
     try:
         bot.add_view(VerifyButtonView())
         logger.info("[VERIFICATION] Persistent verification view registered")
