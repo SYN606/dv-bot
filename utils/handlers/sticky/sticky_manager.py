@@ -13,11 +13,15 @@ IMAGE_URL_REGEX = re.compile(
 
 class StickyPayload:
 
-    def __init__(self,
-                 *,
-                 content: Optional[str] = None,
-                 message_id: Optional[int] = None):
+    def __init__(
+            self,
+            *,
+            content: Optional[str] = None,
+            embed: Optional[
+                discord.Embed] = None,  # Added support for pre-built embeds
+            message_id: Optional[int] = None):
         self.content = content.strip() if content else ""
+        self.embed = embed  # Store the custom embed reference
         self.message_id = message_id
 
 
@@ -30,7 +34,6 @@ def build_sticky_embed(text_content: str) -> discord.Embed:
     if image_match:
         image_url = image_match.group(1)
         embed.set_image(url=image_url)
-        # Clean the extracted image URL out of the main description layout string
         cleaned_text = text_content.replace(image_url, "").strip()
         embed.description = cleaned_text if cleaned_text else "📌 **Sticky Message**"
     else:
@@ -61,7 +64,8 @@ async def process_sticky(channel: discord.TextChannel,
                          *,
                          cooldown: float = 4.5,
                          force: bool = False) -> Optional[int]:
-    if not payload.content:
+    # Ensure we have either text content OR an active pre-made embed layout
+    if not payload.content and not payload.embed:
         return payload.message_id
 
     lock = _CHANNEL_LOCKS.setdefault(channel.id, asyncio.Lock())
@@ -81,7 +85,9 @@ async def process_sticky(channel: discord.TextChannel,
         if payload.message_id:
             await delete_old_sticky(channel, payload.message_id)
 
-        target_embed = build_sticky_embed(payload.content)
+        # Use the custom embed if provided; otherwise, build one dynamically from string text
+        target_embed = payload.embed if payload.embed else build_sticky_embed(
+            payload.content)
 
         try:
             new_msg = await channel.send(

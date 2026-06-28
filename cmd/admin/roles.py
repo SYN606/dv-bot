@@ -21,17 +21,27 @@ class Roles(BaseAdminCog):
     def _find_role(self, guild: discord.Guild,
                    query: str) -> Optional[discord.Role]:
         match = re.search(r"<@&?(\d+)>", query) or re.search(r"^(\d+)$", query)
-        if match: return guild.get_role(int(match.group(1)))
+        if match:
+            return guild.get_role(int(match.group(1)))
 
         query = query.lower().strip()
-        roles = {r.name.lower(): r for r in guild.roles}
-        if query in roles: return roles[query]
+        roles_map = {r.name.lower(): r for r in guild.roles}
+
+        if query in roles_map:
+            return roles_map[query]
+
+        substring_matches = [
+            r for name, r in roles_map.items() if query in name
+        ]
+        if substring_matches:
+            substring_matches.sort(key=lambda r: len(r.name))
+            return substring_matches[0]
 
         matches = difflib.get_close_matches(query,
-                                            list(roles.keys()),
+                                            list(roles_map.keys()),
                                             n=1,
-                                            cutoff=0.6)
-        return roles[matches[0]] if matches else None
+                                            cutoff=0.5)
+        return roles_map[matches[0]] if matches else None
 
     async def _prefix_validate(self, ctx: commands.Context,
                                target: discord.Member,
@@ -48,10 +58,29 @@ class Roles(BaseAdminCog):
                            delete_after=5)
             return False
 
+        if author.id != guild.owner_id:
+            if author.top_role.position <= target.top_role.position:
+                await ctx.send(embed=make_embed(
+                    title="Hierarchy Error",
+                    description=
+                    "Your highest role must be higher than the target's highest role.",
+                    level="ERROR"),
+                               delete_after=5)
+                return False
+            if author.top_role.position <= role.position:
+                await ctx.send(embed=make_embed(
+                    title="Hierarchy Error",
+                    description=
+                    "Your highest role must be higher than the role you are managing.",
+                    level="ERROR"),
+                               delete_after=5)
+                return False
+
         if guild.me.top_role.position <= target.top_role.position or guild.me.top_role.position <= role.position:
             await ctx.send(embed=make_embed(
                 title="Hierarchy Error",
-                description="Cannot manage this target/role due to hierarchy.",
+                description=
+                "I cannot manage this target/role due to my position in the hierarchy.",
                 level="ERROR"),
                            delete_after=5)
             return False
@@ -73,13 +102,16 @@ class Roles(BaseAdminCog):
                   role_query: str):
         guild = cast(discord.Guild, ctx.guild)
         role = self._find_role(guild, role_query)
-        if not role or not await self._prefix_validate(ctx, member, role):
-            if not role:
-                await ctx.send(embed=make_embed(
-                    title="Not Found",
-                    description=f"Role `{role_query}` not found.",
-                    level="ERROR"),
-                               delete_after=5)
+
+        if not role:
+            await ctx.send(embed=make_embed(
+                title="Not Found",
+                description=f"Role `{role_query}` could not be found.",
+                level="ERROR"),
+                           delete_after=5)
+            return await self._cleanup(ctx)
+
+        if not await self._prefix_validate(ctx, member, role):
             return await self._cleanup(ctx)
 
         if role in member.roles:
@@ -89,12 +121,20 @@ class Roles(BaseAdminCog):
                 level="WARNING"),
                            delete_after=5)
         else:
-            await member.add_roles(role, reason=f"Managed by {ctx.author}")
-            await ctx.send(embed=make_embed(
-                title="Success",
-                description=f"Added {role.mention} to {member.mention}.",
-                level="SUCCESS"),
-                           delete_after=5)
+            try:
+                await member.add_roles(role, reason=f"Managed by {ctx.author}")
+                await ctx.send(embed=make_embed(
+                    title="Success",
+                    description=f"Added {role.mention} to {member.mention}.",
+                    level="SUCCESS"),
+                               delete_after=5)
+            except discord.HTTPException:
+                await ctx.send(embed=make_embed(
+                    title="Execution Error",
+                    description="Failed to apply role modifications.",
+                    level="ERROR"),
+                               delete_after=5)
+
         await self._cleanup(ctx)
 
     @role.command(name="remove", aliases=["take", "r"])
@@ -103,13 +143,16 @@ class Roles(BaseAdminCog):
                      role_query: str):
         guild = cast(discord.Guild, ctx.guild)
         role = self._find_role(guild, role_query)
-        if not role or not await self._prefix_validate(ctx, member, role):
-            if not role:
-                await ctx.send(embed=make_embed(
-                    title="Not Found",
-                    description=f"Role `{role_query}` not found.",
-                    level="ERROR"),
-                               delete_after=5)
+
+        if not role:
+            await ctx.send(embed=make_embed(
+                title="Not Found",
+                description=f"Role `{role_query}` could not be found.",
+                level="ERROR"),
+                           delete_after=5)
+            return await self._cleanup(ctx)
+
+        if not await self._prefix_validate(ctx, member, role):
             return await self._cleanup(ctx)
 
         if role not in member.roles:
@@ -119,12 +162,22 @@ class Roles(BaseAdminCog):
                 level="WARNING"),
                            delete_after=5)
         else:
-            await member.remove_roles(role, reason=f"Managed by {ctx.author}")
-            await ctx.send(embed=make_embed(
-                title="Success",
-                description=f"Removed {role.mention} from {member.mention}.",
-                level="SUCCESS"),
-                           delete_after=5)
+            try:
+                await member.remove_roles(role,
+                                          reason=f"Managed by {ctx.author}")
+                await ctx.send(embed=make_embed(
+                    title="Success",
+                    description=
+                    f"Removed {role.mention} from {member.mention}.",
+                    level="SUCCESS"),
+                               delete_after=5)
+            except discord.HTTPException:
+                await ctx.send(embed=make_embed(
+                    title="Execution Error",
+                    description="Failed to remove role modifications.",
+                    level="ERROR"),
+                               delete_after=5)
+
         await self._cleanup(ctx)
 
 

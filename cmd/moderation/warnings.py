@@ -5,12 +5,8 @@ from utils.permissions.base_admin import BaseAdminCog, admin_command
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import send_mod_log
-from db.db_helpers.warnings import (
-    add_warning,
-    get_warnings,
-    delete_warning_by_id,
-    clear_all_warnings,
-)
+from db.db_helpers.warnings import (add_warning, get_warnings,
+                                    delete_warning_by_id, clear_all_warnings)
 
 
 class WarnSystem(BaseAdminCog):
