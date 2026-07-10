@@ -17,6 +17,49 @@
           "is_slash": false
         },
         {
+          "name": "autoresponder",
+          "aliases": ["ar"],
+          "description": "Manage the server autoresponder processing matrix to catch and reply to message patterns.",
+          "usage": "/autoresponder <add/edit/remove/list>",
+          "examples": [
+            "/autoresponder list",
+            "/autoresponder remove rule_id: 12"
+          ],
+          "permissions": "Base Admin Cog Level / Configuration Mod",
+          "is_prefix": false,
+          "is_slash": true,
+          "subcommands": [
+            {
+              "name": "add",
+              "description": "Create or update an active autoresponder rule configuration.",
+              "usage": "/autoresponder add <trigger> <match_type> [reply] [embed_title] [image_url] [reactions] [delete_trigger] [cooldown]",
+              "examples": [
+                "/autoresponder add trigger: !ip match_type: exact reply: Play at mc.server.com"
+              ]
+            },
+            {
+              "name": "edit",
+              "description": "Modify properties for an existing autoresponder configuration profile.",
+              "usage": "/autoresponder edit <rule_id> [trigger] [match_type] [reply] [embed_title] [image_url] [reactions] [delete_trigger] [cooldown] [enabled]",
+              "examples": [
+                "/autoresponder edit rule_id: 42 cooldown: 10 enabled: False"
+              ]
+            },
+            {
+              "name": "remove",
+              "description": "Delete an active autoresponder rule sequence using its Unique ID.",
+              "usage": "/autoresponder remove <rule_id>",
+              "examples": ["/autoresponder remove rule_id: 42"]
+            },
+            {
+              "name": "list",
+              "description": "Display all custom autoresponder execution logs configured for this server.",
+              "usage": "/autoresponder list",
+              "examples": ["/autoresponder list"]
+            }
+          ]
+        },
+        {
           "name": "mediaonly",
           "aliases": ["media"],
           "description": "Toggles an automated enforcement lock on a channel restricting text-only messages.",
