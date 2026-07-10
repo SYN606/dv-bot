@@ -2,21 +2,30 @@ import os
 import time
 import asyncio
 import logging
-import discord
 import inspect
+from typing import cast
+import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+
+# Database Infrastructure
 from db.schema import init_schema
 from db.engine import close_database
-from utils.handlers.prefix import (dynamic_prefix, normalize_prefix)
-from utils.core.interaction_check import (command_toggle_check)
-from utils.handlers.media_only import (enforce_media_only)
-from utils.handlers.sticky.sticky_handler import (handle_sticky)
-from utils.handlers.afk_handler import (handle_afk)
-from utils.handlers.mention import (handle_bot_mention)
-from utils.core.presence import (PresenceRotator)
-from utils.core.embeds import make_embed 
 
+# Custom Handlers & Feature Interceptors
+from utils.handlers.prefix import dynamic_prefix, normalize_prefix
+from utils.handlers.media_only import enforce_media_only
+from utils.handlers.sticky.sticky_handler import handle_sticky
+from utils.handlers.autoresponder_handler import handle_autoresponder
+from utils.handlers.mention import handle_bot_mention
+from utils.handlers.afk_handler import handle_afk
+
+# Core System Utilities
+from utils.core.interaction_check import command_toggle_check
+from utils.core.presence import PresenceRotator
+from utils.core.embeds import make_embed
+
+# Load Environmental Variables
 env_loaded = load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
@@ -41,10 +50,8 @@ DEBUG_HTTP = env_bool("DEBUG_HTTP", False)
 if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN not found in environment")
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(levelname)s] %(message)s",
-)
+# Logging Initialization Layout
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger("Digital Vigil")
 
 if DEBUG_HTTP:
@@ -52,6 +59,7 @@ if DEBUG_HTTP:
 
 logger.info(f"[ENV] Running in {ENV.upper()} mode")
 
+# Application Intent Mapping Configuration
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
@@ -61,12 +69,10 @@ intents.message_content = True
 class DigitalVigilBot(commands.Bot):
 
     def __init__(self) -> None:
-        super().__init__(
-            command_prefix=dynamic_prefix,
-            intents=intents,
-            help_command=None,
-            case_insensitive=True,
-        )
+        super().__init__(command_prefix=dynamic_prefix,
+                         intents=intents,
+                         help_command=None,
+                         case_insensitive=True)
         self.presence_rotator: PresenceRotator | None = None
 
     async def setup_hook(self) -> None:
@@ -153,7 +159,7 @@ class DigitalVigilBot(commands.Bot):
     # --- CONNECTIVITY GATEWAY INITIALIZATION ---
     async def on_ready(self) -> None:
         logger.info(
-            f"[READY] Logged in as {self.user} ({self.user.id})"  # type: ignore
+            f"[READY] Logged in as {self.user} ({cast(discord.ClientUser, self.user).id})"
         )
 
         if self.presence_rotator is None:
@@ -168,19 +174,16 @@ class DigitalVigilBot(commands.Bot):
 
         try:
             message.content = normalize_prefix(message.content)
-
             if await enforce_media_only(message):
                 return
-
             await handle_sticky(message)
-
+            if await handle_autoresponder(self, message):
+                return
             if self.user and self.user.mentioned_in(message):
                 await handle_bot_mention(self, message)
         except Exception as exc:
             logger.exception(f"[PIPELINE ERROR] {exc}")
-
         await self.process_commands(message)
-
         try:
             await handle_afk(message)
         except Exception as exc:
@@ -190,20 +193,16 @@ class DigitalVigilBot(commands.Bot):
                                error: commands.CommandError) -> None:
         error = getattr(error, "original", error)
 
-        # Graceful handling for Unknown / Invalid Prefixed Text Strings
         if isinstance(error, commands.CommandNotFound):
             invoked_with = ctx.invoked_with or "Unknown"
             try:
-                await ctx.send(
-                    embed=make_embed(
-                        title="Command Not Found",
-                        description=
-                        f"The command `{invoked_with}` does not exist. Use `/` slash commands to browse available systems.",
-                        level="WARNING",
-                        footer=f"Requested by {ctx.author}"),
-                    delete_after=
-                    10.0  # Self-destruct after 10s to minimize server text clutter
-                )
+                await ctx.send(embed=make_embed(
+                    title="Command Not Found",
+                    description=
+                    f"The command `{invoked_with}` does not exist. Use `/` slash commands to browse available systems.",
+                    level="WARNING",
+                    footer=f"Requested by {ctx.author}"),
+                               delete_after=10.0)
             except Exception:
                 pass
             return

@@ -19,7 +19,6 @@ class TempbanBackgroundHandler:
 
     @tasks.loop(seconds=5)
     async def auto_unban_check(self):
-        """Background worker tracking and handling automatic unbans."""
         try:
             if not self.bot.user:
                 return
@@ -48,23 +47,19 @@ class TempbanBackgroundHandler:
 
                 member = guild.get_member(record.user_id)
                 if not member:
-                    # User left the server entirely, clear out database record silently
                     await remove_tempban(guild_id=guild.id,
                                          user_id=record.user_id,
                                          moderator_id=bot_user_id)
                     continue
 
-                # Control variable to determine if logs should be fired upon successful execution
                 action_successful = False
 
                 try:
-                    # Strip tempban role
                     if tempban_role in member.roles:
                         await member.remove_roles(
                             tempban_role,
                             reason="Tempban automatically expired.")
 
-                    # Re-verify user if verified configurations exist
                     config = await get_verification_config(guild.id)
                     if config and config.verified_role_id:
                         verified_role = guild.get_role(config.verified_role_id)
@@ -85,14 +80,11 @@ class TempbanBackgroundHandler:
                         f"[TEMPBAN] Discord API exception when untempbanning {member.id}: {e}"
                     )
 
-                # Process Database Cleanup & Mod Logging outside of the error handling window
                 if action_successful:
-                    # Remove entry from active database tracking
                     await remove_tempban(guild_id=guild.id,
                                          user_id=member.id,
                                          moderator_id=bot_user_id)
 
-                    # Fire explicit Mod Log
                     try:
                         await send_mod_log(
                             guild=guild,

@@ -211,12 +211,65 @@ class WarningRecord(Base, TimestampMixin):
                                         nullable=False,
                                         server_default="No reason provided")
 
-    __table_args__ = (
-        Index("idx_warning_guild_user", "guild_id", "user_id"),
-        CheckConstraint("guild_id > 0", name="chk_warn_guild_id"),
-        CheckConstraint("user_id > 0", name="chk_warn_user_id"),
-        CheckConstraint("moderator_id > 0", name="chk_warn_mod_id"),
-    )
+    __table_args__ = (Index("idx_warning_guild_user", "guild_id", "user_id"),
+                      CheckConstraint("guild_id > 0",
+                                      name="chk_warn_guild_id"),
+                      CheckConstraint("user_id > 0", name="chk_warn_user_id"),
+                      CheckConstraint("moderator_id > 0",
+                                      name="chk_warn_mod_id"))
 
     def __repr__(self) -> str:
         return f"<WarningRecord id={self.warn_id} guild={self.guild_id} user={self.user_id}>"
+
+
+class AutoResponder(Base, TimestampMixin):
+    __tablename__ = "autoresponders"
+
+    responder_id: Mapped[int] = mapped_column(Integer,
+                                              primary_key=True,
+                                              autoincrement=True)
+    guild_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    trigger_phrase: Mapped[str] = mapped_column(String(256), nullable=False)
+    match_type: Mapped[str] = mapped_column(Enum("exact",
+                                                 "contains",
+                                                 "startswith",
+                                                 "endswith",
+                                                 "regex",
+                                                 name="match_type_enum"),
+                                            nullable=False,
+                                            server_default="contains")
+    reply_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_embed: Mapped[bool] = mapped_column(Boolean,
+                                           nullable=False,
+                                           server_default="0")
+    embed_title: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean,
+                                          nullable=False,
+                                          server_default="1")
+    ignore_bots: Mapped[bool] = mapped_column(Boolean,
+                                              nullable=False,
+                                              server_default="1")
+    delete_trigger: Mapped[bool] = mapped_column(Boolean,
+                                                 nullable=False,
+                                                 server_default="0")
+
+    cooldown: Mapped[int] = mapped_column(Integer,
+                                          nullable=False,
+                                          server_default="0")
+
+    __table_args__ = (
+        Index("idx_ar_guild_trigger", "guild_id", "enabled"),
+        CheckConstraint("guild_id > 0", name="chk_ar_guild_id"),
+        CheckConstraint("cooldown >= 0", name="chk_ar_cooldown"),
+    )
+
+
+class AutoResponderReaction(Base):
+    __tablename__ = "autoresponder_reactions"
+
+    responder_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    emoji: Mapped[str] = mapped_column(String(64), primary_key=True)
+
+    def __repr__(self) -> str:
+        return f"<AutoResponderReaction id={self.responder_id} emoji={self.emoji}>"
