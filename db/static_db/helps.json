@@ -207,6 +207,16 @@
           "permissions": "Manage Channels",
           "is_prefix": true,
           "is_slash": false
+        },
+        {
+          "name": "slowmode",
+          "aliases": ["sm"],
+          "description": "Adjusts or resets the active chat rate restriction loop using standard Discord intervals.",
+          "usage": "ts slowmode <time|reset> [#channel]",
+          "examples": ["ts sm 1m", "ts slowmode reset #general"],
+          "permissions": "Manage Channels",
+          "is_prefix": true,
+          "is_slash": false
         }
       ]
     },

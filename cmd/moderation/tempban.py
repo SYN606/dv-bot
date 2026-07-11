@@ -106,7 +106,7 @@ class Tempban(BaseAdminCog):
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             pass
 
-    @commands.command(name="tempban-role")
+    @commands.command(name="tempban-role", description="Sets server tempban role", aliases=["tbr"])
     @commands.guild_only()
     async def set_role(self,
                        ctx: commands.Context,
