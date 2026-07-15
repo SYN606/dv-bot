@@ -180,9 +180,11 @@ class BanSystem(BaseAdminCog):
 
         target = await self.resolve_target(ctx, user)
         if not target:
+            # Dynamically fetch whatever prefix triggered the command (defaults to dv)
+            prefix = ctx.clean_prefix
             return await self._reply(
                 ctx, "User Not Found",
-                "Usage: `.ban <user | id | reply> [reason]`")
+                f"Usage: `{prefix}ban <user | id | reply> [reason]`")
 
         valid, error = await self.validate_ban(ctx, target)
         if not valid:
@@ -254,8 +256,11 @@ class BanSystem(BaseAdminCog):
         reason = reason or "No reason provided"
 
         if not user:
-            return await self._reply(ctx, "Missing User",
-                                     "Usage: `.unban <user id> [reason]`")
+            # Dynamically fetch whatever prefix triggered the command (defaults to dv)
+            prefix = ctx.clean_prefix
+            return await self._reply(
+                ctx, "Missing User",
+                f"Usage: `{prefix}unban <user id> [reason]`")
 
         try:
             user_id = int(user)

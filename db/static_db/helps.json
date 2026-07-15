@@ -10,127 +10,112 @@
           "name": "adminrole",
           "aliases": [],
           "description": "Configures or displays authorized administrative/bot developer roles for the bot override system.",
-          "usage": "dv adminrole <add/remove/list> [role]",
-          "examples": ["dv adminrole add @Staff", "dv adminrole list"],
+          "usage": "adminrole <add/remove/list> [role]",
+          "examples": [
+            "adminrole add @Staff",
+            "adminrole list"
+          ],
           "permissions": "Guild Owner / Bot Admin",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "autoresponder",
-          "aliases": ["ar"],
+          "aliases": [
+            "ar"
+          ],
           "description": "Manage the server autoresponder processing matrix to catch and reply to message patterns.",
-          "usage": "/autoresponder <add/edit/remove/list>",
+          "usage": "autoresponder <add/edit/remove/list>",
           "examples": [
-            "/autoresponder list",
-            "/autoresponder remove rule_id: 12"
+            "autoresponder list",
+            "autoresponder remove rule_id: 12"
           ],
           "permissions": "Base Admin Cog Level / Configuration Mod",
           "is_prefix": false,
-          "is_slash": true,
-          "subcommands": [
-            {
-              "name": "add",
-              "description": "Create or update an active autoresponder rule configuration.",
-              "usage": "/autoresponder add <trigger> <match_type> [reply] [embed_title] [image_url] [reactions] [delete_trigger] [cooldown]",
-              "examples": [
-                "/autoresponder add trigger: !ip match_type: exact reply: Play at mc.server.com"
-              ]
-            },
-            {
-              "name": "edit",
-              "description": "Modify properties for an existing autoresponder configuration profile.",
-              "usage": "/autoresponder edit <rule_id> [trigger] [match_type] [reply] [embed_title] [image_url] [reactions] [delete_trigger] [cooldown] [enabled]",
-              "examples": [
-                "/autoresponder edit rule_id: 42 cooldown: 10 enabled: False"
-              ]
-            },
-            {
-              "name": "remove",
-              "description": "Delete an active autoresponder rule sequence using its Unique ID.",
-              "usage": "/autoresponder remove <rule_id>",
-              "examples": ["/autoresponder remove rule_id: 42"]
-            },
-            {
-              "name": "list",
-              "description": "Display all custom autoresponder execution logs configured for this server.",
-              "usage": "/autoresponder list",
-              "examples": ["/autoresponder list"]
-            }
-          ]
+          "is_slash": true
         },
         {
           "name": "mediaonly",
-          "aliases": ["media"],
+          "aliases": [
+            "media"
+          ],
           "description": "Toggles an automated enforcement lock on a channel restricting text-only messages.",
-          "usage": "dv mediaonly <enable/disable/list> [#channel]",
-          "examples": ["dv mediaonly enable #memes"],
+          "usage": "mediaonly <enable/disable/list> [#channel]",
+          "examples": [
+            "mediaonly enable #memes"
+          ],
           "permissions": "Manage Channels",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "permaudit",
-          "aliases": ["permission_audit"],
+          "aliases": [
+            "permission_audit"
+          ],
           "description": "Suite to check member permissions (/perm-check) or scan the entire server for high-risk accounts (/perm-scan).",
-          "usage": "/perm-check <member> or /perm-scan",
-          "examples": ["/perm-check @User", "/perm-scan"],
+          "usage": "perm-check <member> or perm-scan",
+          "examples": [
+            "perm-check @User",
+            "perm-scan"
+          ],
           "permissions": "Senior Moderator / Administrator",
           "is_prefix": false,
           "is_slash": true
         },
         {
           "name": "purge",
-          "aliases": ["clear"],
+          "aliases": [
+            "clear"
+          ],
           "description": "Bulk deletes messages matching standard filters from the current channel.",
-          "usage": "dv purge <amount> [user]",
-          "examples": ["dv purge 50", "dv purge 20 @Spammer"],
+          "usage": "purge <amount> [user]",
+          "examples": [
+            "purge 50",
+            "purge 20 @Spammer"
+          ],
           "permissions": "Manage Messages",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "rename",
-          "aliases": ["setname"],
+          "aliases": [
+            "setname"
+          ],
           "description": "Updates a member's server nickname or targets channel name profiles cleanly.",
-          "usage": "dv rename <member/channel> <new name>",
-          "examples": ["dv rename @User Local Nickname"],
+          "usage": "rename <member/channel> <new name>",
+          "examples": [
+            "rename @User Local Nickname"
+          ],
           "permissions": "Manage Nicknames / Manage Channels",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "role",
-          "aliases": ["roles"],
+          "aliases": [
+            "roles"
+          ],
           "description": "Utility system to assign or strip security and cosmetic roles from server members.",
-          "usage": "/role <add/remove>",
-          "examples": ["/role add user: @User role: @Verified"],
+          "usage": "role <add/remove>",
+          "examples": [
+            "role add user: @User role: @Verified"
+          ],
           "permissions": "Manage Roles",
           "is_prefix": false,
-          "is_slash": true,
-          "subcommands": [
-            {
-              "name": "add",
-              "alias": ["give", "a"],
-              "description": "Assigns a specific target server role to a member seamlessly.",
-              "usage": "/role add <user> <role>",
-              "examples": ["/role add user: @Username role: @Member"]
-            },
-            {
-              "name": "remove",
-              "alias": ["take", "r"],
-              "description": "Strips an active server role away from a targeted member.",
-              "usage": "/role remove <user> <role>",
-              "examples": ["/role remove user: @Username role: @Staff"]
-            }
-          ]
+          "is_slash": true
         },
         {
           "name": "setuplog",
-          "aliases": ["setup_log"],
+          "aliases": [
+            "setup_log"
+          ],
           "description": "Initializes or updates the text channel endpoint map for target mod logs.",
-          "usage": "dv setuplog [#channel]",
-          "examples": ["dv setuplog #mod-logs"],
+          "usage": "setuplog [#channel]",
+          "examples": [
+            "setuplog #mod-logs"
+          ],
           "permissions": "Administrator Only",
           "is_prefix": true,
           "is_slash": false
@@ -139,45 +124,39 @@
           "name": "sticky",
           "aliases": [],
           "description": "Manage automated channel sticky message layouts via server slash commands.",
-          "usage": "/sticky <set/disable/status>",
-          "examples": ["/sticky set message: Read the rules channel: #general"],
+          "usage": "sticky <set/disable/status>",
+          "examples": [
+            "sticky set message: Read the rules channel: #general"
+          ],
           "permissions": "Manage Channels",
           "is_prefix": false,
-          "is_slash": true,
-          "subcommands": [
-            {
-              "name": "set",
-              "description": "Enable or update an embed sticky message in a specific text channel.",
-              "usage": "/sticky set <message> [channel]"
-            },
-            {
-              "name": "disable",
-              "description": "Turn off sticky message processing and clear properties from a channel.",
-              "usage": "/sticky disable [channel]"
-            },
-            {
-              "name": "status",
-              "description": "Query and view the active string configuration layout for a channel.",
-              "usage": "/sticky status [channel]"
-            }
-          ]
+          "is_slash": true
         },
         {
           "name": "verification",
-          "aliases": ["verify-config"],
+          "aliases": [
+            "verify-config"
+          ],
           "description": "Links the core verified role database entry used by the verification gates.",
-          "usage": "dv verification set <@role>",
-          "examples": ["dv verification set @Member"],
+          "usage": "verification set <@role>",
+          "examples": [
+            "verification set @Member"
+          ],
           "permissions": "Administrator Only",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "whois",
-          "aliases": ["userinfo", "ui"],
+          "aliases": [
+            "userinfo",
+            "ui"
+          ],
           "description": "Generates a detailed profile inspection layout displaying join metrics, IDs, and roles.",
-          "usage": "dv whois [@user/id]",
-          "examples": ["dv whois @Username"],
+          "usage": "whois [@user/id]",
+          "examples": [
+            "whois @Username"
+          ],
           "permissions": "None",
           "is_prefix": true,
           "is_slash": false
@@ -192,28 +171,38 @@
       "commands": [
         {
           "name": "hide",
-          "aliases": ["unhide"],
+          "aliases": [
+            "unhide"
+          ],
           "description": "Alters channel permissions to instantly mask or reveal it to the @everyone level.",
-          "usage": "dv hide [#channel] / dv unhide [#channel]",
+          "usage": "hide [#channel] / unhide [#channel]",
           "permissions": "Manage Channels",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "lockdown",
-          "aliases": ["lock", "unlock"],
+          "aliases": [
+            "lock",
+            "unlock"
+          ],
           "description": "Freezes message execution updates across a single targeted channel.",
-          "usage": "dv lockdown [enable/disable] [#channel]",
+          "usage": "lockdown [enable/disable] [#channel]",
           "permissions": "Manage Channels",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "slowmode",
-          "aliases": ["sm"],
+          "aliases": [
+            "sm"
+          ],
           "description": "Adjusts or resets the active chat rate restriction loop using standard Discord intervals.",
-          "usage": "ts slowmode <time|reset> [#channel]",
-          "examples": ["ts sm 1m", "ts slowmode reset #general"],
+          "usage": "slowmode <time|reset> [#channel]",
+          "examples": [
+            "slowmode 1m",
+            "slowmode reset #general"
+          ],
           "permissions": "Manage Channels",
           "is_prefix": true,
           "is_slash": false
@@ -230,16 +219,29 @@
           "name": "ban",
           "aliases": [],
           "description": "Permanently seals a member out of the guild space and triggers mod log dispatch.",
-          "usage": "dv ban <@user/id> [reason]",
+          "usage": "ban <@user/id> [reason]",
           "permissions": "Ban Members",
           "is_prefix": true,
           "is_slash": false
         },
         {
+          "name": "fakeban",
+          "aliases": [],
+          "description": "Simulates a user ban completely, sending an official direct message notice and structural channel warnings without enforcing a real ban.",
+          "usage": "fakeban <user> [reason]",
+          "examples": [
+            "fakeban user: @Troll reason: Custom Test",
+            "fakeban 123456789012345678 Appealed Rule Break"
+          ],
+          "permissions": "Ban Members / Manage Messages",
+          "is_prefix": true,
+          "is_slash": true
+        },
+        {
           "name": "clearwarnings",
           "aliases": [],
           "description": "Wipes a member's entire moderation warning database index cleanly.",
-          "usage": "dv clearwarnings <user>",
+          "usage": "clearwarnings <user>",
           "permissions": "Moderate Members / Server Owner",
           "is_prefix": true,
           "is_slash": false
@@ -248,7 +250,7 @@
           "name": "delwarn",
           "aliases": [],
           "description": "Removes a specific warning infraction instance using its ID.",
-          "usage": "dv delwarn <warn_id>",
+          "usage": "delwarn <warn_id>",
           "permissions": "Manage Messages",
           "is_prefix": true,
           "is_slash": false
@@ -257,25 +259,31 @@
           "name": "kick",
           "aliases": [],
           "description": "Removes a member from the server safely.",
-          "usage": "dv kick <@user/id> [reason]",
+          "usage": "kick <@user/id> [reason]",
           "permissions": "Kick Members",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "tempban",
-          "aliases": ["tb", "jail"],
+          "aliases": [
+            "tb",
+            "jail"
+          ],
           "description": "Applies a temporary constraint loop on a user via isolation role.",
-          "usage": "dv tempban <@user/id> [duration] [reason]",
+          "usage": "tempban <@user/id> [duration] [reason]",
           "permissions": "Bot Admin / Manage Roles",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "timeout",
-          "aliases": ["mute", "to"],
+          "aliases": [
+            "mute",
+            "to"
+          ],
           "description": "Enforces a strict native communications restriction timeline lock.",
-          "usage": "dv timeout <@user/id> <duration> [reason]",
+          "usage": "timeout <@user/id> <duration> [reason]",
           "permissions": "Moderate Members",
           "is_prefix": true,
           "is_slash": false
@@ -284,16 +292,18 @@
           "name": "warn",
           "aliases": [],
           "description": "Issues a formal text warning penalization.",
-          "usage": "dv warn <user> <reason>",
+          "usage": "warn <user> <reason>",
           "permissions": "Manage Messages",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "warnings",
-          "aliases": ["warnlist"],
+          "aliases": [
+            "warnlist"
+          ],
           "description": "Retrieves the active list of history warning sequences.",
-          "usage": "dv warnings [user]",
+          "usage": "warnings [user]",
           "permissions": "Manage Messages",
           "is_prefix": true,
           "is_slash": false
@@ -310,16 +320,19 @@
           "name": "afk",
           "aliases": [],
           "description": "Caches an AFK status block to automatically trigger back-references.",
-          "usage": "dv afk [status message]",
+          "usage": "afk [status message]",
           "permissions": "None",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "avatar",
-          "aliases": ["av", "pfp"],
+          "aliases": [
+            "av",
+            "pfp"
+          ],
           "description": "Generates a clear image embed block isolating a user's avatar.",
-          "usage": "dv avatar [@user]",
+          "usage": "avatar [@user]",
           "permissions": "None",
           "is_prefix": true,
           "is_slash": false
@@ -328,43 +341,52 @@
           "name": "banner",
           "aliases": [],
           "description": "Extracts and displays a profile banner asset block.",
-          "usage": "dv banner [@user]",
+          "usage": "banner [@user]",
           "permissions": "None",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "ping",
-          "aliases": ["latency"],
+          "aliases": [
+            "latency"
+          ],
           "description": "Measures heartbeat connection latency.",
-          "usage": "dv ping",
+          "usage": "ping",
           "permissions": "None",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "serverinfo",
-          "aliases": ["si", "guildinfo"],
+          "aliases": [
+            "si",
+            "guildinfo"
+          ],
           "description": "Generates a summary isolating vanity levels and member tallies.",
-          "usage": "dv serverinfo",
+          "usage": "serverinfo",
           "permissions": "None",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "shards",
-          "aliases": ["shardinfo"],
+          "aliases": [
+            "shardinfo"
+          ],
           "description": "Audits internal cluster configurations.",
-          "usage": "dv shards",
+          "usage": "shards",
           "permissions": "None",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "steal",
-          "aliases": ["addemoji"],
+          "aliases": [
+            "addemoji"
+          ],
           "description": "Copies a raw custom emoji payload to local guild assets.",
-          "usage": "dv steal <emoji> [name]",
+          "usage": "steal <emoji> [name]",
           "permissions": "Manage Guild Expressions",
           "is_prefix": true,
           "is_slash": false
@@ -379,18 +401,22 @@
       "commands": [
         {
           "name": "drag",
-          "aliases": ["grab"],
+          "aliases": [
+            "grab"
+          ],
           "description": "Pulls a specific target member forcefully into your audio lounge.",
-          "usage": "dv drag <@user>",
+          "usage": "drag <@user>",
           "permissions": "Move Members",
           "is_prefix": true,
           "is_slash": false
         },
         {
           "name": "moveall",
-          "aliases": ["massmove"],
+          "aliases": [
+            "massmove"
+          ],
           "description": "Migrates every speaker into a targeted alternative room.",
-          "usage": "dv moveall <channel>",
+          "usage": "moveall <channel>",
           "permissions": "Move Members",
           "is_prefix": true,
           "is_slash": false
@@ -405,9 +431,11 @@
       "commands": [
         {
           "name": "help",
-          "aliases": ["h"],
+          "aliases": [
+            "h"
+          ],
           "description": "Launches the interactive modular interface menu.",
-          "usage": "/help [command] or dv help [command]",
+          "usage": "help [command]",
           "permissions": "None",
           "is_prefix": true,
           "is_slash": true

@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 from typing import Union, Optional
 from utils.permissions.base_admin import BaseAdminCog, admin_command
@@ -31,10 +32,20 @@ class WarnSystem(BaseAdminCog):
                     text=f"Action by : {ctx.author}",
                     icon_url=ctx.author.display_avatar.url,
                 )
-            try:
-                return await ctx.reply(embed=embed, mention_author=False)
-            except (discord.NotFound, discord.HTTPException):
-                return await ctx.channel.send(embed=embed)
+
+            if ctx.interaction:
+                interaction = ctx.interaction
+                if interaction.response.is_done():
+                    return await interaction.followup.send(embed=embed,
+                                                           ephemeral=True)
+                else:
+                    return await interaction.response.send_message(
+                        embed=embed, ephemeral=True)
+            else:
+                try:
+                    return await ctx.reply(embed=embed, mention_author=False)
+                except (discord.NotFound, discord.HTTPException):
+                    return await ctx.channel.send(embed=embed)
         except discord.HTTPException:
             return None
 
@@ -52,7 +63,8 @@ class WarnSystem(BaseAdminCog):
         if not guild:
             return None
 
-        if isinstance(user_input, discord.Member):
+        if isinstance(user_input, discord.Member) or isinstance(
+                user_input, discord.User):
             return user_input
 
         if not user_input:
@@ -105,9 +117,12 @@ class WarnSystem(BaseAdminCog):
                 return False, "You cannot warn someone with an equal or higher role."
         return True, None
 
-    @admin_command(
+    @commands.hybrid_command(
         name="warn",
         description="Issue a formal text warning infraction to a member")
+    @app_commands.describe(
+        user="The user or user ID to issue an infraction to",
+        reason="A specific reason text must be provided")
     @commands.guild_only()
     @commands.cooldown(1, 3.0, commands.BucketType.guild)
     async def legacy_warn(
@@ -127,13 +142,19 @@ class WarnSystem(BaseAdminCog):
 
         target = await self.resolve_target(ctx, user)
         if not target:
-            return await self._reply(ctx, "User Not Found",
-                                     "Usage: `warn <user | id> <reason>`")
+            prefix = ctx.clean_prefix
+            return await self._reply(
+                ctx,
+                "User Not Found",
+                f"Usage: `{prefix}warn <user | id> <reason>`",
+                level="ERROR")
 
         valid, error = await self.validate_warn(ctx, target)
         if not valid:
-            return await self._reply(ctx, "Infraction Blocked", error
-                                     or "Validation failed.")
+            return await self._reply(ctx,
+                                     "Infraction Blocked",
+                                     error or "Validation failed.",
+                                     level="ERROR")
 
         try:
             _, total_warns = await add_warning(
@@ -180,11 +201,13 @@ class WarnSystem(BaseAdminCog):
             pass
         await self._cleanup(ctx)
 
-    @admin_command(
+    @commands.hybrid_command(
         name="warnings",
         aliases=["warnlist", "warns"],
         description="Check tracking logs for a member",
     )
+    @app_commands.describe(
+        user="The target user to investigate logs for (defaults to yourself)")
     @commands.guild_only()
     @commands.cooldown(2, 5.0, commands.BucketType.user)
     async def legacy_warnings(self,
@@ -215,16 +238,25 @@ class WarnSystem(BaseAdminCog):
         desc = f"Historical infraction data tracking **{target}**:\n\n"
         for r in records:
             desc += f"**ID:** `{r.warn_id}` | <@{r.moderator_id}> | <t:{int(r.created_at.timestamp())}:R>\n{EMOJIS.get('curved_arrow', '┕')} `{r.reason}`\n\n"
-        await ctx.reply(
-            embed=make_embed(title=f"Infractions: {target}",
-                             description=desc,
-                             level="WARNING"),
-            mention_author=False,
-        )
 
-    @admin_command(name="delwarn",
-                   description="Remove an infraction row by ID",
-                   aliases=["dw"])
+        if ctx.interaction:
+            await self._reply(ctx,
+                              f"Infractions: {target}",
+                              desc,
+                              level="WARNING")
+        else:
+            await ctx.reply(
+                embed=make_embed(title=f"Infractions: {target}",
+                                 description=desc,
+                                 level="WARNING"),
+                mention_author=False,
+            )
+
+    @commands.hybrid_command(name="delwarn",
+                             description="Remove an infraction row by ID",
+                             aliases=["dw"])
+    @app_commands.describe(
+        warn_id="The uniquely indexed ID sequence key of the warning")
     @commands.guild_only()
     @commands.cooldown(2, 4.0, commands.BucketType.user)
     async def delwarn(self, ctx: commands.Context, warn_id: int):
@@ -237,7 +269,7 @@ class WarnSystem(BaseAdminCog):
                 ctx,
                 "Not Found",
                 f"{EMOJIS.get('fail', '❌')} No record matches ID `{warn_id}`.",
-            )
+                level="ERROR")
 
         target = ctx.guild.get_member(user_id) or await self.bot.fetch_user(
             user_id)
@@ -250,11 +282,13 @@ class WarnSystem(BaseAdminCog):
         )
         await self._cleanup(ctx)
 
-    @admin_command(
+    @commands.hybrid_command(
         name="clearwarnings",
         description="Wipe a member's moderation index",
         aliases=["clswarns"],
     )
+    @app_commands.describe(
+        user="The targeted user to clear all tracking rows for")
     @commands.guild_only()
     @commands.cooldown(1, 10.0, commands.BucketType.guild)
     async def clearwarnings(self,
@@ -264,8 +298,12 @@ class WarnSystem(BaseAdminCog):
             return
         target = await self.resolve_target(ctx, user)
         if not target:
-            return await self._reply(ctx, "User Not Found",
-                                     "Please specify a valid user.")
+            prefix = ctx.clean_prefix
+            return await self._reply(
+                ctx,
+                "User Not Found",
+                f"Please specify a valid user.\nUsage: `{prefix}clearwarnings <user>`",
+                level="ERROR")
 
         was_cleared = await clear_all_warnings(guild_id=ctx.guild.id,
                                                user_id=target.id)
@@ -289,8 +327,8 @@ class WarnSystem(BaseAdminCog):
     @legacy_warnings.error  # type: ignore
     @delwarn.error  # type: ignore
     @clearwarnings.error  # type: ignore
-    async def cog_command_error(self, ctx: commands.Context,
-                                error: commands.CommandError):
+    async def cog_command_error(  # type: ignore
+            self, ctx: commands.Context, error: commands.CommandError):
         if isinstance(error, commands.CommandOnCooldown):
             await self._reply(
                 ctx,

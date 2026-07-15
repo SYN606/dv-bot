@@ -63,7 +63,7 @@ logger.info(f"[ENV] Running in {ENV.upper()} mode")
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
-
+intents.invites = True
 
 # --- BOT CORE CLASS ---
 class DigitalVigilBot(commands.Bot):

@@ -106,7 +106,9 @@ class Tempban(BaseAdminCog):
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             pass
 
-    @commands.command(name="tempban-role", description="Sets server tempban role", aliases=["tbr"])
+    @commands.command(name="tempban-role",
+                      description="Sets server tempban role",
+                      aliases=["tbr"])
     @commands.guild_only()
     async def set_role(self,
                        ctx: commands.Context,
@@ -125,11 +127,13 @@ class Tempban(BaseAdminCog):
             return
 
         if not role:
+            prefix = ctx.clean_prefix
             return await self._safe_send(
                 ctx,
                 embed=make_embed(
                     title="Missing Argument",
-                    description="Please specify a valid server role.",
+                    description=
+                    f"Please specify a valid server role.\nUsage: `{prefix}tempban-role <role>`",
                     level="ERROR"))
 
         if role >= guild.me.top_role:
@@ -176,11 +180,13 @@ class Tempban(BaseAdminCog):
 
         user = await self.resolve_member(ctx, user)
         if not user:
+            prefix = ctx.clean_prefix
             return await self._safe_send(
                 ctx,
                 embed=make_embed(
                     title="Invalid User",
-                    description="Provide a valid user mention, ID, or name.",
+                    description=
+                    f"Provide a valid user mention, ID, or name.\nUsage: `{prefix}tempban <member> [duration] [reason]`",
                     level="ERROR"))
 
         valid, error = await self.validate_target(moderator=moderator,
@@ -271,8 +277,7 @@ class Tempban(BaseAdminCog):
                     f"{EMOJIS['ban']} {user.mention} isolated successfully.\n\n"
                     f"{EMOJIS['arrow_point']} **Duration:** {human_duration}\n"
                     f"{EMOJIS['arrow_point']} **Reason:** {reason}"),
-                level="SUCCESS"
-            ))
+                level="SUCCESS"))
 
         await send_mod_log(
             guild=guild,
@@ -312,11 +317,13 @@ class Tempban(BaseAdminCog):
 
         user = await self.resolve_member(ctx, user)
         if not user:
+            prefix = ctx.clean_prefix
             return await self._safe_send(
                 ctx,
                 embed=make_embed(
                     title="Invalid User",
-                    description="Provide a valid user identity reference.",
+                    description=
+                    f"Provide a valid user identity reference.\nUsage: `{prefix}untempban <member> [reason]`",
                     level="ERROR"))
 
         if not await is_tempbanned(guild.id, user.id):

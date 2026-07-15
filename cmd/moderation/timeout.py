@@ -207,10 +207,13 @@ class TimeoutAdmin(BaseAdminCog):
 
         target = await self.resolve_member(ctx, member)
         if target is None:
+            prefix = ctx.clean_prefix
             return await self._reply(
                 ctx,
                 title="Invalid Member",
-                description="Provide a valid member or reply to a message.")
+                description=
+                f"Provide a valid member or reply to a message.\nUsage: `{prefix}timeout <member> [duration] [reason]`"
+            )
 
         valid, error = await self.validate_target(moderator=moderator,
                                                   target=target)
@@ -303,9 +306,13 @@ class TimeoutAdmin(BaseAdminCog):
 
         target = await self.resolve_member(ctx, member)
         if target is None:
-            return await self._reply(ctx,
-                                     title="Invalid Member",
-                                     description="Provide a valid member.")
+            prefix = ctx.clean_prefix
+            return await self._reply(
+                ctx,
+                title="Invalid Member",
+                description=
+                f"Provide a valid member.\nUsage: `{prefix}untimeout <member> [reason]`"
+            )
 
         if not target.is_timed_out():
             return await self._reply(ctx,

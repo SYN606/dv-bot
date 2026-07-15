@@ -170,9 +170,11 @@ class KickSystem(BaseAdminCog):
 
         member = await self.resolve_member(ctx, member)
         if not isinstance(member, discord.Member):
+            # Dynamically fetch the current clean prefix used to trigger this command
+            prefix = ctx.clean_prefix
             return await self._reply(
                 ctx, "Invalid User",
-                "Usage: `.kick <member | id | reply> [reason]`")
+                f"Usage: `{prefix}kick <member | id | reply> [reason]`")
 
         valid, error = await self.validate_target(ctx, member)
         if not valid:
