@@ -1,14 +1,16 @@
 from __future__ import annotations
+
 import os
 import json
 import time
 import random
 import logging
 from typing import Optional
+
 import discord
 from discord.ext import commands
 
-logger = logging.getLogger("Digital Vigital")
+logger = logging.getLogger("DigitalVigital")
 
 USER_STATE: dict[int, dict] = {}
 CONFIG_PATH = os.path.join("db", "static_db", "roasts.json")
@@ -19,27 +21,33 @@ class Fuck(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._config: dict = {}
+        self._last_config_load: float = 0.0
         self._global_cooldown = commands.CooldownMapping.from_cooldown(
             1, 3.0, commands.BucketType.guild)
-        self.load_config()
+        self.load_config(force=True)
 
-    def load_config(self) -> None:
+    def load_config(self, force: bool = False) -> None:
+        """
+        Loads the config from disk.
+        Prevents high disk I/O by caching the config for 60 seconds unless forced.
+        """
+        if not force and time.time() - self._last_config_load < 60.0:
+            return
+
         try:
             if os.path.exists(CONFIG_PATH):
                 with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                     self._config = json.load(f)
+                self._last_config_load = time.time()
             else:
                 logger.error(
-                    self._get_sys_msg(
-                        "config_missing",
-                        "[SAVAGE] Unified database config missing at: {path}").
-                    format(path=CONFIG_PATH))
+                    f"[SAVAGE] Unified database config missing at: {CONFIG_PATH}"
+                )
+                self._config = {}
+        except json.JSONDecodeError as e:
+            logger.error(f"[SAVAGE] Invalid JSON format in config: {e}")
         except Exception as e:
-            logger.error(
-                self._get_sys_msg(
-                    "config_error",
-                    "[SAVAGE] Error reading integrated database configuration layout: {error}"
-                ).format(error=e))
+            logger.error(f"[SAVAGE] Error reading config layout: {e}")
 
     def _get_sys_msg(self, key: str, default: str) -> str:
         return self._config.get("system_responses", {}).get(key, default)
@@ -66,6 +74,18 @@ class Fuck(commands.Cog):
         return power
 
     def _update_state(self, user_id: int, target_id: int) -> dict:
+        """Updates user state and occasionally cleans up stale memory."""
+        now = time.time()
+
+        # Memory Leak Prevention: 5% chance to trigger cleanup of inactive users (older than 1 hour)
+        if random.random() < 0.05:
+            stale_keys = [
+                k for k, v in USER_STATE.items()
+                if now - v.get("last_used", 0) > 3600
+            ]
+            for k in stale_keys:
+                USER_STATE.pop(k, None)
+
         state = USER_STATE.setdefault(
             user_id, {
                 "count": 0,
@@ -77,15 +97,18 @@ class Fuck(commands.Cog):
                 "fatal_hits": 0
             })
 
-        now = time.time()
+        # Reset combo if it's been more than 20 seconds
         state["combo"] = state["combo"] + 1 if now - state[
             "last_used"] < 20 else 0
+
+        # Increase toxicity if targeting the same person, decrease if changing targets
         state["toxicity"] = state["toxicity"] + 1 if state[
             "last_target"] == target_id else max(0, state["toxicity"] - 1)
 
         state["count"] += 1
         state["last_target"] = target_id
         state["last_used"] = now
+
         return state
 
     def _pick_style(self, state: dict) -> str:
@@ -98,14 +121,23 @@ class Fuck(commands.Cog):
         return "normal"
 
     async def _analyze_user(self, ctx: commands.Context,
-                            target: discord.Member) -> str:
+                            target: discord.Member | discord.User) -> str:
         messages = []
-        async for msg in ctx.channel.history(limit=60):
-            if msg.author.id != target.id or not msg.content:
-                continue
-            messages.append(msg.content.lower())
-            if len(messages) >= 15:
-                break
+        try:
+            # Wrap in try/except in case bot lacks read_message_history permission
+            async for msg in ctx.channel.history(limit=60):
+                if msg.author.id != target.id or not msg.content:
+                    continue
+                messages.append(msg.content.lower())
+                if len(messages) >= 15:
+                    break
+        except discord.Forbidden:
+            logger.warning(
+                f"Missing history read permissions in channel {ctx.channel.id}"
+            )
+            return "default"
+        except discord.HTTPException:
+            return "default"
 
         if not messages:
             return "default"
@@ -115,6 +147,7 @@ class Fuck(commands.Cog):
         unique_words = len(set(words))
         profiles = self._config.get("analysis_profiles", {})
 
+        # Profile evaluations with safe dict `.get()` chains
         if "dry" in profiles and len(text) < profiles["dry"].get(
                 "max_chars", 25):
             return "dry"
@@ -124,87 +157,47 @@ class Fuck(commands.Cog):
                     "ratio_threshold", 2.7):
             return "repetitive"
 
-        if "npc" in profiles and any(
-                w in text for w in profiles["npc"].get("keywords", [])):
-            return "npc"
-
-        if "overthink" in profiles and len(text) > profiles["overthink"].get(
-                "min_chars", 350):
-            return "overthink"
-
-        if "motivation" in profiles and any(
-                w in text for w in profiles["motivation"].get("keywords", [])):
-            return "motivation"
-
-        if "discord_kitten" in profiles and any(
-                w in text
-                for w in profiles["discord_kitten"].get("keywords", [])):
-            return "discord_kitten"
-
         if text.isupper():
             return "aggressive"
+
+        for profile_name, profile_data in profiles.items():
+            keywords = profile_data.get("keywords", [])
+            if keywords and any(w in text for w in keywords):
+                return profile_name
 
         if "confused" in profiles and text.count(
                 "?") >= profiles["confused"].get("min_questions", 5):
             return "confused"
 
-        if "gamer" in profiles and any(
-                w in text for w in profiles["gamer"].get("keywords", [])):
-            return "gamer"
-
-        if "crypto_bro" in profiles and any(
-                w in text for w in profiles["crypto_bro"].get("keywords", [])):
-            return "crypto_bro"
-
-        if "developer" in profiles and any(
-                w in text for w in profiles["developer"].get("keywords", [])):
-            return "developer"
-
-        if "anime_weeb" in profiles and any(
-                w in text for w in profiles["anime_weeb"].get("keywords", [])):
-            return "anime_weeb"
-
-        if "simp" in profiles and any(
-                w in text for w in profiles["simp"].get("keywords", [])):
-            return "simp"
-
-        if "instagram_reels" in profiles and any(
-                w in text
-                for w in profiles["instagram_reels"].get("keywords", [])):
-            return "instagram_reels"
-
-        if "linux_ricer" in profiles and any(
-                w in text
-                for w in profiles["linux_ricer"].get("keywords", [])):
-            return "linux_ricer"
-
-        if "ghosted" in profiles and any(
-                w in text for w in profiles["ghosted"].get("keywords", [])):
-            return "ghosted"
-
-        if "skibidi_brainrot" in profiles and any(
-                w in text
-                for w in profiles["skibidi_brainrot"].get("keywords", [])):
-            return "skibidi_brainrot"
+        if "overthink" in profiles and len(text) > profiles["overthink"].get(
+                "min_chars", 350):
+            return "overthink"
 
         return "default"
 
-    def _weighted_choice(self, items):
+    def _weighted_choice(self, items: list | dict) -> str:
         if not items:
             return ""
         if isinstance(items, list):
             return random.choice(items)
 
-        expanded = [
-            key for key, weight in items.items() for _ in range(int(weight))
-        ]
-        return random.choice(expanded) if expanded else ""
+        try:
+            expanded = [
+                key for key, weight in items.items()
+                for _ in range(int(weight))
+            ]
+            return random.choice(expanded) if expanded else ""
+        except (ValueError, TypeError):
+            return ""
 
     def _build_roast(self, level: int, context: str, style: str) -> str:
         pool = self._config.get("roasts_pool", {})
 
-        openings = list(pool.get("openings", []))
-        base_pool = list(pool.get(context, pool.get("default", [])))
+        # Provide strict hardcoded fallbacks so the bot never sends empty messages if config breaks
+        openings = list(pool.get("openings", ["Bhai sun,"]))
+        base_pool = list(
+            pool.get(context,
+                     pool.get("default", ["System level clown hai tu."])))
 
         modifiers = self._config.get("style_modifiers", {})
         if style in modifiers:
@@ -212,8 +205,9 @@ class Fuck(commands.Cog):
 
         kill_key = "kill_high" if level >= 7 else (
             "kill_mid" if level >= 3 else "kill_low")
-        kill_pool = pool.get(kill_key, [])
+        kill_pool = pool.get(kill_key, ["Chup kar ja ab."])
 
+        # Fatal hit logic
         if random.random() < 0.02 and pool.get("fatal"):
             return self._weighted_choice(pool["fatal"])
 
@@ -222,8 +216,11 @@ class Fuck(commands.Cog):
             self._weighted_choice(base_pool),
             self._weighted_choice(kill_pool)
         ]
-        parts = [p for p in parts if p]
 
+        # Remove empty parts and filter out None
+        parts = [p.strip() for p in parts if p]
+
+        # 25% chance to drop a random segment to make roasts feel less formulaic
         if len(parts) > 1 and random.random() < 0.25:
             parts.pop(random.randrange(len(parts)))
 
@@ -241,7 +238,7 @@ class Fuck(commands.Cog):
                     ctx.message.reference.message_id)  # type: ignore
                 if isinstance(replied.author, (discord.Member, discord.User)):
                     return replied.author
-            except Exception:
+            except (discord.NotFound, discord.HTTPException):
                 pass
         return ctx.author
 
@@ -249,39 +246,53 @@ class Fuck(commands.Cog):
                       aliases=["roast", "cook", "destroy"],
                       help="Generate an automated dynamic insult combo.")
     @commands.guild_only()
-    @commands.cooldown(1, 4, commands.BucketType.user)
+    @commands.bot_has_permissions(send_messages=True)
     async def fuck(self,
                    ctx: commands.Context,
                    member: Optional[discord.Member] = None):
-        if ctx.guild is None:
+        if not ctx.guild:
             return
 
-        try:
-            await ctx.message.delete()
-        except discord.HTTPException:
-            pass
+        # Attempt deletion silently
+        if ctx.channel.permissions_for(ctx.guild.me).manage_messages:
+            try:
+                await ctx.message.delete()
+            except discord.HTTPException:
+                pass
 
+        # Cooldown management
         bucket = self._global_cooldown.get_bucket(ctx.message)
-        retry_after = bucket.update_rate_limit()  # type: ignore
+        retry_after = bucket.update_rate_limit() if bucket else None
         if retry_after:
             cooldown_fmt = self._get_sys_msg(
                 "cooldown_msg", "cooldown active • `{remaining:.1f}s`")
-            return await ctx.channel.send(
-                cooldown_fmt.format(remaining=retry_after), delete_after=5.0)
+            try:
+                return await ctx.channel.send(
+                    cooldown_fmt.format(remaining=retry_after),
+                    delete_after=5.0)
+            except discord.HTTPException:
+                return
 
-        self.load_config()
+        # Load config with TTL cache logic
+        self.load_config(force=False)
 
         author = ctx.author
         target = await self._get_target(ctx, member)
         state = self._update_state(author.id, target.id)
 
+        # Safety: Global AllowedMentions to prevent mass ping exploits
+        safe_mentions = discord.AllowedMentions(users=True,
+                                                roles=False,
+                                                everyone=False)
+
+        # Fallback responses
         if target.id == author.id:
             msg = random.choice(
                 self._config.get("self_roasts", [
                     self._get_sys_msg("self_fallback",
                                       "Self targeting parameters active.")
                 ]))
-            return await ctx.channel.send(msg)
+            return await ctx.channel.send(msg, allowed_mentions=safe_mentions)
 
         if target.bot:
             msg = random.choice(
@@ -289,47 +300,57 @@ class Fuck(commands.Cog):
                     self._get_sys_msg("bot_fallback",
                                       "Automated client block detected.")
                 ]))
-            return await ctx.channel.send(msg)
+            return await ctx.channel.send(msg, allowed_mentions=safe_mentions)
 
         if state["toxicity"] >= 8:
             msg = self._config.get(
                 "anti_harassment",
                 self._get_sys_msg("harass_fallback", "Safety parameters met."))
-            return await ctx.channel.send(msg)
+            return await ctx.channel.send(msg, allowed_mentions=safe_mentions)
 
-        author_power = self._get_power(author)  # type: ignore
-        target_power = self._get_power(target)  # type: ignore
+        # Power calculations safely typed
+        author_power = self._get_power(author) if isinstance(
+            author, discord.Member) else 0
+        target_power = self._get_power(target) if isinstance(
+            target, discord.Member) else 0
         power_gap = target_power - author_power
         prefixes = self._config.get("reverse_prefixes", {})
 
+        # Boss & Admin reversal hits
         if power_gap >= 5000:
             state["reverse_hits"] += 1
             roast_msg = prefixes.get("boss", "") + self._build_roast(
                 state["count"], "default", "dark")
-            return await ctx.channel.send(roast_msg)
+            return await ctx.channel.send(roast_msg,
+                                          allowed_mentions=safe_mentions)
 
         if power_gap >= 500:
             state["reverse_hits"] += 1
             roast_msg = prefixes.get("admin", "") + self._build_roast(
                 state["count"], "default", "sarcastic")
-            return await ctx.channel.send(roast_msg)
+            return await ctx.channel.send(roast_msg,
+                                          allowed_mentions=safe_mentions)
 
         if power_gap >= 80 and random.random() < 0.65:
             state["reverse_hits"] += 1
             roast_msg = prefixes.get("luck", "") + self._build_roast(
                 state["count"], "default", "normal")
-            return await ctx.channel.send(roast_msg)
+            return await ctx.channel.send(roast_msg,
+                                          allowed_mentions=safe_mentions)
 
-        context = await self._analyze_user(ctx, target)  # type: ignore
+        # Context analysis & Core generation
+        context = await self._analyze_user(ctx, target)
         roast_msg = self._build_roast(state["count"], context,
                                       self._pick_style(state))
 
+        # Escalations
         escalations = self._config.get("escalations", {})
         if state["combo"] >= 5:
             roast_msg += escalations.get("combo", "")
         if state["toxicity"] >= 4:
             roast_msg += escalations.get("toxicity", "")
 
+        # Formatting Output
         mode = random.randint(1, 7)
         templates = self._config.get("output_templates", {})
         fallback_msg = self._get_sys_msg(
@@ -353,7 +374,7 @@ class Fuck(commands.Cog):
         else:
             final = roast_msg
 
-        await ctx.channel.send(final)
+        await ctx.channel.send(final, allowed_mentions=safe_mentions)
 
 
 async def setup(bot: commands.Bot):
