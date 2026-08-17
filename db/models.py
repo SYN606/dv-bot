@@ -1,24 +1,7 @@
-from datetime import datetime
 from enum import Enum as PyEnum
-from typing import Optional
-
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    CheckConstraint,
-    DateTime,
-    Enum,
-    Index,
-    Integer,
-    String,
-    Text,
-    false,
-    func,
-    true,
-)
-from sqlalchemy.orm import Mapped, mapped_column
-
-from db.base import Base
+from tortoise import fields
+from tortoise.models import Model
+from tortoise.validators import MinValueValidator
 
 
 # --- Enums ---
@@ -36,253 +19,203 @@ class RestrictionScope(str, PyEnum):
     BOTH = "both"
 
 
-# --- Mixins ---
+# --- Abstract Base Classes / Mixins ---
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False,
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
 
 
 # --- Models ---
-class AFK(Base):
-    __tablename__ = "afk"
+class AFK(Model):
+    guild_id = fields.BigIntField(validators=[MinValueValidator(1)])
+    user_id = fields.BigIntField(validators=[MinValueValidator(1)])
+    afk_reason = fields.CharField(max_length=256)
+    since = fields.IntField()
 
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    afk_reason: Mapped[str] = mapped_column(String(256), nullable=False)
-    since: Mapped[int] = mapped_column(Integer, nullable=False)
-
-    __table_args__ = (
-        CheckConstraint("guild_id > 0", name="chk_afk_guild_id"),
-        CheckConstraint("user_id > 0", name="chk_afk_user_id"),
-    )
+    class Meta(Model.Meta):
+        table = "afk"
+        unique_together = (("guild_id", "user_id"), )
 
     def __repr__(self) -> str:
         return f"<AFK guild={self.guild_id} user={self.user_id}>"
 
 
-class AdminRole(Base):
-    __tablename__ = "admin_roles"
+class AdminRole(Model):
+    guild_id = fields.BigIntField(validators=[MinValueValidator(1)])
+    role_id = fields.BigIntField()
 
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    role_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-
-    __table_args__ = (CheckConstraint("guild_id > 0",
-                                      name="chk_admin_role_guild"), )
+    class Meta(Model.Meta):
+        table = "admin_roles"
+        unique_together = (("guild_id", "role_id"), )
 
     def __repr__(self) -> str:
         return f"<AdminRole guild={self.guild_id} role={self.role_id}>"
 
 
-class MediaOnlyChannel(Base, TimestampMixin):
-    __tablename__ = "media_only_channels"
+class MediaOnlyChannel(Model, TimestampMixin):
+    guild_id = fields.BigIntField(validators=[MinValueValidator(1)])
+    channel_id = fields.BigIntField()
+    sticky_message_id = fields.BigIntField(null=True)
+    whitelist_role_id = fields.BigIntField(null=True)
+    image_only = fields.BooleanField(default=False)
+    auto_mute = fields.BooleanField(default=False)
+    nsfw_bypass = fields.BooleanField(default=True)
 
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    sticky_message_id: Mapped[Optional[int]] = mapped_column(BigInteger,
-                                                             nullable=True)
-    whitelist_role_id: Mapped[Optional[int]] = mapped_column(BigInteger,
-                                                             nullable=True)
-    image_only: Mapped[bool] = mapped_column(Boolean,
-                                             nullable=False,
-                                             server_default=false())
-    auto_mute: Mapped[bool] = mapped_column(Boolean,
-                                            nullable=False,
-                                            server_default=false())
-    nsfw_bypass: Mapped[bool] = mapped_column(Boolean,
-                                              nullable=False,
-                                              server_default=true())
-
-    __table_args__ = (CheckConstraint("guild_id > 0",
-                                      name="chk_media_guild_id"), )
+    class Meta(Model.Meta):
+        table = "media_only_channels"
+        unique_together = (("guild_id", "channel_id"), )
 
 
-class StickyMessage(Base, TimestampMixin):
-    __tablename__ = "sticky_messages"
+class StickyMessage(Model, TimestampMixin):
+    guild_id = fields.BigIntField()
+    channel_id = fields.BigIntField()
+    sticky_content = fields.TextField()
+    last_message_id = fields.BigIntField(null=True)
+    counter = fields.IntField(default=0, validators=[MinValueValidator(0)])
 
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    sticky_content: Mapped[str] = mapped_column(Text, nullable=False)
-    last_message_id: Mapped[Optional[int]] = mapped_column(BigInteger,
-                                                           nullable=True)
-    counter: Mapped[int] = mapped_column(Integer,
-                                         nullable=False,
-                                         server_default="0")
-
-    __table_args__ = (CheckConstraint("counter >= 0",
-                                      name="chk_sticky_counter"), )
+    class Meta(Model.Meta):
+        table = "sticky_messages"
+        unique_together = (("guild_id", "channel_id"), )
 
 
-class DisabledCommand(Base):
-    __tablename__ = "disabled_commands"
+class DisabledCommand(Model):
+    guild_id = fields.BigIntField()
+    command_name = fields.CharField(max_length=64)
 
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    command_name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    class Meta(Model.Meta):
+        table = "disabled_commands"
+        unique_together = (("guild_id", "command_name"), )
 
 
-class RestrictedCommand(Base):
-    __tablename__ = "restricted_commands"
-
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    command_name: Mapped[str] = mapped_column(String(64), primary_key=True)
-    restriction_scope: Mapped[RestrictionScope] = mapped_column(
-        Enum(
-            RestrictionScope,
-            native_enum=False,
-            name="restriction_scope_enum",
-        ),
-        nullable=False,
-        server_default=RestrictionScope.BOTH.value,
+class RestrictedCommand(Model):
+    guild_id = fields.BigIntField()
+    channel_id = fields.BigIntField()
+    command_name = fields.CharField(max_length=64)
+    restriction_scope = fields.CharEnumField(
+        RestrictionScope,
+        default=RestrictionScope.BOTH,
+        max_length=16,
     )
 
+    class Meta(Model.Meta):
+        table = "restricted_commands"
+        unique_together = (("guild_id", "channel_id", "command_name"), )
 
-class TempbanConfig(Base):
-    __tablename__ = "tempban_config"
 
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    role_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+class TempbanConfig(Model):
+    guild_id = fields.BigIntField(pk=True)
+    role_id = fields.BigIntField()
+
+    class Meta(Model.Meta):
+        table = "tempban_config"
 
     def __repr__(self) -> str:
         return f"<TempbanConfig guild={self.guild_id} role={self.role_id}>"
 
 
-class TempbanRecord(Base, TimestampMixin):
-    __tablename__ = "tempban_records"
+class TempbanRecord(Model, TimestampMixin):
+    guild_id = fields.BigIntField()
+    user_id = fields.BigIntField()
+    moderator_id = fields.BigIntField()
+    tempban_reason = fields.CharField(max_length=512, null=True)
+    active = fields.BooleanField(default=True)
+    expires_at = fields.DatetimeField(null=True)
 
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    moderator_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    tempban_reason: Mapped[Optional[str]] = mapped_column(String(512),
-                                                          nullable=True)
-    active: Mapped[bool] = mapped_column(Boolean,
-                                         nullable=False,
-                                         server_default=true())
-    expires_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True)
-
-    __table_args__ = (Index("idx_tempban_active_lookup", "guild_id",
-                            "active"), Index("idx_tempban_expiry",
-                                             "expires_at"))
+    class Meta(Model.Meta):
+        table = "tempban_records"
+        unique_together = (("guild_id", "user_id"), )
+        indexes = (
+            ("guild_id", "active"),
+            ("expires_at", ),
+        )
 
     def __repr__(self) -> str:
         return f"<TempbanRecord guild={self.guild_id} user={self.user_id} active={self.active}>"
 
 
-class VerificationConfig(Base, TimestampMixin):
-    __tablename__ = "verification_config"
+class VerificationConfig(Model, TimestampMixin):
+    guild_id = fields.BigIntField(pk=True)
+    verify_channel_id = fields.BigIntField(null=True)
+    log_channel_id = fields.BigIntField(null=True)
+    verified_role_id = fields.BigIntField(null=True)
+    unverified_role_id = fields.BigIntField(null=True)
 
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    verify_channel_id: Mapped[Optional[int]] = mapped_column(BigInteger,
-                                                             nullable=True)
-    log_channel_id: Mapped[Optional[int]] = mapped_column(BigInteger,
-                                                          nullable=True)
-    verified_role_id: Mapped[Optional[int]] = mapped_column(BigInteger,
-                                                            nullable=True)
-    unverified_role_id: Mapped[Optional[int]] = mapped_column(BigInteger,
-                                                              nullable=True)
+    class Meta(Model.Meta):
+        table = "verification_config"
 
 
-class ModerationLogConfig(Base, TimestampMixin):
-    __tablename__ = "moderation_log_config"
+class ModerationLogConfig(Model, TimestampMixin):
+    guild_id = fields.BigIntField(pk=True)
+    channel_id = fields.BigIntField()
+    enabled = fields.BooleanField(default=True)
 
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    channel_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    enabled: Mapped[bool] = mapped_column(Boolean,
-                                          nullable=False,
-                                          server_default=true())
+    class Meta(Model.Meta):
+        table = "moderation_log_config"
 
     def __repr__(self) -> str:
         return f"<ModerationLogConfig guild={self.guild_id} channel={self.channel_id}>"
 
 
-class ChannelPermissionSnapshot(Base, TimestampMixin):
-    __tablename__ = "channel_permission_snapshots"
+class ChannelPermissionSnapshot(Model, TimestampMixin):
+    guild_id = fields.BigIntField()
+    channel_id = fields.BigIntField()
+    target_id = fields.BigIntField()
+    permission_name = fields.CharField(max_length=64)
+    permission_value = fields.BooleanField(null=True)
 
-    guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    target_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    permission_name: Mapped[str] = mapped_column(String(64), primary_key=True)
-    permission_value: Mapped[Optional[bool]] = mapped_column(Boolean,
-                                                             nullable=True)
+    class Meta(Model.Meta):
+        table = "channel_permission_snapshots"
+        unique_together = (("guild_id", "channel_id", "target_id",
+                            "permission_name"), )
 
 
-class WarningRecord(Base, TimestampMixin):
-    __tablename__ = "warnings"
+class WarningRecord(Model, TimestampMixin):
+    warn_id = fields.IntField(pk=True)
+    guild_id = fields.BigIntField(validators=[MinValueValidator(1)])
+    user_id = fields.BigIntField(validators=[MinValueValidator(1)])
+    moderator_id = fields.BigIntField(validators=[MinValueValidator(1)])
+    reason = fields.CharField(max_length=512, default="No reason provided")
 
-    warn_id: Mapped[int] = mapped_column(Integer,
-                                         primary_key=True,
-                                         autoincrement=True)
-    guild_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    moderator_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    reason: Mapped[str] = mapped_column(String(512),
-                                        nullable=False,
-                                        server_default="No reason provided")
-
-    __table_args__ = (Index("idx_warning_guild_user", "guild_id", "user_id"),
-                      CheckConstraint("guild_id > 0",
-                                      name="chk_warn_guild_id"),
-                      CheckConstraint("user_id > 0", name="chk_warn_user_id"),
-                      CheckConstraint("moderator_id > 0",
-                                      name="chk_warn_mod_id"))
+    class Meta(Model.Meta):
+        table = "warnings"
+        indexes = (("guild_id", "user_id"), )
 
     def __repr__(self) -> str:
         return f"<WarningRecord id={self.warn_id} guild={self.guild_id} user={self.user_id}>"
 
 
-class AutoResponder(Base, TimestampMixin):
-    __tablename__ = "autoresponders"
+class AutoResponder(Model, TimestampMixin):
+    responder_id = fields.IntField(pk=True)
+    guild_id = fields.BigIntField(validators=[MinValueValidator(1)])
+    trigger_phrase = fields.CharField(max_length=256)
+    match_type = fields.CharEnumField(
+        MatchType,
+        default=MatchType.CONTAINS,
+        max_length=16,
+    )
 
-    responder_id: Mapped[int] = mapped_column(Integer,
-                                              primary_key=True,
-                                              autoincrement=True)
-    guild_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    trigger_phrase: Mapped[str] = mapped_column(String(256), nullable=False)
-    match_type: Mapped[MatchType] = mapped_column(
-        Enum(MatchType, native_enum=False, name="match_type_enum"),
-        nullable=False,
-        server_default=MatchType.CONTAINS.value)
+    reply_content = fields.TextField(null=True)
+    is_embed = fields.BooleanField(default=False)
+    embed_title = fields.CharField(max_length=256, null=True)
+    image_url = fields.CharField(max_length=512, null=True)
+    enabled = fields.BooleanField(default=True)
+    ignore_bots = fields.BooleanField(default=True)
+    delete_trigger = fields.BooleanField(default=False)
+    cooldown = fields.IntField(default=0, validators=[MinValueValidator(0)])
 
-    reply_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    is_embed: Mapped[bool] = mapped_column(Boolean,
-                                           nullable=False,
-                                           server_default=false())
-    embed_title: Mapped[Optional[str]] = mapped_column(String(256),
-                                                       nullable=True)
-    image_url: Mapped[Optional[str]] = mapped_column(String(512),
-                                                     nullable=True)
-    enabled: Mapped[bool] = mapped_column(Boolean,
-                                          nullable=False,
-                                          server_default=true())
-    ignore_bots: Mapped[bool] = mapped_column(Boolean,
-                                              nullable=False,
-                                              server_default=true())
-    delete_trigger: Mapped[bool] = mapped_column(Boolean,
-                                                 nullable=False,
-                                                 server_default=false())
-    cooldown: Mapped[int] = mapped_column(Integer,
-                                          nullable=False,
-                                          server_default="0")
-
-    __table_args__ = (Index("idx_ar_guild_trigger", "guild_id", "enabled"),
-                      CheckConstraint("guild_id > 0", name="chk_ar_guild_id"),
-                      CheckConstraint("cooldown >= 0", name="chk_ar_cooldown"))
+    class Meta(Model.Meta):
+        table = "autoresponders"
+        indexes = (("guild_id", "enabled"), )
 
 
-class AutoResponderReaction(Base):
-    __tablename__ = "autoresponder_reactions"
+class AutoResponderReaction(Model):
+    id = fields.IntField(pk=True)
+    responder_id = fields.IntField()
+    emoji = fields.CharField(max_length=64)
 
-    responder_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    emoji: Mapped[str] = mapped_column(String(64), primary_key=True)
+    class Meta(Model.Meta):
+        table = "autoresponder_reactions"
+        unique_together = (("responder_id", "emoji"), )
 
     def __repr__(self) -> str:
         return f"<AutoResponderReaction id={self.responder_id} emoji={self.emoji}>"

@@ -1,9 +1,7 @@
 import asyncio
 import discord
 from typing import Optional, Dict, Any, Tuple
-from sqlalchemy import select
-from db.engine import AsyncSessionLocal
-from db.models import ModerationLogConfig
+from db.db_helpers.mod_log_config import get_mod_log_channel_id
 from utils.core.embeds import make_embed
 
 _log_cache: dict[int, int] = {}
@@ -33,17 +31,14 @@ async def send_mod_log(*,
 
         channel_id = _log_cache.get(guild.id)
         if channel_id is None:
-            async with AsyncSessionLocal() as session:
-                result = await session.execute(
-                    select(ModerationLogConfig).where(
-                        ModerationLogConfig.guild_id == guild.id))
-                row = result.scalar_one_or_none()
-            if not row or not row.channel_id:
+            fetched_id = await get_mod_log_channel_id(guild.id)
+            if fetched_id is None:
                 _log_cache[guild.id] = 0
                 return
 
-            channel_id = row.channel_id
+            channel_id = fetched_id
             _log_cache[guild.id] = channel_id
+
         if channel_id == 0:
             return
 
@@ -73,6 +68,7 @@ async def send_mod_log(*,
                 if value is None:
                     continue
                 fields.append((str(name), str(value), False))
+
         embed = make_embed(title=title,
                            description=description,
                            level=level,
@@ -82,6 +78,7 @@ async def send_mod_log(*,
         embed.timestamp = discord.utils.utcnow()
         await channel.send(embed=embed,
                            allowed_mentions=discord.AllowedMentions.none())
+
     except (discord.Forbidden, discord.NotFound):
         return
 

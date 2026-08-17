@@ -9,9 +9,8 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-# Database Infrastructure
-from db.engine import close_database
-from db.schema import init_schema
+# Tortoise ORM Database Infrastructure
+from db.db_config import close_tortoise, init_tortoise
 
 # Custom Handlers & Feature Interceptors
 from utils.core.embeds import make_embed
@@ -72,15 +71,19 @@ class DigitalVigilBot(commands.Bot):
     """Main application bot class with dynamic extensions and custom event pipeline."""
 
     def __init__(self) -> None:
-        super().__init__(command_prefix=dynamic_prefix,
-                         intents=intents,
-                         help_command=None,
-                         case_insensitive=True)
+        super().__init__(
+            command_prefix=dynamic_prefix,
+            intents=intents,
+            help_command=None,
+            case_insensitive=True,
+        )
         self.presence_rotator: PresenceRotator | None = None
 
     async def setup_hook(self) -> None:
-        logger.info("[STARTUP] Initializing database schema...")
-        await init_schema()
+        logger.info(
+            "[STARTUP] Initializing Tortoise ORM database connection...")
+        await init_tortoise()
+
         self.tree.interaction_check = command_toggle_check
 
         await self.load_all_extensions()
@@ -111,7 +114,7 @@ class DigitalVigilBot(commands.Bot):
         """Recursively loads all extension cogs inside the /cmd directory."""
         base_path = os.path.abspath("cmd")
         if not os.path.exists(base_path):
-            logger.warning("[EXTENSION] Directories 'cmd' not found.")
+            logger.warning("[EXTENSION] Directory 'cmd' not found.")
             return
 
         for root, _, files in os.walk(base_path):
@@ -214,14 +217,18 @@ class DigitalVigilBot(commands.Bot):
         if isinstance(error, commands.CommandNotFound):
             invoked_with = ctx.invoked_with or "Unknown"
             try:
-                await ctx.send(embed=make_embed(
-                    title="Command Not Found",
-                    description=(
-                        f"The command `{invoked_with}` does not exist. "
-                        "Use `/` slash commands to browse available systems."),
-                    level="WARNING",
-                    footer=f"Requested by {ctx.author}"),
-                               delete_after=10.0)
+                await ctx.send(
+                    embed=make_embed(
+                        title="Command Not Found",
+                        description=
+                        (f"The command `{invoked_with}` does not exist. "
+                         "Use `/` slash commands to browse available systems."
+                         ),
+                        level="WARNING",
+                        footer=f"Requested by {ctx.author}",
+                    ),
+                    delete_after=10.0,
+                )
             except Exception:
                 pass
             return
@@ -262,8 +269,8 @@ class DigitalVigilBot(commands.Bot):
             self.presence_rotator.stop()
 
         try:
-            await close_database()
-            logger.info("[SHUTDOWN] Database engine cleanly disconnected")
+            await close_tortoise()
+            logger.info("[SHUTDOWN] Tortoise ORM cleanly disconnected")
         except Exception as exc:
             logger.exception(f"[SHUTDOWN ERROR] Database closure error: {exc}")
 
@@ -295,7 +302,7 @@ async def run_bot() -> bool:
     except Exception as exc:
         logger.exception(f"[CRASH] Unhandled exception occurred: {exc}")
         try:
-            await close_database()
+            await close_tortoise()
         except Exception:
             pass
         logger.info("[RESTART] Restarting iteration loop in 30 seconds...")
@@ -314,7 +321,7 @@ def main() -> None:
                 "\n[SHUTDOWN] KeyboardInterrupt (CTRL+C) detected. Terminating..."
             )
             try:
-                asyncio.run(close_database())
+                asyncio.run(close_tortoise())
             except Exception:
                 pass
             logger.info("[EXIT] Shutdown complete cleanly")

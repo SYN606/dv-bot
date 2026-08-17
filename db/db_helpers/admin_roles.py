@@ -1,60 +1,44 @@
-from typing import List
-from sqlalchemy import delete, select
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.dialects.postgresql import insert as postgres_insert
-from db.engine import AsyncSessionLocal, DB_TYPE
+from typing import cast
 from db.models import AdminRole
 
 
-# Internal insert builder
-def build_insert_stmt(model, values: dict):
-    if DB_TYPE == "postgres":
-        return postgres_insert(model).values(**values)
-    return sqlite_insert(model).values(**values)
-
-
-# Add admin role
 async def add_admin_role(guild_id: int, role_id: int) -> bool:
-    async with AsyncSessionLocal() as session:
-        stmt = build_insert_stmt(
-            AdminRole,
-            {"guild_id": guild_id, "role_id": role_id},
-        ).on_conflict_do_nothing(index_elements=[AdminRole.guild_id, AdminRole.role_id])
+    """
+    Adds an admin role to a guild.
+    Returns True if created, False if it already existed.
+    """
+    _, created = await AdminRole.get_or_create(
+        guild_id=guild_id,
+        role_id=role_id,
+    )
+    return created
 
-        result = await session.execute(stmt)
-        await session.commit()
-        return (getattr(result, "rowcount", 0) or 0) > 0
 
-
-# Remove admin role
 async def remove_admin_role(guild_id: int, role_id: int) -> bool:
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            delete(AdminRole).where(
-                AdminRole.guild_id == guild_id, AdminRole.role_id == role_id
-            )
-        )
-        await session.commit()
-        return (getattr(result, "rowcount", 0) or 0) > 0
+    """
+    Removes an admin role from a guild.
+    Returns True if a record was deleted, False otherwise.
+    """
+    deleted_count = await AdminRole.filter(
+        guild_id=guild_id,
+        role_id=role_id,
+    ).delete()
+
+    return deleted_count > 0
 
 
-# Fetch admin roles
-async def get_admin_roles(guild_id: int) -> List[int]:
-    async with AsyncSessionLocal() as session:
-        result = await session.scalars(
-            select(AdminRole.role_id).where(AdminRole.guild_id == guild_id)
-        )
-        return list(result)
+async def get_admin_roles(guild_id: int) -> list[int]:
+    """
+    Retrieves all admin role IDs registered for a given guild.
+    """
+    roles = await AdminRole.filter(guild_id=guild_id).values_list("role_id",
+                                                                  flat=True)
+
+    return cast(list[int], roles)
 
 
-# Check admin role
 async def is_admin_role(guild_id: int, role_id: int) -> bool:
-    async with AsyncSessionLocal() as session:
-        return (
-            await session.scalar(
-                select(AdminRole.guild_id).where(
-                    AdminRole.guild_id == guild_id, AdminRole.role_id == role_id
-                )
-            )
-            is not None
-        )
+    """
+    Checks whether a specific role is an admin role in the given guild.
+    """
+    return await AdminRole.filter(guild_id=guild_id, role_id=role_id).exists()

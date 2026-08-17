@@ -1,115 +1,68 @@
-from typing import Optional, Tuple
-from sqlalchemy import delete, select, update
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.dialects.postgresql import insert as postgres_insert
-from db.engine import AsyncSessionLocal, DB_TYPE
 from db.models import StickyMessage
 
 THRESHOLD = 1
 
 
-# Internal insert builder
-def build_insert_stmt(model, values: dict):
-    if DB_TYPE == "postgres":
-        return postgres_insert(model).values(**values)
-    return sqlite_insert(model).values(**values)
-
-
 # Set sticky
 async def set_sticky(guild_id: int, channel_id: int, content: str) -> None:
-    async with AsyncSessionLocal() as session:
-        payload = {
-            "guild_id": guild_id,
-            "channel_id": channel_id,
+    """Sets or updates a sticky message for a specific channel."""
+    await StickyMessage.update_or_create(
+        guild_id=guild_id,
+        channel_id=channel_id,
+        defaults={
             "sticky_content": content,
             "counter": 0,
             "last_message_id": None,
-        }
-
-        stmt = build_insert_stmt(StickyMessage, payload).on_conflict_do_update(
-            index_elements=[StickyMessage.guild_id, StickyMessage.channel_id],
-            set_={"sticky_content": content, "counter": 0, "last_message_id": None},
-        )
-        await session.execute(stmt)
-        await session.commit()
+        },
+    )
 
 
 # Remove sticky
 async def remove_sticky(guild_id: int, channel_id: int) -> bool:
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            delete(StickyMessage).where(
-                StickyMessage.guild_id == guild_id,
-                StickyMessage.channel_id == channel_id,
-            )
-        )
-        await session.commit()
-        return (getattr(result, "rowcount", 0) or 0) > 0
+    """Deletes a sticky message configuration for a channel."""
+    deleted_count = await StickyMessage.filter(guild_id=guild_id,
+                                               channel_id=channel_id).delete()
+    return deleted_count > 0
 
 
 # Get sticky
-async def get_sticky(guild_id: int, channel_id: int) -> Optional[str]:
-    async with AsyncSessionLocal() as session:
-        return await session.scalar(
-            select(StickyMessage.sticky_content).where(
-                StickyMessage.guild_id == guild_id,
-                StickyMessage.channel_id == channel_id,
-            )
-        )
+async def get_sticky(guild_id: int, channel_id: int) -> str | None:
+    """Fetches the sticky content for a channel if it exists."""
+    sticky = await StickyMessage.get_or_none(guild_id=guild_id,
+                                             channel_id=channel_id)
+    return sticky.sticky_content if sticky else None
 
 
 # Sticky repost step
-async def sticky_step(
-    guild_id: int, channel_id: int
-) -> Optional[Tuple[str, Optional[int]]]:
-    async with AsyncSessionLocal() as session:
-        sticky = await session.scalar(
-            select(StickyMessage).where(
-                StickyMessage.guild_id == guild_id,
-                StickyMessage.channel_id == channel_id,
-            )
-        )
-        if not sticky:
-            return None
+async def sticky_step(guild_id: int,
+                      channel_id: int) -> tuple[str, int | None] | None:
+    """Increments the message counter and returns the sticky payload if the threshold is met."""
+    sticky = await StickyMessage.get_or_none(guild_id=guild_id,
+                                             channel_id=channel_id)
+    if not sticky:
+        return None
 
-        counter = sticky.counter + 1
-        if counter < THRESHOLD:
-            await session.execute(
-                update(StickyMessage)
-                .where(
-                    StickyMessage.guild_id == guild_id,
-                    StickyMessage.channel_id == channel_id,
-                )
-                .values(counter=counter)
-            )
-            await session.commit()
-            return None
+    sticky.counter += 1
 
-        # Repost threshold met: extract values and clear out the state tracking inline
-        content = sticky.sticky_content
-        last_message_id = sticky.last_message_id
+    if sticky.counter < THRESHOLD:
+        await sticky.save(update_fields=["counter"])
+        return None
 
-        await session.execute(
-            update(StickyMessage)
-            .where(
-                StickyMessage.guild_id == guild_id,
-                StickyMessage.channel_id == channel_id,
-            )
-            .values(counter=0, last_message_id=None)
-        )
-        await session.commit()
-        return content, last_message_id
+    # Repost threshold met: extract values and reset tracking state
+    content = sticky.sticky_content
+    last_message_id = sticky.last_message_id
+
+    sticky.counter = 0
+    sticky.last_message_id = None
+    await sticky.save(update_fields=["counter", "last_message_id"])
+
+    return content, last_message_id
 
 
 # Update last sticky message
-async def update_last_message(guild_id: int, channel_id: int, message_id: int) -> None:
-    async with AsyncSessionLocal() as session:
-        await session.execute(
-            update(StickyMessage)
-            .where(
-                StickyMessage.guild_id == guild_id,
-                StickyMessage.channel_id == channel_id,
-            )
-            .values(last_message_id=message_id)
-        )
-        await session.commit()
+async def update_last_message(guild_id: int, channel_id: int,
+                              message_id: int) -> None:
+    """Updates the tracking ID of the last sent sticky message."""
+    await StickyMessage.filter(
+        guild_id=guild_id,
+        channel_id=channel_id).update(last_message_id=message_id)

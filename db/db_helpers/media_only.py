@@ -1,15 +1,5 @@
-from sqlalchemy import delete, select, update
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.dialects.postgresql import insert as postgres_insert
-from db.engine import AsyncSessionLocal, DB_TYPE
+from typing import Any, cast
 from db.models import MediaOnlyChannel
-
-
-# Internal insert builder
-def build_insert_stmt(model, values: dict):
-    if DB_TYPE == "postgres":
-        return postgres_insert(model).values(**values)
-    return sqlite_insert(model).values(**values)
 
 
 # Enable media only
@@ -22,80 +12,55 @@ async def enable_media_only(
     auto_mute: bool = False,
     nsfw_bypass: bool = True,
 ) -> bool:
-    async with AsyncSessionLocal() as session:
-        stmt = build_insert_stmt(
-            MediaOnlyChannel,
-            {
-                "guild_id": guild_id,
-                "channel_id": channel_id,
-                "whitelist_role_id": whitelist_role_id,
-                "image_only": image_only,
-                "auto_mute": auto_mute,
-                "nsfw_bypass": nsfw_bypass,
-            },
-        ).on_conflict_do_nothing(
-            index_elements=[MediaOnlyChannel.guild_id, MediaOnlyChannel.channel_id]
-        )
-
-        result = await session.execute(stmt)
-        await session.commit()
-        return (getattr(result, "rowcount", 0) or 0) > 0
+    """Creates a MediaOnlyChannel record if it doesn't already exist."""
+    _, created = await MediaOnlyChannel.get_or_create(
+        guild_id=guild_id,
+        channel_id=channel_id,
+        defaults={
+            "whitelist_role_id": whitelist_role_id,
+            "image_only": image_only,
+            "auto_mute": auto_mute,
+            "nsfw_bypass": nsfw_bypass,
+        },
+    )
+    return created
 
 
 # Disable media only
 async def disable_media_only(guild_id: int, channel_id: int) -> bool:
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            delete(MediaOnlyChannel).where(
-                MediaOnlyChannel.guild_id == guild_id,
-                MediaOnlyChannel.channel_id == channel_id,
-            )
-        )
-        await session.commit()
-        return (getattr(result, "rowcount", 0) or 0) > 0
+    """Deletes a MediaOnlyChannel record for a given channel."""
+    deleted_count = await MediaOnlyChannel.filter(
+        guild_id=guild_id, channel_id=channel_id
+    ).delete()
+    return deleted_count > 0
 
 
 # Fetch full config
 async def get_media_only_config(
     guild_id: int, channel_id: int
 ) -> MediaOnlyChannel | None:
-    async with AsyncSessionLocal() as session:
-        return await session.scalar(
-            select(MediaOnlyChannel).where(
-                MediaOnlyChannel.guild_id == guild_id,
-                MediaOnlyChannel.channel_id == channel_id,
-            )
-        )
+    """Fetches full media-only configuration model for a channel."""
+    return await MediaOnlyChannel.get_or_none(
+        guild_id=guild_id, channel_id=channel_id
+    )
 
 
 # Simple check
 async def is_media_only(guild_id: int, channel_id: int) -> bool:
-    async with AsyncSessionLocal() as session:
-        return (
-            await session.scalar(
-                select(MediaOnlyChannel.guild_id).where(
-                    MediaOnlyChannel.guild_id == guild_id,
-                    MediaOnlyChannel.channel_id == channel_id,
-                )
-            )
-            is not None
-        )
+    """Checks if a channel is configured as media-only."""
+    return await MediaOnlyChannel.filter(
+        guild_id=guild_id, channel_id=channel_id
+    ).exists()
 
 
 # Update sticky message id
 async def update_sticky_message_id(
     guild_id: int, channel_id: int, message_id: int | None
 ) -> None:
-    async with AsyncSessionLocal() as session:
-        await session.execute(
-            update(MediaOnlyChannel)
-            .where(
-                MediaOnlyChannel.guild_id == guild_id,
-                MediaOnlyChannel.channel_id == channel_id,
-            )
-            .values(sticky_message_id=message_id)
-        )
-        await session.commit()
+    """Updates the sticky message ID for the media channel."""
+    await MediaOnlyChannel.filter(
+        guild_id=guild_id, channel_id=channel_id
+    ).update(sticky_message_id=message_id)
 
 
 # Update settings
@@ -108,40 +73,31 @@ async def update_media_only_settings(
     auto_mute: bool | None = None,
     nsfw_bypass: bool | None = None,
 ) -> bool:
-    # Direct dictionary comprehension to unpack only provided values cleanly
-    values = {
-        k: v
-        for k, v in {
-            "whitelist_role_id": whitelist_role_id,
-            "image_only": image_only,
-            "auto_mute": auto_mute,
-            "nsfw_bypass": nsfw_bypass,
-        }.items()
-        if v is not None
+    """Updates specific configuration parameters for a media-only channel."""
+    fields: dict[str, Any] = {
+        "whitelist_role_id": whitelist_role_id,
+        "image_only": image_only,
+        "auto_mute": auto_mute,
+        "nsfw_bypass": nsfw_bypass,
     }
 
-    if not values:
+    # Unpack non-None keyword arguments cleanly
+    update_data = {k: v for k, v in fields.items() if v is not None}
+    if not update_data:
         return False
 
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            update(MediaOnlyChannel)
-            .where(
-                MediaOnlyChannel.guild_id == guild_id,
-                MediaOnlyChannel.channel_id == channel_id,
-            )
-            .values(**values)
-        )
-        await session.commit()
-        return (getattr(result, "rowcount", 0) or 0) > 0
+    updated_count = await MediaOnlyChannel.filter(
+        guild_id=guild_id, channel_id=channel_id
+    ).update(**update_data)
+
+    return updated_count > 0
 
 
 # Fetch all media channels
 async def get_media_only_channels(guild_id: int) -> list[int]:
-    async with AsyncSessionLocal() as session:
-        result = await session.scalars(
-            select(MediaOnlyChannel.channel_id).where(
-                MediaOnlyChannel.guild_id == guild_id
-            )
-        )
-        return list(result)
+    """Retrieves all channel IDs configured as media-only within a guild."""
+    channels = await MediaOnlyChannel.filter(
+        guild_id=guild_id
+    ).values_list("channel_id", flat=True)
+
+    return cast(list[int], channels)

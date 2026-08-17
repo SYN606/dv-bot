@@ -12,7 +12,7 @@ from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import send_mod_log
 from utils.permissions.base_admin import BaseAdminCog
 
-logger = logging.getLogger("DigitalVigital")
+logger = logging.getLogger("DigitalVigil")
 
 
 class KickSystem(BaseAdminCog):
@@ -266,10 +266,8 @@ class KickSystem(BaseAdminCog):
             return
         except discord.HTTPException:
             await self._reply(
-                ctx,
-                "Kick Failed",
-                "An error occurred while trying to kick the user.",
-            )
+                ctx, "Kick Failed",
+                "An error occurred while trying to kick the user.")
             return
 
         await self._reply(
@@ -278,22 +276,19 @@ class KickSystem(BaseAdminCog):
             f"{EMOJIS.get('warning', '⚠️')} **{target_member}** has been kicked.\n\n"
             f"{EMOJIS.get('arrow_point', '➡️')} **Reason:** {reason}",
             level="WARNING",
-            show_footer=True,
-        )
+            show_footer=True)
 
         await self._cleanup(ctx)
 
         try:
-            await send_mod_log(
-                guild=guild,
-                category="KICK",
-                title="User Kicked",
-                description=f"{target_member} was kicked.",
-                level="WARNING",
-                actor=moderator,
-                target=target_member,
-                extra_fields={"Reason": reason},
-            )
+            await send_mod_log(guild=guild,
+                               category="KICK",
+                               title="User Kicked",
+                               description=f"{target_member} was kicked.",
+                               level="WARNING",
+                               actor=moderator,
+                               target=target_member,
+                               extra_fields={"Reason": reason})
         except Exception as exc:
             logger.error("Failed to send mod log for kick: %s", exc)
 

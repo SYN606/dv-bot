@@ -18,7 +18,7 @@ from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import send_mod_log
 from utils.permissions.base_admin import BaseAdminCog
 
-logger = logging.getLogger("DigitalVigital")
+logger = logging.getLogger("DigitalVigil")
 
 
 class WarnSystem(BaseAdminCog):
@@ -34,20 +34,20 @@ class WarnSystem(BaseAdminCog):
         description: str,
         level: str = "WARNING",
         show_footer: bool = False,
-    ) -> None:
+    ) -> Optional[discord.Message]:
         """Send a standardized response embed handling slash and prefix interactions."""
-        try:
-            embed = make_embed(
-                title=title,
-                description=description,
-                level=level,
+        embed = make_embed(
+            title=title,
+            description=description,
+            level=level,
+        )
+        if show_footer and ctx.author:
+            embed.set_footer(
+                text=f"Action by : {ctx.author}",
+                icon_url=ctx.author.display_avatar.url,
             )
-            if show_footer and ctx.author:
-                embed.set_footer(
-                    text=f"Action by : {ctx.author}",
-                    icon_url=ctx.author.display_avatar.url,
-                )
 
+        try:
             if ctx.interaction:
                 interaction = ctx.interaction
                 if interaction.response.is_done():
@@ -56,14 +56,16 @@ class WarnSystem(BaseAdminCog):
                 else:
                     await interaction.response.send_message(embed=embed,
                                                             ephemeral=True)
-            else:
-                try:
-                    await ctx.reply(embed=embed, mention_author=False)
-                except (discord.NotFound, discord.HTTPException):
-                    await ctx.channel.send(embed=embed)
+                return None
+
+            try:
+                return await ctx.reply(embed=embed, mention_author=False)
+            except (discord.NotFound, discord.HTTPException):
+                return await ctx.channel.send(embed=embed)
         except discord.HTTPException as exc:
             logger.error("Failed sending response embed in Warn system: %s",
                          exc)
+            return None
 
     async def _cleanup(self, ctx: commands.Context) -> None:
         """Safely delete command invocation message where applicable."""
@@ -88,7 +90,6 @@ class WarnSystem(BaseAdminCog):
         if isinstance(user_input, (discord.Member, discord.User)):
             return user_input
 
-        # Reply message resolution fallback
         if not user_input:
             if (ctx.message and ctx.message.reference and isinstance(
                     ctx.message.reference.resolved, discord.Message)):
@@ -96,10 +97,12 @@ class WarnSystem(BaseAdminCog):
                 if isinstance(resolved_author, discord.Member):
                     return resolved_author
                 return guild.get_member(resolved_author.id) or resolved_author
-            return None
 
-        if ctx.message and ctx.message.mentions:
-            return ctx.message.mentions[0]
+            if ctx.message and ctx.message.mentions:
+                first_mention = ctx.message.mentions[0]
+                return first_mention
+
+            return None
 
         try:
             user_id = int(str(user_input))
@@ -116,9 +119,10 @@ class WarnSystem(BaseAdminCog):
             return None
 
     async def validate_warn(
-        self, ctx: commands.Context,
-        target: Union[discord.Member,
-                      discord.User]) -> Tuple[bool, Optional[str]]:
+        self,
+        ctx: commands.Context,
+        target: Union[discord.Member, discord.User],
+    ) -> Tuple[bool, Optional[str]]:
         """Validate whether the moderator can issue an infraction to the target user."""
         guild = ctx.guild
         if not guild or not guild.me:
@@ -130,14 +134,17 @@ class WarnSystem(BaseAdminCog):
 
         if target.id == moderator.id:
             return False, f"{EMOJIS.get('fail', '❌')} You cannot warn yourself."
+
         if target.id == guild.me.id:
             return False, f"{EMOJIS.get('fail', '❌')} You cannot warn me."
 
         if isinstance(target, discord.Member):
             if target.id == guild.owner_id:
                 return False, f"{EMOJIS.get('fail', '❌')} You cannot warn the server owner."
+
             if moderator.id != guild.owner_id and target.guild_permissions.administrator:
                 return False, f"{EMOJIS.get('fail', '❌')} You cannot warn another administrator."
+
             if moderator.id != guild.owner_id and target.top_role >= moderator.top_role:
                 return (
                     False,
@@ -156,7 +163,7 @@ class WarnSystem(BaseAdminCog):
     )
     @commands.guild_only()
     @commands.cooldown(1, 3.0, commands.BucketType.guild)
-    async def legacy_warn(
+    async def warn(
         self,
         ctx: commands.Context,
         user: Optional[discord.User] = None,
@@ -198,12 +205,14 @@ class WarnSystem(BaseAdminCog):
             )
             return
 
+        clean_reason = reason.strip()
+
         try:
             _, total_warns = await add_warning(
                 guild_id=ctx.guild.id,
                 user_id=target.id,
                 moderator_id=ctx.author.id,
-                reason=reason.strip(),
+                reason=clean_reason,
             )
         except Exception as exc:
             logger.error("Database error while adding warning: %s", exc)
@@ -216,21 +225,25 @@ class WarnSystem(BaseAdminCog):
             )
             return
 
+        # Attempt DM Notification
         try:
             dm_desc = (
                 f"{EMOJIS.get('warning', '⚠️')} You were warned in **{ctx.guild.name}**\n\n"
-                f"{EMOJIS.get('arrow_point', '➡️')} **Reason:** {reason.strip()}\n"
+                f"{EMOJIS.get('arrow_point', '➡️')} **Reason:** {clean_reason}\n"
                 f"{EMOJIS.get('arrow_point', '➡️')} **Total Active Track:** {total_warns}"
             )
-            await target.send(embed=make_embed(title="Infraction Notice",
-                                               description=dm_desc,
-                                               level="WARNING"))
+            await target.send(embed=make_embed(
+                title="Infraction Notice",
+                description=dm_desc,
+                level="WARNING",
+            ))
         except (discord.Forbidden, discord.HTTPException):
             pass
 
+        # Channel Confirmation
         desc = (
             f"{EMOJIS.get('warning', '⚠️')} **{target}** penalization recorded.\n\n"
-            f"{EMOJIS.get('arrow_point', '➡️')} **Reason:** {reason.strip()}\n"
+            f"{EMOJIS.get('arrow_point', '➡️')} **Reason:** {clean_reason}\n"
             f"{EMOJIS.get('arrow_point', '➡️')} **Total Warnings:** {total_warns}"
         )
         await self._reply(
@@ -241,6 +254,7 @@ class WarnSystem(BaseAdminCog):
             show_footer=True,
         )
 
+        # Mod Log
         try:
             await send_mod_log(
                 guild=ctx.guild,
@@ -251,7 +265,7 @@ class WarnSystem(BaseAdminCog):
                 actor=ctx.author,
                 target=target,
                 extra_fields={
-                    "Reason": reason.strip(),
+                    "Reason": clean_reason,
                     "Total Warnings": str(total_warns),
                 },
             )
@@ -269,7 +283,7 @@ class WarnSystem(BaseAdminCog):
         user="The target user to investigate logs for (defaults to yourself)")
     @commands.guild_only()
     @commands.cooldown(2, 5.0, commands.BucketType.user)
-    async def legacy_warnings(
+    async def warnings(
         self,
         ctx: commands.Context,
         user: Optional[discord.User] = None,
@@ -305,8 +319,9 @@ class WarnSystem(BaseAdminCog):
 
         desc = f"Historical infraction data tracking **{target}**:\n\n"
         for r in records:
+            ts = int(r.created_at.timestamp())
             desc += (
-                f"**ID:** `{r.warn_id}` | <@{r.moderator_id}> | <t:{int(r.created_at.timestamp())}:R>\n"
+                f"**ID:** `{r.warn_id}` | <@{r.moderator_id}> | <t:{ts}:R>\n"
                 f"{EMOJIS.get('curved_arrow', '┕')} `{r.reason}`\n\n")
 
         await self._reply(
@@ -432,24 +447,25 @@ class WarnSystem(BaseAdminCog):
         )
         await self._cleanup(ctx)
 
-    async def cog_command_error(
-            self, ctx: commands.Context, error: Exception
-        ) -> None:
-            """Handle cooldown and permission failures gracefully."""
-            if isinstance(error, commands.CommandOnCooldown):
-                await self._reply(
-                    ctx,
-                    title="Rate Limit Enforced",
-                    description=f"{EMOJIS.get('fail', '❌')} Try again in **{error.retry_after:.1f}s**.",
-                    level="ERROR",
-                )
-            elif isinstance(error, commands.CheckFailure):
-                await self._reply(
-                    ctx,
-                    title="Permission Denied",
-                    description=f"{EMOJIS.get('fail', '❌')} Missing Staff Authorization.",
-                    level="ERROR",
-                )
+    async def cog_command_error(self, ctx: commands.Context,
+                                error: Exception) -> None:
+        """Handle cooldown and permission failures gracefully."""
+        if isinstance(error, commands.CommandOnCooldown):
+            await self._reply(
+                ctx,
+                title="Rate Limit Enforced",
+                description=
+                f"{EMOJIS.get('fail', '❌')} Try again in **{error.retry_after:.1f}s**.",
+                level="ERROR",
+            )
+        elif isinstance(error, commands.CheckFailure):
+            await self._reply(
+                ctx,
+                title="Permission Denied",
+                description=
+                f"{EMOJIS.get('fail', '❌')} Missing Staff Authorization.",
+                level="ERROR",
+            )
 
 
 async def setup(bot: commands.Bot) -> None:

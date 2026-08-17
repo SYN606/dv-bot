@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 
 import discord
@@ -301,7 +301,9 @@ class Tempban(BaseAdminCog):
         config = await get_verification_config(guild.id)
         verified_role = (guild.get_role(config.verified_role_id)
                          if config and config.verified_role_id else None)
-        expiry_dt = discord.utils.utcnow() + timedelta(seconds=seconds)
+
+        # Explicit UTC timezone calculation for Tortoise ORM compatibility
+        expiry_dt = datetime.now(timezone.utc) + timedelta(seconds=seconds)
 
         try:
             embed = make_embed(

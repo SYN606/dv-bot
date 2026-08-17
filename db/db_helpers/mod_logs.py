@@ -1,85 +1,52 @@
-from typing import Optional
-from sqlalchemy import delete, select, update
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.dialects.postgresql import insert as postgres_insert
-from db.engine import AsyncSessionLocal, DB_TYPE
 from db.models import ModerationLogConfig
-
-
-# Internal insert builder
-def build_insert_stmt(model, values: dict):
-    if DB_TYPE == "postgres":
-        return postgres_insert(model).values(**values)
-    return sqlite_insert(model).values(**values)
 
 
 # Set log channel
 async def set_log_channel(guild_id: int, channel_id: int) -> None:
-    async with AsyncSessionLocal() as session:
-        payload = {"guild_id": guild_id, "channel_id": channel_id, "enabled": True}
-
-        stmt = build_insert_stmt(ModerationLogConfig, payload).on_conflict_do_update(
-            index_elements=[ModerationLogConfig.guild_id],
-            set_={"channel_id": channel_id, "enabled": True},
-        )
-        await session.execute(stmt)
-        await session.commit()
+    """Sets or updates the log channel for a guild and enables logging."""
+    await ModerationLogConfig.update_or_create(
+        guild_id=guild_id,
+        defaults={
+            "channel_id": channel_id,
+            "enabled": True,
+        },
+    )
 
 
 # Get log channel
-async def get_log_channel(guild_id: int) -> Optional[int]:
-    async with AsyncSessionLocal() as session:
-        return await session.scalar(
-            select(ModerationLogConfig.channel_id).where(
-                ModerationLogConfig.guild_id == guild_id,
-                ModerationLogConfig.enabled.is_(True),
-            )
-        )
+async def get_log_channel(guild_id: int) -> int | None:
+    """Fetches the active log channel ID for a guild if enabled."""
+    config = await ModerationLogConfig.get_or_none(guild_id=guild_id,
+                                                   enabled=True)
+    return config.channel_id if config else None
 
 
 # Check enabled
 async def is_modlog_enabled(guild_id: int) -> bool:
-    async with AsyncSessionLocal() as session:
-        return (
-            await session.scalar(
-                select(ModerationLogConfig.guild_id).where(
-                    ModerationLogConfig.guild_id == guild_id,
-                    ModerationLogConfig.enabled.is_(True),
-                )
-            )
-            is not None
-        )
+    """Checks whether moderation logging is enabled for a guild."""
+    return await ModerationLogConfig.filter(guild_id=guild_id,
+                                            enabled=True).exists()
 
 
 # Enable modlogs
 async def enable_modlogs(guild_id: int) -> bool:
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            update(ModerationLogConfig)
-            .where(ModerationLogConfig.guild_id == guild_id)
-            .values(enabled=True)
-        )
-        await session.commit()
-        return (getattr(result, "rowcount", 0) or 0) > 0
+    """Enables moderation logging for a guild."""
+    updated_count = await ModerationLogConfig.filter(guild_id=guild_id
+                                                     ).update(enabled=True)
+    return updated_count > 0
 
 
 # Disable modlogs
 async def disable_modlogs(guild_id: int) -> bool:
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            update(ModerationLogConfig)
-            .where(ModerationLogConfig.guild_id == guild_id)
-            .values(enabled=False)
-        )
-        await session.commit()
-        return (getattr(result, "rowcount", 0) or 0) > 0
+    """Disables moderation logging for a guild without deleting configuration."""
+    updated_count = await ModerationLogConfig.filter(guild_id=guild_id
+                                                     ).update(enabled=False)
+    return updated_count > 0
 
 
 # Remove modlog config
 async def remove_log_channel(guild_id: int) -> bool:
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            delete(ModerationLogConfig).where(ModerationLogConfig.guild_id == guild_id)
-        )
-        await session.commit()
-        return (getattr(result, "rowcount", 0) or 0) > 0
+    """Deletes the moderation log configuration record for a guild."""
+    deleted_count = await ModerationLogConfig.filter(guild_id=guild_id
+                                                     ).delete()
+    return deleted_count > 0

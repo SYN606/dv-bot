@@ -1,9 +1,8 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import discord
-from sqlalchemy import select
-from db.engine import AsyncSessionLocal
-from db.models import VerificationConfig, TempbanRecord
+
+from db.models import TempbanRecord
 from db.db_helpers.verification import get_verification_config
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
@@ -25,13 +24,12 @@ async def handle_verification(*, guild: discord.Guild,
 
     async with lock:
         try:
-            async with AsyncSessionLocal() as session:
-                ban_check = await session.scalar(
-                    select(TempbanRecord.user_id).where(
-                        TempbanRecord.guild_id == guild.id).where(
-                            TempbanRecord.user_id == member.id).where(
-                                TempbanRecord.active == True))
-            if ban_check is not None:
+            # Tortoise ORM query: Check if user has an active tempban
+            has_active_ban = await TempbanRecord.filter(guild_id=guild.id,
+                                                        user_id=member.id,
+                                                        active=True).exists()
+
+            if has_active_ban:
                 return False
 
             config = await get_verification_config(guild.id)
@@ -77,12 +75,13 @@ async def handle_verification(*, guild: discord.Guild,
                 if isinstance(log_channel, discord.TextChannel):
                     await asyncio.sleep(0.2)
                     try:
+                        timestamp = int(datetime.now(timezone.utc).timestamp())
                         await log_channel.send(embed=make_embed(
                             title="User Verified",
                             description=
-                            (f"{EMOJIS['success']} {member.mention} completed verification.\n\n"
-                             f"{EMOJIS['arrow_point']} **User ID:** `{member.id}`\n"
-                             f"{EMOJIS['arrow_point']} **Time:** <t:{int(datetime.utcnow().timestamp())}:R>"
+                            (f"{EMOJIS.get('success', '✅')} {member.mention} completed verification.\n\n"
+                             f"{EMOJIS.get('arrow_point', '➡️')} **User ID:** `{member.id}`\n"
+                             f"{EMOJIS.get('arrow_point', '➡️')} **Time:** <t:{timestamp}:R>"
                              ),
                             level="SUCCESS",
                             footer=f"Verification • {guild.name}"))

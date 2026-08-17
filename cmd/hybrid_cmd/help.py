@@ -19,7 +19,6 @@ logger = logging.getLogger("Digital Vigital")
 BANNER_GIF = os.getenv("HELP_BANNER_GIF")
 JSON_PATH = os.path.join("db", "static_db", "helps.json")
 
-# Fully typed to work with EMOJIS.get() returning PartialEmoji or fallbacks
 CATEGORY_EMOJIS: Dict[str, Union[str, discord.PartialEmoji, None]] = {
     "admin": EMOJIS.get("admin", EMOJIS.get("moderation", "🛡️")),
     "channels": EMOJIS.get("curved_arrow", "📁"),
@@ -32,7 +31,7 @@ CATEGORY_EMOJIS: Dict[str, Union[str, discord.PartialEmoji, None]] = {
 
 
 class HelpDropdown(discord.ui.Select):
-    """Dropdown component for browsing command categories."""
+    """Dropdown component for selecting and viewing specific command categories."""
 
     def __init__(
         self,
@@ -95,7 +94,7 @@ class HelpDropdown(discord.ui.Select):
         arrow = EMOJIS.get("arrow_point", "➡️")
 
         desc = f"### {emoji} {category_data['name']} Module\n"
-        desc += f"Browse the available commands below. Use `{self.ctx_prefix}help <command>` for specific syntax.\n\n"
+        desc += f"Browse the available commands below. Use `{self.ctx_prefix} help <command>` for specific details.\n\n"
 
         for c in category_data.get("commands", []):
             is_slash = c.get("is_slash", False)
@@ -127,22 +126,56 @@ class HelpDropdown(discord.ui.Select):
 
 
 class HelpDropdownView(discord.ui.View):
-    """View container for the help dropdown menu."""
+    """View container managing interaction controls for the help system."""
 
     def __init__(
         self,
         categories: List[Dict[str, Any]],
         author_id: int,
         ctx_prefix: str,
-        timeout: float = 60.0,
+        main_embed: discord.Embed,
+        timeout: float = 120.0,
     ) -> None:
         super().__init__(timeout=timeout)
+        self.author_id = author_id
+        self.main_embed = main_embed
         self.message: Optional[Union[discord.Message,
                                      discord.InteractionMessage]] = None
+
         self.add_item(HelpDropdown(categories, author_id, ctx_prefix))
 
+    @discord.ui.button(label="Home",
+                       style=discord.ButtonStyle.secondary,
+                       emoji="🏠")
+    async def home_button(self, interaction: discord.Interaction,
+                          button: discord.ui.Button) -> None:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message(
+                f"{EMOJIS.get('fail', '❌')} You cannot interact with this menu.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.edit_message(embed=self.main_embed)
+
+    @discord.ui.button(label="Close",
+                       style=discord.ButtonStyle.danger,
+                       emoji="🗑️")
+    async def close_button(self, interaction: discord.Interaction,
+                           button: discord.ui.Button) -> None:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message(
+                f"{EMOJIS.get('fail', '❌')} You cannot interact with this menu.",
+                ephemeral=True,
+            )
+            return
+
+        if interaction.message:
+            await interaction.message.delete()
+        else:
+            await interaction.response.defer()
+
     async def on_timeout(self) -> None:
-        """Disable selection items when the view times out."""
         for item in self.children:
             if isinstance(item, (discord.ui.Select, discord.ui.Button)):
                 item.disabled = True
@@ -161,8 +194,12 @@ class Help(commands.Cog):
         self.bot = bot
         self._static_data: Dict[str, Any] = {"categories": []}
 
+    async def cog_load(self) -> None:
+        """Cache static help JSON configuration directly into memory on load."""
+        self.load_static_help()
+
     def load_static_help(self) -> None:
-        """Load help configuration structure from static JSON storage."""
+        """Loads static JSON database safely into local cache."""
         if os.path.exists(JSON_PATH):
             try:
                 with open(JSON_PATH, "r", encoding="utf-8") as f:
@@ -172,6 +209,27 @@ class Help(commands.Cog):
                 self._static_data = {"categories": []}
         else:
             logger.warning("helps.json file not found at path: %s", JSON_PATH)
+
+    async def command_autocomplete(
+            self, interaction: discord.Interaction,
+            current: str) -> List[app_commands.Choice[str]]:
+        """Autocomplete handler for slash command query matching."""
+        choices: List[app_commands.Choice[str]] = []
+        current_lower = current.strip().lower()
+
+        for cat in self._static_data.get("categories", []):
+            for cmd in cat.get("commands", []):
+                cmd_name = cmd["name"].lower()
+                if current_lower in cmd_name or any(
+                        current_lower in alias.lower()
+                        for alias in cmd.get("aliases", [])):
+                    choices.append(
+                        app_commands.Choice(name=cmd["name"],
+                                            value=cmd["name"]))
+                    if len(choices) >= 25:  # Discord interaction UI cap
+                        return choices
+
+        return choices
 
     async def _get_authorized_help_tree(
         self,
@@ -183,7 +241,7 @@ class Help(commands.Cog):
         ]],
         is_admin: bool,
     ) -> List[Dict[str, Any]]:
-        """Filter command categories according to guild permissions and restricted channel lists."""
+        """Filter command categories according to guild restrictions and user administrative status."""
         restricted: set[str] = set()
         if guild and channel:
             try:
@@ -213,18 +271,17 @@ class Help(commands.Cog):
     @app_commands.describe(
         command_name=
         "Specific command name to view detailed syntax and usage rules")
+    @app_commands.autocomplete(command_name=command_autocomplete)
     async def help(
         self,
         ctx: commands.Context,
         command_name: Optional[str] = None,
     ) -> None:
         """Execute help menu dispatch."""
-        self.load_static_help()
-
         raw_prefix = ctx.clean_prefix
         current_prefix = raw_prefix.rstrip()
 
-        # Detailed Command Search
+        # Detailed Command Specific Lookups
         if command_name:
             search_query = command_name.strip().lower()
             found_cmd: Optional[Dict[str, Any]] = None
@@ -244,7 +301,8 @@ class Help(commands.Cog):
                 prefix = "/" if is_slash else current_prefix
                 usage = found_cmd.get("usage", "").lstrip("/")
 
-                usage_str = f"{prefix}{usage}" if is_slash else f"{prefix} {usage}"
+                usage_str = (f"{prefix}{usage}"
+                             if is_slash else f"{prefix} {usage}")
                 aliases_str = (", ".join([
                     f"`{a}`" for a in found_cmd.get("aliases", [])
                 ]) if found_cmd.get("aliases") else "None")
@@ -278,28 +336,29 @@ class Help(commands.Cog):
                     await ctx.send(embed=embed)
                 return
 
-            notFound_msg = f"{EMOJIS.get('fail', '❌')} Command `{command_name}` not found in system directory."
+            not_found_msg = f"{EMOJIS.get('fail', '❌')} Command `{command_name}` not found in system directory."
             if ctx.interaction:
                 if ctx.interaction.response.is_done():
-                    await ctx.interaction.followup.send(notFound_msg,
+                    await ctx.interaction.followup.send(not_found_msg,
                                                         ephemeral=True)
                 else:
-                    await ctx.interaction.response.send_message(notFound_msg,
+                    await ctx.interaction.response.send_message(not_found_msg,
                                                                 ephemeral=True)
             else:
-                await ctx.send(notFound_msg)
+                await ctx.send(not_found_msg)
             return
 
-        # Category Overview Menu
+        # Main Command Directory Overview
         is_admin = await is_bot_admin_ctx(ctx) if ctx.guild else False
         tree = await self._get_authorized_help_tree(
             ctx.guild,
             ctx.channel,  # type: ignore
-            is_admin)
+            is_admin,
+        )
 
         desc = (
             f"### {EMOJIS.get('animated_ping', '✨')} Welcome to the Help Center\n"
-            "Select a module from the dropdown below to view category-specific actions.\n\n"
+            "Select a module from the dropdown menu below to inspect category commands.\n\n"
             f"{EMOJIS.get('arrow_point', '➡️')} **Need specific info?** Use `{current_prefix} help <command_name>`\n"
             f"{EMOJIS.get('arrow_point', '➡️')} **System Status:** Operational"
         )
@@ -312,10 +371,15 @@ class Help(commands.Cog):
         if BANNER_GIF:
             embed.set_image(url=BANNER_GIF)
 
-        embed.set_footer(text=f"Requested by {ctx.author}",
-                         icon_url=ctx.author.display_avatar.url)
+        embed.set_footer(
+            text=f"Requested by {ctx.author}",
+            icon_url=ctx.author.display_avatar.url,
+        )
 
-        view = HelpDropdownView(tree, ctx.author.id, raw_prefix)
+        view = HelpDropdownView(tree,
+                                ctx.author.id,
+                                raw_prefix,
+                                main_embed=embed)
 
         if ctx.interaction:
             if ctx.interaction.response.is_done():

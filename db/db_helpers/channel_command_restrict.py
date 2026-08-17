@@ -1,115 +1,92 @@
-from typing import List
-from sqlalchemy import delete, select
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.dialects.postgresql import insert as postgres_insert
-from db.engine import AsyncSessionLocal, DB_TYPE
+from typing import Any, List, Tuple, cast
+from tortoise.exceptions import IntegrityError
+
 from db.models import RestrictedCommand
 
 
-# Internal insert builder
-def build_insert_stmt(model, values: dict):
-    if DB_TYPE == "postgres":
-        return postgres_insert(model).values(**values)
-    return sqlite_insert(model).values(**values)
-
-
-# Normalize command name
 def _normalize(command_name: str) -> str:
+    """Normalize command name for consistency."""
     return command_name.strip().lower()
 
 
-# Restrict command
-async def restrict_command(
-    guild_id: int, channel_id: int, command_name: str, scope: str = "both"
-) -> bool:
+async def restrict_command(guild_id: int,
+                           channel_id: int,
+                           command_name: str,
+                           scope: str = "both") -> bool:
+    """Restrict a command in a given guild channel.
+
+    Returns True if created/updated, False if already exists with the same values.
+    """
     command_name = _normalize(command_name)
-    async with AsyncSessionLocal() as session:
-        stmt = build_insert_stmt(
-            RestrictedCommand,
-            {
-                "guild_id": guild_id,
-                "channel_id": channel_id,
-                "command_name": command_name,
-                "restriction_scope": scope,
-            },
-        ).on_conflict_do_nothing(
-            index_elements=[
-                RestrictedCommand.guild_id,
-                RestrictedCommand.channel_id,
-                RestrictedCommand.command_name,
-            ]
+    try:
+        _, created = await RestrictedCommand.get_or_create(
+            guild_id=guild_id,
+            channel_id=channel_id,
+            command_name=command_name,
+            defaults={"restriction_scope": scope},
         )
+        return created
+    except IntegrityError:
+        return False
 
-        result = await session.execute(stmt)
-        await session.commit()
-        return (getattr(result, "rowcount", 0) or 0) > 0
 
-
-# Unrestrict command
-async def unrestrict_command(guild_id: int, channel_id: int, command_name: str) -> bool:
+async def unrestrict_command(guild_id: int, channel_id: int,
+                             command_name: str) -> bool:
+    """Remove a restriction on a command for a given channel."""
     command_name = _normalize(command_name)
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            delete(RestrictedCommand).where(
-                RestrictedCommand.guild_id == guild_id,
-                RestrictedCommand.channel_id == channel_id,
-                RestrictedCommand.command_name == command_name,
-            )
-        )
-        await session.commit()
-        return (getattr(result, "rowcount", 0) or 0) > 0
+    deleted_count = await RestrictedCommand.filter(
+        guild_id=guild_id,
+        channel_id=channel_id,
+        command_name=command_name,
+    ).delete()
+    return deleted_count > 0
 
 
-# Check restriction
-async def is_command_restricted(
-    guild_id: int, channel_id: int, command_name: str
-) -> bool:
+async def is_command_restricted(guild_id: int, channel_id: int,
+                                command_name: str) -> bool:
+    """Check if a specific command is restricted in a channel."""
     command_name = _normalize(command_name)
-    async with AsyncSessionLocal() as session:
-        return (
-            await session.scalar(
-                select(RestrictedCommand.guild_id).where(
-                    RestrictedCommand.guild_id == guild_id,
-                    RestrictedCommand.channel_id == channel_id,
-                    RestrictedCommand.command_name == command_name,
-                )
-            )
-            is not None
-        )
+    return await RestrictedCommand.filter(
+        guild_id=guild_id,
+        channel_id=channel_id,
+        command_name=command_name,
+    ).exists()
 
 
-# Fetch restricted commands
 async def get_restricted_commands(guild_id: int, channel_id: int) -> List[str]:
-    async with AsyncSessionLocal() as session:
-        result = await session.scalars(
-            select(RestrictedCommand.command_name).where(
-                RestrictedCommand.guild_id == guild_id,
-                RestrictedCommand.channel_id == channel_id,
-            )
-        )
-        return list(result)
+    """Get a list of all restricted command names for a specific channel."""
+    commands = await RestrictedCommand.filter(
+        guild_id=guild_id,
+        channel_id=channel_id,
+    ).values_list("command_name", flat=True)
+
+    return cast(List[str], list(commands))
 
 
-# Fetch restricted command data
-async def get_restricted_command_data(guild_id: int, channel_id: int):
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(
-                RestrictedCommand.command_name, RestrictedCommand.restriction_scope
-            ).where(
-                RestrictedCommand.guild_id == guild_id,
-                RestrictedCommand.channel_id == channel_id,
-            )
-        )
-        return result.all()
+async def get_restricted_command_data(
+        guild_id: int, channel_id: int) -> List[Tuple[str, str]]:
+    """Fetch restricted command names along with their restriction scope."""
+    records = await RestrictedCommand.filter(
+        guild_id=guild_id,
+        channel_id=channel_id,
+    ).values("command_name", "restriction_scope")
+
+    return [(str(record["command_name"]), str(record["restriction_scope"]))
+            for record in records]
 
 
-# Compatibility aliases
-async def disable_command(guild_id: int, channel_id: int, command_name: str) -> bool:
+# ==========================================
+# Compatibility Aliases
+# ==========================================
+
+
+async def disable_command(guild_id: int, channel_id: int,
+                          command_name: str) -> bool:
     return await restrict_command(guild_id, channel_id, command_name)
 
 
-async def enable_command(guild_id: int, channel_id: int, command_name: str) -> bool:
+async def enable_command(guild_id: int, channel_id: int,
+                         command_name: str) -> bool:
     return await unrestrict_command(guild_id, channel_id, command_name)
 
 
