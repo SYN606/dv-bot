@@ -1,4 +1,5 @@
 import time
+import discord
 from discord.ext import commands
 
 from utils.core.embeds import make_embed
@@ -6,91 +7,81 @@ from utils.core.emojis import EMOJIS
 
 
 class Ping(commands.Cog):
-    """
-    Diagnostics and health-check command.
-    Provides gateway and API latency information.
-    """
+    """Diagnostics and health-check command providing real-time gateway and API latency metrics."""
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.command(
+    async def _cleanup_invocation(self, ctx: commands.Context) -> None:
+        """Safely delete original text invocation message if applicable."""
+        if ctx.interaction:
+            return
+        try:
+            await ctx.message.delete()
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+            pass
+
+    @commands.hybrid_command(
         name="ping",
-        help="Display bot latency and connection status",
-    )
+        description=
+        "Display bot connection status and real-time latency metrics.")
     async def ping(self, ctx: commands.Context) -> None:
+        """Measure WebSocket gateway heartbeat and HTTP API round-trip latency."""
+        start_time = time.perf_counter()
 
-        # Initial placeholder message
-        message = await ctx.send(
-            embed=make_embed(
-                title="Pinging...",
-                description=f"{EMOJIS['rounded_loading']} Measuring connection latency...",
-                level="DEBUG",
-                show_timestamp=False,
-            )
-        )
+        # Emoji retrievals with safe defaults using your EmojiRegistry.get() method
+        loading_icon = EMOJIS.get("loading", "⏳")
+        ping_icon = EMOJIS.get("animated_ping", "📡")
+        success_icon = EMOJIS.get("success", "✅")
+        arrow_icon = EMOJIS.get("arrow_point", "▶")
+        bullet_icon = EMOJIS.get("green_dot", "•")
+        warning_icon = EMOJIS.get("warning", "⚠️")
 
-        # Measure API latency
-        start = time.perf_counter()
+        # Send initial measurement message
+        initial_embed = make_embed(
+            title="Measuring Latency...",
+            description=f"{loading_icon} Gathering diagnostic telemetry...",
+            level="DEBUG",
+            show_timestamp=False)
+        message = await ctx.send(embed=initial_embed)
 
-        await message.edit(
-            embed=make_embed(
-                title="Collecting Diagnostics...",
-                description=f"{EMOJIS['rounded_loading']} Gathering system metrics...",
-                level="DEBUG",
-                show_timestamp=False,
-            )
-        )
+        # Calculate HTTP API Round-Trip Time
+        api_latency = round((time.perf_counter() - start_time) * 1000)
 
-        api_latency = round((time.perf_counter() - start) * 1000)
-
-        # Gateway latency
+        # Gateway WebSocket Latency
         gateway_latency = round(self.bot.latency * 1000)
+        overall_latency = max(api_latency, gateway_latency)
 
-        overall = max(api_latency, gateway_latency)
-
-        # Status evaluation
-        if overall < 200:
-            status_text = f"{EMOJIS['green_dot']} Excellent"
-        elif overall < 400:
-            status_text = f"{EMOJIS['success']} Good"
+        # Connection status evaluation
+        if overall_latency < 200:
+            status_text = f"{bullet_icon} Excellent"
+            status_level = "SUCCESS"
+        elif overall_latency < 400:
+            status_text = f"{success_icon} Good"
+            status_level = "INFO"
         else:
-            status_text = f"{EMOJIS['warning']} High latency"
+            status_text = f"{warning_icon} High Latency"
+            status_level = "WARNING"
 
         embed = make_embed(
-            title=f"{EMOJIS['ping']} Connection Status",
+            title=f"{ping_icon} System Health & Latency",
             description=(
-                f"{EMOJIS['success']} Bot is online and responding.\n\n"
-                f"{EMOJIS['arrow_point']} Live connection metrics:"
-            ),
-            level="INFO",
+                f"{success_icon} Bot is online and fully operational.\n\n"
+                f"{arrow_icon} **Live Connection Diagnostics:**"),
+            level=status_level,
             fields=[
-                (
-                    "Gateway Latency",
-                    f"{EMOJIS['support_dot']} `{gateway_latency} ms`",
-                    True,
-                ),
-                (
-                    "API Latency",
-                    f"{EMOJIS['support_dot']} `{api_latency} ms`",
-                    True,
-                ),
-                (
-                    "Status",
-                    status_text,
-                    True,
-                ),
+                ("WebSocket Gateway", f"{bullet_icon} `{gateway_latency} ms`",
+                 True),
+                ("HTTP API Response", f"{bullet_icon} `{api_latency} ms`",
+                 True),
+                ("Connection Quality", status_text, True),
             ],
-            footer="System diagnostics • ping",
+            footer=f"Requested by {ctx.author}",
+            footer_icon=ctx.author.display_avatar.url,
         )
 
         await message.edit(embed=embed)
-
-        # Delete invoking message quietly
-        try:
-            await ctx.message.delete()
-        except Exception:
-            pass
+        await self._cleanup_invocation(ctx)
 
 
 async def setup(bot: commands.Bot) -> None:

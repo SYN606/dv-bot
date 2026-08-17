@@ -1,13 +1,19 @@
+from typing import Literal, cast
+
 import discord
-from discord.ext import commands
 from discord import app_commands
-from typing import Union
-from utils.permissions.base_admin import BaseAdminCog
-from utils.permissions.check_perms import is_bot_admin
+from discord.ext import commands
+
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
+from utils.permissions.base_admin import BaseAdminCog
+from utils.permissions.check_perms import is_bot_admin
 
-PERMISSIONS = {
+# Python 3.12+ PEP 695 Type Aliases
+type RiskLevel = Literal["red", "yellow", "green"]
+type EmojiType = str | discord.PartialEmoji
+
+PERMISSIONS: dict[str, tuple[str, RiskLevel]] = {
     "administrator": ("Administrator", "red"),
     "manage_roles": ("Manage Roles", "red"),
     "manage_channels": ("Manage Channels", "red"),
@@ -31,11 +37,11 @@ PERMISSIONS = {
     "create_instant_invite": ("Create Invite", "green"),
 }
 
-EmojiType = Union[str, discord.PartialEmoji]
-
 
 class PermissionAudit(BaseAdminCog):
-    def __init__(self, bot: commands.Bot):
+    """Cog for auditing member guild permissions and risk ratings."""
+
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     async def has_permission_audit_access(
@@ -59,17 +65,21 @@ class PermissionAudit(BaseAdminCog):
             return True
         return False
 
-    def get_permission_emoji(self, level: str) -> EmojiType:
-        if level == "red":
-            return EMOJIS.get("red_dot", "🔴")
-        if level == "yellow":
-            return EMOJIS.get("warning", "⚠️")
-        return EMOJIS.get("green_dot", "🟢")
+    def get_permission_emoji(self, level: RiskLevel) -> EmojiType:
+        match level:
+            case "red":
+                return EMOJIS.get("red_dot") or "🔴"
+            case "yellow":
+                return EMOJIS.get("warning") or "⚠️"
+            case _:
+                return EMOJIS.get("green_dot") or "🟢"
 
-    def _analyze_member(self, member: discord.Member) -> list[dict]:
-        # PERMISSIONS is now accessed globally from this file
+    def _analyze_member(
+        self, member: discord.Member
+    ) -> list[dict[str, str | list[str]]]:
         perms = member.guild_permissions
-        found = []
+        found: list[dict[str, str | list[str]]] = []
+
         for key, (label, level) in PERMISSIONS.items():
             if getattr(perms, key, False):
                 sources = [
@@ -86,48 +96,62 @@ class PermissionAudit(BaseAdminCog):
                 )
         return found
 
-    @app_commands.command(name="perm-check", description="Audit a member's permissions")
+    @app_commands.command(
+        name="perm-check", description="Audit a member's assigned permissions."
+    )
     async def perm_check(
         self, interaction: discord.Interaction, member: discord.Member
-    ):
+    ) -> None:
         if not await self.has_permission_audit_access(interaction):
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Access Denied",
-                    description="Requires Senior Moderator status.",
+                    description=f"{EMOJIS.get('fail', '❌')} Requires Senior Moderator status.",
                     level="ERROR",
                 ),
                 ephemeral=True,
             )
+            return
 
         data = self._analyze_member(member)
         if not data:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 embed=make_embed(
                     title="Clean Audit",
-                    description=f"{member.display_name} has no flagged permissions.",
+                    description=(
+                        f"{EMOJIS.get('success', '✅')} **{member.display_name}** "
+                        "has no flagged permissions."
+                    ),
                     level="SUCCESS",
                 ),
                 ephemeral=True,
             )
+            return
 
+        warn_icon = EMOJIS.get("warning", "⚠️")
         embed = make_embed(
-            title=f"Audit: {member.display_name}",
-            description=f"Flagged {len(data)} permissions.",
+            title=f"{warn_icon} Audit: {member.display_name}",
+            description=f"Flagged **{len(data)}** elevated permissions.",
             level="WARNING",
         )
-        groups = {"red": [], "yellow": [], "green": []}
-        for p in data:
-            emoji = self.get_permission_emoji(p["level"])
-            roles = " • ".join(p["roles"][:2])
-            if len(p["roles"]) > 2:
-                roles += "..."
-            groups[p["level"]].append(f"{emoji} **{p['permission']}**\n└ `{roles}`")
 
-        for level, lines in groups.items():
+        groups: dict[RiskLevel, list[str]] = {"red": [], "yellow": [], "green": []}
+        for p in data:
+            level = cast(RiskLevel, p["level"])
+            emoji = self.get_permission_emoji(level)
+            roles_list = cast(list[str], p["roles"])
+            roles = " • ".join(roles_list[:2])
+            if len(roles_list) > 2:
+                roles += "..."
+            groups[level].append(f"{emoji} **{p['permission']}**\n└ `{roles}`")
+
+        for level_key, lines in groups.items():
             if lines:
+                lvl_emoji = self.get_permission_emoji(level_key)
                 embed.add_field(
-                    name=f"{level.upper()} RISK", value="\n".join(lines), inline=False
+                    name=f"{lvl_emoji} {level_key.upper()} RISK",
+                    value="\n".join(lines),
+                    inline=False,
                 )
 
         embed.set_thumbnail(url=member.display_avatar.url)
@@ -135,17 +159,36 @@ class PermissionAudit(BaseAdminCog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(
-        name="perm-scan", description="Scan server for permissioned users"
+        name="perm-scan", description="Scan server members for elevated permissions."
     )
-    async def perm_scan(self, interaction: discord.Interaction):
+    async def perm_scan(self, interaction: discord.Interaction) -> None:
         if not await self.has_permission_audit_access(interaction):
-            return await interaction.response.send_message(
-                embed=make_embed(title="Access Denied", level="ERROR"), ephemeral=True
+            await interaction.response.send_message(
+                embed=make_embed(
+                    title="Access Denied",
+                    description=f"{EMOJIS.get('fail', '❌')} Requires Senior Moderator status.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
             )
+            return
 
         await interaction.response.defer(ephemeral=True)
-        results = []
-        for member in interaction.guild.members: # type: ignore
+
+        guild = interaction.guild
+        if not guild:
+            await interaction.followup.send(
+                embed=make_embed(
+                    title="Command Error",
+                    description=f"{EMOJIS.get('fail', '❌')} This command can only be executed within a server.",
+                    level="ERROR",
+                ),
+                ephemeral=True,
+            )
+            return
+
+        results: list[tuple[int, int, str]] = []
+        for member in guild.members:
             if member.bot:
                 continue
             data = self._analyze_member(member)
@@ -155,14 +198,21 @@ class PermissionAudit(BaseAdminCog):
                 results.append((red, yellow, member.display_name))
 
         results.sort(key=lambda x: (x[0], x[1]), reverse=True)
-        desc = "\n".join([f"**{r[2]}** | 🔴`{r[0]}` ⚠️`{r[1]}`" for r in results[:20]])
+
+        red_dot = EMOJIS.get("red_dot", "🔴")
+        warning = EMOJIS.get("warning", "⚠️")
+        desc = "\n".join(
+            [f"• **{r[2]}** | {red_dot} `{r[0]}` {warning} `{r[1]}`" for r in results[:20]]
+        )
+
+        shield = EMOJIS.get("shield", "🛡️")
         embed = make_embed(
-            title="Permission Scan Summary",
-            description=desc or "No members found.",
+            title=f"{shield} Permission Scan Summary",
+            description=desc or "No members with elevated permissions found.",
             level="WARNING",
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(PermissionAudit(bot))

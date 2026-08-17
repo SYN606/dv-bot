@@ -1,4 +1,5 @@
 import discord
+from discord.ext import commands
 
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
@@ -13,36 +14,27 @@ from db.db_helpers.channel_command_restrict import (
 
 class CommandControlView(discord.ui.View):
     """
-    Secure Command Control View
-
-    - Single ephemeral panel
-    - Button driven
-    - Permission locked
-    - Lifecycle safe
+    Secure Command Control View for managing global guild command restrictions.
     """
 
     def __init__(
         self,
         *,
-        bot: discord.Client,
+        bot: commands.Bot,
         guild: discord.Guild,
         actor_id: int,
     ):
         super().__init__(timeout=180)
-
         self.bot = bot
         self.guild = guild
         self.actor_id = actor_id
         self.message: discord.Message | None = None
 
-    # ─────────────────────────
-    # Secure interaction guard
-    # ─────────────────────────
     async def interaction_check(
         self,
         interaction: discord.Interaction,
     ) -> bool:
-
+        """Ensure only the original command caller and bot admins can interact."""
         if interaction.user.id != self.actor_id:
             return False
 
@@ -64,16 +56,17 @@ class CommandControlView(discord.ui.View):
 
         return True
 
-    # ─────────────────────────
-    # DISABLE
-    # ─────────────────────────
     @discord.ui.button(
         label="Disable Command",
         emoji=EMOJIS["red_dot"],
         style=discord.ButtonStyle.danger,
     )
-    async def disable(self, interaction: discord.Interaction, _):
-
+    async def disable(
+        self,
+        interaction: discord.Interaction,
+        _button: discord.ui.Button,
+    ):
+        """Open the command dropdown in disable mode."""
         try:
             await interaction.response.send_message(
                 embed=make_embed(
@@ -93,16 +86,17 @@ class CommandControlView(discord.ui.View):
         except discord.NotFound:
             pass
 
-    # ─────────────────────────
-    # ENABLE
-    # ─────────────────────────
     @discord.ui.button(
         label="Enable Command",
         emoji=EMOJIS["green_dot"],
         style=discord.ButtonStyle.success,
     )
-    async def enable(self, interaction: discord.Interaction, _):
-
+    async def enable(
+        self,
+        interaction: discord.Interaction,
+        _button: discord.ui.Button,
+    ):
+        """Open the command dropdown in enable mode."""
         try:
             await interaction.response.send_message(
                 embed=make_embed(
@@ -122,17 +116,18 @@ class CommandControlView(discord.ui.View):
         except discord.NotFound:
             pass
 
-    # ─────────────────────────
-    # STATUS
-    # ─────────────────────────
     @discord.ui.button(
         label="Status",
         emoji=EMOJIS["moderation"],
         style=discord.ButtonStyle.secondary,
     )
-    async def status(self, interaction: discord.Interaction, _):
-
-        disabled = await get_disabled_commands(self.guild.id)
+    async def status(
+        self,
+        interaction: discord.Interaction,
+        _button: discord.ui.Button,
+    ):
+        """Display the currently disabled commands in the server."""
+        disabled = await get_disabled_commands(self.guild.id) # type: ignore
 
         try:
             await interaction.response.edit_message(
@@ -150,13 +145,11 @@ class CommandControlView(discord.ui.View):
         except discord.NotFound:
             pass
 
-    # ─────────────────────────
-    # TIMEOUT
-    # ─────────────────────────
     async def on_timeout(self):
-
+        """Disable all controls when the view times out."""
         for item in self.children:
-            item.disabled = True
+            if isinstance(item, (discord.ui.Button, discord.ui.Select)):
+                item.disabled = True
 
         try:
             if self.message:
@@ -173,21 +166,18 @@ class CommandControlView(discord.ui.View):
             pass
 
 
-# ─────────────────────────────────────
-# COMMAND SELECT VIEW
-# ─────────────────────────────────────
 class CommandSelectView(discord.ui.View):
+    """Container view for selecting a command from a dropdown menu."""
 
     def __init__(
         self,
         *,
-        bot: discord.Client,
+        bot: commands.Bot,
         guild: discord.Guild,
         mode: str,
         actor_id: int,
     ):
         super().__init__(timeout=60)
-
         self.bot = bot
         self.guild = guild
         self.mode = mode
@@ -195,8 +185,10 @@ class CommandSelectView(discord.ui.View):
 
         self.add_item(CommandSelect(self))
 
-    async def interaction_check(self,
-                                interaction: discord.Interaction) -> bool:
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
         if interaction.user.id != self.actor_id:
             return False
         if not await is_bot_admin(interaction):
@@ -205,9 +197,9 @@ class CommandSelectView(discord.ui.View):
 
 
 class CommandSelect(discord.ui.Select):
+    """Dropdown component populated with available app commands."""
 
     def __init__(self, view: CommandSelectView):
-
         options: list[discord.SelectOption] = []
 
         for cmd in view.bot.tree.walk_commands():
@@ -236,7 +228,6 @@ class CommandSelect(discord.ui.Select):
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
-
         command_name = self.values[0]
 
         if command_name == "none":
@@ -244,8 +235,9 @@ class CommandSelect(discord.ui.Select):
 
         if self.view_ref.mode == "disable":
             changed = await disable_command(
-                self.view_ref.guild.id,
-                command_name,
+                guild_id=self.view_ref.guild.id,
+                channel_id=None, # type: ignore
+                command_name=command_name,
             )
             msg = (
                 f"{EMOJIS['success']} `/{command_name}` disabled."
@@ -255,8 +247,9 @@ class CommandSelect(discord.ui.Select):
 
         else:
             changed = await enable_command(
-                self.view_ref.guild.id,
-                command_name,
+                guild_id=self.view_ref.guild.id,
+                channel_id=None, # type: ignore
+                command_name=command_name,
             )
             msg = (f"{EMOJIS['success']} `/{command_name}` enabled."
                    if changed else

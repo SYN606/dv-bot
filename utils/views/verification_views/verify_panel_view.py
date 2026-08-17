@@ -1,5 +1,6 @@
 import discord
 from discord.ui import View, Button, ChannelSelect, RoleSelect
+from utils.core.emojis import EMOJIS
 from utils.core.embeds import make_embed
 from utils.permissions.check_perms import is_bot_admin
 from utils.logging.mod_log import send_mod_log
@@ -42,14 +43,14 @@ class VerificationView(View):
     async def interaction_check(self,
                                 interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.actor.id:
-            await interaction.response.send_message("Not your panel.",
-                                                    ephemeral=True)
+            await interaction.response.send_message(
+                f"{EMOJIS['fail']} Not your panel.", ephemeral=True)
             return False
         return await is_bot_admin(interaction)
 
     def panel_embed(self):
         return make_embed(
-            title="🔐 Verification Panel",
+            title=f"{EMOJIS['moderation']} Verification Panel",
             description="Choose an action below.",
             level="SYSTEM",
         )
@@ -58,11 +59,11 @@ class VerificationView(View):
 
         def status(val, kind):
             if not val:
-                return "❌ Not set"
-            return f"✅ <#{val}>" if kind == "channel" else f"✅ <@&{val}>"
+                return f"{EMOJIS['fail']} Not set"
+            return f"{EMOJIS['success']} <#{val}>" if kind == "channel" else f"{EMOJIS['success']} <@&{val}>"
 
         embed = make_embed(
-            title="Verification Setup",
+            title=f"{EMOJIS['moderation']} Verification Setup",
             description="Configure and click save.",
             level="SYSTEM",
             footer=self.notice or "Waiting for input...",
@@ -94,7 +95,9 @@ class VerificationView(View):
 class SetupButton(Button):
 
     def __init__(self):
-        super().__init__(label="Setup", style=discord.ButtonStyle.success)
+        super().__init__(label="Setup",
+                         style=discord.ButtonStyle.success,
+                         emoji=EMOJIS["okay"])
 
     async def callback(self, interaction: discord.Interaction):
         view: VerificationView = self.view  # type: ignore
@@ -106,61 +109,75 @@ class SetupButton(Button):
 class ResetButton(Button):
 
     def __init__(self):
-        super().__init__(label="Reset", style=discord.ButtonStyle.danger)
+        super().__init__(label="Reset",
+                         style=discord.ButtonStyle.danger,
+                         emoji=EMOJIS["warning"])
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_modal(ResetModal(self.view))  # type: ignore
+        await interaction.response.send_modal(
+            ResetModal(self.view)  # type: ignore
+        )
 
 
 class VerifyChannelSelect(ChannelSelect):
 
     def __init__(self, view):
-        super().__init__(channel_types=[discord.ChannelType.text])
+        super().__init__(channel_types=[discord.ChannelType.text],
+                         placeholder="Select Verification Channel...")
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.verify_channel_id = self.values[0].id
-        await self.view_ref.refresh(interaction, "Verify channel set")
+        await self.view_ref.refresh(interaction,
+                                    f"{EMOJIS['success']} Verify channel set")
 
 
 class LogChannelSelect(ChannelSelect):
 
     def __init__(self, view):
-        super().__init__(channel_types=[discord.ChannelType.text])
+        super().__init__(channel_types=[discord.ChannelType.text],
+                         placeholder="Select Log Channel...")
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.log_channel_id = self.values[0].id
-        await self.view_ref.refresh(interaction, "Log channel set")
+        await self.view_ref.refresh(interaction,
+                                    f"{EMOJIS['success']} Log channel set")
 
 
 class VerifiedRoleSelect(RoleSelect):
 
     def __init__(self, view):
-        super().__init__()
+        super().__init__(placeholder="Select Verified Role...")
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.verified_role_id = self.values[0].id
-        await self.view_ref.refresh(interaction, "Verified role set")
+        await self.view_ref.refresh(interaction,
+                                    f"{EMOJIS['success']} Verified role set")
 
 
 class UnverifiedRoleSelect(RoleSelect):
 
     def __init__(self, view):
-        super().__init__(min_values=0, max_values=1)
+        super().__init__(min_values=0,
+                         max_values=1,
+                         placeholder="Select Unverified Role (Optional)...")
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.unverified_role_id = self.values[
             0].id if self.values else None
-        await self.view_ref.refresh(interaction, "Unverified role updated")
+        await self.view_ref.refresh(
+            interaction, f"{EMOJIS['success']} Unverified role updated")
 
 
 class SaveButton(Button):
 
     def __init__(self):
-        super().__init__(label="Save", style=discord.ButtonStyle.success)
+        super().__init__(label="Save",
+                         style=discord.ButtonStyle.success,
+                         emoji=EMOJIS["success"])
 
     async def callback(self, interaction: discord.Interaction):
         view: VerificationView = self.view  # type: ignore
@@ -170,7 +187,8 @@ class SaveButton(Button):
                 view.verify_channel_id, view.log_channel_id,
                 view.verified_role_id
         ]):
-            await view.refresh(interaction, "❌ Fill all required fields")
+            await view.refresh(interaction,
+                               f"{EMOJIS['fail']} Fill all required fields")
             return
 
         await interaction.response.defer()
@@ -186,8 +204,9 @@ class SaveButton(Button):
         if isinstance(channel, discord.TextChannel):
             await channel.send(
                 embed=make_embed(
-                    title="Verification",
-                    description="Click the button below to verify.",
+                    title=f"{EMOJIS['welcome']} Verification Required",
+                    description=
+                    "Click the button below to verify your account.",
                     level="SYSTEM",
                 ),
                 view=VerifyButtonView(),
@@ -196,22 +215,22 @@ class SaveButton(Button):
         await send_mod_log(
             guild=guild,  # type: ignore
             category="VERIFY",
-            title="Verification Enabled",
+            title=f"{EMOJIS['success']} Verification Enabled",
             description=
             f"Verification system configured.\nChannel: <#{view.verify_channel_id}>\nRole: <@&{view.verified_role_id}>",
             level="SUCCESS",
             actor=interaction.user,
         )
         await interaction.edit_original_response(
-            embed=make_embed(title="Done",
-                             description="Verification enabled",
+            embed=make_embed(title=f"{EMOJIS['success']} Done",
+                             description="Verification enabled successfully.",
                              level="SUCCESS"),
             view=None,
         )
 
 
 class ResetModal(discord.ui.Modal, title="Confirm Reset"):
-    confirm = discord.ui.TextInput(label="Type YES")
+    confirm = discord.ui.TextInput(label="Type YES to confirm reset")
 
     def __init__(self, view: VerificationView):
         super().__init__()
@@ -219,29 +238,31 @@ class ResetModal(discord.ui.Modal, title="Confirm Reset"):
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         if interaction.user.id != self.view.actor.id:
-            await interaction.response.send_message("Not your panel.",
-                                                    ephemeral=True)
+            await interaction.response.send_message(
+                f"{EMOJIS['fail']} Not your panel.", ephemeral=True)
             return
 
         if self.confirm.value != "YES":
-            await interaction.response.send_message("Cancelled",
-                                                    ephemeral=True)
+            await interaction.response.send_message(
+                f"{EMOJIS['warning']} Cancelled", ephemeral=True)
             return
 
         config = await get_verification_config(self.view.guild.id)
         if not config:
             await interaction.response.send_message(
-                "No verification system found.", ephemeral=True)
+                f"{EMOJIS['fail']} No verification system found.",
+                ephemeral=True)
             return
 
         await delete_verification_config(self.view.guild.id)
         await send_mod_log(
             guild=self.view.guild,
             category="VERIFY",
-            title="Verification Disabled",
+            title=f"{EMOJIS['warning']} Verification Disabled",
             description="Verification system was reset.",
             level="WARNING",
             actor=interaction.user,
         )
         await interaction.response.send_message(
-            "Verification reset successfully.", ephemeral=True)
+            f"{EMOJIS['success']} Verification reset successfully.",
+            ephemeral=True)

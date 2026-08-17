@@ -1,4 +1,7 @@
 from datetime import datetime
+from enum import Enum as PyEnum
+from typing import Optional
+
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -9,24 +12,46 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    false,
     func,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column
+
 from db.base import Base
 
 
-# Shared Timestamps Mixin
+# --- Enums ---
+class MatchType(str, PyEnum):
+    EXACT = "exact"
+    CONTAINS = "contains"
+    STARTSWITH = "startswith"
+    ENDSWITH = "endswith"
+    REGEX = "regex"
+
+
+class RestrictionScope(str, PyEnum):
+    ALLOW = "allow"
+    DENY = "deny"
+    BOTH = "both"
+
+
+# --- Mixins ---
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(DateTime,
-                                                 server_default=func.now(),
-                                                 nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime,
-                                                 server_default=func.now(),
-                                                 onupdate=func.now(),
-                                                 nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
 
-# AFK System
+# --- Models ---
 class AFK(Base):
     __tablename__ = "afk"
 
@@ -44,7 +69,6 @@ class AFK(Base):
         return f"<AFK guild={self.guild_id} user={self.user_id}>"
 
 
-# Bot Admin Roles Configuration
 class AdminRole(Base):
     __tablename__ = "admin_roles"
 
@@ -58,39 +82,37 @@ class AdminRole(Base):
         return f"<AdminRole guild={self.guild_id} role={self.role_id}>"
 
 
-# Media-Only Channel Configurations
 class MediaOnlyChannel(Base, TimestampMixin):
     __tablename__ = "media_only_channels"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    sticky_message_id: Mapped[int | None] = mapped_column(BigInteger,
-                                                          nullable=True)
-    whitelist_role_id: Mapped[int | None] = mapped_column(BigInteger,
-                                                          nullable=True)
+    sticky_message_id: Mapped[Optional[int]] = mapped_column(BigInteger,
+                                                             nullable=True)
+    whitelist_role_id: Mapped[Optional[int]] = mapped_column(BigInteger,
+                                                             nullable=True)
     image_only: Mapped[bool] = mapped_column(Boolean,
                                              nullable=False,
-                                             server_default="0")
+                                             server_default=false())
     auto_mute: Mapped[bool] = mapped_column(Boolean,
                                             nullable=False,
-                                            server_default="0")
+                                            server_default=false())
     nsfw_bypass: Mapped[bool] = mapped_column(Boolean,
                                               nullable=False,
-                                              server_default="1")
+                                              server_default=true())
 
     __table_args__ = (CheckConstraint("guild_id > 0",
                                       name="chk_media_guild_id"), )
 
 
-# Sticky Messages Configuration
 class StickyMessage(Base, TimestampMixin):
     __tablename__ = "sticky_messages"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     sticky_content: Mapped[str] = mapped_column(Text, nullable=False)
-    last_message_id: Mapped[int | None] = mapped_column(BigInteger,
-                                                        nullable=True)
+    last_message_id: Mapped[Optional[int]] = mapped_column(BigInteger,
+                                                           nullable=True)
     counter: Mapped[int] = mapped_column(Integer,
                                          nullable=False,
                                          server_default="0")
@@ -99,7 +121,6 @@ class StickyMessage(Base, TimestampMixin):
                                       name="chk_sticky_counter"), )
 
 
-# Disabled Server Commands
 class DisabledCommand(Base):
     __tablename__ = "disabled_commands"
 
@@ -107,21 +128,23 @@ class DisabledCommand(Base):
     command_name: Mapped[str] = mapped_column(String(64), primary_key=True)
 
 
-# Channel Restricted Commands
 class RestrictedCommand(Base):
     __tablename__ = "restricted_commands"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     command_name: Mapped[str] = mapped_column(String(64), primary_key=True)
-    restriction_scope: Mapped[str] = mapped_column(
-        Enum("allow", "deny", "both", name="restriction_scope_enum"),
+    restriction_scope: Mapped[RestrictionScope] = mapped_column(
+        Enum(
+            RestrictionScope,
+            native_enum=False,
+            name="restriction_scope_enum",
+        ),
         nullable=False,
-        server_default="both",
+        server_default=RestrictionScope.BOTH.value,
     )
 
 
-# Temporary Ban Configurations
 class TempbanConfig(Base):
     __tablename__ = "tempban_config"
 
@@ -132,46 +155,42 @@ class TempbanConfig(Base):
         return f"<TempbanConfig guild={self.guild_id} role={self.role_id}>"
 
 
-# Temporary Ban Execution Tracking
 class TempbanRecord(Base, TimestampMixin):
     __tablename__ = "tempban_records"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     moderator_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    tempban_reason: Mapped[str | None] = mapped_column(String(512),
-                                                       nullable=True)
+    tempban_reason: Mapped[Optional[str]] = mapped_column(String(512),
+                                                          nullable=True)
     active: Mapped[bool] = mapped_column(Boolean,
                                          nullable=False,
-                                         server_default="1")
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime,
-                                                        nullable=True)
+                                         server_default=true())
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (
-        Index("idx_tempban_active_lookup", "guild_id", "active"),
-        Index("idx_tempban_expiry", "expires_at"),
-    )
+    __table_args__ = (Index("idx_tempban_active_lookup", "guild_id",
+                            "active"), Index("idx_tempban_expiry",
+                                             "expires_at"))
 
     def __repr__(self) -> str:
         return f"<TempbanRecord guild={self.guild_id} user={self.user_id} active={self.active}>"
 
 
-# Verification Configuration (Cleaned & Message ID Column Dropped)
 class VerificationConfig(Base, TimestampMixin):
     __tablename__ = "verification_config"
 
     guild_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    verify_channel_id: Mapped[int | None] = mapped_column(BigInteger,
+    verify_channel_id: Mapped[Optional[int]] = mapped_column(BigInteger,
+                                                             nullable=True)
+    log_channel_id: Mapped[Optional[int]] = mapped_column(BigInteger,
                                                           nullable=True)
-    log_channel_id: Mapped[int | None] = mapped_column(BigInteger,
-                                                       nullable=True)
-    verified_role_id: Mapped[int | None] = mapped_column(BigInteger,
-                                                         nullable=True)
-    unverified_role_id: Mapped[int | None] = mapped_column(BigInteger,
-                                                           nullable=True)
+    verified_role_id: Mapped[Optional[int]] = mapped_column(BigInteger,
+                                                            nullable=True)
+    unverified_role_id: Mapped[Optional[int]] = mapped_column(BigInteger,
+                                                              nullable=True)
 
 
-# Core System Moderation Logging Setup
 class ModerationLogConfig(Base, TimestampMixin):
     __tablename__ = "moderation_log_config"
 
@@ -179,13 +198,12 @@ class ModerationLogConfig(Base, TimestampMixin):
     channel_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean,
                                           nullable=False,
-                                          server_default="1")
+                                          server_default=true())
 
     def __repr__(self) -> str:
         return f"<ModerationLogConfig guild={self.guild_id} channel={self.channel_id}>"
 
 
-# Channel Permission Lockdown Backups
 class ChannelPermissionSnapshot(Base, TimestampMixin):
     __tablename__ = "channel_permission_snapshots"
 
@@ -193,11 +211,10 @@ class ChannelPermissionSnapshot(Base, TimestampMixin):
     channel_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     target_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     permission_name: Mapped[str] = mapped_column(String(64), primary_key=True)
-    permission_value: Mapped[bool | None] = mapped_column(Boolean,
-                                                          nullable=True)
+    permission_value: Mapped[Optional[bool]] = mapped_column(Boolean,
+                                                             nullable=True)
 
 
-# Infraction Warnings System
 class WarningRecord(Base, TimestampMixin):
     __tablename__ = "warnings"
 
@@ -230,39 +247,35 @@ class AutoResponder(Base, TimestampMixin):
                                               autoincrement=True)
     guild_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     trigger_phrase: Mapped[str] = mapped_column(String(256), nullable=False)
-    match_type: Mapped[str] = mapped_column(Enum("exact",
-                                                 "contains",
-                                                 "startswith",
-                                                 "endswith",
-                                                 "regex",
-                                                 name="match_type_enum"),
-                                            nullable=False,
-                                            server_default="contains")
-    reply_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    match_type: Mapped[MatchType] = mapped_column(
+        Enum(MatchType, native_enum=False, name="match_type_enum"),
+        nullable=False,
+        server_default=MatchType.CONTAINS.value)
+
+    reply_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_embed: Mapped[bool] = mapped_column(Boolean,
                                            nullable=False,
-                                           server_default="0")
-    embed_title: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+                                           server_default=false())
+    embed_title: Mapped[Optional[str]] = mapped_column(String(256),
+                                                       nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(512),
+                                                     nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean,
                                           nullable=False,
-                                          server_default="1")
+                                          server_default=true())
     ignore_bots: Mapped[bool] = mapped_column(Boolean,
                                               nullable=False,
-                                              server_default="1")
+                                              server_default=true())
     delete_trigger: Mapped[bool] = mapped_column(Boolean,
                                                  nullable=False,
-                                                 server_default="0")
-
+                                                 server_default=false())
     cooldown: Mapped[int] = mapped_column(Integer,
                                           nullable=False,
                                           server_default="0")
 
-    __table_args__ = (
-        Index("idx_ar_guild_trigger", "guild_id", "enabled"),
-        CheckConstraint("guild_id > 0", name="chk_ar_guild_id"),
-        CheckConstraint("cooldown >= 0", name="chk_ar_cooldown"),
-    )
+    __table_args__ = (Index("idx_ar_guild_trigger", "guild_id", "enabled"),
+                      CheckConstraint("guild_id > 0", name="chk_ar_guild_id"),
+                      CheckConstraint("cooldown >= 0", name="chk_ar_cooldown"))
 
 
 class AutoResponderReaction(Base):

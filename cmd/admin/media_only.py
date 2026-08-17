@@ -1,28 +1,42 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from utils.permissions.base_admin import BaseAdminCog
+
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
-from utils.views.media_only_views import MediaOnlyView
 from utils.logging.mod_log import send_mod_log
+from utils.permissions.base_admin import BaseAdminCog
+from utils.views.media_only_views import MediaOnlyView
+
+
+def config_command():
+
+    def decorator(func):
+        func.config_command = True
+        return func
+
+    return decorator
 
 
 class MediaOnly(BaseAdminCog):
+    """Cog for managing media-only restrictions across guild channels."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    async def _reply(self,
-                     interaction: discord.Interaction,
-                     *,
-                     title: str,
-                     description: str,
-                     level: str = "ERROR") -> None:
+    async def _reply(
+        self,
+        interaction: discord.Interaction,
+        *,
+        title: str,
+        description: str,
+        level: str = "ERROR",
+    ) -> None:
         embed = make_embed(title=title, description=description, level=level)
         try:
-            send_method = interaction.followup.send if interaction.response.is_done(
-            ) else interaction.response.send_message
+            send_method = (interaction.followup.send
+                           if interaction.response.is_done() else
+                           interaction.response.send_message)
             await send_method(embed=embed, ephemeral=True)
         except discord.HTTPException:
             pass
@@ -31,9 +45,12 @@ class MediaOnly(BaseAdminCog):
                           description="Manage media-only mode for a channel")
     @app_commands.describe(
         channel="Channel to manage (defaults to current channel)")
-    async def media_only(self,
-                         interaction: discord.Interaction,
-                         channel: discord.TextChannel | None = None) -> None:
+    @config_command()
+    async def media_only(
+        self,
+        interaction: discord.Interaction,
+        channel: discord.TextChannel | None = None,
+    ) -> None:
         guild = interaction.guild
         actor = interaction.user
 
@@ -41,14 +58,20 @@ class MediaOnly(BaseAdminCog):
             return await self._reply(
                 interaction,
                 title="Invalid Context",
-                description="This command can only be used in a server.")
+                description=
+                (f"{EMOJIS.get('fail') or '❌'} This command can only be used in a server."
+                 ),
+            )
 
         target_channel = channel or interaction.channel
         if not isinstance(target_channel, discord.TextChannel):
             return await self._reply(
                 interaction,
                 title="Invalid Channel",
-                description="Please select a valid text channel.")
+                description=
+                (f"{EMOJIS.get('fail') or '❌'} Please select a valid text channel."
+                 ),
+            )
 
         bot_member = guild.me
         if not bot_member:
@@ -58,29 +81,42 @@ class MediaOnly(BaseAdminCog):
         reqs = {
             "Manage Channels": perms.manage_channels,
             "Manage Messages": perms.manage_messages,
-            "Read Message History": perms.read_message_history
+            "Read Message History": perms.read_message_history,
         }
         missing = [name for name, present in reqs.items() if not present]
 
         if missing:
-            return await self._reply(interaction,
-                                     title="Missing Permissions",
-                                     description=f"I am missing:\n\n" +
-                                     "\n".join(f"• `{p}`" for p in missing) +
-                                     f"\n\nin {target_channel.mention}.")
+            missing_list = "\n".join(f"• `{p}`" for p in missing)
+            warning_icon = EMOJIS.get("warning") or "⚠️"
+            return await self._reply(
+                interaction,
+                title="Missing Permissions",
+                description=
+                (f"{warning_icon} I am missing the following permissions in {target_channel.mention}:\n\n"
+                 f"{missing_list}"),
+            )
 
         view = MediaOnlyView(guild_id=guild.id,
                              channel=target_channel,
                              actor_id=actor.id)
+
+        announcement_icon = EMOJIS.get("announcement") or "📢"
+        green_dot = EMOJIS.get("green_dot") or "🟢"
+        red_dot = EMOJIS.get("red_dot") or "🔴"
+        ping_icon = EMOJIS.get("ping") or "📡"
+        okay_icon = EMOJIS.get("okay") or "✅"
+
         embed = make_embed(
             title="Media-Only Channel Control",
             description=
-            (f"{EMOJIS['announcement']} Manage **media-only mode** for {target_channel.mention}.\n\n"
-             f"{EMOJIS['green_dot']} Enable restrictions\n{EMOJIS['red_dot']} Disable restrictions\n"
-             f"{EMOJIS['ping']} Check current status\n\n{EMOJIS['okay']} This panel is visible only to you."
-             ),
+            (f"{announcement_icon} Manage **media-only mode** for {target_channel.mention}.\n\n"
+             f"{green_dot} Enable restrictions\n"
+             f"{red_dot} Disable restrictions\n"
+             f"{ping_icon} Check current status\n\n"
+             f"{okay_icon} This panel is visible only to you."),
             level="SYSTEM",
-            footer=f"Channel • #{target_channel.name}")
+            footer=f"Channel • #{target_channel.name}",
+        )
 
         try:
             if interaction.response.is_done():
@@ -98,7 +134,9 @@ class MediaOnly(BaseAdminCog):
             return await self._reply(
                 interaction,
                 title="Panel Error",
-                description="Failed to create the media-only control panel.")
+                description=
+                (f"{EMOJIS.get('fail') or '❌'} Failed to create the media-only control panel."
+                 ))
 
         try:
             await send_mod_log(
@@ -112,9 +150,6 @@ class MediaOnly(BaseAdminCog):
                 extra_fields={"Channel ID": target_channel.id})
         except Exception:
             pass
-
-
-setattr(MediaOnly.media_only, "config_command", True)
 
 
 async def setup(bot: commands.Bot) -> None:

@@ -26,7 +26,7 @@ class VerifyButtonView(discord.ui.View):
             if not interaction.response.is_done():
                 try:
                     await interaction.response.send_message(
-                        "This button can only be used inside a server.",
+                        f"{EMOJIS['fail']} This button can only be used inside a server.",
                         ephemeral=True)
                 except discord.HTTPException:
                     pass
@@ -38,7 +38,7 @@ class VerifyButtonView(discord.ui.View):
             if not interaction.response.is_done():
                 try:
                     await interaction.response.send_message(
-                        "Please wait a moment before trying again.",
+                        f"{EMOJIS['warning']} Please wait a moment before trying again.",
                         ephemeral=True)
                 except discord.HTTPException:
                     pass
@@ -55,7 +55,7 @@ class VerifyButtonView(discord.ui.View):
             if not interaction.response.is_done():
                 try:
                     await interaction.response.send_message(
-                        "Verification system is not configured.",
+                        f"{EMOJIS['fail']} Verification system is not configured.",
                         ephemeral=True)
                 except discord.HTTPException:
                     pass
@@ -66,7 +66,8 @@ class VerifyButtonView(discord.ui.View):
             if not interaction.response.is_done():
                 try:
                     await interaction.response.send_message(
-                        "Verification role no longer exists.", ephemeral=True)
+                        f"{EMOJIS['fail']} Verification role no longer exists.",
+                        ephemeral=True)
                 except discord.HTTPException:
                     pass
             return
@@ -75,7 +76,8 @@ class VerifyButtonView(discord.ui.View):
             if not interaction.response.is_done():
                 try:
                     await interaction.response.send_message(
-                        "You are already verified.", ephemeral=True)
+                        f"{EMOJIS['success']} You are already verified.",
+                        ephemeral=True)
                 except discord.HTTPException:
                     pass
             return
