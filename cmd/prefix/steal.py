@@ -145,7 +145,7 @@ class EmojiSteal(commands.Cog):
 
         # 4. Progress Initialization
         progress_embed = make_embed(
-            title=f"{EMOJIS['rounded_loading']} Transferring Assets...",
+            title=f"{EMOJIS['loading']} Transferring Assets...",
             description="Processing target emojis and stickers...",
             level="INFO",
         )
@@ -197,7 +197,7 @@ class EmojiSteal(commands.Cog):
 
             # Update status feedback
             await progress_msg.edit(embed=make_embed(
-                title=f"{EMOJIS['rounded_loading']} Transferring Assets...",
+                title=f"{EMOJIS['loading']} Transferring Assets...",
                 description=(
                     f"{EMOJIS['success']} Added: `{len(added_items)}`\n"
                     f"{EMOJIS['fail']} Failed: `{len(failed_items)}`"),
@@ -234,7 +234,7 @@ class EmojiSteal(commands.Cog):
                 failed_items.append(f"`{res['name']}` ({res['reason']})")
 
             await progress_msg.edit(embed=make_embed(
-                title=f"{EMOJIS['rounded_loading']} Transferring Assets...",
+                title=f"{EMOJIS['loading']} Transferring Assets...",
                 description=(
                     f"{EMOJIS['success']} Added: `{len(added_items)}`\n"
                     f"{EMOJIS['fail']} Failed: `{len(failed_items)}`"),

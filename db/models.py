@@ -52,6 +52,17 @@ class AdminRole(Model):
         return f"<AdminRole guild={self.guild_id} role={self.role_id}>"
 
 
+class VCRoleConfig(Model, TimestampMixin):
+    guild_id = fields.BigIntField(pk=True)
+    role_id = fields.BigIntField()
+
+    class Meta(Model.Meta):
+        table = "vc_role_config"
+
+    def __repr__(self) -> str:
+        return f"<VCRoleConfig guild={self.guild_id} role={self.role_id}>"
+
+
 class MediaOnlyChannel(Model, TimestampMixin):
     guild_id = fields.BigIntField(validators=[MinValueValidator(1)])
     channel_id = fields.BigIntField()
@@ -165,8 +176,12 @@ class ChannelPermissionSnapshot(Model, TimestampMixin):
 
     class Meta(Model.Meta):
         table = "channel_permission_snapshots"
-        unique_together = (("guild_id", "channel_id", "target_id",
-                            "permission_name"), )
+        unique_together = ((
+            "guild_id",
+            "channel_id",
+            "target_id",
+            "permission_name",
+        ), )
 
 
 class WarningRecord(Model, TimestampMixin):

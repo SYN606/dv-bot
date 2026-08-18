@@ -78,7 +78,7 @@ class ShardView(discord.ui.View):
 
     @discord.ui.button(
         label="Refresh",
-        emoji=EMOJIS.get("rounded_loading", "🔄"),
+        emoji=EMOJIS.get("loading", "🔄"),
         style=discord.ButtonStyle.secondary,
     )
     async def refresh(self, interaction: discord.Interaction,
