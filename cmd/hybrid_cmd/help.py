@@ -166,8 +166,7 @@ class HelpDropdownView(discord.ui.View):
         if interaction.user.id != self.author_id:
             await interaction.response.send_message(
                 f"{EMOJIS.get('fail', '❌')} You cannot interact with this menu.",
-                ephemeral=True,
-            )
+                ephemeral=True)
             return
 
         if interaction.message:
@@ -232,15 +231,11 @@ class Help(commands.Cog):
         return choices
 
     async def _get_authorized_help_tree(
-        self,
-        guild: Optional[discord.Guild],
-        channel: Optional[Union[
-            discord.abc.GuildChannel,
-            discord.abc.PrivateChannel,
-            discord.Thread,
-        ]],
-        is_admin: bool,
-    ) -> List[Dict[str, Any]]:
+            self, guild: Optional[discord.Guild],
+            channel: Optional[Union[discord.abc.GuildChannel,
+                                    discord.abc.PrivateChannel,
+                                    discord.Thread]],
+            is_admin: bool) -> List[Dict[str, Any]]:
         """Filter command categories according to guild restrictions and user administrative status."""
         restricted: set[str] = set()
         if guild and channel:
@@ -263,20 +258,16 @@ class Help(commands.Cog):
 
         return filtered_categories
 
-    @commands.hybrid_command(
-        name="help",
-        description="Show bot command directory.",
-        aliases=["h"],
-    )
+    @commands.hybrid_command(name="help",
+                             description="Show bot command directory.",
+                             aliases=["h"])
     @app_commands.describe(
         command_name=
         "Specific command name to view detailed syntax and usage rules")
     @app_commands.autocomplete(command_name=command_autocomplete)
-    async def help(
-        self,
-        ctx: commands.Context,
-        command_name: Optional[str] = None,
-    ) -> None:
+    async def help(self,
+                   ctx: commands.Context,
+                   command_name: Optional[str] = None) -> None:
         """Execute help menu dispatch."""
         raw_prefix = ctx.clean_prefix
         current_prefix = raw_prefix.rstrip()
@@ -315,15 +306,11 @@ class Help(commands.Cog):
                     f"**Permissions:** `{found_cmd.get('permissions', 'None')}`"
                 )
 
-                embed = make_embed(
-                    title="Help Center • Syntax Overview",
-                    description=desc,
-                    level="INFO",
-                )
-                embed.set_footer(
-                    text=f"Action by: {ctx.author}",
-                    icon_url=ctx.author.display_avatar.url,
-                )
+                embed = make_embed(title="Help Center • Syntax Overview",
+                                   description=desc,
+                                   level="INFO")
+                embed.set_footer(text=f"Action by: {ctx.author}",
+                                 icon_url=ctx.author.display_avatar.url)
 
                 if ctx.interaction:
                     if ctx.interaction.response.is_done():
@@ -353,8 +340,7 @@ class Help(commands.Cog):
         tree = await self._get_authorized_help_tree(
             ctx.guild,
             ctx.channel,  # type: ignore
-            is_admin,
-        )
+            is_admin)
 
         desc = (
             f"### {EMOJIS.get('animated_ping', '✨')} Welcome to the Help Center\n"
@@ -363,18 +349,14 @@ class Help(commands.Cog):
             f"{EMOJIS.get('arrow_point', '➡️')} **System Status:** Operational"
         )
 
-        embed = make_embed(
-            title="Digital Vigital • Main Menu",
-            description=desc,
-            level="INFO",
-        )
+        embed = make_embed(title="Digital Vigital • Main Menu",
+                           description=desc,
+                           level="INFO")
         if BANNER_GIF:
             embed.set_image(url=BANNER_GIF)
 
-        embed.set_footer(
-            text=f"Requested by {ctx.author}",
-            icon_url=ctx.author.display_avatar.url,
-        )
+        embed.set_footer(text=f"Requested by {ctx.author}",
+                         icon_url=ctx.author.display_avatar.url)
 
         view = HelpDropdownView(tree,
                                 ctx.author.id,
