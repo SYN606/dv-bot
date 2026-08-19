@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Literal, cast
 
 import discord
@@ -8,8 +10,8 @@ from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.permissions.base_admin import BaseAdminCog
 from utils.permissions.check_perms import is_bot_admin
+from utils.views.perm_scan_paginator import PermScanPaginator
 
-# Python 3.12+ PEP 695 Type Aliases
 type RiskLevel = Literal["red", "yellow", "green"]
 type EmojiType = str | discord.PartialEmoji
 
@@ -83,7 +85,7 @@ class PermissionAudit(BaseAdminCog):
         for key, (label, level) in PERMISSIONS.items():
             if getattr(perms, key, False):
                 sources = [
-                    r.mention
+                    r.name
                     for r in member.roles
                     if getattr(r.permissions, key, False)
                 ]
@@ -91,7 +93,7 @@ class PermissionAudit(BaseAdminCog):
                     {
                         "permission": label,
                         "level": level,
-                        "roles": sources if sources else ["Direct Permission"],
+                        "roles": sources if sources else ["Direct / Owner"],
                     }
                 )
         return found
@@ -140,10 +142,10 @@ class PermissionAudit(BaseAdminCog):
             level = cast(RiskLevel, p["level"])
             emoji = self.get_permission_emoji(level)
             roles_list = cast(list[str], p["roles"])
-            roles = " • ".join(roles_list[:2])
+            roles_str = " • ".join(roles_list[:2])
             if len(roles_list) > 2:
-                roles += "..."
-            groups[level].append(f"{emoji} **{p['permission']}**\n└ `{roles}`")
+                roles_str += "..."
+            groups[level].append(f"{emoji} **{p['permission']}**\n└ Sources: `{roles_str}`")
 
         for level_key, lines in groups.items():
             if lines:
@@ -187,6 +189,9 @@ class PermissionAudit(BaseAdminCog):
             )
             return
 
+        if not guild.chunked:
+            await guild.chunk()
+
         results: list[tuple[int, int, str]] = []
         for member in guild.members:
             if member.bot:
@@ -199,19 +204,12 @@ class PermissionAudit(BaseAdminCog):
 
         results.sort(key=lambda x: (x[0], x[1]), reverse=True)
 
-        red_dot = EMOJIS.get("red_dot", "🔴")
-        warning = EMOJIS.get("warning", "⚠️")
-        desc = "\n".join(
-            [f"• **{r[2]}** | {red_dot} `{r[0]}` {warning} `{r[1]}`" for r in results[:20]]
+        paginator = PermScanPaginator(
+            results=results, author=interaction.user, per_page=15
         )
-
-        shield = EMOJIS.get("shield", "🛡️")
-        embed = make_embed(
-            title=f"{shield} Permission Scan Summary",
-            description=desc or "No members with elevated permissions found.",
-            level="WARNING",
+        await interaction.followup.send(
+            embed=paginator.create_embed(), view=paginator, ephemeral=True
         )
-        await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:
