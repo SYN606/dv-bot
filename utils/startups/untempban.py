@@ -7,7 +7,7 @@ from db.db_helpers.tempban import get_expired_tempbans, remove_tempban, get_temp
 from db.db_helpers.verification import get_verification_config
 from utils.logging.mod_log import send_mod_log
 
-logger = logging.getLogger("DigitalVigital")
+logger = logging.getLogger("Digital Vigital")
 
 
 class TempbanBackgroundHandler:

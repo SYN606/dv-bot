@@ -4,7 +4,7 @@ import discord
 from discord import Message
 
 from db.db_helpers.sticky import sticky_step, update_last_message
-from utils.handlers.sticky.sticky_manager import StickyPayload, process_sticky
+from utils.handlers.sticky._sticky_manager import StickyPayload, process_sticky
 
 IGNORED_PREFIXES = ("!", "/", "dv ")
 

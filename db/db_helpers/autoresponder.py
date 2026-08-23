@@ -1,6 +1,6 @@
-from typing import List, Optional, Tuple, Any
+from typing import Any, List, Optional, Tuple
+from db.models import AutoResponder, AutoResponderReaction, Guild, MatchType
 from tortoise.transactions import in_transaction
-from db.models import AutoResponder, AutoResponderReaction, MatchType
 
 
 async def upsert_autoresponder(
@@ -17,10 +17,13 @@ async def upsert_autoresponder(
     delete_trigger: Optional[bool] = None,
     cooldown: Optional[int] = None,
 ) -> int:
-    """
-    Creates or updates an AutoResponder entry.
+    """Creates or updates an AutoResponder entry.
+
     Returns the primary key (`responder_id`).
     """
+    # Ensure foreign key record exists in the 'guilds' table
+    await Guild.get_or_create(guild_id=guild_id)
+
     fields_map: dict[str, Any] = {
         "match_type": match_type,
         "reply_content": reply_content,
@@ -57,46 +60,38 @@ async def upsert_autoresponder(
 
 
 async def add_responder_reaction(responder_id: int, emoji: str) -> None:
-    """
-    Adds a reaction emoji to an autoresponder if it doesn't already exist.
-    """
+    """Adds a reaction emoji to an autoresponder if it doesn't already exist."""
     await AutoResponderReaction.get_or_create(responder_id=responder_id,
                                               emoji=emoji)
 
 
 async def clear_responder_reactions(responder_id: int) -> None:
-    """
-    Clears all reaction emojis for a given responder ID.
-    """
+    """Clears all reaction emojis for a given responder ID."""
     await AutoResponderReaction.filter(responder_id=responder_id).delete()
 
 
 async def get_guild_autoresponders(
         guild_id: int,
         enabled_only: bool = True) -> List[Tuple[AutoResponder, List[str]]]:
+    """Fetches all autoresponders for a guild, prefetching reactions to eliminate N+1 queries."""
     query = AutoResponder.filter(guild_id=guild_id)
     if enabled_only:
         query = query.filter(enabled=True)
 
-    responders = await query.all()
+    # Use prefetch_related to load reactions in a single batched query
+    responders = await query.prefetch_related("reactions").all()
+
     output: List[Tuple[AutoResponder, List[str]]] = []
-
     for ar in responders:
-        # Added flat=True and cast elements to str
-        reactions: list[str] = [
-            str(r) for r in await AutoResponderReaction.filter(
-                responder_id=ar.responder_id).values_list("emoji", flat=True)
-        ]
-
+        # Access the preloaded related manager directly
+        reactions = [str(r.emoji) for r in ar.reactions]
         output.append((ar, reactions))
 
     return output
 
 
 async def delete_autoresponder(guild_id: int, responder_id: int) -> bool:
-    """
-    Deletes an autoresponder and its associated reactions within an atomic transaction.
-    """
+    """Deletes an autoresponder and its associated reactions within an atomic transaction."""
     responder = await AutoResponder.get_or_none(responder_id=responder_id,
                                                 guild_id=guild_id)
     if not responder:
@@ -110,17 +105,13 @@ async def delete_autoresponder(guild_id: int, responder_id: int) -> bool:
 
 
 async def get_rule_by_id(rule_id: int) -> Optional[AutoResponder]:
-    """
-    Fetches a specific AutoResponder rule by its primary key ID.
-    """
+    """Fetches a specific AutoResponder rule by its primary key ID."""
     return await AutoResponder.get_or_none(responder_id=rule_id)
 
 
 async def update_autoresponder_rule(rule_id: int, guild_id: int,
                                     **kwargs) -> int:
-    """
-    Partial update helper that accepts variable kwargs and passes them to `upsert_autoresponder`.
-    """
+    """Partial update helper that accepts variable kwargs and passes them to `upsert_autoresponder`."""
     current_rule = await get_rule_by_id(rule_id)
     if not current_rule:
         raise ValueError(

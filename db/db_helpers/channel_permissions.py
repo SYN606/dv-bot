@@ -3,7 +3,7 @@ from typing import cast
 import discord
 
 from db.db_helpers.verification import get_verification_config
-from db.models import ChannelPermissionSnapshot
+from db.models import ChannelPermissionSnapshot, Guild
 
 # Descriptive type alias for channel handling consistency
 GuildChannel = (discord.TextChannel
@@ -61,6 +61,9 @@ async def create_permission_snapshots(
     if not snapshots:
         return
 
+    # Ensure foreign key record exists in the 'guilds' table
+    await Guild.get_or_create(guild_id=guild_id)
+
     snapshot_objects = [
         ChannelPermissionSnapshot(
             guild_id=guild_id,
@@ -98,10 +101,10 @@ async def has_channel_snapshots(guild_id: int, channel_id: int) -> bool:
 
 async def get_snapshot_channels(guild_id: int) -> list[int]:
     """Retrieves unique channel IDs that have active snapshots in a guild."""
-    channels = await ChannelPermissionSnapshot.filter(guild_id=guild_id
-                                                      ).distinct().values_list(
-                                                          "channel_id",
-                                                          flat=True)
+    channels = (await
+                ChannelPermissionSnapshot.filter(guild_id=guild_id
+                                                 ).distinct().values_list(
+                                                     "channel_id", flat=True))
 
     return cast(list[int], channels)
 

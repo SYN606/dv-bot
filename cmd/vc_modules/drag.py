@@ -9,7 +9,7 @@ from discord.ext import commands
 
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
-from utils.handlers.vc_mod_handlers.drag_handler import drag_member
+from utils.handlers.vc_mod_handlers._drag_handler import drag_member
 from utils.permissions.base_admin import BaseAdminCog
 
 logger = logging.getLogger("DigitalVigital")

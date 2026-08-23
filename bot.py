@@ -18,13 +18,14 @@ from utils.core.interaction_check import command_toggle_check
 
 # Core System Utilities
 from utils.core.presence import PresenceRotator
-from utils.handlers.afk_handler import handle_afk
-from utils.handlers.autoresponder_handler import handle_autoresponder
-from utils.handlers.media_only import enforce_media_only
-from utils.handlers.mention import handle_bot_mention
-from utils.handlers.prefix import dynamic_prefix, normalize_prefix
-from utils.handlers.sticky.sticky_handler import handle_sticky
-from utils.handlers.vc_mod_handlers.vc_role_handler import handle_voice_state_update  # <-- Import your VC Handler
+
+# Centralized Gateway Registry
+from utils.handlers.registry import (
+    dispatch_message_pipeline,
+    dispatch_post_command,
+    dispatch_voice_state_update,
+    dynamic_prefix,
+)
 
 # Load Environment Variables
 env_loaded = load_dotenv()
@@ -66,7 +67,7 @@ intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 intents.invites = True
-intents.voice_states = True  # REQUIRED for voice channel tracking
+intents.voice_states = True
 
 
 class DigitalVigilBot(commands.Bot):
@@ -185,44 +186,31 @@ class DigitalVigilBot(commands.Bot):
         logger.info("[READY] Application engine operational")
 
     # VOICE STATE PIPELINE
-    async def on_voice_state_update(self, member: discord.Member,
-                                    before: discord.VoiceState,
-                                    after: discord.VoiceState) -> None:
-        """Handles voice state triggers (e.g., auto-assigning VC roles)."""
-        if member.bot:
-            return
-
+    async def on_voice_state_update(
+        self,
+        member: discord.Member,
+        before: discord.VoiceState,
+        after: discord.VoiceState,
+    ) -> None:
+        """Handles voice state triggers via the central registry dispatcher."""
         try:
-            await handle_voice_state_update(member, before, after)
+            await dispatch_voice_state_update(member, before, after)
         except Exception as exc:
             logger.exception(f"[VC ERROR] Voice state update failed: {exc}")
 
     # MESSAGE PIPELINE
     async def on_message(self, message: discord.Message) -> None:
-        if message.author.bot or not message.guild:
-            return
-
+        """Handles incoming message processing via the central registry pipeline."""
         try:
-            message.content = normalize_prefix(message.content)
-
-            if await enforce_media_only(message):
+            if await dispatch_message_pipeline(self, message):
                 return
-
-            await handle_sticky(message)
-
-            if await handle_autoresponder(self, message):
-                return
-
-            if self.user and self.user.mentioned_in(message):
-                await handle_bot_mention(self, message)
-
         except Exception as exc:
             logger.exception(f"[PIPELINE ERROR] Interceptor failure: {exc}")
 
         await self.process_commands(message)
 
         try:
-            await handle_afk(message)
+            await dispatch_post_command(message)
         except Exception as exc:
             logger.exception(f"[AFK ERROR] Handler failure: {exc}")
 

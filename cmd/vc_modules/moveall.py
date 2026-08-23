@@ -8,7 +8,7 @@ from discord.ext import commands
 
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
-from utils.handlers.vc_mod_handlers.moveall_handler import move_all_members
+from utils.handlers.vc_mod_handlers._moveall_handler import move_all_members
 from utils.permissions.base_admin import BaseAdminCog
 
 logger = logging.getLogger("DigitalVigital")

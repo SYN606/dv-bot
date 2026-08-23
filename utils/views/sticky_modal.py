@@ -7,7 +7,7 @@ from discord import ui
 from db.db_helpers.sticky import set_sticky, update_last_message
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
-from utils.handlers.sticky.sticky_manager import StickyPayload, process_sticky
+from utils.handlers.sticky._sticky_manager import StickyPayload, process_sticky
 from utils.logging.mod_log import send_mod_log
 
 logger = logging.getLogger("bot")

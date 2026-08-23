@@ -1,4 +1,4 @@
-from db.models import VerificationConfig
+from db.models import Guild, VerificationConfig
 
 
 async def set_verification_config(
@@ -10,6 +10,9 @@ async def set_verification_config(
     unverified_role_id: int | None = None,
 ) -> None:
     """Sets or updates the verification configuration for a guild."""
+    # Ensure foreign key record exists in the 'guilds' table
+    await Guild.get_or_create(guild_id=guild_id)
+
     fields = {
         "verify_channel_id": verify_channel_id,
         "log_channel_id": log_channel_id,

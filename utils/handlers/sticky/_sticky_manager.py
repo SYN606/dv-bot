@@ -1,4 +1,3 @@
-# utils/handlers/sticky/sticky_manager.py
 from __future__ import annotations
 
 import asyncio
@@ -8,7 +7,7 @@ from typing import Optional
 
 import discord
 
-from utils.handlers.sticky.webhook_utils import get_or_create_sticky_webhook
+from ._webhook_utils import get_or_create_sticky_webhook
 
 logger = logging.getLogger("bot")
 

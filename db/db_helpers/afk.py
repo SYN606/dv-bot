@@ -1,12 +1,14 @@
 import time
 from typing import Optional
-from db.models import AFK
+from db.models import AFK, Guild, User
 
 
 async def set_afk(guild_id: int, user_id: int, reason: str) -> AFK:
-    """
-    Sets or updates a user's AFK status for a given guild.
-    """
+    """Sets or updates a user's AFK status for a given guild."""
+    # Ensure foreign key records exist in 'guilds' and 'users' tables
+    await Guild.get_or_create(guild_id=guild_id)
+    await User.get_or_create(user_id=user_id)
+
     now = int(time.time())
 
     afk, _ = await AFK.update_or_create(
@@ -21,8 +23,8 @@ async def set_afk(guild_id: int, user_id: int, reason: str) -> AFK:
 
 
 async def remove_afk(guild_id: int, user_id: int) -> Optional[AFK]:
-    """
-    Fetches and deletes a user's AFK record if it exists.
+    """Fetches and deletes a user's AFK record if it exists.
+
     Returns the deleted AFK instance or None.
     """
     afk = await AFK.get_or_none(guild_id=guild_id, user_id=user_id)
@@ -33,7 +35,5 @@ async def remove_afk(guild_id: int, user_id: int) -> Optional[AFK]:
 
 
 async def get_afk(guild_id: int, user_id: int) -> Optional[AFK]:
-    """
-    Retrieves a user's AFK record for a given guild.
-    """
+    """Retrieves a user's AFK record for a given guild."""
     return await AFK.get_or_none(guild_id=guild_id, user_id=user_id)

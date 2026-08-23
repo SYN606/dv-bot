@@ -1,4 +1,4 @@
-from db.models import StickyMessage
+from db.models import Guild, StickyMessage
 
 THRESHOLD = 1
 
@@ -6,6 +6,9 @@ THRESHOLD = 1
 # Set sticky
 async def set_sticky(guild_id: int, channel_id: int, content: str) -> None:
     """Sets or updates a sticky message for a specific channel."""
+    # Ensure foreign key record exists in the 'guilds' table
+    await Guild.get_or_create(guild_id=guild_id)
+
     await StickyMessage.update_or_create(
         guild_id=guild_id,
         channel_id=channel_id,

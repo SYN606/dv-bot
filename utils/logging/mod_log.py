@@ -1,7 +1,7 @@
 import asyncio
 import discord
 from typing import Optional, Dict, Any, Tuple
-from db.db_helpers.mod_log_config import get_mod_log_channel_id
+from db.db_helpers.mod_logs import get_mod_log_channel_id
 from utils.core.embeds import make_embed
 
 _log_cache: dict[int, int] = {}

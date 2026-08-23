@@ -9,8 +9,8 @@ from db.db_helpers.sticky import (get_sticky, remove_sticky, set_sticky,
                                   update_last_message)
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
-from utils.handlers.sticky.sticky_manager import StickyPayload, process_sticky
-from utils.handlers.sticky.webhook_utils import remove_sticky_webhook
+from utils.handlers.sticky._sticky_manager import StickyPayload, process_sticky
+from utils.handlers.sticky._webhook_utils import remove_sticky_webhook
 from utils.logging.mod_log import send_mod_log
 from utils.permissions.base_admin import BaseAdminCog
 from utils.views.sticky_modal import StickyModal

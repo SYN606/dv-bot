@@ -7,7 +7,7 @@ from db.db_helpers.media_only import (get_media_only_config,
                                       update_sticky_message_id)
 from utils.core.embeds import make_embed
 from utils.logging.mod_log import send_mod_log
-from .sticky.sticky_manager import StickyPayload, process_sticky
+from .sticky._sticky_manager import StickyPayload, process_sticky
 
 # CONFIGURATION CONSTANTS
 STICKY_TAG = "MEDIA_ONLY_STICKY_NOTICE"
