@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -10,10 +11,19 @@ from db.db_helpers.afk import remove_afk, set_afk
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.permissions.check_perms import is_bot_admin_ctx
+from utils.views.afk_button import GlobalAFKView
 
 logger = logging.getLogger("DigitalVigital")
 
 AFK_PREFIX = "[AFK] "
+
+
+async def _set_nickname(member: discord.Member, new_nick: str) -> None:
+    """Helper to update user nickname in background without blocking execution flow."""
+    try:
+        await member.edit(nick=new_nick)
+    except (discord.Forbidden, discord.HTTPException) as exc:
+        logger.debug("Failed to update nickname for %s: %s", member, exc)
 
 
 class AFK(commands.Cog):
@@ -43,40 +53,48 @@ class AFK(commands.Cog):
         *,
         afk_reason: str = "AFK",
     ) -> None:
-        """Set your status to AFK with an optional reason."""
+        """Set your status to local AFK by default with an optional button for Global AFK."""
         if ctx.guild is None:
             return
 
         author = ctx.author
-        afk_reason = afk_reason.strip() or "AFK"
-        afk_reason = afk_reason[:200]
+        afk_reason = afk_reason.strip()[:200] or "AFK"
 
-        await set_afk(ctx.guild.id, author.id, afk_reason)
+        # Execute DB save first (local by default)
+        await set_afk(ctx.guild.id, author.id, afk_reason, is_global=False)
 
-        # Attempt nickname modification
-        if isinstance(author, discord.Member):
-            try:
-                if ctx.guild.me.guild_permissions.manage_nicknames:
-                    if not author.display_name.startswith(AFK_PREFIX):
-                        new_name = f"{AFK_PREFIX}{author.display_name}"
-                        if len(new_name) <= 32:
-                            await author.edit(nick=new_name)
-            except (discord.Forbidden, discord.HTTPException) as exc:
-                logger.debug("Failed to update nickname for AFK set: %s", exc)
+        # Non-blocking nickname update task
+        if isinstance(author, discord.Member
+                      ) and ctx.guild.me.guild_permissions.manage_nicknames:
+            if not author.display_name.startswith(AFK_PREFIX):
+                new_name = f"{AFK_PREFIX}{author.display_name}"
+                if len(new_name) <= 32:
+                    asyncio.create_task(_set_nickname(author, new_name))
 
         embed = make_embed(
-            title="AFK Enabled",
-            description=(
-                f"{EMOJIS.get('okay', '👌')} {author.mention} is now AFK.\n"
-                f"{EMOJIS.get('arrow_point', '➡️')} Reason: {afk_reason}"),
+            title="Local AFK Enabled",
+            description=
+            (f"{EMOJIS.get('okay', '👌')} {author.mention} is now AFK in **{ctx.guild.name}**.\n"
+             f"{EMOJIS.get('arrow_point', '➡️')} Reason: {afk_reason}"),
             level="SUCCESS",
         )
         embed.set_footer(
             text=f"Action by : {author}",
             icon_url=author.display_avatar.url,
         )
-        await ctx.send(embed=embed)
-        await self._cleanup(ctx)
+
+        view = GlobalAFKView(
+            author_id=author.id,
+            guild_id=ctx.guild.id,
+            afk_reason=afk_reason,
+        )
+
+        # Send response and attach message reference to view for timeout handling
+        sent_msg = await ctx.send(embed=embed, view=view)
+        view.message = sent_msg
+
+        # Run message cleanup asynchronously
+        asyncio.create_task(self._cleanup(ctx))
 
     @afk.command(name="reset", help="Reset AFK status of a server user")
     @commands.guild_only()
@@ -159,17 +177,18 @@ class AFK(commands.Cog):
             await ctx.send(embed=embed)
             return
 
-        # Restore original nickname if tagged
-        try:
-            if ctx.guild.me.guild_permissions.manage_nicknames:
-                if member.display_name.startswith(AFK_PREFIX):
-                    new_name = member.display_name.removeprefix(AFK_PREFIX)
-                    await member.edit(nick=new_name)
-        except (discord.Forbidden, discord.HTTPException) as exc:
-            logger.debug("Failed to reset nickname during AFK reset: %s", exc)
+        # Restore original nickname in background task
+        if ctx.guild.me.guild_permissions.manage_nicknames:
+            if member.display_name.startswith(AFK_PREFIX):
+                new_name = member.display_name.removeprefix(AFK_PREFIX)
+                asyncio.create_task(_set_nickname(member, new_name))
 
-        reason_text = getattr(removed, "afk_reason", None) or (
-            removed.get("afk_reason") if isinstance(removed, dict) else "AFK")
+        reason_text = getattr(
+            removed,
+            "afk_reason",
+            None,
+        ) or (removed.get("afk_reason")  # type: ignore
+              if isinstance(removed, dict) else "AFK")
 
         embed = make_embed(
             title="AFK Reset Successful",
@@ -183,16 +202,17 @@ class AFK(commands.Cog):
             text=f"Action by : {author}",
             icon_url=author.display_avatar.url,
         )
-        await ctx.send(embed=embed)
-        await self._cleanup(ctx)
+
+        await asyncio.gather(
+            ctx.send(embed=embed),
+            self._cleanup(ctx),
+            return_exceptions=True,
+        )
 
     @afk.error
     @afk_reset.error
-    async def afk_error(
-        self,
-        ctx: commands.Context,
-        error: commands.CommandError,
-    ) -> None:
+    async def afk_error(self, ctx: commands.Context,
+                        error: commands.CommandError) -> None:
         """Cog-level error handler for AFK commands."""
         if isinstance(error, commands.NoPrivateMessage):
             await ctx.send(embed=make_embed(
