@@ -10,7 +10,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 # Tortoise ORM Database Infrastructure
-from db.db_config import close_tortoise, init_tortoise
+from db.db_config import FatalDBError, close_tortoise, init_tortoise
 
 # Custom Handlers & Feature Interceptors
 from utils.core.embeds import make_embed
@@ -291,6 +291,12 @@ async def run_bot() -> bool:
         return False
     except asyncio.CancelledError:
         logger.info("\n[SHUTDOWN] Cancellation received. Cleaning up...")
+        await bot.close()
+        return False
+    except FatalDBError as exc:
+        logger.error(
+            f"[FATAL DB] Database connection failed on startup: {exc}")
+        logger.info("[EXIT] Shutting down due to database failure...")
         await bot.close()
         return False
     except discord.HTTPException as exc:

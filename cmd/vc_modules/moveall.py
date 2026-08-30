@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Tuple
-
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from utils.core.embeds import make_embed
@@ -21,33 +20,26 @@ class VCMoveAll(BaseAdminCog):
         super().__init__()
         self.bot = bot
 
-    async def _cleanup(self, ctx: commands.Context) -> None:
-        """Safely delete original text invocation message if applicable."""
-        if ctx.interaction:
-            return
-        try:
-            await ctx.message.delete()
-        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
-            pass
-
-    @commands.command(
+    @app_commands.command(
         name="moveall",
-        aliases=["dragall", "mvall"],
         description=
         "Move all users between voice channels safely without rate-limits.",
     )
-    @commands.guild_only()
-    @commands.cooldown(1, 10, commands.BucketType.guild)
-    @commands.max_concurrency(1, per=commands.BucketType.guild, wait=False)
+    @app_commands.describe(
+        source="The voice channel to move members out of",
+        target="The destination voice channel to move members into",
+    )
+    @app_commands.guild_only()
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: i.guild_id)
     async def moveall(
         self,
-        ctx: commands.Context,
+        interaction: discord.Interaction,
         source: discord.VoiceChannel | discord.StageChannel,
         target: discord.VoiceChannel | discord.StageChannel,
-    ):
+    ) -> None:
         """Move all members currently in the source voice channel to the target channel."""
-        author = ctx.author
-        guild = ctx.guild
+        guild = interaction.guild
+        author = interaction.user
 
         if guild is None or not isinstance(author, discord.Member):
             return
@@ -65,7 +57,8 @@ class VCMoveAll(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            await interaction.response.send_message(embed=embed,
+                                                    ephemeral=True)
             return
 
         # 2. Validation: Source emptiness check
@@ -80,7 +73,8 @@ class VCMoveAll(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            await interaction.response.send_message(embed=embed,
+                                                    ephemeral=True)
             return
 
         # 3. Validation: Target Channel User Limit Check
@@ -95,7 +89,8 @@ class VCMoveAll(BaseAdminCog):
                     footer=footer_text,
                     footer_icon=footer_icon,
                 )
-                await ctx.reply(embed=embed, mention_author=False)
+                await interaction.response.send_message(embed=embed,
+                                                        ephemeral=True)
                 return
 
         # 4. Permission Check: Author
@@ -110,7 +105,8 @@ class VCMoveAll(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            await interaction.response.send_message(embed=embed,
+                                                    ephemeral=True)
             return
 
         # 5. Permission Check: Bot
@@ -126,7 +122,8 @@ class VCMoveAll(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            await interaction.response.send_message(embed=embed,
+                                                    ephemeral=True)
             return
 
         # 6. Process Initiation Feedback
@@ -138,8 +135,7 @@ class VCMoveAll(BaseAdminCog):
             footer=footer_text,
             footer_icon=footer_icon,
         )
-        progress_msg = await ctx.reply(embed=progress_embed,
-                                       mention_author=False)
+        await interaction.response.send_message(embed=progress_embed)
 
         # 7. Delegate Execution to moveall_handler
         successful_moves = await move_all_members(
@@ -172,63 +168,7 @@ class VCMoveAll(BaseAdminCog):
                 footer_icon=footer_icon,
             )
 
-        await progress_msg.edit(embed=summary_embed)
-        await self._cleanup(ctx)
-
-    @moveall.error
-    async def moveall_error(self, ctx: commands.Context,
-                            error: commands.CommandError):
-        """Centralized error processing hook for the moveall command."""
-        author = ctx.author
-        footer_text = f"Action by: {author}"
-        footer_icon = author.display_avatar.url
-
-        if isinstance(error, commands.CommandOnCooldown):
-            embed = make_embed(
-                title=f"{EMOJIS['warning']} Command Cooldown",
-                description=
-                f"Please wait `{error.retry_after:.1f}s` before using this command again.",
-                level="WARNING",
-                footer=footer_text,
-                footer_icon=footer_icon,
-            )
-            await ctx.reply(embed=embed, mention_author=False)
-
-        elif isinstance(error, commands.MaxConcurrencyReached):
-            embed = make_embed(
-                title=f"{EMOJIS['warning']} Command Busy",
-                description=
-                "Another bulk migration operation is currently running in this server.",
-                level="WARNING",
-                footer=footer_text,
-                footer_icon=footer_icon,
-            )
-            await ctx.reply(embed=embed, mention_author=False)
-
-        elif isinstance(error, commands.MissingRequiredArgument):
-            embed = make_embed(
-                title=f"{EMOJIS['warning']} Invalid Syntax",
-                description=
-                f"Missing required parameters.\n**Usage:** `{ctx.prefix}moveall <#source-vc> <#target-vc>`",
-                level="WARNING",
-                footer=footer_text,
-                footer_icon=footer_icon,
-            )
-            await ctx.reply(embed=embed, mention_author=False)
-
-        elif isinstance(error, commands.ChannelNotFound):
-            embed = make_embed(
-                title=f"{EMOJIS['fail']} Channel Not Found",
-                description=
-                "Please supply a valid Voice or Stage channel mention/ID.",
-                level="ERROR",
-                footer=footer_text,
-                footer_icon=footer_icon,
-            )
-            await ctx.reply(embed=embed, mention_author=False)
-
-        elif isinstance(error, commands.CheckFailure):
-            pass
+        await interaction.edit_original_response(embed=summary_embed)
 
 
 async def setup(bot: commands.Bot):

@@ -1,7 +1,9 @@
 import os
+import sys
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
 from tortoise import Tortoise
+from tortoise.exceptions import DBConnectionError as TortoiseDBConnectionError
 
 load_dotenv()
 
@@ -10,8 +12,13 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REQUIRE_SSL = os.getenv("DB_SSL", "False").lower() in ("true", "1", "yes")
 
 
+class FatalDBError(Exception):
+    """Raised when the database connection encounters an unrecoverable error."""
+    pass
+
+
 def build_sqlite_url() -> str:
-    """Builds a absolute file path SQLite connection URL."""
+    """Builds an absolute file path SQLite connection URL."""
     db_folder = os.path.join(ROOT_DIR, ".DB_DND")
     os.makedirs(db_folder, exist_ok=True)
     db_name = os.getenv("SQLITE_NAME", "bot.db")
@@ -23,7 +30,6 @@ def build_database_url() -> str:
     """Builds connection string for PostgreSQL, MySQL, or direct DATABASE_URL override."""
     direct_url = os.getenv("DATABASE_URL")
     if direct_url:
-        # Normalize postgres:// to postgresql:// if passed from older providers
         if direct_url.startswith("postgres://"):
             return direct_url.replace("postgres://", "postgres://", 1)
         return direct_url
@@ -48,10 +54,9 @@ def build_database_url() -> str:
     raise RuntimeError(f"Unsupported DB_TYPE: {DB_TYPE}")
 
 
-DATABASE_URL = build_sqlite_url(
-) if DB_TYPE == "sqlite" else build_database_url()
+DATABASE_URL = (build_sqlite_url()
+                if DB_TYPE == "sqlite" else build_database_url())
 
-# Tortoise ORM Configuration
 TORTOISE_ORM = {
     "connections": {
         "default": DATABASE_URL,
@@ -67,14 +72,24 @@ TORTOISE_ORM = {
 
 async def init_tortoise() -> None:
     """Initializes Tortoise ORM and generates matching schema tables safely."""
-    await Tortoise.init(config=TORTOISE_ORM)
-
-    # Safe schema generation (will not overwrite existing tables)
-    await Tortoise.generate_schemas(safe=True)
-    print(
-        f"[DB] Using {DB_TYPE.upper()} database | Connection & Schema ready.")
+    try:
+        await Tortoise.init(config=TORTOISE_ORM)
+        await Tortoise.generate_schemas(safe=True)
+        print(
+            f"[DB] Using {DB_TYPE.upper()} database | Connection & Schema ready."
+        )
+    except (TortoiseDBConnectionError, OSError, Exception) as exc:
+        print(
+            f"[DB ERROR] Failed to connect to {DB_TYPE.upper()} database: {exc}",
+            file=sys.stderr,
+        )
+        await close_tortoise()
+        raise FatalDBError(f"Database connection failed: {exc}") from exc
 
 
 async def close_tortoise() -> None:
     """Safely terminates active connection pools across drivers."""
-    await Tortoise.close_connections()
+    try:
+        await Tortoise.close_connections()
+    except Exception:
+        pass
