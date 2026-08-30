@@ -30,6 +30,15 @@ CATEGORY_EMOJIS: Dict[str, Union[str, discord.PartialEmoji, None]] = {
 }
 
 
+def get_command_type_badge(is_prefix: bool, is_slash: bool) -> str:
+    """Returns a visual badge label representing how the command can be invoked."""
+    if is_prefix and is_slash:
+        return "`[Hybrid]`"
+    if is_slash:
+        return "`[Slash]`"
+    return "`[Prefix]`"
+
+
 class HelpDropdown(discord.ui.Select):
     """Dropdown component for selecting and viewing specific command categories."""
 
@@ -94,19 +103,28 @@ class HelpDropdown(discord.ui.Select):
         arrow = EMOJIS.get("arrow_point", "➡️")
 
         desc = f"### {emoji} {category_data['name']} Module\n"
-        desc += f"Browse the available commands below. Use `{self.ctx_prefix} help <command>` for specific details.\n\n"
+        desc += f"Browse commands below. Use `{self.ctx_prefix} help <command>` for detailed syntax.\n\n"
 
         for c in category_data.get("commands", []):
+            is_prefix = c.get("is_prefix", True)
             is_slash = c.get("is_slash", False)
-            prefix = "/" if is_slash else self.ctx_prefix
+
+            type_badge = get_command_type_badge(is_prefix, is_slash)
             name = c["name"].lstrip("/")
 
-            cmd_string = f"{prefix}{name}" if is_slash else f"{prefix} {name}"
+            # Display invocation format correctly based on type
+            if is_slash and not is_prefix:
+                cmd_string = f"/{name}"
+            elif is_slash and is_prefix:
+                cmd_string = f"/{name} or {self.ctx_prefix} {name}"
+            else:
+                cmd_string = f"{self.ctx_prefix} {name}"
+
             aliases = (f" *[Aliases: {', '.join(c['aliases'])}]*"
                        if c.get("aliases") else "")
 
             desc += (
-                f"{arrow} **`{cmd_string}`**{aliases}\n"
+                f"{arrow} **`{cmd_string}`** {type_badge}{aliases}\n"
                 f"> *{c.get('description', 'No description provided.')}*\n\n")
 
         embed = make_embed(
@@ -166,7 +184,8 @@ class HelpDropdownView(discord.ui.View):
         if interaction.user.id != self.author_id:
             await interaction.response.send_message(
                 f"{EMOJIS.get('fail', '❌')} You cannot interact with this menu.",
-                ephemeral=True)
+                ephemeral=True,
+            )
             return
 
         if interaction.message:
@@ -225,17 +244,21 @@ class Help(commands.Cog):
                     choices.append(
                         app_commands.Choice(name=cmd["name"],
                                             value=cmd["name"]))
-                    if len(choices) >= 25:  # Discord interaction UI cap
+                    if len(choices) >= 25:
                         return choices
 
         return choices
 
     async def _get_authorized_help_tree(
-            self, guild: Optional[discord.Guild],
-            channel: Optional[Union[discord.abc.GuildChannel,
-                                    discord.abc.PrivateChannel,
-                                    discord.Thread]],
-            is_admin: bool) -> List[Dict[str, Any]]:
+        self,
+        guild: Optional[discord.Guild],
+        channel: Optional[Union[
+            discord.abc.GuildChannel,
+            discord.abc.PrivateChannel,
+            discord.Thread,
+        ]],
+        is_admin: bool,
+    ) -> List[Dict[str, Any]]:
         """Filter command categories according to guild restrictions and user administrative status."""
         restricted: set[str] = set()
         if guild and channel:
@@ -258,9 +281,11 @@ class Help(commands.Cog):
 
         return filtered_categories
 
-    @commands.hybrid_command(name="help",
-                             description="Show bot command directory.",
-                             aliases=["h"])
+    @commands.hybrid_command(
+        name="help",
+        description="Show bot command directory.",
+        aliases=["h"],
+    )
     @app_commands.describe(
         command_name=
         "Specific command name to view detailed syntax and usage rules")
@@ -288,29 +313,48 @@ class Help(commands.Cog):
                     break
 
             if found_cmd:
+                is_prefix = found_cmd.get("is_prefix", True)
                 is_slash = found_cmd.get("is_slash", False)
-                prefix = "/" if is_slash else current_prefix
+
+                type_badge = get_command_type_badge(is_prefix, is_slash)
                 usage = found_cmd.get("usage", "").lstrip("/")
 
-                usage_str = (f"{prefix}{usage}"
-                             if is_slash else f"{prefix} {usage}")
+                if is_slash and not is_prefix:
+                    usage_str = f"/{usage}"
+                elif is_slash and is_prefix:
+                    usage_str = f"/{usage}  OR  {current_prefix} {usage}"
+                else:
+                    usage_str = f"{current_prefix} {usage}"
+
                 aliases_str = (", ".join([
                     f"`{a}`" for a in found_cmd.get("aliases", [])
                 ]) if found_cmd.get("aliases") else "None")
 
+                # Format examples if available
+                examples_list = found_cmd.get("examples", [])
+                if examples_list:
+                    examples_formatted = "\n".join(
+                        [f"• `{ex}`" for ex in examples_list])
+                else:
+                    examples_formatted = f"• `{usage_str}`"
+
                 desc = (
-                    f"### {EMOJIS.get('announcement', '📖')} Command Detail: `{found_cmd['name']}`\n\n"
+                    f"### {EMOJIS.get('announcement', '📖')} Command Detail: `{found_cmd['name']}` {type_badge}\n\n"
                     f"**Description:** {found_cmd.get('description', 'No description.')}\n"
                     f"**Usage:** `{usage_str}`\n"
                     f"**Aliases:** {aliases_str}\n"
-                    f"**Permissions:** `{found_cmd.get('permissions', 'None')}`"
-                )
+                    f"**Permissions:** `{found_cmd.get('permissions', 'None')}`\n\n"
+                    f"**Examples:**\n{examples_formatted}")
 
-                embed = make_embed(title="Help Center • Syntax Overview",
-                                   description=desc,
-                                   level="INFO")
-                embed.set_footer(text=f"Action by: {ctx.author}",
-                                 icon_url=ctx.author.display_avatar.url)
+                embed = make_embed(
+                    title="Help Center • Syntax Overview",
+                    description=desc,
+                    level="INFO",
+                )
+                embed.set_footer(
+                    text=f"Action by: {ctx.author}",
+                    icon_url=ctx.author.display_avatar.url,
+                )
 
                 if ctx.interaction:
                     if ctx.interaction.response.is_done():
@@ -340,7 +384,8 @@ class Help(commands.Cog):
         tree = await self._get_authorized_help_tree(
             ctx.guild,
             ctx.channel,  # type: ignore
-            is_admin)
+            is_admin,
+        )
 
         desc = (
             f"### {EMOJIS.get('animated_ping', '✨')} Welcome to the Help Center\n"
@@ -349,14 +394,18 @@ class Help(commands.Cog):
             f"{EMOJIS.get('arrow_point', '➡️')} **System Status:** Operational"
         )
 
-        embed = make_embed(title="Digital Vigital • Main Menu",
-                           description=desc,
-                           level="INFO")
+        embed = make_embed(
+            title="Digital Vigital • Main Menu",
+            description=desc,
+            level="INFO",
+        )
         if BANNER_GIF:
             embed.set_image(url=BANNER_GIF)
 
-        embed.set_footer(text=f"Requested by {ctx.author}",
-                         icon_url=ctx.author.display_avatar.url)
+        embed.set_footer(
+            text=f"Requested by {ctx.author}",
+            icon_url=ctx.author.display_avatar.url,
+        )
 
         view = HelpDropdownView(tree,
                                 ctx.author.id,

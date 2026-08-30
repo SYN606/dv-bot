@@ -26,6 +26,14 @@ class RestrictionScope(str, PyEnum):
     BOTH = "both"
 
 
+class FeatureModule(str, PyEnum):
+    AUTO_ROLE = "auto_role"
+    XP_SYSTEM = "xp_system"
+    AUTO_MOD = "auto_mod"
+    COMMANDS = "commands"
+    MEDIA_ONLY = "media_only"
+
+
 class PunishmentType(str, PyEnum):
     KICK = "kick"
     BAN = "ban"
@@ -42,8 +50,14 @@ class TimestampMixin:
 
 # --- Core Foundation Models ---
 
+
 class Guild(Model, TimestampMixin):
     guild_id = fields.BigIntField(pk=True, validators=[MinValueValidator(1)])
+
+    if TYPE_CHECKING:
+        auto_role_config: AutoRoleRewardConfig | None
+        role_restrictions: ReverseRelation[RoleRestriction]
+        channel_restrictions: ReverseRelation[ChannelRestriction]
 
     class Meta:
         table = "guilds"
@@ -62,7 +76,66 @@ class User(Model, TimestampMixin):
         return f"<User id={self.user_id}>"
 
 
+# --- Universal Restriction Models (Allowlists & Blacklists) ---
+
+
+class RoleRestriction(Model, TimestampMixin):
+    """Generic role restriction table supporting both Allowlists and Blacklists per feature."""
+
+    id = fields.BigIntField(pk=True)
+    guild = fields.ForeignKeyField(
+        "models.Guild",
+        related_name="role_restrictions",
+        on_delete=fields.CASCADE,
+    )
+    role_id = fields.BigIntField(validators=[MinValueValidator(1)])
+    feature = fields.CharEnumField(FeatureModule, max_length=32)
+    restriction_type = fields.CharEnumField(RestrictionScope, max_length=16)
+
+    if TYPE_CHECKING:
+        guild_id: int
+
+    class Meta:
+        table = "role_restrictions"
+        unique_together = (("guild", "role_id", "feature",
+                            "restriction_type"), )
+        indexes = (("guild", "feature", "restriction_type"), )
+
+    def __repr__(self) -> str:
+        return (f"<RoleRestriction guild={self.guild_id} role={self.role_id} "
+                f"feature={self.feature} type={self.restriction_type}>")
+
+
+class ChannelRestriction(Model, TimestampMixin):
+    """Generic channel restriction table supporting both Allowlists and Blacklists per feature."""
+
+    id = fields.BigIntField(pk=True)
+    guild = fields.ForeignKeyField(
+        "models.Guild",
+        related_name="channel_restrictions",
+        on_delete=fields.CASCADE,
+    )
+    channel_id = fields.BigIntField(validators=[MinValueValidator(1)])
+    feature = fields.CharEnumField(FeatureModule, max_length=32)
+    restriction_type = fields.CharEnumField(RestrictionScope, max_length=16)
+
+    if TYPE_CHECKING:
+        guild_id: int
+
+    class Meta:
+        table = "channel_restrictions"
+        unique_together = (("guild", "channel_id", "feature",
+                            "restriction_type"), )
+        indexes = (("guild", "feature", "restriction_type"), )
+
+    def __repr__(self) -> str:
+        return (
+            f"<ChannelRestriction guild={self.guild_id} channel={self.channel_id} "
+            f"feature={self.feature} type={self.restriction_type}>")
+
+
 # --- Relational Models ---
+
 
 class AFK(Model, TimestampMixin):
     id = fields.IntField(pk=True)
@@ -70,7 +143,7 @@ class AFK(Model, TimestampMixin):
         "models.Guild",
         related_name="afk_users",
         on_delete=fields.CASCADE,
-        null=True,  # Null when is_global=True
+        null=True,
     )
     user = fields.ForeignKeyField(
         "models.User",
@@ -380,7 +453,7 @@ class PunishmentRecord(Model, TimestampMixin):
     )
     action_type = fields.CharEnumField(PunishmentType, max_length=32)
     reason = fields.CharField(max_length=512, default="No reason provided")
-    duration_seconds = fields.BigIntField(null=True)  # Populated for timeouts
+    duration_seconds = fields.BigIntField(null=True)
 
     if TYPE_CHECKING:
         guild_id: int
@@ -444,3 +517,142 @@ class AutoResponderReaction(Model):
 
     def __repr__(self) -> str:
         return f"<AutoResponderReaction responder_id={self.responder_id} emoji={self.emoji}>"
+
+
+# --- Analytics & Tracking Models ---
+
+
+class MemberAnalytics(Model, TimestampMixin):
+    id = fields.BigIntField(pk=True)
+    guild = fields.ForeignKeyField(
+        "models.Guild",
+        related_name="member_analytics",
+        on_delete=fields.CASCADE,
+    )
+    user = fields.ForeignKeyField(
+        "models.User",
+        related_name="guild_analytics",
+        on_delete=fields.CASCADE,
+    )
+
+    joined_at = fields.DatetimeField()
+    left_at = fields.DatetimeField(null=True)
+    is_active = fields.BooleanField(default=True)
+
+    total_messages = fields.BigIntField(default=0,
+                                        validators=[MinValueValidator(0)])
+    weekly_messages = fields.BigIntField(default=0,
+                                         validators=[MinValueValidator(0)])
+    total_vc_seconds = fields.BigIntField(default=0,
+                                          validators=[MinValueValidator(0)])
+    weekly_vc_seconds = fields.BigIntField(default=0,
+                                           validators=[MinValueValidator(0)])
+
+    active_vc_start = fields.DatetimeField(null=True)
+    last_active_at = fields.DatetimeField(null=True)
+
+    if TYPE_CHECKING:
+        guild_id: int
+        user_id: int
+
+    class Meta:
+        table = "member_analytics"
+        unique_together = (("guild", "user"), )
+        indexes = (
+            ("guild", "is_active"),
+            ("guild", "weekly_messages"),
+            ("guild", "weekly_vc_seconds"),
+        )
+
+
+class DailyActivitySnapshot(Model):
+    id = fields.BigIntField(pk=True)
+    guild = fields.ForeignKeyField(
+        "models.Guild",
+        related_name="daily_snapshots",
+        on_delete=fields.CASCADE,
+    )
+    date = fields.DateField()
+
+    joins_count = fields.IntField(default=0)
+    leaves_count = fields.IntField(default=0)
+    total_messages = fields.BigIntField(default=0)
+    total_vc_seconds = fields.BigIntField(default=0)
+    peak_active_members = fields.IntField(default=0)
+
+    if TYPE_CHECKING:
+        guild_id: int
+
+    class Meta:
+        table = "daily_activity_snapshots"
+        unique_together = (("guild", "date"), )
+        indexes = (("guild", "date"), )
+
+
+class ChannelActivity(Model):
+    id = fields.BigIntField(pk=True)
+    guild = fields.ForeignKeyField(
+        "models.Guild",
+        related_name="channel_activities",
+        on_delete=fields.CASCADE,
+    )
+    channel_id = fields.BigIntField(validators=[MinValueValidator(1)])
+    date = fields.DateField()
+
+    message_count = fields.BigIntField(default=0)
+    vc_seconds_spent = fields.BigIntField(default=0)
+
+    if TYPE_CHECKING:
+        guild_id: int
+
+    class Meta:
+        table = "channel_activities"
+        unique_together = (("guild", "channel_id", "date"), )
+
+
+class HourlyActivity(Model):
+    id = fields.BigIntField(pk=True)
+    guild = fields.ForeignKeyField(
+        "models.Guild",
+        related_name="hourly_activities",
+        on_delete=fields.CASCADE,
+    )
+    day_of_week = fields.IntField(validators=[MinValueValidator(0)
+                                              ])  # 0=Monday, 6=Sunday
+    hour_of_day = fields.IntField(validators=[MinValueValidator(0)])  # 0 to 23
+
+    message_count = fields.BigIntField(default=0)
+    vc_seconds = fields.BigIntField(default=0)
+
+    if TYPE_CHECKING:
+        guild_id: int
+
+    class Meta:
+        table = "hourly_activities"
+        unique_together = (("guild", "day_of_week", "hour_of_day"), )
+
+
+class AutoRoleRewardConfig(Model, TimestampMixin):
+    guild = fields.OneToOneField(
+        "models.Guild",
+        pk=True,
+        related_name="auto_role_config",
+        on_delete=fields.CASCADE,
+    )
+    announcement_channel_id = fields.BigIntField(null=True)
+
+    # Top 3 Chat Roles
+    top_chat_role_1 = fields.BigIntField(null=True)
+    top_chat_role_2 = fields.BigIntField(null=True)
+    top_chat_role_3 = fields.BigIntField(null=True)
+
+    # Top 3 VC Roles
+    top_vc_role_1 = fields.BigIntField(null=True)
+    top_vc_role_2 = fields.BigIntField(null=True)
+    top_vc_role_3 = fields.BigIntField(null=True)
+
+    if TYPE_CHECKING:
+        guild_id: int
+
+    class Meta:
+        table = "auto_role_reward_config"

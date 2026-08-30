@@ -1,6 +1,15 @@
+from __future__ import annotations
+
 import discord
 from discord.ext import commands
+
 from utils.handlers.afk_handler import handle_afk
+from utils.handlers.analytics_handler import (
+    handle_analytics_join,
+    handle_analytics_leave,
+    handle_analytics_message,
+    handle_analytics_voice_state,
+)
 from utils.handlers.autoresponder_handler import handle_autoresponder
 from utils.handlers.media_only import enforce_media_only
 from utils.handlers.mention import handle_bot_mention
@@ -31,18 +40,24 @@ async def process_message_interceptors(bot: discord.Client,
     """Processes pre-command message handlers. Returns True if execution should stop early."""
     message.content = normalize_prefix(message.content)
 
-    # 1. Block non-media messages in media channels
+    # 1. Track message analytics
+    await handle_analytics_message(message)
+
+    # 2. Block non-media messages in media channels
     if await enforce_media_only(message):
         return True
 
-    # 2. Process sticky messages
+    # 3. Process AFK (Mentions notification & status removal on speak)
+    await handle_afk(message)
+
+    # 4. Process sticky messages
     await handle_sticky(message)
 
-    # 3. Process autoresponder (stops pipeline if triggered)
+    # 5. Process autoresponder
     if await handle_autoresponder(bot, message):
         return True
 
-    # 4. Handle bot mentions
+    # 6. Handle bot mentions
     if bot.user and bot.user.mentioned_in(message):
         await handle_bot_mention(bot, message)
 
@@ -50,17 +65,37 @@ async def process_message_interceptors(bot: discord.Client,
 
 
 async def process_post_command_handlers(message: discord.Message) -> None:
-    """Processes post-command message handlers like AFK checks."""
-    await handle_afk(message)
+    """Processes post-command message handlers (kept for future extensions)."""
+    pass
 
 
-# CENTRAL GATEWAY DISPATCHERS
-async def dispatch_voice_state_update(member: discord.Member,
-                                      before: discord.VoiceState,
-                                      after: discord.VoiceState) -> None:
+# DISPATCHERS
+
+
+async def dispatch_member_join(member: discord.Member) -> None:
+    """Central gateway for member join events."""
+    if member.bot:
+        return
+    await handle_analytics_join(member)
+
+
+async def dispatch_member_remove(member: discord.Member) -> None:
+    """Central gateway for member leave events."""
+    if member.bot:
+        return
+    await handle_analytics_leave(member)
+
+
+async def dispatch_voice_state_update(
+    member: discord.Member,
+    before: discord.VoiceState,
+    after: discord.VoiceState,
+) -> None:
     """Central gateway for Voice State updates."""
     if member.bot:
         return
+
+    await handle_analytics_voice_state(member, before, after)
     await handle_voice_state_update(member, before, after)
 
 

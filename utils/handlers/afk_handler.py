@@ -43,12 +43,22 @@ def format_duration(seconds: int) -> str:
     return f"{d}d {h}h"
 
 
-async def _restore_nickname(member: discord.Member) -> None:
+async def _restore_nickname(member: discord.Member,
+                            original_nick: str | None = None) -> None:
     """Helper to safely restore user nickname in background without blocking response execution."""
     try:
         if member.guild.me.guild_permissions.manage_nicknames:
+            # Check if current display name has the AFK prefix
             if member.display_name.startswith(AFK_PREFIX):
-                new_name = member.display_name.removeprefix(AFK_PREFIX)
+                if original_nick is not None:
+                    # Explicitly restore to the provided pre-AFK nickname (None removes nick)
+                    new_name = original_nick if original_nick else None
+                else:
+                    # Strip prefix fallback
+                    stripped = member.display_name.removeprefix(
+                        AFK_PREFIX).strip()
+                    new_name = stripped if stripped != member.name else None
+
                 await member.edit(nick=new_name)
     except (discord.Forbidden, discord.HTTPException) as exc:
         logger.debug("Failed to restore nickname for %s: %s", member, exc)
@@ -110,9 +120,8 @@ async def handle_afk(message: Message) -> bool:
         mention_info = {
             "author":
             str(message.author),
-            "content":
-            message.content[:100] +
-            ("..." if len(message.content) > 100 else ""),
+            "content": (message.content[:100] +
+                        ("..." if len(message.content) > 100 else "")),
             "jump_url":
             message.jump_url,
             "timestamp":
@@ -178,9 +187,13 @@ async def handle_afk(message: Message) -> bool:
         since_ts = int(removed.since)
         duration = max(0, now_ts - since_ts)
 
+        # Retrieve original nickname stored in DB if available (otherwise None)
+        original_nick = getattr(removed, "original_nickname", None)
+
         # Restore Nickname in non-blocking background task
         if isinstance(message.author, discord.Member):
-            asyncio.create_task(_restore_nickname(message.author))
+            asyncio.create_task(
+                _restore_nickname(message.author, original_nick))
 
         # Retrieve stored missed mentions for this user
         missed = _missed_mentions.pop((guild_id, message.author.id), [])

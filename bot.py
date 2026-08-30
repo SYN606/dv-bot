@@ -1,26 +1,22 @@
+from __future__ import annotations
+
 import asyncio
 import inspect
 import logging
 import os
-import time
 from typing import cast
 
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-# Tortoise ORM Database Infrastructure
 from db.db_config import FatalDBError, close_tortoise, init_tortoise
-
-# Custom Handlers & Feature Interceptors
 from utils.core.embeds import make_embed
 from utils.core.interaction_check import command_toggle_check
-
-# Core System Utilities
 from utils.core.presence import PresenceRotator
-
-# Centralized Gateway Registry
 from utils.handlers.registry import (
+    dispatch_member_join,
+    dispatch_member_remove,
     dispatch_message_pipeline,
     dispatch_post_command,
     dispatch_voice_state_update,
@@ -185,6 +181,22 @@ class DigitalVigilBot(commands.Bot):
 
         logger.info("[READY] Application engine operational")
 
+    # MEMBER PIPELINE
+    async def on_member_join(self, member: discord.Member) -> None:
+        """Handles member join events via the central registry dispatcher."""
+        try:
+            await dispatch_member_join(member)
+        except Exception as exc:
+            logger.exception(f"[MEMBER JOIN ERROR] Join handler failed: {exc}")
+
+    async def on_member_remove(self, member: discord.Member) -> None:
+        """Handles member leave events via the central registry dispatcher."""
+        try:
+            await dispatch_member_remove(member)
+        except Exception as exc:
+            logger.exception(
+                f"[MEMBER REMOVE ERROR] Leave handler failed: {exc}")
+
     # VOICE STATE PIPELINE
     async def on_voice_state_update(
         self,
@@ -212,7 +224,7 @@ class DigitalVigilBot(commands.Bot):
         try:
             await dispatch_post_command(message)
         except Exception as exc:
-            logger.exception(f"[AFK ERROR] Handler failure: {exc}")
+            logger.exception(f"[POST COMMAND ERROR] Handler failure: {exc}")
 
     async def on_command_error(self, ctx: commands.Context,
                                error: commands.CommandError) -> None:
@@ -304,10 +316,10 @@ async def run_bot() -> bool:
             logger.warning(
                 "[RATE LIMIT] Hit Discord API rate limit. Backing off for 60 seconds..."
             )
-            time.sleep(60)
+            await asyncio.sleep(60)
             return True
         logger.exception(f"[HTTP ERROR] {exc}")
-        time.sleep(15)
+        await asyncio.sleep(15)
         return True
     except Exception as exc:
         logger.exception(f"[CRASH] Unhandled exception occurred: {exc}")
@@ -316,7 +328,7 @@ async def run_bot() -> bool:
         except Exception:
             pass
         logger.info("[RESTART] Restarting iteration loop in 30 seconds...")
-        time.sleep(30)
+        await asyncio.sleep(30)
         return True
 
 
