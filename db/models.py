@@ -153,10 +153,13 @@ class AFK(Model, TimestampMixin):
     afk_reason = fields.CharField(max_length=256)
     since = fields.IntField()
     is_global = fields.BooleanField(default=False)
+    original_nickname = fields.CharField(max_length=32,
+                                         null=True)  # type: ignore
 
     if TYPE_CHECKING:
         guild_id: int | None
         user_id: int
+        original_nickname: str | None
 
     class Meta:
         table = "afk"
@@ -164,9 +167,6 @@ class AFK(Model, TimestampMixin):
             ("user", "is_global"),
             ("guild", "user"),
         )
-
-    def __repr__(self) -> str:
-        return f"<AFK guild_id={self.guild_id} user_id={self.user_id} global={self.is_global}>"
 
 
 class AdminRole(Model):
@@ -656,3 +656,23 @@ class AutoRoleRewardConfig(Model, TimestampMixin):
 
     class Meta:
         table = "auto_role_reward_config"
+
+
+class TagConfig(Model, TimestampMixin):
+    guild = fields.ForeignKeyField(
+        "models.Guild",
+        related_name="tag_config",
+        on_delete=fields.CASCADE,
+        pk=True,
+    )
+    tag = fields.CharField(max_length=32)
+    role_id = fields.BigIntField(validators=[MinValueValidator(1)])
+
+    if TYPE_CHECKING:
+        guild_id: int
+
+    class Meta:
+        table = "tag_configs"
+
+    def __repr__(self) -> str:
+        return f"<TagConfig guild_id={self.guild_id} tag={self.tag!r} role_id={self.role_id}>"

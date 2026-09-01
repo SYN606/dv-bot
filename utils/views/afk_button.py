@@ -1,50 +1,51 @@
 from __future__ import annotations
 
+import asyncio
 import logging
-from typing import Optional
-
 import discord
+from discord.ui import Button, View
 
 from db.db_helpers.afk import set_afk
-from utils.core.embeds import make_embed
-from utils.core.emojis import EMOJIS
+from utils.handlers.afk._afk_nicknames import apply_afk_nicknames
 
 logger = logging.getLogger("DigitalVigital")
 
 
-class GlobalAFKView(discord.ui.View):
-    """View attached to the AFK confirmation message allowing users to toggle between Local and Global AFK for 5 seconds."""
-
+class GlobalAFKView(View):
     def __init__(
-            self,
-            author_id: int,
-            guild_id: int,
-            afk_reason: str,
-            timeout: float = 5.0,  # 5-second interactive window
+        self,
+        guild_id: int,
+        author_id: int,
+        afk_reason: str,
+        is_global: bool,
+        timeout: float = 60.0,
     ):
         super().__init__(timeout=timeout)
-        self.author_id = author_id
         self.guild_id = guild_id
+        self.author_id = author_id
         self.afk_reason = afk_reason
-        self.is_global = False  # Starts as Local AFK
-        self.message: Optional[discord.Message] = None
+        self.is_global = is_global
 
-    @discord.ui.button(label="Make Global AFK",
-                       style=discord.ButtonStyle.primary,
-                       custom_id="afk_toggle_global",
-                       emoji="🌐")
-    async def toggle_global_button(self, interaction: discord.Interaction,
-                                   button: discord.ui.Button) -> None:
+        self.toggle_button = Button(
+            label="Make Global" if not is_global else "Make Server Only",
+            style=discord.ButtonStyle.secondary if not is_global else discord.ButtonStyle.primary,
+            custom_id="afk_toggle_global",
+        )
+        self.toggle_button.callback = self.toggle_global_button
+        self.add_item(self.toggle_button)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author_id:
             await interaction.response.send_message(
-                "You cannot modify someone else's AFK status.", ephemeral=True)
-            return
+                "You cannot modify someone else's AFK status.", ephemeral=True
+            )
+            return False
+        return True
 
-        # Defer immediately to prevent 10062 Unknown Interaction timeouts during DB queries
-        await interaction.response.defer()
+    async def toggle_global_button(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
 
         target_global = not self.is_global
-
         try:
             await set_afk(
                 guild_id=self.guild_id,
@@ -53,64 +54,30 @@ class GlobalAFKView(discord.ui.View):
                 is_global=target_global,
             )
             self.is_global = target_global
-        except Exception as exc:
-            logger.error("Failed to toggle AFK state for user %s: %s",
-                         self.author_id, exc)
-            await interaction.followup.send(
-                "Failed to update AFK status. Please try again.",
-                ephemeral=True,
+
+            self.toggle_button.label = "Make Global" if not self.is_global else "Make Server Only"
+            self.toggle_button.style = (
+                discord.ButtonStyle.secondary if not self.is_global else discord.ButtonStyle.primary
             )
-            return
+            await interaction.edit_original_response(view=self)
 
-        # Update button appearance based on state
-        if self.is_global:
-            button.label = "Make Local AFK"
-            button.style = discord.ButtonStyle.secondary
-            embed_title = "Global AFK Enabled"
-            desc = (
-                f"{EMOJIS.get('okay', '👌')} {interaction.user.mention} is now marked **Global AFK** across all servers.\n"
-                f"{EMOJIS.get('arrow_point', '➡️')} Reason: {self.afk_reason}")
-        else:
-            button.label = "Make Global AFK"
-            button.style = discord.ButtonStyle.primary
-            guild_name = interaction.guild.name if interaction.guild else "this server"
-            embed_title = "Local AFK Enabled"
-            desc = (
-                f"{EMOJIS.get('okay', '👌')} {interaction.user.mention} is now AFK in **{guild_name}**.\n"
-                f"{EMOJIS.get('arrow_point', '➡️')} Reason: {self.afk_reason}")
+            if interaction.client and interaction.guild:
+                asyncio.create_task(
+                    apply_afk_nicknames(
+                        bot=interaction.client,
+                        user_id=self.author_id,
+                        is_global=self.is_global,
+                        current_guild=interaction.guild,
+                    )
+                )
 
-        embed = make_embed(
-            title=embed_title,
-            description=desc,
-            level="SUCCESS",
-        )
-        embed.set_footer(
-            text=f"Action by : {interaction.user}",
-            icon_url=interaction.user.display_avatar.url,
-        )
+            scope_text = "globally across all shared servers" if self.is_global else "only in this server"
+            await interaction.followup.send(
+                f"Your AFK status is now set **{scope_text}**.", ephemeral=True
+            )
 
-        # Edit original message after deferral
-        assert interaction.message is not None
-        await interaction.followup.edit_message(
-            message_id=interaction.message.id,
-            embed=embed,
-            view=self,
-        )
-
-    async def on_timeout(self) -> None:
-        """Disable button after 5 seconds and lock final state in the UI."""
-        for child in self.children:
-            if isinstance(child, discord.ui.Button):
-                child.disabled = True
-                if self.is_global:
-                    child.label = "Global AFK Active"
-                    child.style = discord.ButtonStyle.success
-                else:
-                    child.label = "Local AFK Active"
-                    child.style = discord.ButtonStyle.secondary
-
-        if self.message:
-            try:
-                await self.message.edit(view=self)
-            except (discord.NotFound, discord.HTTPException):
-                pass
+        except Exception as exc:
+            logger.error("Failed to toggle global AFK for user %s: %s", self.author_id, exc)
+            await interaction.followup.send(
+                "An error occurred while updating your AFK scope.", ephemeral=True
+            )

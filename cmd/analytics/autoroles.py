@@ -49,6 +49,40 @@ class AutoRoleSetup(BaseAdminCog):
             return
         await interaction.response.defer()
 
+        roles_to_check = [
+            top1_chat, top2_chat, top3_chat, top1_vc, top2_vc, top3_vc
+        ]
+        provided_roles = [r for r in roles_to_check if r is not None]
+
+        if not announcement_channel and not provided_roles:
+            embed = make_embed(
+                title="No Parameters Provided",
+                description=
+                "Please provide at least one channel or role parameter to update configuration.",
+                level="WARNING",
+            )
+            await interaction.followup.send(embed=embed)
+            return
+
+        bot_member = interaction.guild.me
+        if provided_roles and bot_member:
+            unassignable = [
+                r for r in provided_roles
+                if r >= bot_member.top_role or r.managed
+            ]
+            if unassignable:
+                mentions = ", ".join(r.mention for r in unassignable)
+                embed = make_embed(
+                    title="Role Hierarchy Error",
+                    description=
+                    (f"The bot cannot assign the following role(s) because they are higher than "
+                     f"or equal to the bot's highest role, or managed by an integration:\n{mentions}"
+                     ),
+                    level="ERROR",
+                )
+                await interaction.followup.send(embed=embed)
+                return
+
         guild_id = interaction.guild.id
         updates = {}
 
@@ -69,13 +103,78 @@ class AutoRoleSetup(BaseAdminCog):
 
         await update_auto_role_config(guild_id=guild_id, **updates)
 
+        fields = [
+            ("Announcement Channel", announcement_channel.mention
+             if announcement_channel else "Unchanged", True),
+            ("Text Rewards (Top 1-3)",
+             f"{top1_chat.mention if top1_chat else 'Unchanged'} | {top2_chat.mention if top2_chat else 'Unchanged'} | {top3_chat.mention if top3_chat else 'Unchanged'}",
+             False),
+            ("VC Rewards (Top 1-3)",
+             f"{top1_vc.mention if top1_vc else 'Unchanged'} | {top2_vc.mention if top2_vc else 'Unchanged'} | {top3_vc.mention if top3_vc else 'Unchanged'}",
+             False),
+        ]
+
         embed = make_embed(
             title="Auto-Role Config Updated",
             description=
-            ("Leaderboard reward bindings updated successfully.\n\n"
-             f"**Announcement Channel:** {announcement_channel.mention if announcement_channel else 'Unchanged'}"
-             ),
+            "Weekly leaderboard reward bindings updated successfully.",
             level="SUCCESS",
+            fields=fields,
+            use_emoji=True,
+        )
+        await interaction.followup.send(embed=embed)
+
+    @autorole_group.command(
+        name="view",
+        description=
+        "View current weekly auto-role reward bindings and configuration.",
+    )
+    @app_commands.checks.has_permissions(administrator=True)
+    async def view_auto_roles(self, interaction: discord.Interaction) -> None:
+        if not interaction.guild:
+            return
+        await interaction.response.defer()
+
+        config = await get_autorole_config(interaction.guild.id)
+        if not config:
+            embed = make_embed(
+                title="Auto-Role Config",
+                description=
+                "No weekly auto-role configuration has been set up for this guild.",
+                level="INFO",
+            )
+            await interaction.followup.send(embed=embed)
+            return
+
+        def r_fmt(role_id: int | None) -> str:
+            return f"<@&{role_id}>" if role_id else "`Not Set`"
+
+        ch_fmt = f"<#{config.announcement_channel_id}>" if config.announcement_channel_id else "`Not Set`"
+
+        fields = [
+            ("Announcement Channel", ch_fmt, False),
+            (
+                "Text Chat Rewards",
+                f"🥇 Top 1: {r_fmt(config.top_chat_role_1)}\n"
+                f"🥈 Top 2: {r_fmt(config.top_chat_role_2)}\n"
+                f"🥉 Top 3: {r_fmt(config.top_chat_role_3)}",
+                True,
+            ),
+            (
+                "Voice VC Rewards",
+                f"🥇 Top 1: {r_fmt(config.top_vc_role_1)}\n"
+                f"🥈 Top 2: {r_fmt(config.top_vc_role_2)}\n"
+                f"🥉 Top 3: {r_fmt(config.top_vc_role_3)}",
+                True,
+            ),
+        ]
+
+        embed = make_embed(
+            title=f"Weekly Auto-Role Config — {interaction.guild.name}",
+            description=
+            "Active weekly reward bindings and announcement target.",
+            level="INFO",
+            fields=fields,
             use_emoji=True,
         )
         await interaction.followup.send(embed=embed)
