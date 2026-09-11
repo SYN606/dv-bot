@@ -39,6 +39,19 @@ class EmojiSteal(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._semaphore = asyncio.Semaphore(1)
+        self._session: Optional[aiohttp.ClientSession] = None
+
+    async def cog_load(self) -> None:
+        self._session = aiohttp.ClientSession()
+
+    async def cog_unload(self) -> None:
+        if self._session and not self._session.closed:
+            await self._session.close()
+
+    async def _get_session(self) -> aiohttp.ClientSession:
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession()
+        return self._session
 
     async def _cleanup_invocation(self, ctx: commands.Context) -> None:
         """Safely delete original text invocation message if applicable."""
@@ -156,7 +169,7 @@ class EmojiSteal(commands.Cog):
         failed_items: List[str] = []
         seen_names: set[str] = set()
 
-        session = self.bot.http._HTTPClient__session  # type: ignore
+        session = await self._get_session()
 
         # 5. Process Emojis (Capped at MAX_ITEMS)
         for animated_flag, raw_name, emoji_id in emoji_matches:

@@ -7,12 +7,14 @@ from typing import Optional
 
 import discord
 
-from ._webhook_utils import get_or_create_sticky_webhook
+from ._webhook_utils import get_or_create_sticky_webhook, invalidate_sticky_webhook
 
 logger = logging.getLogger("bot")
 
 _STICKY_COOLDOWN: dict[int, float] = {}
 _CHANNEL_LOCKS: dict[int, asyncio.Lock] = {}
+_MAX_STICKY_CACHE = 2000
+
 
 IMAGE_URL_REGEX = re.compile(
     r"(https?://\S+\.(?:png|jpg|jpeg|gif|webp)(?:\?\S+)?)", re.IGNORECASE)
@@ -66,6 +68,10 @@ async def process_sticky(channel: discord.TextChannel,
     if not payload.content and not payload.embed:
         return payload.message_id
 
+    if len(_CHANNEL_LOCKS) >= _MAX_STICKY_CACHE:
+        unlocked = [cid for cid, lk in _CHANNEL_LOCKS.items() if not lk.locked()]
+        for cid in unlocked:
+            _CHANNEL_LOCKS.pop(cid, None)
     lock = _CHANNEL_LOCKS.setdefault(channel.id, asyncio.Lock())
 
     async with lock:
@@ -75,6 +81,14 @@ async def process_sticky(channel: discord.TextChannel,
         # Enforce rate limit cooldown unless forced
         if not force and (now - last_executed < cooldown):
             return payload.message_id
+
+        if len(_STICKY_COOLDOWN) >= _MAX_STICKY_CACHE:
+            cutoff = now - 60.0
+            expired = [cid for cid, t in _STICKY_COOLDOWN.items() if t < cutoff]
+            for cid in expired:
+                _STICKY_COOLDOWN.pop(cid, None)
+            if len(_STICKY_COOLDOWN) >= _MAX_STICKY_CACHE:
+                _STICKY_COOLDOWN.clear()
 
         _STICKY_COOLDOWN[channel.id] = now
 
@@ -120,6 +134,8 @@ async def process_sticky(channel: discord.TextChannel,
         except discord.HTTPException as exc:
             if exc.status == 429:  # Webhook Bucket Rate Limit Hit
                 _STICKY_COOLDOWN[channel.id] = now + 5.0
+            elif exc.status == 404:  # Webhook was deleted
+                invalidate_sticky_webhook(channel.id)
             logger.error(
                 "Failed to send sticky message via webhook in channel %s: %s",
                 channel.id, exc)

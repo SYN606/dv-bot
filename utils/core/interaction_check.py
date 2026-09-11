@@ -1,38 +1,48 @@
 import discord
-from db.db_helpers.channel_command_restrict import (is_command_restricted)
+from db.db_helpers.channel_command_restrict import is_command_restricted
+from utils.core.cooldown import GLOBAL_COOLDOWN
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 
 _RESTRICT_CACHE: dict[tuple[int, int, str], bool] = {}
+MAX_CACHE_ENTRIES = 2000
 
 
-async def command_toggle_check(interaction: discord.Interaction, ) -> bool:
-    if not interaction.guild:
+async def command_toggle_check(interaction: discord.Interaction) -> bool:
+    if not interaction.guild or not interaction.channel or not interaction.command:
         return True
-    if not interaction.channel:
-        return True
-    if not interaction.command:
-        return True
+
+    # 1. Enforce Global Command Cooldown
+    if not await GLOBAL_COOLDOWN.check_interaction(interaction):
+        return False
+
     if not isinstance(interaction.user, discord.Member):
+        return True
 
-        return True
     member = interaction.user
-    # admin bypass
-    if (member.guild_permissions.administrator):
+    # Admin bypass for channel restrictions
+    if member.guild_permissions.administrator:
         return True
-    guild_id = (interaction.guild.id)
-    channel_id = (interaction.channel.id)
-    command_name = (interaction.command.qualified_name.lower())
+
+    guild_id = interaction.guild.id
+    channel_id = interaction.channel.id
+    command_name = interaction.command.qualified_name.lower()
     cache_key = (guild_id, channel_id, command_name)
 
     restricted = _RESTRICT_CACHE.get(cache_key)
     # cache miss
     if restricted is None:
-        restricted = (await is_command_restricted(guild_id=guild_id,
-                                                  channel_id=channel_id,
-                                                  command_name=command_name))
+        restricted = await is_command_restricted(
+            guild_id=guild_id,
+            channel_id=channel_id,
+            command_name=command_name,
+        )
+
+        if len(_RESTRICT_CACHE) >= MAX_CACHE_ENTRIES:
+            _RESTRICT_CACHE.clear()
 
         _RESTRICT_CACHE[cache_key] = restricted
+
     # allowed
     if not restricted:
         return True

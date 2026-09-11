@@ -4,6 +4,7 @@ import asyncio
 import inspect
 import logging
 import os
+from pathlib import Path
 from typing import cast
 
 import discord
@@ -11,9 +12,11 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from db.db_config import FatalDBError, close_tortoise, init_tortoise
+from utils.checks.channel_command_check import channel_command_check
 from utils.core.embeds import make_embed
 from utils.core.interaction_check import command_toggle_check
 from utils.core.presence import PresenceRotator
+from utils.handlers.analytics_batcher import ANALYTICS_BATCHER
 from utils.handlers.registry import (
     dispatch_member_join,
     dispatch_member_remove,
@@ -22,6 +25,7 @@ from utils.handlers.registry import (
     dispatch_voice_state_update,
     dynamic_prefix,
 )
+
 
 # Load Environment Variables
 env_loaded = load_dotenv()
@@ -64,6 +68,9 @@ intents.members = True
 intents.message_content = True
 intents.invites = True
 intents.voice_states = True
+intents.presences = True
+
+BASE_DIR = Path(__file__).resolve().parent
 
 
 class DigitalVigilBot(commands.Bot):
@@ -84,6 +91,8 @@ class DigitalVigilBot(commands.Bot):
         await init_tortoise()
 
         self.tree.interaction_check = command_toggle_check
+        self.add_check(channel_command_check)
+        ANALYTICS_BATCHER.start()
 
         await self.load_all_extensions()
         await self.load_startup_modules()
@@ -111,8 +120,8 @@ class DigitalVigilBot(commands.Bot):
 
     async def load_all_extensions(self) -> None:
         """Recursively loads all extension cogs inside the /cmd directory."""
-        base_path = os.path.abspath("cmd")
-        if not os.path.exists(base_path):
+        base_path = BASE_DIR / "cmd"
+        if not base_path.exists():
             logger.warning("[EXTENSION] Directory 'cmd' not found.")
             return
 
@@ -121,7 +130,7 @@ class DigitalVigilBot(commands.Bot):
                 if not file.endswith(".py") or file.startswith("__"):
                     continue
 
-                rel = os.path.relpath(os.path.join(root, file), base_path)
+                rel = os.path.relpath(os.path.join(root, file), str(base_path))
                 rel_path = rel.replace(os.sep, ".").removesuffix(".py")
                 extension = f"cmd.{rel_path}"
 
@@ -134,9 +143,9 @@ class DigitalVigilBot(commands.Bot):
 
     async def load_startup_modules(self) -> None:
         """Dynamically imports and executes asynchronous startup tasks from /utils/startups."""
-        base_path = os.path.abspath("utils/startups")
+        base_path = BASE_DIR / "utils" / "startups"
 
-        if not os.path.exists(base_path):
+        if not base_path.exists():
             logger.warning("[STARTUP] Folder 'utils/startups' not found")
             return
 
@@ -145,7 +154,7 @@ class DigitalVigilBot(commands.Bot):
                 if not file.endswith(".py") or file.startswith("__"):
                     continue
 
-                rel = os.path.relpath(os.path.join(root, file), base_path)
+                rel = os.path.relpath(os.path.join(root, file), str(base_path))
                 rel_path = rel.replace(os.sep, ".").removesuffix(".py")
                 module_name = f"utils.startups.{rel_path}"
 
@@ -283,6 +292,12 @@ class DigitalVigilBot(commands.Bot):
         logger.info("[SHUTDOWN] Closing bot processes...")
         if self.presence_rotator:
             self.presence_rotator.stop()
+
+        try:
+            await ANALYTICS_BATCHER.stop()
+            logger.info("[SHUTDOWN] Analytics batcher cleanly flushed and stopped")
+        except Exception as exc:
+            logger.exception(f"[SHUTDOWN ERROR] Analytics batcher stop failed: {exc}")
 
         try:
             await close_tortoise()

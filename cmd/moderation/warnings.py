@@ -17,6 +17,7 @@ from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import send_mod_log
 from utils.permissions.base_admin import BaseAdminCog
+from utils.permissions.check_perms import is_bot_admin_ctx
 
 logger = logging.getLogger("DigitalVigil")
 
@@ -26,6 +27,36 @@ class WarnSystem(BaseAdminCog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    async def has_warn_permission(self, ctx: commands.Context) -> bool:
+        """Check if the context author has permission to issue or delete warnings."""
+        guild = ctx.guild
+        if guild is None:
+            return False
+        author = ctx.author
+        if not isinstance(author, discord.Member):
+            return False
+        if author.id == guild.owner_id:
+            return True
+        perms = author.guild_permissions
+        if perms.administrator or perms.manage_messages or perms.moderate_members:
+            return True
+        return await is_bot_admin_ctx(ctx)
+
+    async def has_clear_permission(self, ctx: commands.Context) -> bool:
+        """Check if the context author has permission to clear warning histories."""
+        guild = ctx.guild
+        if guild is None:
+            return False
+        author = ctx.author
+        if not isinstance(author, discord.Member):
+            return False
+        if author.id == guild.owner_id:
+            return True
+        perms = author.guild_permissions
+        if perms.administrator or perms.manage_guild or perms.moderate_members:
+            return True
+        return await is_bot_admin_ctx(ctx)
 
     async def _reply(
         self,
@@ -171,7 +202,19 @@ class WarnSystem(BaseAdminCog):
         reason: Optional[str] = None,
     ) -> None:
         """Warn a user and record the infraction in the database."""
-        if not ctx.guild or not reason or not reason.strip():
+        if not ctx.guild:
+            return
+
+        if not await self.has_warn_permission(ctx):
+            await self._reply(
+                ctx,
+                title="Permission Denied",
+                description=f"{EMOJIS.get('fail', '❌')} You do not have permission to use this command.",
+                level="ERROR",
+            )
+            return
+
+        if not reason or not reason.strip():
             await self._reply(
                 ctx,
                 title="Missing Parameters",
@@ -321,7 +364,7 @@ class WarnSystem(BaseAdminCog):
         for r in records:
             ts = int(r.created_at.timestamp())
             desc += (
-                f"**ID:** `{r.warn_id}` | <@{r.moderator_id}> | <t:{ts}:R>\n"
+                f"**ID:** `{r.warn_id}` | <@{r.moderator}> | <t:{ts}:R>\n"
                 f"{EMOJIS.get('curved_arrow', '┕')} `{r.reason}`\n\n")
 
         await self._reply(
@@ -343,6 +386,15 @@ class WarnSystem(BaseAdminCog):
     async def delwarn(self, ctx: commands.Context, warn_id: int) -> None:
         """Delete a specific warning by its ID."""
         if not ctx.guild:
+            return
+
+        if not await self.has_warn_permission(ctx):
+            await self._reply(
+                ctx,
+                title="Permission Denied",
+                description=f"{EMOJIS.get('fail', '❌')} You do not have permission to delete warnings.",
+                level="ERROR",
+            )
             return
 
         try:
@@ -398,6 +450,15 @@ class WarnSystem(BaseAdminCog):
     ) -> None:
         """Clear all active warnings for a member."""
         if not ctx.guild or not isinstance(ctx.author, discord.Member):
+            return
+
+        if not await self.has_clear_permission(ctx):
+            await self._reply(
+                ctx,
+                title="Permission Denied",
+                description=f"{EMOJIS.get('fail', '❌')} You do not have permission to clear warnings.",
+                level="ERROR",
+            )
             return
 
         target = await self.resolve_target(ctx, user)

@@ -39,7 +39,7 @@ async def process_message_interceptors(
         return True
 
     # 3. Process AFK (Mentions notification & status removal on speak)
-    await handle_afk(message)
+    await handle_afk(bot, message)
 
     # 4. Process sticky messages
     await handle_sticky(message)

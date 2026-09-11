@@ -2,15 +2,25 @@ import discord
 from discord.ext import commands
 
 from db.db_helpers.channel_command_restrict import is_command_restricted
+from utils.core.cooldown import GLOBAL_COOLDOWN
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 
 
 async def channel_command_check(ctx: commands.Context) -> bool:
     """
-    Global command check to prevent restricted commands from running in designated channels.
+    Global command check enforcing global cooldown and channel restrictions on prefix commands.
     """
     if ctx.guild is None or ctx.command is None:
+        return True
+
+    # 1. Global Cooldown Check for prefix commands (slash commands are handled in interaction_check)
+    if not ctx.interaction:
+        if not await GLOBAL_COOLDOWN.check_context(ctx):
+            return False
+
+    # 2. Admin bypass for channel restrictions
+    if isinstance(ctx.author, discord.Member) and ctx.author.guild_permissions.administrator:
         return True
 
     command_name = ctx.command.qualified_name.lower()

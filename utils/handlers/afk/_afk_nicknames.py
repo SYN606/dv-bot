@@ -67,7 +67,8 @@ async def restore_afk_nicknames(
         if member.display_name.startswith(AFK_PREFIX):
             target_nick = (
                 original_nick if original_nick else
-                member.display_name.removeprefix(AFK_PREFIX).strip())
+                member.display_name.removeprefix(AFK_PREFIX).strip()
+            )
             if target_nick == member.name:
                 target_nick = None
 
@@ -112,9 +113,10 @@ async def handle_afk(bot: discord.Client, message: discord.Message) -> None:
 
         welcome_embed = make_embed(
             title="AFK Removed",
-            description=
-            (f"Welcome back {message.author.mention}! Your AFK status has been removed. "
-             f"(Duration: **{time_str}**)"),
+            description=(
+                f"Welcome back {message.author.mention}! Your AFK status has been removed. "
+                f"(Duration: **{time_str}**)"
+            ),
             level="SUCCESS",
             use_emoji=True,
         )
@@ -127,9 +129,9 @@ async def handle_afk(bot: discord.Client, message: discord.Message) -> None:
     if not message.mentions:
         return
 
-    mentioned_ids = list(
-        {m.id
-         for m in message.mentions if m.id != author_id and not m.bot})
+    mentioned_ids = list({
+        m.id for m in message.mentions if m.id != author_id and not m.bot
+    })
     if not mentioned_ids:
         return
 
@@ -138,7 +140,6 @@ async def handle_afk(bot: discord.Client, message: discord.Message) -> None:
         user_ids=mentioned_ids,
     )
 
-    # Safely get channel mention string (only text/guild channels support .mention)
     channel_str = getattr(message.channel, "mention", f"#{message.channel}")
 
     for record in afk_records:
@@ -151,7 +152,8 @@ async def handle_afk(bot: discord.Client, message: discord.Message) -> None:
             title="User AFK",
             description=(
                 f"{member.mention} is currently AFK: **{record.afk_reason}** "
-                f"(<t:{record.since}:R>)"),
+                f"(<t:{record.since}:R>)"
+            ),
             level="WARNING",
             use_emoji=True,
         )
@@ -165,10 +167,11 @@ async def handle_afk(bot: discord.Client, message: discord.Message) -> None:
         if (time.time() - last_dm_time) > DM_COOLDOWN_SECONDS:
             dm_embed = make_embed(
                 title="You were mentioned while AFK",
-                description=
-                (f"**{message.author.display_name}** mentioned you in **{message.guild.name}** "
-                 f"({channel_str}).\n\n"
-                 f"**Message:** {message.content[:500]}"),
+                description=(
+                    f"**{message.author.display_name}** mentioned you in **{message.guild.name}** "
+                    f"({channel_str}).\n\n"
+                    f"**Message:** {message.content[:500]}"
+                ),
                 level="INFO",
                 use_emoji=True,
                 url=message.jump_url,
@@ -177,4 +180,4 @@ async def handle_afk(bot: discord.Client, message: discord.Message) -> None:
                 await member.send(embed=dm_embed)
                 _DM_COOLDOWN_CACHE[member.id] = time.time()
             except discord.HTTPException:
-                pass  
+                pass

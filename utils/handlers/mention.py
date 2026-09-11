@@ -14,9 +14,11 @@ MENTION_GIF = os.getenv("MENTION_GIF_URL")
 MENTION_COOLDOWN = 5.0
 _mention_cooldown: dict[int, float] = {}
 _mention_locks: dict[int, asyncio.Lock] = {}
+_MAX_MENTION_CACHE = 2000
 
 
 class MentionView(View):
+
 
     def __init__(self, bot: discord.Client,
                  author: discord.User | discord.Member):
@@ -99,7 +101,7 @@ async def handle_bot_mention(bot: discord.Client, message: Message) -> bool:
     if bot.user is None or message.author.bot or message.webhook_id:
         return False
 
-    if message.type != discord.MessageType.default or not message.guild:
+    if message.type not in (discord.MessageType.default, discord.MessageType.reply) or not message.guild:
         return False
 
     content = message.content.strip()
@@ -108,6 +110,10 @@ async def handle_bot_mention(bot: discord.Client, message: Message) -> bool:
         return False
 
     guild_id = message.guild.id
+    if len(_mention_locks) >= _MAX_MENTION_CACHE:
+        unlocked = [gid for gid, lk in _mention_locks.items() if not lk.locked()]
+        for gid in unlocked:
+            _mention_locks.pop(gid, None)
     lock = _mention_locks.setdefault(guild_id, asyncio.Lock())
 
     async with lock:
@@ -115,6 +121,15 @@ async def handle_bot_mention(bot: discord.Client, message: Message) -> bool:
         last = _mention_cooldown.get(guild_id, 0)
         if now - last < MENTION_COOLDOWN:
             return True
+
+        if len(_mention_cooldown) >= _MAX_MENTION_CACHE:
+            cutoff = now - 60.0
+            expired = [gid for gid, t in _mention_cooldown.items() if t < cutoff]
+            for gid in expired:
+                _mention_cooldown.pop(gid, None)
+            if len(_mention_cooldown) >= _MAX_MENTION_CACHE:
+                _mention_cooldown.clear()
+
         _mention_cooldown[guild_id] = now
 
         latency_ms = round(bot.latency * 1000)
@@ -151,13 +166,6 @@ async def handle_bot_mention(bot: discord.Client, message: Message) -> bool:
                 mention_author=False,
                 allowed_mentions=discord.AllowedMentions.none())
             view.message = sent
-
-            try:
-                await message.delete()
-            except (discord.Forbidden, discord.NotFound,
-                    discord.HTTPException):
-                pass
-
         except (discord.Forbidden, discord.HTTPException):
             return True
 

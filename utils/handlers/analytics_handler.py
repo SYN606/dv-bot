@@ -6,9 +6,10 @@ from db.db_helpers.analytics import (
     end_voice_session,
     log_member_join,
     log_member_remove,
-    log_message_activity,
     start_voice_session,
 )
+from utils.handlers.analytics_batcher import ANALYTICS_BATCHER
+
 
 
 async def handle_analytics_join(member: discord.Member) -> None:
@@ -24,11 +25,11 @@ async def handle_analytics_leave(member: discord.Member) -> None:
 
 
 async def handle_analytics_message(message: discord.Message) -> None:
-    """Logs message activity for user and guild analytics."""
+    """Logs message activity for user and guild analytics via batcher."""
     if message.author.bot or not message.guild:
         return
 
-    await log_message_activity(
+    await ANALYTICS_BATCHER.add_message(
         guild_id=message.guild.id,
         user_id=message.author.id,
         channel_id=message.channel.id,

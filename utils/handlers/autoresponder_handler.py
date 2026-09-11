@@ -8,13 +8,31 @@ from utils.core.embeds import make_embed
 from db.db_helpers.autoresponder import get_guild_autoresponders
 
 _ar_user_cooldowns: Dict[Tuple[int, int, int], float] = {}
+_MAX_AR_COOLDOWNS = 5000
+_REGEX_CACHE: Dict[str, re.Pattern] = {}
+_MAX_REGEX_CACHE = 500
+
+
+def _get_compiled_regex(pattern_str: str) -> re.Pattern | None:
+    if len(pattern_str) > 250:
+        return None
+    if pattern_str in _REGEX_CACHE:
+        return _REGEX_CACHE[pattern_str]
+    try:
+        compiled = re.compile(pattern_str, re.IGNORECASE)
+        if len(_REGEX_CACHE) >= _MAX_REGEX_CACHE:
+            _REGEX_CACHE.clear()
+        _REGEX_CACHE[pattern_str] = compiled
+        return compiled
+    except re.error:
+        return None
 
 
 async def handle_autoresponder(bot: discord.Client, message: Message) -> bool:
     if bot.user is None or message.author.bot or message.webhook_id:
         return False
 
-    if message.type != discord.MessageType.default or not message.guild:
+    if message.type not in (discord.MessageType.default, discord.MessageType.reply) or not message.guild:
         return False
 
     guild_id = message.guild.id
@@ -41,10 +59,10 @@ async def handle_autoresponder(bot: discord.Client, message: Message) -> bool:
         elif match_type == "endswith":
             matched = content.lower().endswith(trigger.lower())
         elif match_type == "regex":
-            try:
-                pattern = re.compile(trigger, re.IGNORECASE)
-                matched = bool(pattern.search(content))
-            except re.error:
+            pattern = _get_compiled_regex(trigger)
+            if pattern:
+                matched = bool(pattern.search(content[:2000]))
+            else:
                 continue
 
         if not matched:
@@ -56,6 +74,15 @@ async def handle_autoresponder(bot: discord.Client, message: Message) -> bool:
             last_triggered = _ar_user_cooldowns.get(cooldown_key, 0.0)
             if now - last_triggered < rule.cooldown:
                 return True
+
+            if len(_ar_user_cooldowns) >= _MAX_AR_COOLDOWNS:
+                cutoff = now - 300.0
+                expired = [k for k, t in _ar_user_cooldowns.items() if t < cutoff]
+                for k in expired:
+                    _ar_user_cooldowns.pop(k, None)
+                if len(_ar_user_cooldowns) >= _MAX_AR_COOLDOWNS:
+                    _ar_user_cooldowns.clear()
+
             _ar_user_cooldowns[cooldown_key] = now
 
         if emojis and not rule.delete_trigger:

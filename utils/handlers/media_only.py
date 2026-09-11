@@ -40,8 +40,12 @@ def is_valid_media(message: discord.Message, *, image_only: bool) -> bool:
     # 1. Native discord attachments check
     if message.attachments:
         if image_only:
-            return any(a.content_type and a.content_type.startswith("image/ ")
-                       for a in message.attachments)
+            image_extensions = (".png", ".jpg", ".jpeg", ".gif", ".webp")
+            return any(
+                (a.content_type and a.content_type.startswith("image/"))
+                or (a.filename and a.filename.lower().endswith(image_extensions))
+                for a in message.attachments
+            )
         return True
 
     # 2. Text payload parsing (Counters the early embed generation race-condition)

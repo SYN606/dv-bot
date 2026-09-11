@@ -9,7 +9,7 @@ from discord.ext import commands
 
 from db.db_helpers.afk import set_afk
 from utils.core.embeds import make_embed
-from utils.handlers.afk._afk_nicknames import apply_afk_nicknames, handle_afk
+from utils.handlers.afk._afk_nicknames import apply_afk_nicknames
 from utils.views.afk_button import GlobalAFKView
 
 if TYPE_CHECKING:
@@ -19,7 +19,7 @@ logger = logging.getLogger("DigitalVigital")
 
 
 class AFKCog(commands.Cog):
-    """Cog handling AFK status management, global toggles, and mention notifications."""
+    """Cog handling AFK status management and global toggles."""
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot: commands.Bot = bot
@@ -76,11 +76,6 @@ class AFKCog(commands.Cog):
         )
 
         await ctx.send(embed=embed, view=view)
-
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message) -> None:
-        """Delegates AFK state checking and mention handling to interceptor."""
-        await handle_afk(self.bot, message)
 
 
 async def setup(bot: commands.Bot) -> None:

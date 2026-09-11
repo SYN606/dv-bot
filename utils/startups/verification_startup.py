@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import discord
 from db.db_helpers.verification import (get_verification_config)
@@ -6,22 +7,12 @@ from utils.views.verification_views.verify_button_view import (VerifyButtonView)
 logger = logging.getLogger("Digital Vigital")
 
 
-# VERIFICATION STARTUP
-async def startup(bot: discord.Client, ) -> None:
-    logger.info("[VERIFICATION] Initializing verification system...")
-
-    try:
-        bot.add_view(VerifyButtonView())
-        logger.info("[VERIFICATION] Persistent verification view registered")
-    except Exception as exc:
-        logger.exception(
-            f"[VERIFICATION] Failed to register VerifyButtonView: {exc}")
-        return
+async def _inspect_verification_guilds(bot: discord.Client) -> None:
+    await bot.wait_until_ready()
     loaded = 0
     for guild in bot.guilds:
         try:
             config = await get_verification_config(guild.id)
-
         except Exception as exc:
             logger.exception(f"[VERIFICATION] "
                              f"Failed loading config for "
@@ -39,3 +30,17 @@ async def startup(bot: discord.Client, ) -> None:
         loaded += 1
     logger.info(
         f"[VERIFICATION] Loaded verification configs for {loaded} guilds")
+
+
+# VERIFICATION STARTUP
+async def startup(bot: discord.Client, ) -> None:
+    logger.info("[VERIFICATION] Initializing verification system...")
+
+    try:
+        bot.add_view(VerifyButtonView())
+        logger.info("[VERIFICATION] Persistent verification view registered")
+        asyncio.create_task(_inspect_verification_guilds(bot), name="verification_inspect_guilds")
+    except Exception as exc:
+        logger.exception(
+            f"[VERIFICATION] Failed to register VerifyButtonView: {exc}")
+        return

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import os
 import json
-import time
-import random
 import logging
+import os
+import time
+from pathlib import Path
 from typing import Optional
 
 import discord
@@ -13,7 +13,7 @@ from discord.ext import commands
 logger = logging.getLogger("DigitalVigital")
 
 USER_STATE: dict[int, dict] = {}
-CONFIG_PATH = os.path.join("db", "static_db", "roasts.json")
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "db" / "static_db" / "roasts.json"
 
 
 class Fuck(commands.Cog):
@@ -35,7 +35,7 @@ class Fuck(commands.Cog):
             return
 
         try:
-            if os.path.exists(CONFIG_PATH):
+            if CONFIG_PATH.exists():
                 with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                     self._config = json.load(f)
                 self._last_config_load = time.time()

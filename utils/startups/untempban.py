@@ -1,8 +1,8 @@
-from __future__ import annotations
-
+import asyncio
 import logging
 import discord
 from discord.ext import tasks
+
 from db.db_helpers.tempban import get_expired_tempbans, remove_tempban, get_tempban_role
 from db.db_helpers.verification import get_verification_config
 from utils.logging.mod_log import send_mod_log
@@ -136,9 +136,8 @@ class TempbanBackgroundHandler:
         await self.bot.wait_until_ready()
 
 
-async def startup(bot: discord.Client) -> None:
-    logger.info("[TEMPBAN] Initializing background unban worker...")
-
+async def _inspect_guilds(bot: discord.Client) -> None:
+    await bot.wait_until_ready()
     loaded_features = 0
     for guild in bot.guilds:
         try:
@@ -149,12 +148,16 @@ async def startup(bot: discord.Client) -> None:
             logger.exception(
                 f"[TEMPBAN] Failed loading configuration check for {guild.name}: {exc}"
             )
+    logger.info(
+        f"[TEMPBAN] Background unban worker verified active across {loaded_features} server profiles."
+    )
 
+
+async def startup(bot: discord.Client) -> None:
+    logger.info("[TEMPBAN] Initializing background unban worker...")
     try:
         setattr(bot, "tempban_handler", TempbanBackgroundHandler(bot))
-        logger.info(
-            f"[TEMPBAN] Background unban worker loop verified active across {loaded_features} server profiles."
-        )
+        asyncio.create_task(_inspect_guilds(bot), name="tempban_inspect_guilds")
     except Exception as exc:
         logger.exception(
             f"[TEMPBAN] Fatal error spawning loop orchestrator instance: {exc}"

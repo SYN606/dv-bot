@@ -12,7 +12,7 @@ IGNORED_PREFIXES = ("!", "/", "dv ")
 async def handle_sticky(message: Message) -> bool:
     """Evaluates incoming messages and repositions the sticky message at the bottom."""
     if (message.guild is None or message.author.bot or message.webhook_id
-            or message.type != discord.MessageType.default):
+            or message.type not in (discord.MessageType.default, discord.MessageType.reply)):
         return False
 
     channel = message.channel

@@ -19,6 +19,7 @@ class Verification(BaseAdminCog):
 
     @app_commands.command(name="verification",
                           description="Manage server verification system")
+    @app_commands.default_permissions(manage_guild=True)
     async def verification(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         actor = interaction.user
@@ -53,6 +54,10 @@ class Verification(BaseAdminCog):
             logger.exception(
                 "Failed to retrieve original response message for VerificationView"
             )
+
+
+# Enforce BaseAdminCog access control
+setattr(Verification.verification, "config_command", True)
 
 
 async def setup(bot: commands.Bot) -> None:
