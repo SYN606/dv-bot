@@ -5,8 +5,10 @@ import discord
 from discord.ext import commands, tasks
 
 from db.db_helpers.tag_helper import get_tag_config
+from utils.core.ratelimiter import RateLimiter
 
 logger = logging.getLogger("DigitalVigital")
+_ROLE_LIMITER = RateLimiter(delay=0.3)
 
 
 class TagAutoRoleService:
@@ -25,6 +27,9 @@ class TagAutoRoleService:
     def stop(self) -> None:
         """Cancels background tasks gracefully."""
         self.tag_watcher_task.cancel()
+        self.bot.remove_listener(self.on_presence_update, "on_presence_update")
+        self.bot.remove_listener(self.on_member_update, "on_member_update")
+        self.bot.remove_listener(self.on_user_update, "on_user_update")
 
     # PURE LOGIC HELPERS
     @staticmethod
@@ -70,17 +75,22 @@ class TagAutoRoleService:
         if member.bot or not member.guild:
             return False
 
+        me = member.guild.me
+        if not me or not me.guild_permissions.manage_roles or role.managed or role >= me.top_role:
+            return False
         has_tag = cls.has_tag(member, tag)
         modified = False
 
         try:
             if has_tag and role not in member.roles:
+                await _ROLE_LIMITER.wait(member.guild.id)
                 await member.add_roles(role,
                                        reason=f"Adapted server tag: {tag}")
                 logger.info("Assigned role '%s' to %s for tag '%s'", role.name,
                             member, tag)
                 modified = True
             elif not has_tag and role in member.roles:
+                await _ROLE_LIMITER.wait(member.guild.id)
                 await member.remove_roles(role,
                                           reason=f"Removed server tag: {tag}")
                 logger.info("Removed role '%s' from %s for tag '%s'",
@@ -121,7 +131,7 @@ class TagAutoRoleService:
                 continue
 
             role = guild.get_role(config.role_id)
-            if not role or role >= guild.me.top_role:
+            if not role or not guild.me or role >= guild.me.top_role:
                 continue
 
             await self.sync_guild_members(guild, config.tag, role)
@@ -139,7 +149,7 @@ class TagAutoRoleService:
             return
 
         role = after.guild.get_role(config.role_id)
-        if role and role < after.guild.me.top_role:
+        if role and after.guild.me and role < after.guild.me.top_role:
             await self.check_and_update_member(after, config.tag, role)
 
     async def on_member_update(self, before: discord.Member,
@@ -154,7 +164,7 @@ class TagAutoRoleService:
                 return
 
             role = after.guild.get_role(config.role_id)
-            if role and role < after.guild.me.top_role:
+            if role and after.guild.me and role < after.guild.me.top_role:
                 await self.check_and_update_member(after, config.tag, role)
 
     async def on_user_update(self, before: discord.User,
@@ -173,7 +183,7 @@ class TagAutoRoleService:
                 continue
 
             role = guild.get_role(config.role_id)
-            if role and role < guild.me.top_role:
+            if role and guild.me and role < guild.me.top_role:
                 await self.check_and_update_member(member, config.tag, role)
 
 

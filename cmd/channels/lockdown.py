@@ -19,6 +19,7 @@ logger = logging.getLogger("LockdownCog")
 # Python 3.12+ PEP 695 Type Alias
 type GuildChannel = discord.TextChannel | discord.ForumChannel
 SUPPORTED_CHANNELS = (discord.TextChannel, discord.ForumChannel)
+LOCK_PERMISSIONS = ["send_messages", "send_messages_in_threads", "create_public_threads", "create_private_threads"]
 
 
 def parse_duration(duration: str | None) -> int | None:
@@ -53,6 +54,12 @@ class Lockdown(BaseAdminCog):
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self._unlock_tasks: dict[int, asyncio.Task] = {}
+
+    def cog_unload(self) -> None:
+        for task in self._unlock_tasks.values():
+            task.cancel()
+        self._unlock_tasks.clear()
 
     async def _reply(
         self,
@@ -74,7 +81,8 @@ class Lockdown(BaseAdminCog):
 
     async def _safe_restore(self, channel: GuildChannel, *, reason: str) -> bool:
         try:
-            return await restore_channel_permissions(channel, reason=reason)
+            return await restore_channel_permissions(channel, reason=reason,
+                                                     permissions=LOCK_PERMISSIONS)
         except discord.HTTPException as exc:
             logger.error("Failed restoring permissions for %s: %s", channel.id, exc)
             return False
@@ -104,7 +112,7 @@ class Lockdown(BaseAdminCog):
 
     async def _lock_channel(self, channel: GuildChannel, actor: discord.Member) -> bool:
         guild = channel.guild
-        if await has_channel_snapshots(guild.id, channel.id):
+        if await has_channel_snapshots(guild.id, channel.id, permissions=LOCK_PERMISSIONS):
             return False
 
         snapshotted = await self._safe_snapshot(
@@ -130,7 +138,12 @@ class Lockdown(BaseAdminCog):
             if actor is None
             else f"Channel unlocked by {actor}"
         )
-        return await self._safe_restore(channel, reason=reason)
+        restored = await self._safe_restore(channel, reason=reason)
+        if restored:
+            task = self._unlock_tasks.pop(channel.id, None)
+            if task is not None and task is not asyncio.current_task():
+                task.cancel()
+        return restored
 
     @admin_command(name="lock")
     @commands.cooldown(2, 5, commands.BucketType.guild)
@@ -171,6 +184,13 @@ class Lockdown(BaseAdminCog):
             )
             return
 
+        seconds = parse_duration(duration)
+        if duration is not None and seconds is None:
+            await self._reply(ctx, title="Invalid Duration",
+                              description="Use a positive duration such as `10m`, `1h`, or `1d`.",
+                              level="WARNING")
+            return
+
         if not await self._lock_channel(channel, actor):
             await self._reply(
                 ctx,
@@ -180,7 +200,6 @@ class Lockdown(BaseAdminCog):
             )
             return
 
-        seconds = parse_duration(duration)
         if seconds:
             expiry_timestamp = int(time.time() + seconds)
             success_desc = (
@@ -227,6 +246,10 @@ class Lockdown(BaseAdminCog):
                     pass
 
             task = asyncio.create_task(unlock_later())
+            previous = self._unlock_tasks.get(channel.id)
+            if previous is not None:
+                previous.cancel()
+            self._unlock_tasks[channel.id] = task
             # Python 3.12 safe background task exception handling
             task.add_done_callback(
                 lambda t: logger.error(

@@ -93,10 +93,13 @@ async def remove_permission_snapshots(guild_id: int, channel_id: int) -> bool:
     return deleted_count > 0
 
 
-async def has_channel_snapshots(guild_id: int, channel_id: int) -> bool:
+async def has_channel_snapshots(guild_id: int, channel_id: int,
+                                permissions: list[str] | None = None) -> bool:
     """Checks whether snapshot records exist for a given channel."""
-    return await ChannelPermissionSnapshot.filter(
-        guild_id=guild_id, channel_id=channel_id).exists()
+    query = ChannelPermissionSnapshot.filter(guild_id=guild_id, channel_id=channel_id)
+    if permissions is not None:
+        query = query.filter(permission_name__in=permissions)
+    return await query.exists()
 
 
 async def get_snapshot_channels(guild_id: int) -> list[int]:
@@ -115,6 +118,9 @@ async def snapshot_channel_permissions(channel: discord.abc.GuildChannel,
     guild = channel.guild
     roles = await get_target_roles(guild)
     snapshots = []
+    # apply_channel_permissions changes these forum flags as well.
+    if isinstance(channel, discord.ForumChannel) and "send_messages" in permissions:
+        permissions = list(dict.fromkeys([*permissions, "create_public_threads", "create_private_threads"]))
 
     for role in roles:
         overwrite = channel.overwrites_for(role)
@@ -158,10 +164,13 @@ async def apply_channel_permissions(
 
 
 async def restore_channel_permissions(channel: discord.abc.GuildChannel, *,
-                                      reason: str) -> bool:
+                                      reason: str,
+                                      permissions: list[str] | None = None) -> bool:
     """Restores saved channel permissions from database snapshots."""
     guild = channel.guild
     snapshots = await get_permission_snapshots(guild.id, channel.id)
+    if permissions is not None:
+        snapshots = [entry for entry in snapshots if entry.permission_name in permissions]
     if not snapshots:
         return False
 
@@ -189,6 +198,6 @@ async def restore_channel_permissions(channel: discord.abc.GuildChannel, *,
             overall_success = False
 
     if overall_success:
-        await remove_permission_snapshots(guild.id, channel.id)
+        await ChannelPermissionSnapshot.filter(id__in=[entry.id for entry in snapshots]).delete()
 
     return overall_success

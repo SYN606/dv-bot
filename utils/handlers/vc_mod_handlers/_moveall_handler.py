@@ -3,18 +3,21 @@ from __future__ import annotations
 import asyncio
 from typing import TypeAlias
 import discord
+from utils.core.ratelimiter import RateLimiter
 
 # Explicit type union for voice-capable channels
 VCTarget: TypeAlias = discord.VoiceChannel | discord.StageChannel
 
 # Global semaphore to limit concurrent HTTP API requests to Discord
 _MOVE_SEMAPHORE = asyncio.Semaphore(3)
+_MOVE_LIMITER = RateLimiter(delay=0.3)
 
 
 async def _safe_move_member(member: discord.Member, target: VCTarget,
                             reason: str) -> bool:
     """Move an individual member with rate-limit handling and exponential backoff."""
     async with _MOVE_SEMAPHORE:
+        await _MOVE_LIMITER.wait(member.guild.id)
         try:
             await member.move_to(target, reason=reason)
             return True
@@ -27,8 +30,6 @@ async def _safe_move_member(member: discord.Member, target: VCTarget,
                     return True
                 except discord.HTTPException:
                     return False
-            return False
-        except (discord.Forbidden, Exception):
             return False
 
 
@@ -53,6 +54,7 @@ async def move_all_members(source: VCTarget,
         moved_count += sum(1 for success in results if success)
 
         # Brief delay between batches to respect rate-limit buckets
-        await asyncio.sleep(0.35)
+        if i + batch_size < len(members_to_move):
+            await asyncio.sleep(0.35)
 
     return moved_count

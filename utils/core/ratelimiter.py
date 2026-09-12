@@ -16,16 +16,12 @@ class RateLimiter:
             keys_to_remove = [k for k, v in self._last_call.items() if v < cutoff]
             for k in keys_to_remove:
                 self._last_call.pop(k, None)
-            if len(self._last_call) > self.max_entries:
-                self._last_call.clear()
 
     async def wait(self, key: int):
         now = time.monotonic()
-        last = self._last_call.get(key, 0)
-
-        diff = now - last
-        if diff < self.delay:
-            await asyncio.sleep(self.delay - diff)
-
-        self._last_call[key] = time.monotonic()
+        # Reserve before yielding so concurrent waiters get separate slots.
+        scheduled = max(now, self._last_call.get(key, now - self.delay) + self.delay)
+        self._last_call[key] = scheduled
         self._prune(now)
+        if scheduled > now:
+            await asyncio.sleep(scheduled - now)

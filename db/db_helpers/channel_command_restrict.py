@@ -22,12 +22,19 @@ async def restrict_command(guild_id: int,
     except ValueError:
         enum_scope = RestrictionScope.BOTH
     try:
-        _, created = await RestrictedCommand.get_or_create(
+        record, created = await RestrictedCommand.get_or_create(
             guild_id=guild_id,
             channel_id=channel_id,
             command_name=command_name,
             defaults={"restriction_scope": enum_scope})
-        return created
+        changed = created
+        if not created and record.restriction_scope != enum_scope:
+            record.restriction_scope = enum_scope
+            await record.save(update_fields=["restriction_scope"])
+            changed = True
+        from utils.core.interaction_check import invalidate_command_restrict_cache
+        invalidate_command_restrict_cache(guild_id, channel_id, command_name)
+        return changed
     except IntegrityError:
         return False
 
@@ -39,6 +46,8 @@ async def unrestrict_command(guild_id: int, channel_id: int,
     deleted_count = await RestrictedCommand.filter(
         guild_id=guild_id, channel_id=channel_id,
         command_name=command_name).delete()
+    from utils.core.interaction_check import invalidate_command_restrict_cache
+    invalidate_command_restrict_cache(guild_id, channel_id, command_name)
     return deleted_count > 0
 
 

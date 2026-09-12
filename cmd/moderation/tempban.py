@@ -31,7 +31,10 @@ DEFAULT_DURATION = "10m"
 
 def parse_duration(duration: str) -> int:
     """Parse time string like '10m', '1h30m', '1d' into total seconds."""
-    matches = TIME_REGEX.findall(duration.lower())
+    duration = duration.strip().lower()
+    if not re.fullmatch(r"(?:\d+[smhd])+", duration):
+        return 0
+    matches = TIME_REGEX.findall(duration)
     if not matches:
         return 0
     return sum(int(value) * TIME_MULTIPLIERS[unit] for value, unit in matches)

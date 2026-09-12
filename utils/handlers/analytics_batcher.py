@@ -36,6 +36,9 @@ class AnalyticsBatcher:
         self._hourly_buffer: Dict[Tuple[int, int, int], int] = {}
 
         self._lock = asyncio.Lock()
+        self._flush_lock = asyncio.Lock()
+        self._stop_event = asyncio.Event()
+        self._size_flush_task: asyncio.Task | None = None
         self._flush_task: asyncio.Task | None = None
         self._running: bool = False
 
@@ -43,17 +46,18 @@ class AnalyticsBatcher:
         """Starts the periodic background flush task if not already running."""
         if not self._running:
             self._running = True
+            self._stop_event.clear()
             self._flush_task = asyncio.create_task(self._flush_loop(), name="analytics_batcher_flush")
 
     async def stop(self) -> None:
         """Stops the periodic loop and executes a final flush."""
         self._running = False
-        if self._flush_task and not self._flush_task.done():
-            self._flush_task.cancel()
-            try:
-                await self._flush_task
-            except asyncio.CancelledError:
-                pass
+        self._stop_event.set()
+        # Let in-flight database writes complete before closing the connection.
+        if self._flush_task:
+            await self._flush_task
+        if self._size_flush_task:
+            await self._size_flush_task
         await self.flush()
 
     async def add_message(
@@ -72,8 +76,8 @@ class AnalyticsBatcher:
         async with self._lock:
             # 1. User Buffer
             user_key = (guild_id, user_id)
-            current_count, _ = self._user_buffer.get(user_key, (0, now))
-            self._user_buffer[user_key] = (current_count + 1, now)
+            current_count, last_active = self._user_buffer.get(user_key, (0, now))
+            self._user_buffer[user_key] = (current_count + 1, max(last_active, now))
 
             # 2. Channel Buffer
             channel_key = (guild_id, channel_id, today)
@@ -94,10 +98,16 @@ class AnalyticsBatcher:
                 + len(self._hourly_buffer)
             )
 
-        if total_buffered >= self.max_buffer_size:
-            asyncio.create_task(self.flush())
+        if total_buffered >= self.max_buffer_size and (
+            self._size_flush_task is None or self._size_flush_task.done()
+        ):
+            self._size_flush_task = asyncio.create_task(self.flush())
 
     async def flush(self) -> None:
+        async with self._flush_lock:
+            await self._flush_pending()
+
+    async def _flush_pending(self) -> None:
         """Drains buffered metrics and commits them to the database."""
         async with self._lock:
             if not self._user_buffer and not self._channel_buffer and not self._snapshot_buffer and not self._hourly_buffer:
@@ -135,6 +145,9 @@ class AnalyticsBatcher:
                             last_active_at=last_active_at,
                         )
                 except Exception as e:
+                    key = (guild_id, user_id)
+                    buffered_count, buffered_at = self._user_buffer.get(key, (0, last_active_at))
+                    self._user_buffer[key] = (buffered_count + count, max(buffered_at, last_active_at))
                     logger.exception("Failed to flush member analytics for guild=%s user=%s: %s", guild_id, user_id, e)
 
             # 2. Flush DailyActivitySnapshot
@@ -150,6 +163,8 @@ class AnalyticsBatcher:
                             total_messages=F("total_messages") + count,
                         )
                 except Exception as e:
+                    key = (guild_id, s_date)
+                    self._snapshot_buffer[key] = self._snapshot_buffer.get(key, 0) + count
                     logger.exception("Failed to flush daily snapshot for guild=%s date=%s: %s", guild_id, s_date, e)
 
             # 3. Flush ChannelActivity
@@ -166,6 +181,8 @@ class AnalyticsBatcher:
                             message_count=F("message_count") + count,
                         )
                 except Exception as e:
+                    key = (guild_id, channel_id, c_date)
+                    self._channel_buffer[key] = self._channel_buffer.get(key, 0) + count
                     logger.exception("Failed to flush channel activity for channel=%s: %s", channel_id, e)
 
             # 4. Flush HourlyActivity
@@ -182,6 +199,8 @@ class AnalyticsBatcher:
                             message_count=F("message_count") + count,
                         )
                 except Exception as e:
+                    key = (guild_id, dow, hod)
+                    self._hourly_buffer[key] = self._hourly_buffer.get(key, 0) + count
                     logger.exception("Failed to flush hourly activity for guild=%s dow=%s hod=%s: %s", guild_id, dow, hod, e)
 
         except Exception as e:
@@ -190,8 +209,10 @@ class AnalyticsBatcher:
     async def _flush_loop(self) -> None:
         while self._running:
             try:
-                await asyncio.sleep(self.flush_interval)
-                await self.flush()
+                try:
+                    await asyncio.wait_for(self._stop_event.wait(), timeout=self.flush_interval)
+                except TimeoutError:
+                    await self.flush()
             except asyncio.CancelledError:
                 break
             except Exception as e:

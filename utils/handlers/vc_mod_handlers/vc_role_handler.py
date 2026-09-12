@@ -29,7 +29,7 @@ async def handle_voice_state_update(member: discord.Member,
 
     bot_member = guild.me
 
-    if not bot_member.guild_permissions.manage_roles:
+    if not bot_member or not bot_member.guild_permissions.manage_roles:
         return
 
     if vc_role.position >= bot_member.top_role.position:

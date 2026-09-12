@@ -33,6 +33,7 @@ FIELD_VALUE_LIMIT = 1024
 FOOTER_LIMIT = 2048
 AUTHOR_LIMIT = 256
 MAX_FIELDS = 25
+TOTAL_LIMIT = 6000
 
 
 def _safe(text: Optional[str],
@@ -124,6 +125,14 @@ def make_embed(
     if safe_img := _safe_url(image):
         embed.set_image(url=safe_img)
 
+    # Reserve footer space before adding fields; Discord also limits the sum
+    # of all textual components, not just each component separately.
+    if footer:
+        embed.set_footer(
+            text=_safe(footer, min(FOOTER_LIMIT, TOTAL_LIMIT - len(embed))),
+            icon_url=_safe_url(footer_icon),
+        )
+
     # Fields
     if fields:
         for index, field in enumerate(fields):
@@ -134,20 +143,16 @@ def make_embed(
             value = field[1]
             inline = field[2] if len(field) > 2 else False
 
-            safe_name = _safe(name, FIELD_NAME_LIMIT)
-            safe_value = _safe(value, FIELD_VALUE_LIMIT)
+            remaining = TOTAL_LIMIT - len(embed)
+            if remaining < 2:
+                break
+            safe_name = _safe(name, min(FIELD_NAME_LIMIT, remaining - 1))
+            safe_value = _safe(value, min(FIELD_VALUE_LIMIT, remaining - len(safe_name or "")))
 
             if safe_name and safe_value:
                 embed.add_field(name=safe_name,
                                 value=safe_value,
                                 inline=inline)
-
-    # Footer
-    if footer:
-        embed.set_footer(
-            text=_safe(footer, FOOTER_LIMIT),
-            icon_url=_safe_url(footer_icon),
-        )
 
     # Timestamp
     if show_timestamp:

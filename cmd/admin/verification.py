@@ -57,7 +57,7 @@ class Verification(BaseAdminCog):
 
 
 # Enforce BaseAdminCog access control
-setattr(Verification.verification, "config_command", True)
+setattr(Verification.verification.callback, "config_command", True)
 
 
 async def setup(bot: commands.Bot) -> None:

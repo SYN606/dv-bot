@@ -11,9 +11,13 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
+# Load configuration before imports instantiate environment-based services.
+env_loaded = load_dotenv()
+
 from db.db_config import FatalDBError, close_tortoise, init_tortoise
 from utils.checks.channel_command_check import channel_command_check
 from utils.core.embeds import make_embed
+from utils.core.cooldown import GLOBAL_COOLDOWN
 from utils.core.interaction_check import command_toggle_check
 from utils.core.presence import PresenceRotator
 from utils.handlers.analytics_batcher import ANALYTICS_BATCHER
@@ -28,7 +32,6 @@ from utils.handlers.registry import (
 
 
 # Load Environment Variables
-env_loaded = load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not env_loaded:
@@ -235,8 +238,19 @@ class DigitalVigilBot(commands.Bot):
         except Exception as exc:
             logger.exception(f"[POST COMMAND ERROR] Handler failure: {exc}")
 
+    async def invoke(self, ctx: commands.Context) -> None:
+        # Gate once before dispatch: group checks and help probes do not consume
+        # tokens, and a rejection must not trigger cog permission-error replies.
+        if not await GLOBAL_COOLDOWN.check_context(ctx):
+            return
+        await super().invoke(ctx)
+
     async def on_command_error(self, ctx: commands.Context,
                                error: commands.CommandError) -> None:
+        if ctx.command and ctx.command.has_error_handler():
+            return
+        if ctx.cog and ctx.cog.has_error_handler():
+            return
         error = getattr(error, "original", error)
 
         if isinstance(error, commands.CommandNotFound):
@@ -293,6 +307,14 @@ class DigitalVigilBot(commands.Bot):
         if self.presence_rotator:
             self.presence_rotator.stop()
 
+        for name in ("tempban_handler", "tag_autorole_service"):
+            service = getattr(self, name, None)
+            if service is not None:
+                service.stop()
+        # Unload cogs while their database and HTTP dependencies are available.
+        for extension in tuple(self.extensions):
+            await self.unload_extension(extension)
+
         try:
             await ANALYTICS_BATCHER.stop()
             logger.info("[SHUTDOWN] Analytics batcher cleanly flushed and stopped")
@@ -318,51 +340,43 @@ async def run_bot() -> bool:
         return False
     except asyncio.CancelledError:
         logger.info("\n[SHUTDOWN] Cancellation received. Cleaning up...")
-        await bot.close()
         return False
     except FatalDBError as exc:
         logger.error(
             f"[FATAL DB] Database connection failed on startup: {exc}")
         logger.info("[EXIT] Shutting down due to database failure...")
-        await bot.close()
         return False
     except discord.HTTPException as exc:
         if exc.status == 429:
             logger.warning(
                 "[RATE LIMIT] Hit Discord API rate limit. Backing off for 60 seconds..."
             )
-            await asyncio.sleep(60)
-            return True
-        logger.exception(f"[HTTP ERROR] {exc}")
-        await asyncio.sleep(15)
-        return True
+            retry_delay = 60
+        else:
+            logger.exception(f"[HTTP ERROR] {exc}")
+            retry_delay = 15
     except Exception as exc:
         logger.exception(f"[CRASH] Unhandled exception occurred: {exc}")
-        try:
-            await close_tortoise()
-        except Exception:
-            pass
         logger.info("[RESTART] Restarting iteration loop in 30 seconds...")
-        await asyncio.sleep(30)
-        return True
+        retry_delay = 30
+    finally:
+        await bot.close()
+    await asyncio.sleep(retry_delay)
+    return True
+
+
+async def run_until_stopped() -> None:
+    # Shared services own asyncio locks/semaphores; retain one loop on restart.
+    while await run_bot():
+        pass
 
 
 def main() -> None:
-    """Main execution loop wrapping the asynchronous run lifecycle."""
-    should_restart = True
-    while should_restart:
-        try:
-            should_restart = asyncio.run(run_bot())
-        except KeyboardInterrupt:
-            logger.info(
-                "\n[SHUTDOWN] KeyboardInterrupt (CTRL+C) detected. Terminating..."
-            )
-            try:
-                asyncio.run(close_tortoise())
-            except Exception:
-                pass
-            logger.info("[EXIT] Shutdown complete cleanly")
-            break
+    """Run the bot and its restart loop on one event loop."""
+    try:
+        asyncio.run(run_until_stopped())
+    except KeyboardInterrupt:
+        logger.info("[EXIT] Interrupted; bot cleanup completed.")
 
 
 if __name__ == "__main__":

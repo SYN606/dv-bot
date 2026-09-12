@@ -14,7 +14,7 @@ from db.db_helpers.channel_command_restrict import (
 
 class CommandControlView(discord.ui.View):
     """
-    Secure Command Control View for managing global guild command restrictions.
+    Command control panel for restrictions in the current channel.
     """
 
     def __init__(
@@ -127,7 +127,9 @@ class CommandControlView(discord.ui.View):
         _button: discord.ui.Button,
     ):
         """Display the currently disabled commands in the server."""
-        disabled = await get_disabled_commands(self.guild.id) # type: ignore
+        if interaction.channel_id is None:
+            return
+        disabled = await get_disabled_commands(self.guild.id, interaction.channel_id)
 
         try:
             await interaction.response.edit_message(
@@ -203,6 +205,8 @@ class CommandSelect(discord.ui.Select):
         options: list[discord.SelectOption] = []
 
         for cmd in view.bot.tree.walk_commands():
+            if isinstance(cmd, discord.app_commands.Group):
+                continue
             name = cmd.qualified_name.lower()
 
             if name in PROTECTED_COMMANDS:
@@ -230,13 +234,13 @@ class CommandSelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         command_name = self.values[0]
 
-        if command_name == "none":
+        if command_name == "none" or interaction.channel_id is None:
             return
 
         if self.view_ref.mode == "disable":
             changed = await disable_command(
                 guild_id=self.view_ref.guild.id,
-                channel_id=None, # type: ignore
+                channel_id=interaction.channel_id,
                 command_name=command_name,
             )
             msg = (
@@ -248,7 +252,7 @@ class CommandSelect(discord.ui.Select):
         else:
             changed = await enable_command(
                 guild_id=self.view_ref.guild.id,
-                channel_id=None, # type: ignore
+                channel_id=interaction.channel_id,
                 command_name=command_name,
             )
             msg = (f"{EMOJIS['success']} `/{command_name}` enabled."

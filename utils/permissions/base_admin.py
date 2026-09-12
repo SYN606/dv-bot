@@ -135,6 +135,13 @@ class BaseAdminCog(commands.Cog):
         if guild is None:
             return
 
+        # Every BaseAdminCog receives completions for every slash command.
+        if command.binding is not self:
+            return
+        # Hybrid commands already log through cog_after_invoke.
+        if isinstance(getattr(command, "wrapped", None), commands.HybridCommand):
+            return
+
         if getattr(command, "skip_auto_log", False):
             return
 

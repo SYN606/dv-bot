@@ -9,12 +9,14 @@ MAX_CACHE_ENTRIES = 2000
 
 
 async def command_toggle_check(interaction: discord.Interaction) -> bool:
-    if not interaction.guild or not interaction.channel or not interaction.command:
+    if interaction.type == discord.InteractionType.autocomplete:
         return True
-
     # 1. Enforce Global Command Cooldown
     if not await GLOBAL_COOLDOWN.check_interaction(interaction):
         return False
+
+    if not interaction.guild or not interaction.channel or not interaction.command:
+        return True
 
     if not isinstance(interaction.user, discord.Member):
         return True

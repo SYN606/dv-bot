@@ -65,7 +65,8 @@ class Hide(BaseAdminCog):
                             reason: str) -> bool:
         """Safely attempt to restore permissions snapshot."""
         try:
-            return await restore_channel_permissions(channel, reason=reason)
+            return await restore_channel_permissions(channel, reason=reason,
+                                                     permissions=["view_channel"])
         except discord.HTTPException as exc:
             logger.error("Error during permission restore: %s", exc)
             return False
@@ -100,7 +101,7 @@ class Hide(BaseAdminCog):
                             actor: discord.Member) -> bool:
         """Snapshot current state and apply view restriction."""
         guild = channel.guild
-        if await has_channel_snapshots(guild.id, channel.id):
+        if await has_channel_snapshots(guild.id, channel.id, permissions=["view_channel"]):
             return False
 
         snapshotted = await self._safe_snapshot(channel,

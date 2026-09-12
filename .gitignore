@@ -176,4 +176,8 @@ pyrightconfig.json
 *.zip
 .DB_*
 .vscode/
+
+# Local regression tests and code review notes
+/tests/
+/CODE_REVIEW.md
 # End of https://www.toptal.com/developers/gitignore/api/python

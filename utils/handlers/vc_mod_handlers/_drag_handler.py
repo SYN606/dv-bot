@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TypeAlias
 import discord
+from ._moveall_handler import _safe_move_member
 
 # Explicit type union for voice-capable channels
 VCTarget: TypeAlias = discord.VoiceChannel | discord.StageChannel
@@ -17,8 +18,4 @@ async def drag_member(
     if not member.voice or not member.voice.channel:
         return False
 
-    try:
-        await member.move_to(target, reason=reason)
-        return True
-    except (discord.Forbidden, discord.HTTPException):
-        return False
+    return await _safe_move_member(member, target, reason)

@@ -4,6 +4,7 @@ import logging
 from typing import Optional
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from utils.core.embeds import make_embed
@@ -21,30 +22,27 @@ class VCDrag(BaseAdminCog):
         super().__init__()
         self.bot = bot
 
-    async def _cleanup(self, ctx: commands.Context) -> None:
-        """Safely delete original text invocation message if applicable."""
-        try:
-            await ctx.message.delete()
-        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
-            pass
-
-    @commands.command(
+    @app_commands.command(
         name="drag",
-        aliases=["mv", "move"],
         description=
         "Move a member from their current voice channel to another.",
     )
-    @commands.guild_only()
-    @commands.cooldown(2, 10, commands.BucketType.user)
+    @app_commands.guild_only()
+    @app_commands.checks.cooldown(2, 10, key=lambda i: i.user.id)
+    @app_commands.describe(
+        member="The member to move",
+        channel=
+        "The target voice or stage channel (defaults to your current channel)",
+    )
     async def drag(
         self,
-        ctx: commands.Context,
+        interaction: discord.Interaction,
         member: discord.Member,
         channel: Optional[discord.VoiceChannel | discord.StageChannel] = None,
     ) -> None:
         """Drag a member to a specified voice channel or the user's current voice channel."""
-        guild = ctx.guild
-        author = ctx.author
+        guild = interaction.guild
+        author = interaction.user
 
         if guild is None or not isinstance(author, discord.Member):
             return
@@ -62,7 +60,7 @@ class VCDrag(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            await interaction.response.send_message(embed=embed)
             return
 
         source_channel = member.voice.channel
@@ -80,7 +78,7 @@ class VCDrag(BaseAdminCog):
                     footer=footer_text,
                     footer_icon=footer_icon,
                 )
-                await ctx.reply(embed=embed, mention_author=False)
+                await interaction.response.send_message(embed=embed)
                 return
             target_channel = author.voice.channel
 
@@ -94,7 +92,7 @@ class VCDrag(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            await interaction.response.send_message(embed=embed)
             return
 
         # 4. Validation: Prevent Self-Drag
@@ -107,7 +105,7 @@ class VCDrag(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            await interaction.response.send_message(embed=embed)
             return
 
         # 5. Role Hierarchy Protection: Prevent dragging equal or higher role members
@@ -120,7 +118,7 @@ class VCDrag(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            await interaction.response.send_message(embed=embed)
             return
 
         # 6. Validation: Channel Capacity Check (Voice Channels only)
@@ -135,7 +133,7 @@ class VCDrag(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            await interaction.response.send_message(embed=embed)
             return
 
         # 7. Permission Check: Moderator Permissions
@@ -149,7 +147,7 @@ class VCDrag(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            await interaction.response.send_message(embed=embed)
             return
 
         # 8. Permission Check: Bot Permissions
@@ -166,10 +164,11 @@ class VCDrag(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            await interaction.response.send_message(embed=embed)
             return
 
         # 9. Execute Drag Action via handler
+        await interaction.response.defer()
         reason_text = f"Voice Drag by {author} ({author.id})"
         success = await drag_member(
             member=member,
@@ -187,7 +186,7 @@ class VCDrag(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            await interaction.followup.send(embed=embed)
         else:
             embed = make_embed(
                 title=f"{EMOJIS['fail']} Relocation Failed",
@@ -197,21 +196,19 @@ class VCDrag(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
-
-        await self._cleanup(ctx)
+            await interaction.followup.send(embed=embed)
 
     @drag.error
     async def drag_error(
         self,
-        ctx: commands.Context,
-        error: commands.CommandError,
+        interaction: discord.Interaction,
+        error: app_commands.AppCommandError,
     ) -> None:
-        """Centralized error handler for the drag command."""
-        footer_text = f"Action by: {ctx.author.display_name}"
-        footer_icon = ctx.author.display_avatar.url
+        """Centralized error handler for the drag slash command."""
+        footer_text = f"Action by: {interaction.user.display_name}"
+        footer_icon = interaction.user.display_avatar.url
 
-        if isinstance(error, commands.CommandOnCooldown):
+        if isinstance(error, app_commands.CommandOnCooldown):
             embed = make_embed(
                 title=f"{EMOJIS['warning']} Command Cooldown",
                 description=
@@ -220,9 +217,13 @@ class VCDrag(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            if interaction.response.is_done():
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                await interaction.response.send_message(embed=embed,
+                                                        ephemeral=True)
 
-        elif isinstance(error, commands.MissingPermissions):
+        elif isinstance(error, app_commands.MissingPermissions):
             embed = make_embed(
                 title=f"{EMOJIS['fail']} Missing Permission",
                 description=
@@ -231,32 +232,11 @@ class VCDrag(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            await ctx.reply(embed=embed, mention_author=False)
-
-        elif isinstance(error, commands.MissingRequiredArgument):
-            embed = make_embed(
-                title=f"{EMOJIS['warning']} Invalid Syntax",
-                description=
-                f"Missing target member.\n**Usage:** `{ctx.prefix}drag <@member> [#channel]`",
-                level="WARNING",
-                footer=footer_text,
-                footer_icon=footer_icon,
-            )
-            await ctx.reply(embed=embed, mention_author=False)
-
-        elif isinstance(error, commands.MemberNotFound):
-            embed = make_embed(
-                title=f"{EMOJIS['fail']} Member Not Found",
-                description=
-                "Could not find the specified member in this server.",
-                level="ERROR",
-                footer=footer_text,
-                footer_icon=footer_icon,
-            )
-            await ctx.reply(embed=embed, mention_author=False)
-
-        elif isinstance(error, commands.CheckFailure):
-            return
+            if interaction.response.is_done():
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                await interaction.response.send_message(embed=embed,
+                                                        ephemeral=True)
 
         else:
             embed = make_embed(
@@ -267,8 +247,13 @@ class VCDrag(BaseAdminCog):
                 footer=footer_text,
                 footer_icon=footer_icon,
             )
-            logger.error(f"Error in drag command: {error}", exc_info=error)
-            await ctx.reply(embed=embed, mention_author=False)
+            logger.error(f"Error in drag slash command: {error}",
+                         exc_info=error)
+            if interaction.response.is_done():
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                await interaction.response.send_message(embed=embed,
+                                                        ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
