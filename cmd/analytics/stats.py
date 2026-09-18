@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Union
+from typing import Optional, Union
 
 import discord
 from discord import app_commands
@@ -60,7 +60,8 @@ class TimeframeSelect(discord.ui.Select):
 
         if interaction.guild:
             embed = await StatsCommands.generate_server_stats_embed(
-                interaction.guild, days=days)
+                interaction.guild, days=days
+            )
             view = StatsTimeframeView(self.author_id, current_days=days)
             await interaction.edit_original_response(embed=embed, view=view)
 
@@ -77,34 +78,23 @@ class StatsTimeframeView(discord.ui.View):
         super().__init__(timeout=timeout)
         self.author_id = author_id
         self.current_days = current_days
-        self.message: Optional[Union[discord.Message,
-                                     discord.InteractionMessage]] = None
+        self.message: Optional[Union[discord.Message, discord.InteractionMessage]] = None
 
         self.add_item(TimeframeSelect(author_id, current_days=current_days))
 
-    @discord.ui.button(label="7d",
-                       style=discord.ButtonStyle.primary,
-                       emoji="📅")
-    async def btn_7d(self, interaction: discord.Interaction,
-                     button: discord.ui.Button) -> None:
+    @discord.ui.button(label="7d", style=discord.ButtonStyle.primary, emoji="📅")
+    async def btn_7d(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await self._handle_button_timeframe(interaction, days=7)
 
-    @discord.ui.button(label="14d",
-                       style=discord.ButtonStyle.primary,
-                       emoji="📆")
-    async def btn_14d(self, interaction: discord.Interaction,
-                      button: discord.ui.Button) -> None:
+    @discord.ui.button(label="14d", style=discord.ButtonStyle.primary, emoji="📆")
+    async def btn_14d(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await self._handle_button_timeframe(interaction, days=14)
 
-    @discord.ui.button(label="30d",
-                       style=discord.ButtonStyle.primary,
-                       emoji="📊")
-    async def btn_30d(self, interaction: discord.Interaction,
-                      button: discord.ui.Button) -> None:
+    @discord.ui.button(label="30d", style=discord.ButtonStyle.primary, emoji="📊")
+    async def btn_30d(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await self._handle_button_timeframe(interaction, days=30)
 
-    async def _handle_button_timeframe(self, interaction: discord.Interaction,
-                                       days: int) -> None:
+    async def _handle_button_timeframe(self, interaction: discord.Interaction, days: int) -> None:
         if interaction.user.id != self.author_id:
             await interaction.response.send_message(
                 f"{EMOJIS.get('fail', '❌')} You cannot control this menu.",
@@ -120,7 +110,8 @@ class StatsTimeframeView(discord.ui.View):
 
         if interaction.guild:
             embed = await StatsCommands.generate_server_stats_embed(
-                interaction.guild, days=days)
+                interaction.guild, days=days
+            )
             view = StatsTimeframeView(self.author_id, current_days=days)
             await interaction.edit_original_response(embed=embed, view=view)
 
@@ -137,65 +128,81 @@ class StatsTimeframeView(discord.ui.View):
 
 
 class StatsCommands(commands.Cog):
-    """Public commands for displaying overall server analytics and peak activity times."""
+    """Commands for inspecting overall server analytics and peak activity times."""
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     @staticmethod
-    async def generate_server_stats_embed(guild: discord.Guild,
-                                          days: int = 7) -> discord.Embed:
+    async def generate_server_stats_embed(guild: discord.Guild, days: int = 7) -> discord.Embed:
         """Generates dynamic server metrics embed for 7d, 14d, or 30d timeframes."""
         since_date = datetime.now(timezone.utc) - timedelta(days=days)
-        stats = await get_server_retention_stats(guild.id,
-                                                 since_date=since_date)
+        stats = await get_server_retention_stats(guild.id, since_date=since_date)
 
         arrow = EMOJIS.get("arrow_point", "•")
         member_emoji = EMOJIS.get("member", "👥")
         announcement_emoji = EMOJIS.get("announcement", "📢")
 
         label_prefix = f"{days}d"
+        net_prefix = "+" if stats["net_growth"] >= 0 else ""
 
         fields = [
             (
-                f"{member_emoji} Total Active Members",
-                f"**{int(stats['total_active']):,}**",
+                f"{member_emoji} Server Population",
+                f"{arrow} **Active Tracked:** `{int(stats['total_active']):,}`\n"
+                f"{arrow} **Total Guild:** `{guild.member_count:,}`",
+                True,
+            ),
+            (
+                f"💬 {label_prefix} Chat Activity",
+                f"{arrow} **Total Messages:** `{int(stats.get('total_messages', 0)):,}`",
+                True,
+            ),
+            (
+                f"🎙️ {label_prefix} Voice Activity",
+                f"{arrow} **Time Logged:** `{stats.get('total_vc_hours', 0):,}h`",
                 True,
             ),
             (
                 f"{announcement_emoji} {label_prefix} Joins / Leaves",
-                f"**+{int(stats['total_joins']):,}** / **-{int(stats['total_leaves']):,}**",
+                f"{arrow} **Joins:** `+{int(stats['total_joins']):,}`\n"
+                f"{arrow} **Leaves:** `-{int(stats['total_leaves']):,}`",
                 True,
             ),
             (
                 f"📈 {label_prefix} Net Growth",
-                f"**{'+' if stats['net_growth'] >= 0 else ''}{int(stats['net_growth']):,}**",
+                f"{arrow} **Growth:** `{net_prefix}{int(stats['net_growth']):,}`",
                 True,
             ),
             (
-                f"🔒 {label_prefix} Retention Rate",
-                f"**{stats['retention_rate']:.1f}%**",
+                f"🔒 {label_prefix} Member Retention",
+                f"{arrow} **Rate:** `{stats['retention_rate']:.1f}%`",
                 True,
             ),
         ]
 
-        timeframe_label = ("Weekly (7 Days)" if days == 7 else
-                           "14 Days" if days == 14 else "Monthly (30 Days)")
+        timeframe_label = (
+            "Weekly (7 Days)"
+            if days == 7
+            else ("14 Days" if days == 14 else "Monthly (30 Days)")
+        )
 
-        return make_embed(
-            title=f"Analytics Overview — {guild.name}",
-            description=
-            f"{arrow} Detailed **{timeframe_label}** performance and activity breakdown.",
+        embed = make_embed(
+            title=f"Server Analytics — {guild.name}",
+            description=f"*Detailed performance and engagement metrics for the last **{timeframe_label}**.*",
             level="INFO",
             fields=fields,
             show_timestamp=True,
             use_emoji=True,
         )
+        if guild.icon:
+            embed.set_thumbnail(url=guild.icon.url)
+        return embed
 
-    @app_commands.command(
+    @commands.hybrid_command(
         name="serverstats",
-        description=
-        "View server analytics for weekly, 14-day, or monthly periods.",
+        description="View server analytics for weekly, 14-day, or monthly periods.",
+        aliases=["guildstats", "serveranalytics"],
     )
     @app_commands.describe(days="Select timeframe window (7, 14, or 30 days)")
     @app_commands.choices(days=[
@@ -203,97 +210,87 @@ class StatsCommands(commands.Cog):
         app_commands.Choice(name="14 Days", value=14),
         app_commands.Choice(name="30 Days (Monthly)", value=30),
     ])
-    async def server_stats_slash(
+    async def server_stats(
         self,
-        interaction: discord.Interaction,
-        days: Optional[app_commands.Choice[int]] = None,
+        ctx: commands.Context,
+        days: Optional[int] = 7,
     ) -> None:
-        if not interaction.guild:
-            return
-
-        selected_days = days.value if days else 7
-        await interaction.response.defer()
-
-        embed = await self.generate_server_stats_embed(interaction.guild,
-                                                       days=selected_days)
-        view = StatsTimeframeView(author_id=interaction.user.id,
-                                  current_days=selected_days)
-
-        await interaction.followup.send(embed=embed, view=view)
-        view.message = await interaction.original_response()
-
-    @commands.command(
-        name="serverstats",
-        help="View server analytics. Usage: !serverstats [7|14|30]",
-    )
-    async def server_stats_prefix(self,
-                                  ctx: commands.Context,
-                                  days: Optional[int] = 7) -> None:
         if not ctx.guild:
             return
 
-        # Sanitize timeframe input to valid ranges
         selected_days = days if days in (7, 14, 30) else 7
 
-        embed = await self.generate_server_stats_embed(ctx.guild,
-                                                       days=selected_days)
-        view = StatsTimeframeView(author_id=ctx.author.id,
-                                  current_days=selected_days)
+        if ctx.interaction:
+            await ctx.interaction.response.defer()
 
-        view.message = await ctx.send(embed=embed, view=view)
+        embed = await self.generate_server_stats_embed(ctx.guild, days=selected_days)
+        view = StatsTimeframeView(author_id=ctx.author.id, current_days=selected_days)
 
-    @app_commands.command(
+        if ctx.interaction:
+            await ctx.interaction.followup.send(embed=embed, view=view)
+            view.message = await ctx.interaction.original_response()
+        else:
+            view.message = await ctx.send(embed=embed, view=view)
+
+    @commands.hybrid_command(
         name="peakactivity",
-        description="Check peak server activity hours and days.",
+        description="Check peak server activity hours, days, and prime engagement windows.",
+        aliases=["peakhours", "activitytimes"],
     )
-    async def peak_activity_slash(self,
-                                  interaction: discord.Interaction) -> None:
-        if not interaction.guild:
-            return
-        await interaction.response.defer()
-        embed = await self._generate_peak_activity_embed(interaction.guild)
-        await interaction.followup.send(embed=embed)
-
-    @commands.command(
-        name="peakactivity",
-        help="Check peak server activity hours and days.",
-    )
-    async def peak_activity_prefix(self, ctx: commands.Context) -> None:
+    async def peak_activity(self, ctx: commands.Context) -> None:
         if not ctx.guild:
             return
-        embed = await self._generate_peak_activity_embed(ctx.guild)
-        await ctx.send(embed=embed)
 
-    async def _generate_peak_activity_embed(
-            self, guild: discord.Guild) -> discord.Embed:
-        top_hours = await get_peak_hours(guild.id, limit=3)
-        days = [
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-            "Sunday",
+        if ctx.interaction:
+            await ctx.interaction.response.defer()
+
+        top_hours = await get_peak_hours(ctx.guild.id, limit=5)
+        day_names = [
+            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
         ]
-        arrow = EMOJIS.get("curved_arrow", "↳")
+        arrow = EMOJIS.get("arrow_point", "•")
 
         if top_hours:
-            lines = [
-                f"{arrow} **{days[h.day_of_week]}** at **{h.hour_of_day:02d}:00 UTC** — `{h.message_count:,}` messages"
-                for h in top_hours
-            ]
-            description = "\n".join(lines)
-        else:
-            description = "No activity records accumulated yet."
+            max_msgs = max(h.message_count for h in top_hours) or 1
+            density_bars = [" ", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
 
-        return make_embed(
-            title=f"Peak Activity Hours — {guild.name}",
-            description=description,
+            lines = []
+            for h in top_hours[:3]:
+                idx = min(len(density_bars) - 1, int((h.message_count / max_msgs) * (len(density_bars) - 1)))
+                bar = density_bars[idx]
+                lines.append(
+                    f"{arrow} **{day_names[h.day_of_week]}** at **{h.hour_of_day:02d}:00 UTC** `[{bar}]` ↳ `{h.message_count:,}` msgs"
+                )
+
+            # Prime Window calculation
+            best_hour = top_hours[0].hour_of_day
+            start_window = (best_hour - 1) % 24
+            end_window = (best_hour + 3) % 24
+            prime_str = f"**{start_window:02d}:00 – {end_window:02d}:00 UTC**"
+            best_day = day_names[top_hours[0].day_of_week]
+
+            desc = (
+                f"*Aggregated message density and optimal engagement times for {ctx.guild.name}.*\n\n"
+                f"🔥 **Prime Activity Window:** {prime_str}\n"
+                f"📅 **Peak Traffic Day:** **{best_day}**\n\n"
+                f"**Top Peak Activity Hours:**\n"
+                + "\n".join(lines)
+            )
+        else:
+            desc = "No activity records accumulated yet. Chat in channels to generate analytics!"
+
+        embed = make_embed(
+            title=f"Peak Activity & Prime Hours — {ctx.guild.name}",
+            description=desc,
             level="INFO",
             show_timestamp=True,
             use_emoji=True,
         )
+
+        if ctx.interaction:
+            await ctx.interaction.followup.send(embed=embed)
+        else:
+            await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:

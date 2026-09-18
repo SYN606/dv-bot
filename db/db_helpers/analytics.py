@@ -179,22 +179,66 @@ async def get_user_stats(guild_id: int,
 
 async def get_top_chatters(
     guild_id: int,
+    timeframe: str = "weekly",
     limit: int = 10,
 ) -> Sequence[MemberAnalytics]:
-    """Fetches top text chatters in a guild by weekly messages."""
-    return (await MemberAnalytics.filter(
-        guild_id=guild_id,
-        is_active=True).order_by("-weekly_messages").limit(limit))
+    """Fetches top text chatters in a guild by weekly or all-time messages."""
+    order_field = "-weekly_messages" if timeframe == "weekly" else "-total_messages"
+    filter_field = "weekly_messages__gt" if timeframe == "weekly" else "total_messages__gt"
+    filter_kwargs = {
+        "guild_id": guild_id,
+        "is_active": True,
+        filter_field: 0,
+    }
+    return (await MemberAnalytics.filter(**filter_kwargs).order_by(order_field).limit(limit))
 
 
 async def get_top_vc_members(
     guild_id: int,
+    timeframe: str = "weekly",
     limit: int = 10,
 ) -> Sequence[MemberAnalytics]:
-    """Fetches top VC active members in a guild by weekly VC seconds."""
-    return (await MemberAnalytics.filter(
+    """Fetches top VC active members in a guild by weekly or all-time VC seconds."""
+    order_field = "-weekly_vc_seconds" if timeframe == "weekly" else "-total_vc_seconds"
+    filter_field = "weekly_vc_seconds__gt" if timeframe == "weekly" else "total_vc_seconds__gt"
+    filter_kwargs = {
+        "guild_id": guild_id,
+        "is_active": True,
+        filter_field: 0,
+    }
+    return (await MemberAnalytics.filter(**filter_kwargs).order_by(order_field).limit(limit))
+
+
+async def get_user_rank(
+    guild_id: int,
+    user_id: int,
+) -> dict[str, int | None]:
+    """Calculates member rank in guild text messages and voice time."""
+    target = await MemberAnalytics.get_or_none(guild_id=guild_id, user_id=user_id)
+    if not target:
+        return {"text_rank": None, "vc_rank": None, "total_members": 0}
+
+    total_members = await MemberAnalytics.filter(guild_id=guild_id, is_active=True).count()
+
+    higher_text = await MemberAnalytics.filter(
         guild_id=guild_id,
-        is_active=True).order_by("-weekly_vc_seconds").limit(limit))
+        is_active=True,
+        total_messages__gt=target.total_messages,
+    ).count()
+    text_rank = higher_text + 1
+
+    higher_vc = await MemberAnalytics.filter(
+        guild_id=guild_id,
+        is_active=True,
+        total_vc_seconds__gt=target.total_vc_seconds,
+    ).count()
+    vc_rank = higher_vc + 1
+
+    return {
+        "text_rank": text_rank,
+        "vc_rank": vc_rank,
+        "total_members": total_members,
+    }
 
 
 async def get_eligible_top_members(
@@ -252,6 +296,13 @@ async def get_server_retention_stats(
 
     total_joins = sum(s.joins_count for s in snapshots)
     total_leaves = sum(s.leaves_count for s in snapshots)
+    total_messages = sum(s.total_messages for s in snapshots)
+
+    channel_activities = await ChannelActivity.filter(
+        guild_id=guild_id,
+        date__gte=since_date.date(),
+    )
+    total_vc_seconds = sum(c.vc_seconds_spent for c in channel_activities)
 
     recently_joined = await MemberAnalytics.filter(
         guild_id=guild_id,
@@ -270,6 +321,9 @@ async def get_server_retention_stats(
         "total_active": total_active,
         "total_joins": total_joins,
         "total_leaves": total_leaves,
+        "total_messages": total_messages,
+        "total_vc_seconds": total_vc_seconds,
+        "total_vc_hours": round(total_vc_seconds / 3600, 1),
         "net_growth": total_joins - total_leaves,
         "retention_rate": retention_rate,
     }

@@ -199,14 +199,14 @@
           ],
           "subcommands": [
             {
-              "name": "add",
-              "description": "Subcommand add",
-              "syntax": "role add"
-            },
-            {
               "name": "remove",
               "description": "Subcommand remove",
               "syntax": "role remove"
+            },
+            {
+              "name": "add",
+              "description": "Subcommand add",
+              "syntax": "role add"
             }
           ]
         },
@@ -700,7 +700,10 @@
         },
         {
           "name": "peakactivity",
-          "aliases": [],
+          "aliases": [
+            "activitytimes",
+            "peakhours"
+          ],
           "description": "Visualize the most active days of the week and peak chatting hours.",
           "usage": "/peakactivity | peakactivity",
           "slash_syntax": "/peakactivity",
@@ -716,7 +719,10 @@
         },
         {
           "name": "serverstats",
-          "aliases": [],
+          "aliases": [
+            "guildstats",
+            "serveranalytics"
+          ],
           "description": "Display aggregate server message counts, voice hours, and active trends.",
           "usage": "/serverstats | serverstats",
           "slash_syntax": "/serverstats",
@@ -732,7 +738,10 @@
         },
         {
           "name": "topchatters",
-          "aliases": [],
+          "aliases": [
+            "chatleaderboard",
+            "topmessages"
+          ],
           "description": "Display the server leaderboard for most active text chatters.",
           "usage": "/topchatters [days] [limit] | topchatters [days] [limit]",
           "slash_syntax": "/topchatters [days: int] [limit: int]",
@@ -748,7 +757,10 @@
         },
         {
           "name": "topvc",
-          "aliases": [],
+          "aliases": [
+            "topvoice",
+            "vcleaderboard"
+          ],
           "description": "Display the server leaderboard for highest voice channel time.",
           "usage": "/topvc [days] [limit] | topvc [days] [limit]",
           "slash_syntax": "/topvc [days: int] [limit: int]",
@@ -764,7 +776,11 @@
         },
         {
           "name": "userstats",
-          "aliases": [],
+          "aliases": [
+            "activity",
+            "mystats",
+            "uactivity"
+          ],
           "description": "Display individual engagement stats (messages sent, voice time, active hours).",
           "usage": "/userstats [user] | userstats [user]",
           "slash_syntax": "/userstats [user: @member]",
