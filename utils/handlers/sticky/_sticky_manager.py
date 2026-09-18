@@ -7,6 +7,7 @@ from typing import Optional
 
 import discord
 
+from utils.core.embeds import make_embed
 from ._webhook_utils import get_or_create_sticky_webhook, invalidate_sticky_webhook
 
 logger = logging.getLogger("bot")
@@ -36,19 +37,22 @@ class StickyPayload:
 
 def build_sticky_embed(text_content: str) -> discord.Embed:
     """Constructs a sleek embed, extracting image URLs if present."""
-    embed = discord.Embed(color=0x2B2D31)
     image_match = IMAGE_URL_REGEX.search(text_content)
+    image_url: Optional[str] = None
 
     if image_match:
         image_url = image_match.group(1)
-        embed.set_image(url=image_url)
         cleaned_text = text_content.replace(image_url, "").strip()
-        embed.description = (cleaned_text
-                             if cleaned_text else "📌 **Sticky Message**")
+        description = cleaned_text if cleaned_text else "📌 **Sticky Message**"
     else:
-        embed.description = text_content
+        description = text_content
 
-    return embed
+    return make_embed(
+        title="📌 Sticky Message",
+        description=description,
+        image=image_url,
+        level="INFO",
+    )
 
 
 async def delete_old_sticky(webhook: discord.Webhook, message_id: int) -> None:

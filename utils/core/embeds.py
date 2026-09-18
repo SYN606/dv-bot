@@ -112,6 +112,7 @@ class EmbedBuilder:
         url: Optional[str] = None,
         show_timestamp: bool = True,
         use_emoji: bool = False,
+        header_divider: bool = True,
     ) -> None:
         self._title: Optional[str] = title
         self._description: Optional[str] = description
@@ -127,7 +128,12 @@ class EmbedBuilder:
         self._footer_icon: Optional[str] = None
         self._show_timestamp: bool = show_timestamp
         self._use_emoji: bool = use_emoji
+        self._header_divider: bool = header_divider
         self._fields: list[tuple[str, str, bool]] = []
+
+    def set_header_divider(self, show: bool = True) -> EmbedBuilder:
+        self._header_divider = show
+        return self
 
     def set_title(self, title: str, use_emoji: Optional[bool] = None) -> EmbedBuilder:
         self._title = title
@@ -261,6 +267,7 @@ class EmbedBuilder:
             use_emoji=self._use_emoji,
             url=self._url,
             color=self._color,
+            header_divider=self._header_divider,
         )
 
 
@@ -281,10 +288,12 @@ def make_embed(
     use_emoji: bool = False,
     url: Optional[str] = None,
     color: Optional[Union[int, discord.Color]] = None,
+    header_divider: bool = True,
 ) -> discord.Embed:
     """
     Factory function to construct standard discord.Embed objects with safety truncation,
-    color-coded log levels, optional custom colors, and automatic emoji prefixes.
+    color-coded log levels, optional custom colors, automatic emoji prefixes,
+    and a sleek horizontal divider line directly after the header.
     """
     level = level.upper()
     resolved_color = _resolve_color(color if color is not None else level, default_level=level)
@@ -292,9 +301,25 @@ def make_embed(
     emoji = _resolve_emoji(level) if use_emoji else None
     title_text = f"{emoji} {title}" if emoji else title
 
+    # Automatically add a sleek horizontal line after the header
+    final_description: Optional[str] = description
+    if header_divider:
+        if final_description is None or not str(final_description).strip():
+            final_description = DIVIDER_LINE
+        else:
+            desc_stripped = str(final_description).strip()
+            if not (
+                desc_stripped.startswith(DIVIDER_LINE)
+                or desc_stripped.startswith("────")
+                or desc_stripped.startswith("----")
+            ):
+                final_description = f"{DIVIDER_LINE}\n{desc_stripped}"
+            else:
+                final_description = desc_stripped
+
     embed = discord.Embed(
         title=_safe(title_text, TITLE_LIMIT),
-        description=_safe(description, DESCRIPTION_LIMIT, fallback=""),
+        description=_safe(final_description, DESCRIPTION_LIMIT, fallback=""),
         color=resolved_color,
         url=_safe_url(url),
     )
