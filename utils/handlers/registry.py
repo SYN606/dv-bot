@@ -3,7 +3,7 @@ from __future__ import annotations
 import discord
 from discord.ext import commands
 
-from utils.handlers.afk._afk_nicknames import handle_afk
+from utils.handlers.afk_handler import handle_afk
 from utils.handlers.analytics_handler import (
     handle_analytics_join,
     handle_analytics_leave,
@@ -21,7 +21,7 @@ from utils.handlers.prefix import (
     preprocess_message,
 )
 from utils.handlers.sticky.sticky_handler import handle_sticky
-from utils.handlers.vc_mod_handlers.vc_role_handler import handle_voice_state_update
+from utils.handlers.vc_role_handler import handle_voice_state_update
 
 
 # --- MESSAGE PIPELINE INTERCEPTORS ---

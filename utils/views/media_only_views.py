@@ -3,7 +3,9 @@ import discord
 from db.db_helpers.media_only import (
     disable_media_only,
     enable_media_only,
+    get_media_only_config,
     is_media_only,
+    update_sticky_message_id,
 )
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
@@ -12,16 +14,27 @@ from utils.permissions.check_perms import is_bot_admin
 
 
 async def remove_media_only_sticky(channel: discord.TextChannel) -> None:
-    """Scan channel history and remove any existing media-only sticky embed."""
+    """Removes any existing media-only sticky embed efficiently."""
+    config = await get_media_only_config(channel.guild.id, channel.id)
+    if config and config.sticky_message_id:
+        try:
+            msg = channel.get_partial_message(config.sticky_message_id)
+            await msg.delete()
+            await update_sticky_message_id(channel.guild.id, channel.id, None)
+            return
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+            pass
+
     try:
-        async for message in channel.history(limit=50):
+        async for message in channel.history(limit=25):
             if (message.embeds and message.embeds[0].footer
                     and STICKY_TAG in (message.embeds[0].footer.text or "")):
                 try:
                     await message.delete()
                 except (discord.Forbidden, discord.NotFound):
                     pass
-    except discord.Forbidden:
+                break
+    except (discord.Forbidden, discord.HTTPException):
         pass
 
 
@@ -29,8 +42,9 @@ async def send_or_replace_sticky(channel: discord.TextChannel) -> None:
     """Remove existing sticky message and dispatch a fresh media-only sticky embed."""
     await remove_media_only_sticky(channel)
     try:
-        await channel.send(embed=build_media_only_sticky_embed())
-    except discord.Forbidden:
+        msg = await channel.send(embed=build_media_only_sticky_embed())
+        await update_sticky_message_id(channel.guild.id, channel.id, msg.id)
+    except (discord.Forbidden, discord.HTTPException):
         pass
 
 

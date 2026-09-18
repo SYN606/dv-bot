@@ -1,0 +1,409 @@
+from __future__ import annotations
+
+import logging
+import os
+from typing import Any, Dict, List, Optional, Union
+
+import discord
+from discord import app_commands
+from discord.ext import commands
+
+from db.db_helpers.channel_command_restrict import get_restricted_commands
+from utils.core.embeds import make_embed
+from utils.core.emojis import EMOJIS
+from utils.core.help_engine import (
+    CATEGORY_META,
+    find_command_data,
+    get_command_type_badge,
+    introspect_bot_commands,
+    search_command_choices,
+)
+from utils.permissions.check_perms import is_bot_admin_ctx
+
+logger = logging.getLogger("DigitalVigil.Help")
+
+BANNER_GIF = os.getenv("HELP_BANNER_GIF")
+
+
+class HelpDropdown(discord.ui.Select):
+    """Dropdown component for selecting and viewing specific command categories."""
+
+    def __init__(
+        self,
+        categories: List[Dict[str, Any]],
+        author_id: int,
+        ctx_prefix: str,
+    ) -> None:
+        self.categories_map: Dict[str, Dict[str, Any]] = {
+            cat["id"]: cat for cat in categories
+        }
+        self.author_id: int = author_id
+        self.ctx_prefix: str = ctx_prefix.rstrip()
+
+        options: List[discord.SelectOption] = []
+        for cat in categories:
+            if not cat.get("commands"):
+                continue
+
+            emoji_val = cat.get("emoji") or CATEGORY_META.get(cat["id"], {}).get("emoji", "🔹")
+            cmd_count = len(cat.get("commands", []))
+            options.append(
+                discord.SelectOption(
+                    label=f"{cat['name']} ({cmd_count})",
+                    value=cat["id"],
+                    emoji=emoji_val,
+                    description=cat.get(
+                        "description",
+                        f"Explore {cat['name']} commands.",
+                    )[:100],
+                )
+            )
+
+        super().__init__(
+            placeholder="📂 Select a category to explore...",
+            min_values=1,
+            max_values=1,
+            options=options if options else [
+                discord.SelectOption(label="No categories available", value="none")
+            ],
+            disabled=not options,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message(
+                f"{EMOJIS.get('fail', '❌')} You cannot interact with this menu.",
+                ephemeral=True,
+            )
+            return
+
+        cat_id = self.values[0]
+        if cat_id == "none" or cat_id not in self.categories_map:
+            await interaction.response.send_message(
+                f"{EMOJIS.get('fail', '❌')} Category unavailable.",
+                ephemeral=True,
+            )
+            return
+
+        category_data = self.categories_map[cat_id]
+        emoji = category_data.get("emoji") or CATEGORY_META.get(cat_id, {}).get("emoji", "🔹")
+        arrow = EMOJIS.get("arrow_point", "▶")
+        desc = f"### {emoji} {category_data['name']} Module\n"
+        if category_data.get("description"):
+            desc += f"*{category_data['description']}*\n\n"
+        desc += "📌 **Key:** `[⇄ Hybrid]` = Slash & Prefix • `[/ Slash]` = Slash only • `[! Prefix]` = Prefix only\n\n"
+
+        for c in category_data.get("commands", []):
+            is_prefix = c.get("is_prefix", True)
+            is_slash = c.get("is_slash", False)
+
+            type_badge = get_command_type_badge(is_prefix, is_slash)
+            name = c["name"].lstrip("/")
+
+            syntax_parts = []
+            if is_slash:
+                slash_syn = c.get("slash_syntax") or f"/{c.get('usage', name)}"
+                syntax_parts.append(f"**Slash:** `{slash_syn}`")
+            if is_prefix:
+                p_syn = c.get("prefix_syntax") or c.get("usage", name)
+                if not p_syn.startswith(self.ctx_prefix):
+                    p_syn = f"{self.ctx_prefix} {p_syn}"
+                syntax_parts.append(f"**Prefix:** `{p_syn}`")
+
+            syntax_line = " • ".join(syntax_parts)
+            aliases = (
+                f" *[Aliases: {', '.join(c['aliases'])}]*"
+                if c.get("aliases")
+                else ""
+            )
+
+            desc += (
+                f"{arrow} **`{name}`** {type_badge}{aliases}\n"
+                f"> {syntax_line}\n"
+                f"> *{c.get('description', 'No description provided.')}*\n\n"
+            )
+
+        embed = make_embed(
+            title=f"Digital Vigital • {category_data['name']}",
+            description=desc,
+            level="INFO",
+        )
+        if BANNER_GIF:
+            embed.set_image(url=BANNER_GIF)
+
+        embed.set_footer(
+            text=f"Requested by {interaction.user} • Use {self.ctx_prefix} help <command> for details",
+            icon_url=interaction.user.display_avatar.url,
+        )
+
+        await interaction.response.edit_message(embed=embed)
+
+
+class HelpDropdownView(discord.ui.View):
+    """View container managing interaction controls for the help system."""
+
+    def __init__(
+        self,
+        categories: List[Dict[str, Any]],
+        author_id: int,
+        ctx_prefix: str,
+        main_embed: discord.Embed,
+        timeout: float = 120.0,
+    ) -> None:
+        super().__init__(timeout=timeout)
+        self.author_id = author_id
+        self.main_embed = main_embed
+        self.message: Optional[Union[discord.Message, discord.InteractionMessage]] = None
+
+        self.add_item(HelpDropdown(categories, author_id, ctx_prefix))
+
+    @discord.ui.button(label="Home", style=discord.ButtonStyle.secondary, emoji="🏠")
+    async def home_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message(
+                f"{EMOJIS.get('fail', '❌')} You cannot interact with this menu.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.edit_message(embed=self.main_embed)
+
+    @discord.ui.button(label="Close", style=discord.ButtonStyle.danger, emoji="🗑️")
+    async def close_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message(
+                f"{EMOJIS.get('fail', '❌')} You cannot interact with this menu.",
+                ephemeral=True,
+            )
+            return
+
+        if interaction.message:
+            await interaction.message.delete()
+        else:
+            await interaction.response.defer()
+
+    async def on_timeout(self) -> None:
+        for item in self.children:
+            if isinstance(item, (discord.ui.Select, discord.ui.Button)):
+                item.disabled = True
+
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except (discord.NotFound, discord.HTTPException):
+                pass
+
+
+class Help(commands.Cog):
+    """Cog providing a professional, dynamic command directory and usage lookup."""
+
+    def __init__(self, bot: commands.Bot) -> None:
+        self.bot = bot
+
+    async def command_autocomplete(
+        self, interaction: discord.Interaction, current: str
+    ) -> List[app_commands.Choice[str]]:
+        """Fast dynamic autocomplete handler for slash command query matching."""
+        tree = introspect_bot_commands(self.bot)
+        return search_command_choices(tree, current, limit=25)
+
+    async def _get_authorized_help_tree(
+        self,
+        guild: Optional[discord.Guild],
+        channel: Optional[Union[
+            discord.abc.GuildChannel,
+            discord.abc.PrivateChannel,
+            discord.Thread,
+        ]],
+        is_admin: bool,
+    ) -> List[Dict[str, Any]]:
+        """Filter dynamic command categories according to guild restrictions and user administrative status."""
+        tree = introspect_bot_commands(self.bot)
+        restricted: set[str] = set()
+        if guild and channel:
+            try:
+                restricted = set(await get_restricted_commands(guild.id, channel.id))
+            except Exception as exc:
+                logger.error("Failed fetching restricted commands: %s", exc)
+
+        filtered_categories: List[Dict[str, Any]] = []
+        for cat in tree.get("categories", []):
+            filtered_cmds = [
+                c for c in cat.get("commands", [])
+                if (c["name"].split()[0].lower() not in restricted or is_admin)
+            ]
+            if filtered_cmds:
+                cat_copy = cat.copy()
+                cat_copy["commands"] = filtered_cmds
+                filtered_categories.append(cat_copy)
+
+        return filtered_categories
+
+    @commands.hybrid_command(
+        name="help",
+        description="Show bot command directory with syntax and usage.",
+        aliases=["h"],
+    )
+    @app_commands.describe(
+        command_name="Specific command name to view detailed syntax, parameters, and examples"
+    )
+    @app_commands.autocomplete(command_name=command_autocomplete)
+    async def help(
+        self,
+        ctx: commands.Context,
+        command_name: Optional[str] = None,
+    ) -> None:
+        """Execute help menu dispatch with dynamic command introspection."""
+        raw_prefix = ctx.clean_prefix
+        current_prefix = raw_prefix.rstrip()
+        tree = introspect_bot_commands(self.bot)
+
+        # 1. Detailed Command Specific Lookups
+        if command_name:
+            found_cmd = find_command_data(tree, command_name)
+
+            if found_cmd:
+                is_prefix = found_cmd.get("is_prefix", True)
+                is_slash = found_cmd.get("is_slash", False)
+                type_badge = get_command_type_badge(is_prefix, is_slash)
+                name = found_cmd["name"]
+
+                desc_parts = [
+                    f"### 📖 Command: `{name}` {type_badge}\n",
+                    f"> *{found_cmd.get('description', 'No description provided.')}*\n",
+                    "**Available Invocation Styles:**",
+                ]
+
+                if is_slash:
+                    slash_syn = found_cmd.get("slash_syntax") or f"/{found_cmd.get('usage', name)}"
+                    desc_parts.append(f"• **Slash Command (`/`):** `{slash_syn}`")
+                if is_prefix:
+                    p_syn = found_cmd.get("prefix_syntax") or found_cmd.get("usage", name)
+                    if not p_syn.startswith(current_prefix):
+                        p_syn = f"{current_prefix} {p_syn}"
+                    desc_parts.append(f"• **Prefix Command:** `{p_syn}`")
+
+                aliases_str = (
+                    ", ".join([f"`{a}`" for a in found_cmd.get("aliases", [])])
+                    if found_cmd.get("aliases")
+                    else "None"
+                )
+
+                desc_parts.append(f"\n**Aliases:** {aliases_str}")
+                desc_parts.append(f"**Permissions:** `{found_cmd.get('permissions', 'None')}`\n")
+
+                examples_list = found_cmd.get("examples", [])
+                if examples_list:
+                    desc_parts.append("**Examples:**")
+                    for ex in examples_list:
+                        ex_display = (
+                            ex
+                            if ex.startswith("/") or ex.startswith(current_prefix)
+                            else f"{current_prefix} {ex}"
+                        )
+                        desc_parts.append(f"• `{ex_display}`")
+
+                if found_cmd.get("subcommands"):
+                    desc_parts.append("\n**Subcommands:**")
+                    for sc in found_cmd["subcommands"]:
+                        desc_parts.append(f"• `{sc['syntax']}` — *{sc['description']}*")
+
+                embed = make_embed(
+                    title="Help Center • Command Overview",
+                    description="\n".join(desc_parts),
+                    level="INFO",
+                )
+                embed.set_footer(
+                    text=f"Action by: {ctx.author}",
+                    icon_url=ctx.author.display_avatar.url,
+                )
+
+                if ctx.interaction:
+                    if ctx.interaction.response.is_done():
+                        await ctx.interaction.followup.send(embed=embed, ephemeral=True)
+                    else:
+                        await ctx.interaction.response.send_message(embed=embed, ephemeral=True)
+                else:
+                    await ctx.send(embed=embed)
+                return
+
+            not_found_msg = f"{EMOJIS.get('fail', '❌')} Command `{command_name}` not found in system directory."
+            if ctx.interaction:
+                if ctx.interaction.response.is_done():
+                    await ctx.interaction.followup.send(not_found_msg, ephemeral=True)
+                else:
+                    await ctx.interaction.response.send_message(not_found_msg, ephemeral=True)
+            else:
+                await ctx.send(not_found_msg)
+            return
+
+        # 2. Main Command Directory Overview
+        is_admin = await is_bot_admin_ctx(ctx) if ctx.guild else False
+        filtered_tree = await self._get_authorized_help_tree(
+            ctx.guild,
+            ctx.channel,  # type: ignore
+            is_admin,
+        )
+
+        total_cmds = tree.get("total_count", 0)
+        hybrid_count = 0
+        slash_count = 0
+        prefix_count = 0
+
+        for c in tree.get("all_commands", []):
+            if c.get("is_prefix") and c.get("is_slash"):
+                hybrid_count += 1
+            elif c.get("is_slash"):
+                slash_count += 1
+            else:
+                prefix_count += 1
+
+        desc = (
+            f"### {EMOJIS.get('animated_ping', '✨')} Welcome to the Help Center\n"
+            "Select a module from the dropdown menu below to inspect category commands.\n\n"
+            f"**Command Directory Breakdown:**\n"
+            f"• **Total Commands:** `{total_cmds}`\n"
+            f"• `[⇄ Hybrid]` **Slash & Prefix:** `{hybrid_count}` *(Run with `/` or `{current_prefix}`)*\n"
+            f"• `[/ Slash]` **Slash Only:** `{slash_count}` *(Run with `/`)*\n"
+            f"• `[! Prefix]` **Prefix Only:** `{prefix_count}` *(Run with `{current_prefix}`)*\n\n"
+            f"{EMOJIS.get('arrow_point', '▶')} **Need specific info?** Use `{current_prefix} help <command>` or `/help command_name: <command>`\n"
+            f"{EMOJIS.get('arrow_point', '▶')} **System Status:** Operational"
+        )
+
+        embed = make_embed(
+            title="Digital Vigital • Main Menu",
+            description=desc,
+            level="INFO",
+        )
+        if BANNER_GIF:
+            embed.set_image(url=BANNER_GIF)
+
+        embed.set_footer(
+            text=f"Requested by {ctx.author}",
+            icon_url=ctx.author.display_avatar.url,
+        )
+
+        view = HelpDropdownView(
+            filtered_tree,
+            ctx.author.id,
+            raw_prefix,
+            main_embed=embed,
+        )
+
+        if ctx.interaction:
+            if ctx.interaction.response.is_done():
+                await ctx.interaction.followup.send(embed=embed, view=view)
+                view.message = await ctx.interaction.original_response()
+            else:
+                await ctx.interaction.response.send_message(embed=embed, view=view)
+                view.message = await ctx.interaction.original_response()
+        else:
+            view.message = await ctx.send(embed=embed, view=view)
+
+
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(Help(bot))

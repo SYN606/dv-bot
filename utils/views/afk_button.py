@@ -6,7 +6,7 @@ import discord
 from discord.ui import Button, View
 
 from db.db_helpers.afk import set_afk
-from utils.handlers.afk._afk_nicknames import apply_afk_nicknames
+from utils.handlers.afk_handler import apply_afk_nicknames
 
 logger = logging.getLogger("DigitalVigital")
 

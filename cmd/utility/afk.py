@@ -9,7 +9,7 @@ from discord.ext import commands
 
 from db.db_helpers.afk import set_afk
 from utils.core.embeds import make_embed
-from utils.handlers.afk._afk_nicknames import apply_afk_nicknames
+from utils.handlers.afk_handler import apply_afk_nicknames
 from utils.views.afk_button import GlobalAFKView
 
 if TYPE_CHECKING:

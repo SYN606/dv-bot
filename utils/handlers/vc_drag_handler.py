@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TypeAlias
 import discord
-from ._moveall_handler import _safe_move_member
+from utils.handlers.vc_moveall_handler import _safe_move_member
 
 # Explicit type union for voice-capable channels
 VCTarget: TypeAlias = discord.VoiceChannel | discord.StageChannel

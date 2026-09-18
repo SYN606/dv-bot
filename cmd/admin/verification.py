@@ -6,7 +6,7 @@ from discord.ext import commands
 
 from utils.core.embeds import make_embed
 from utils.permissions.base_admin import BaseAdminCog
-from utils.views.verification_views.verify_panel_view import VerificationView
+from utils.views.verify_panel_view import VerificationView
 
 logger = logging.getLogger("bot")
 

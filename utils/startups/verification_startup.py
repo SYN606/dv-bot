@@ -1,8 +1,8 @@
 import asyncio
 import logging
 import discord
-from db.db_helpers.verification import (get_verification_config)
-from utils.views.verification_views.verify_button_view import (VerifyButtonView)
+from db.db_helpers.verification import get_verification_config
+from utils.views.verify_button_view import VerifyButtonView
 
 logger = logging.getLogger("Digital Vigital")
 

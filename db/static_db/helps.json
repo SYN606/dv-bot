@@ -9,203 +9,272 @@
         {
           "name": "adminrole",
           "aliases": [],
-          "description": "Configures or displays authorized administrative/bot developer roles for the bot override system.",
-          "usage": "adminrole <add/remove/list> [role]",
-          "examples": [
-            "adminrole add @Staff",
-            "adminrole list"
-          ],
+          "description": "Configure authorized administrative/developer roles for bot overrides.",
+          "usage": "/adminrole <add|remove|list|reset> [role]",
+          "slash_syntax": "/adminrole <add|remove|list|reset> [role]",
+          "prefix_syntax": null,
+          "command_type": "slash",
+          "is_prefix": false,
+          "is_slash": true,
           "permissions": "Guild Owner / Bot Admin",
-          "is_prefix": true,
-          "is_slash": false
+          "examples": [
+            "/adminrole add role: @Staff",
+            "/adminrole list",
+            "/adminrole reset"
+          ],
+          "subcommands": [
+            {
+              "name": "add",
+              "description": "Authorize a role for administrative bot override permissions.",
+              "syntax": "/adminrole add"
+            },
+            {
+              "name": "remove",
+              "description": "Revoke administrative bot override authorization from a role.",
+              "syntax": "/adminrole remove"
+            },
+            {
+              "name": "list",
+              "description": "Display all custom administrative role definitions for this server.",
+              "syntax": "/adminrole list"
+            },
+            {
+              "name": "reset",
+              "description": "Wipe all configured administrative roles from the database.",
+              "syntax": "/adminrole reset"
+            }
+          ]
         },
         {
           "name": "autoresponder",
           "aliases": [
             "ar"
           ],
-          "description": "Manage the server autoresponder processing matrix to catch and reply to message patterns.",
-          "usage": "autoresponder <add/edit/remove/list>",
-          "examples": [
-            "autoresponder list",
-            "autoresponder remove rule_id: 12"
-          ],
-          "permissions": "Base Admin Cog Level / Configuration Mod",
+          "description": "Create and manage automated trigger-response rules for chat messages.",
+          "usage": "/autoresponder <add|edit|remove|list>",
+          "slash_syntax": "/autoresponder <add|edit|remove|list>",
+          "prefix_syntax": null,
+          "command_type": "slash",
           "is_prefix": false,
-          "is_slash": true
-        },
-        {
-          "name": "mediaonly",
-          "aliases": [
-            "media"
-          ],
-          "description": "Toggles an automated enforcement lock on a channel restricting text-only messages.",
-          "usage": "mediaonly <enable/disable/list> [#channel]",
+          "is_slash": true,
+          "permissions": "Administrator / Bot Admin",
           "examples": [
-            "mediaonly enable #memes"
+            "/autoresponder list",
+            "/autoresponder add trigger: hello reply: Hi there! match_type: exact"
           ],
-          "permissions": "Manage Channels",
-          "is_prefix": true,
-          "is_slash": false
+          "subcommands": [
+            {
+              "name": "add",
+              "description": "Create or update an active autoresponder rule configuration.",
+              "syntax": "/autoresponder add"
+            },
+            {
+              "name": "edit",
+              "description": "Modify properties for an existing autoresponder configuration profile.",
+              "syntax": "/autoresponder edit"
+            },
+            {
+              "name": "remove",
+              "description": "Delete an active autoresponder rule sequence using its Unique ID.",
+              "syntax": "/autoresponder remove"
+            },
+            {
+              "name": "list",
+              "description": "Display all custom autoresponder execution logs configured for this server.",
+              "syntax": "/autoresponder list"
+            }
+          ]
         },
         {
-          "name": "permaudit",
+          "name": "media_only",
           "aliases": [
+            "mediaonly"
+          ],
+          "description": "Toggle and configure media-only restriction mode for a channel.",
+          "usage": "/media_only [channel]",
+          "slash_syntax": "/media_only [channel]",
+          "prefix_syntax": null,
+          "command_type": "slash",
+          "is_prefix": false,
+          "is_slash": true,
+          "permissions": "Manage Channels, Manage Messages",
+          "examples": [
+            "/media_only",
+            "/media_only channel: #memes"
+          ]
+        },
+        {
+          "name": "perm-check",
+          "aliases": [
+            "perm-check",
+            "perm-scan",
             "permission_audit"
           ],
-          "description": "Suite to check member permissions (/perm-check) or scan the entire server for high-risk accounts (/perm-scan).",
-          "usage": "perm-check <member> or perm-scan",
-          "examples": [
-            "perm-check @User",
-            "perm-scan"
-          ],
-          "permissions": "Senior Moderator / Administrator",
+          "description": "Inspect member permissions or scan guild for high-risk accounts.",
+          "usage": "/perm-check <member> | /perm-scan",
+          "slash_syntax": "/perm-check member: <@user> | /perm-scan",
+          "prefix_syntax": null,
+          "command_type": "slash",
           "is_prefix": false,
-          "is_slash": true
+          "is_slash": true,
+          "permissions": "Administrator",
+          "examples": [
+            "/perm-check member: @User",
+            "/perm-scan"
+          ]
+        },
+        {
+          "name": "perm-scan",
+          "aliases": [
+            "perm-check",
+            "perm-scan",
+            "permission_audit"
+          ],
+          "description": "Inspect member permissions or scan guild for high-risk accounts.",
+          "usage": "/perm-check <member> | /perm-scan",
+          "slash_syntax": "/perm-check member: <@user> | /perm-scan",
+          "prefix_syntax": null,
+          "command_type": "slash",
+          "is_prefix": false,
+          "is_slash": true,
+          "permissions": "Administrator",
+          "examples": [
+            "/perm-check member: @User",
+            "/perm-scan"
+          ]
         },
         {
           "name": "purge",
           "aliases": [
             "clear"
           ],
-          "description": "Bulk deletes messages matching standard filters from the current channel.",
-          "usage": "purge <amount> [user]",
+          "description": "Bulk delete messages from the current channel with optional user filter.",
+          "usage": "purge <amount> [member]",
+          "slash_syntax": null,
+          "prefix_syntax": "purge <amount> [member]",
+          "command_type": "prefix",
+          "is_prefix": true,
+          "is_slash": false,
+          "permissions": "Manage Messages",
           "examples": [
             "purge 50",
-            "purge 20 @Spammer"
-          ],
-          "permissions": "Manage Messages",
-          "is_prefix": true,
-          "is_slash": false
+            "purge 25 @Spammer"
+          ]
         },
         {
           "name": "rename",
           "aliases": [
-            "setname"
+            "nick",
+            "setnick"
           ],
-          "description": "Updates a member's server nickname or targets channel name profiles cleanly.",
-          "usage": "rename <member/channel> <new name>",
-          "examples": [
-            "rename @User Local Nickname"
-          ],
-          "permissions": "Manage Nicknames / Manage Channels",
+          "description": "Change a member nickname or channel name.",
+          "usage": "rename <member|channel> <new_name>",
+          "slash_syntax": null,
+          "prefix_syntax": "rename <member|channel> <new_name>",
+          "command_type": "prefix",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": false,
+          "permissions": "Manage Nicknames / Manage Channels",
+          "examples": [
+            "rename @User CoolNick",
+            "rename #general main-chat"
+          ]
         },
         {
           "name": "role",
           "aliases": [
             "roles"
           ],
-          "description": "Utility system to assign or strip security and cosmetic roles from server members.",
-          "usage": "role <add/remove>",
-          "examples": [
-            "role add user: @User role: @Verified"
-          ],
-          "permissions": "Manage Roles",
-          "is_prefix": false,
-          "is_slash": true
-        },
-        {
-          "name": "setuplog",
-          "aliases": [
-            "setup_log"
-          ],
-          "description": "Initializes or updates the text channel endpoint map for target mod logs.",
-          "usage": "setuplog [#channel]",
-          "examples": [
-            "setuplog #mod-logs"
-          ],
-          "permissions": "Administrator Only",
+          "description": "Assign or remove roles from a member.",
+          "usage": "role <add|remove> <member> <role>",
+          "slash_syntax": null,
+          "prefix_syntax": "role <add|remove> <member> <role>",
+          "command_type": "prefix",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": false,
+          "permissions": "Manage Roles",
+          "examples": [
+            "role add @User @Member",
+            "role remove @User @Muted"
+          ],
+          "subcommands": [
+            {
+              "name": "add",
+              "description": "Subcommand add",
+              "syntax": "role add"
+            },
+            {
+              "name": "remove",
+              "description": "Subcommand remove",
+              "syntax": "role remove"
+            }
+          ]
         },
         {
-          "name": "sticky",
+          "name": "roleinfo",
           "aliases": [],
-          "description": "Manage automated channel sticky message layouts via server slash commands.",
-          "usage": "sticky <set/disable/status>",
-          "examples": [
-            "sticky set message: Read the rules channel: #general"
-          ],
-          "permissions": "Manage Channels",
+          "description": "Display detailed information, permissions, and stats for a role.",
+          "usage": "/roleinfo <role>",
+          "slash_syntax": "/roleinfo role: <@role>",
+          "prefix_syntax": null,
+          "command_type": "slash",
           "is_prefix": false,
-          "is_slash": true
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/roleinfo role: @Moderator"
+          ]
+        },
+        {
+          "name": "setup_log",
+          "aliases": [],
+          "description": "Configure the moderation and audit log channel.",
+          "usage": "/setup_log channel: [#channel]",
+          "slash_syntax": "/setup_log channel: <#channel>",
+          "prefix_syntax": null,
+          "command_type": "slash",
+          "is_prefix": false,
+          "is_slash": true,
+          "permissions": "Administrator",
+          "examples": [
+            "/setup_log channel: #mod-logs"
+          ]
         },
         {
           "name": "verification",
-          "aliases": [
-            "verify-config"
-          ],
-          "description": "Links the core verified role database entry used by the verification gates.",
-          "usage": "verification set <@role>",
+          "aliases": [],
+          "description": "Set up interactive button-based captcha server verification.",
+          "usage": "/verification",
+          "slash_syntax": "/verification",
+          "prefix_syntax": null,
+          "command_type": "slash",
+          "is_prefix": false,
+          "is_slash": true,
+          "permissions": "Administrator",
           "examples": [
-            "verification set @Member"
-          ],
-          "permissions": "Administrator Only",
-          "is_prefix": true,
-          "is_slash": false
+            "/verification"
+          ]
         },
         {
           "name": "whois",
           "aliases": [
-            "userinfo",
-            "ui"
+            "ui",
+            "user",
+            "userinfo"
           ],
-          "description": "Generates a detailed profile inspection layout displaying join metrics, IDs, and roles.",
-          "usage": "whois [@user/id]",
+          "description": "Display detailed member profile, permissions, badges, and join dates.",
+          "usage": "whois [member]",
+          "slash_syntax": null,
+          "prefix_syntax": "whois [member]",
+          "command_type": "prefix",
+          "is_prefix": true,
+          "is_slash": false,
+          "permissions": "None (Public)",
           "examples": [
-            "whois @Username"
-          ],
-          "permissions": "None",
-          "is_prefix": true,
-          "is_slash": false
-        }
-      ]
-    },
-    {
-      "id": "channels",
-      "name": "Channel Management",
-      "emoji": "📁",
-      "description": "Commands to adjust accessibility, clean up context visibility, or lock chats.",
-      "commands": [
-        {
-          "name": "hide",
-          "aliases": [
-            "unhide"
-          ],
-          "description": "Alters channel permissions to instantly mask or reveal it to the @everyone level.",
-          "usage": "hide [#channel] / unhide [#channel]",
-          "permissions": "Manage Channels",
-          "is_prefix": true,
-          "is_slash": false
-        },
-        {
-          "name": "lockdown",
-          "aliases": [
-            "lock",
-            "unlock"
-          ],
-          "description": "Freezes message execution updates across a single targeted channel.",
-          "usage": "lockdown [enable/disable] [#channel]",
-          "permissions": "Manage Channels",
-          "is_prefix": true,
-          "is_slash": false
-        },
-        {
-          "name": "slowmode",
-          "aliases": [
-            "sm"
-          ],
-          "description": "Adjusts or resets the active chat rate restriction loop using standard Discord intervals.",
-          "usage": "slowmode <time|reset> [#channel]",
-          "examples": [
-            "slowmode 1m",
-            "slowmode reset #general"
-          ],
-          "permissions": "Manage Channels",
-          "is_prefix": true,
-          "is_slash": false
+            "whois",
+            "whois @User",
+            "whois 123456789012345678"
+          ]
         }
       ]
     },
@@ -213,68 +282,131 @@
       "id": "moderation",
       "name": "Moderation",
       "emoji": "🔨",
-      "description": "Core punitive tracking systems used by the safety team.",
+      "description": "Enforce rules, manage punishments, issue timeouts, tempbans, bans, and warnings.",
       "commands": [
         {
           "name": "ban",
           "aliases": [],
-          "description": "Permanently seals a member out of the guild space and triggers mod log dispatch.",
-          "usage": "ban <@user/id> [reason]",
+          "description": "Permanently ban a member from the server with optional reason.",
+          "usage": "ban <member> [reason]",
+          "slash_syntax": "/ban member: <@user> [reason: text]",
+          "prefix_syntax": "ban <member> [reason]",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
           "permissions": "Ban Members",
-          "is_prefix": true,
-          "is_slash": false
-        },
-        {
-          "name": "fakeban",
-          "aliases": [],
-          "description": "Simulates a user ban completely, sending an official direct message notice and structural channel warnings without enforcing a real ban.",
-          "usage": "fakeban <user> [reason]",
           "examples": [
-            "fakeban user: @Troll reason: Custom Test",
-            "fakeban 123456789012345678 Appealed Rule Break"
-          ],
-          "permissions": "Ban Members / Manage Messages",
-          "is_prefix": true,
-          "is_slash": true
+            "/ban member: @Spammer reason: Raid",
+            "ban @Spammer Advertising"
+          ]
         },
         {
           "name": "clearwarnings",
-          "aliases": [],
-          "description": "Wipes a member's entire moderation warning database index cleanly.",
-          "usage": "clearwarnings <user>",
-          "permissions": "Moderate Members / Server Owner",
+          "aliases": [
+            "clswarns"
+          ],
+          "description": "Clear all warning records for a specific member.",
+          "usage": "clearwarnings <member>",
+          "slash_syntax": "/clearwarnings member: <@user>",
+          "prefix_syntax": "clearwarnings <member>",
+          "command_type": "hybrid",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": true,
+          "permissions": "Administrator",
+          "examples": [
+            "/clearwarnings member: @User",
+            "clearwarnings @User"
+          ]
         },
         {
           "name": "delwarn",
-          "aliases": [],
-          "description": "Removes a specific warning infraction instance using its ID.",
+          "aliases": [
+            "dw"
+          ],
+          "description": "Delete a specific warning record by its warning ID.",
           "usage": "delwarn <warn_id>",
-          "permissions": "Manage Messages",
+          "slash_syntax": "/delwarn warn_id: <id>",
+          "prefix_syntax": "delwarn <warn_id>",
+          "command_type": "hybrid",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": true,
+          "permissions": "Moderate Members",
+          "examples": [
+            "/delwarn warn_id: 14",
+            "delwarn 14"
+          ]
+        },
+        {
+          "name": "fakeban",
+          "aliases": [
+            "fb",
+            "fban"
+          ],
+          "description": "Send an amusing prank ban embed notification without actually banning.",
+          "usage": "fakeban <member> [reason]",
+          "slash_syntax": "/fakeban target: <@user> [reason: text]",
+          "prefix_syntax": "fakeban <member> [reason]",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "Kick Members",
+          "examples": [
+            "/fakeban target: @Friend reason: Being too awesome",
+            "fakeban @Friend Skill issue"
+          ]
         },
         {
           "name": "kick",
           "aliases": [],
-          "description": "Removes a member from the server safely.",
-          "usage": "kick <@user/id> [reason]",
-          "permissions": "Kick Members",
+          "description": "Kick a member from the server.",
+          "usage": "kick <member> [reason]",
+          "slash_syntax": "/kick member: <@user> [reason: text]",
+          "prefix_syntax": "kick <member> [reason]",
+          "command_type": "hybrid",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": true,
+          "permissions": "Kick Members",
+          "examples": [
+            "/kick member: @Troll reason: Inappropriate behavior",
+            "kick @Troll"
+          ]
         },
         {
           "name": "tempban",
           "aliases": [
-            "tb",
-            "jail"
+            "jail",
+            "tb"
           ],
-          "description": "Applies a temporary constraint loop on a user via isolation role.",
-          "usage": "tempban <@user/id> [duration] [reason]",
-          "permissions": "Bot Admin / Manage Roles",
+          "description": "Isolate a member via tempban role for a timed period before auto-restoring.",
+          "usage": "tempban <member> <duration> [reason]",
+          "slash_syntax": "/tempban member: <@user> duration: <1h|1d> [reason: text]",
+          "prefix_syntax": "tempban <member> <duration> [reason]",
+          "command_type": "hybrid",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": true,
+          "permissions": "Ban Members, Manage Roles",
+          "examples": [
+            "/tempban member: @User duration: 2h reason: Cooldown",
+            "tempban @User 1d Rule violations"
+          ]
+        },
+        {
+          "name": "tempban-role",
+          "aliases": [
+            "tbr"
+          ],
+          "description": "Configure the isolated role used by the tempban system.",
+          "usage": "tempban-role <role>",
+          "slash_syntax": "/tempban-role role: <@role>",
+          "prefix_syntax": "tempban-role <role>",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "Administrator",
+          "examples": [
+            "/tempban-role role: @Jailed",
+            "tempban-role @Jailed"
+          ]
         },
         {
           "name": "timeout",
@@ -282,48 +414,447 @@
             "mute",
             "to"
           ],
-          "description": "Enforces a strict native communications restriction timeline lock.",
-          "usage": "timeout <@user/id> <duration> [reason]",
-          "permissions": "Moderate Members",
+          "description": "Temporarily isolate and mute a member using Discord native timeout.",
+          "usage": "timeout <member> <duration> [reason]",
+          "slash_syntax": "/timeout member: <@user> duration: <10m|1h|1d> [reason: text]",
+          "prefix_syntax": "timeout <member> <duration> [reason]",
+          "command_type": "hybrid",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": true,
+          "permissions": "Moderate Members",
+          "examples": [
+            "/timeout member: @User duration: 30m reason: Spamming",
+            "timeout @User 1h Toxicity"
+          ]
+        },
+        {
+          "name": "unban",
+          "aliases": [],
+          "description": "Unban a previously banned user by their user ID.",
+          "usage": "unban <user_id> [reason]",
+          "slash_syntax": "/unban user_id: <id> [reason: text]",
+          "prefix_syntax": "unban <user_id> [reason]",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "Ban Members",
+          "examples": [
+            "/unban user_id: 123456789012345678 reason: Appeal accepted",
+            "unban 123456789012345678"
+          ]
+        },
+        {
+          "name": "untempban",
+          "aliases": [
+            "unjail",
+            "untb"
+          ],
+          "description": "Manually release a user from tempban isolation early.",
+          "usage": "untempban <user_id> [reason]",
+          "slash_syntax": "/untempban user: <@user> [reason: text]",
+          "prefix_syntax": "untempban <user_id> [reason]",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "Ban Members, Manage Roles",
+          "examples": [
+            "/untempban user: @User reason: Early release",
+            "untempban 123456789012345678"
+          ]
+        },
+        {
+          "name": "untimeout",
+          "aliases": [
+            "unmute",
+            "unto"
+          ],
+          "description": "Remove active timeout from a member early.",
+          "usage": "untimeout <member> [reason]",
+          "slash_syntax": "/untimeout member: <@user> [reason: text]",
+          "prefix_syntax": "untimeout <member> [reason]",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "Moderate Members",
+          "examples": [
+            "/untimeout member: @User reason: Apology accepted",
+            "untimeout @User"
+          ]
         },
         {
           "name": "warn",
           "aliases": [],
-          "description": "Issues a formal text warning penalization.",
-          "usage": "warn <user> <reason>",
-          "permissions": "Manage Messages",
+          "description": "Issue an official recorded warning to a member.",
+          "usage": "warn <member> [reason]",
+          "slash_syntax": "/warn member: <@user> [reason: text]",
+          "prefix_syntax": "warn <member> [reason]",
+          "command_type": "hybrid",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": true,
+          "permissions": "Moderate Members",
+          "examples": [
+            "/warn member: @User reason: Disrespectful behavior",
+            "warn @User NSFW content"
+          ]
         },
         {
           "name": "warnings",
           "aliases": [
-            "warnlist"
+            "warnlist",
+            "warns"
           ],
-          "description": "Retrieves the active list of history warning sequences.",
-          "usage": "warnings [user]",
-          "permissions": "Manage Messages",
+          "description": "Display all active infraction warning logs for a member.",
+          "usage": "warnings [member]",
+          "slash_syntax": "/warnings [member: @user]",
+          "prefix_syntax": "warnings [member]",
+          "command_type": "hybrid",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": true,
+          "permissions": "Moderate Members",
+          "examples": [
+            "/warnings member: @User",
+            "warnings @User"
+          ]
         }
       ]
     },
     {
-      "id": "general",
-      "name": "General Utility",
+      "id": "channels",
+      "name": "Channels & Security",
+      "emoji": "📁",
+      "description": "Channel lockdowns, slowmode configurations, and visibility controls.",
+      "commands": [
+        {
+          "name": "hide",
+          "aliases": [],
+          "description": "Hide a channel from standard @everyone view permissions.",
+          "usage": "hide [channel] [reason]",
+          "slash_syntax": null,
+          "prefix_syntax": "hide [channel] [reason]",
+          "command_type": "prefix",
+          "is_prefix": true,
+          "is_slash": false,
+          "permissions": "Manage Channels",
+          "examples": [
+            "hide",
+            "hide #leaks Maintenance"
+          ]
+        },
+        {
+          "name": "lock",
+          "aliases": [],
+          "description": "Lock down a channel to prevent members from sending messages.",
+          "usage": "lock [channel] [duration] [reason]",
+          "slash_syntax": null,
+          "prefix_syntax": "lock [channel] [duration] [reason]",
+          "command_type": "prefix",
+          "is_prefix": true,
+          "is_slash": false,
+          "permissions": "Manage Channels",
+          "examples": [
+            "lock",
+            "lock 10m Server raid",
+            "lock #general 1h Discussion cool-off"
+          ]
+        },
+        {
+          "name": "slowmode",
+          "aliases": [
+            "sm"
+          ],
+          "description": "Set the message delay pacing rate for a text channel.",
+          "usage": "slowmode <seconds|off> [channel]",
+          "slash_syntax": null,
+          "prefix_syntax": "slowmode <seconds|off> [channel]",
+          "command_type": "prefix",
+          "is_prefix": true,
+          "is_slash": false,
+          "permissions": "Manage Channels",
+          "examples": [
+            "slowmode 5",
+            "slowmode 30s #chat",
+            "slowmode off"
+          ]
+        },
+        {
+          "name": "sticky",
+          "aliases": [],
+          "description": "Pin an automatically repositioned sticky announcement to the bottom of chat.",
+          "usage": "/sticky <singleline|multiline|disable|status>",
+          "slash_syntax": "/sticky <singleline|multiline|disable|status>",
+          "prefix_syntax": null,
+          "command_type": "slash",
+          "is_prefix": false,
+          "is_slash": true,
+          "permissions": "Manage Messages, Manage Webhooks",
+          "examples": [
+            "/sticky singleline message: Please read the rules!",
+            "/sticky status",
+            "/sticky disable"
+          ],
+          "subcommands": [
+            {
+              "name": "singleline",
+              "description": "Set a single-line sticky message in a channel.",
+              "syntax": "/sticky singleline"
+            },
+            {
+              "name": "multiline",
+              "description": "Opens a pop-up modal to input a multi-line sticky message.",
+              "syntax": "/sticky multiline"
+            },
+            {
+              "name": "disable",
+              "description": "Turn off sticky message processing for a channel and remove its webhook.",
+              "syntax": "/sticky disable"
+            },
+            {
+              "name": "status",
+              "description": "Query current sticky message configurations for a channel.",
+              "syntax": "/sticky status"
+            }
+          ]
+        },
+        {
+          "name": "unhide",
+          "aliases": [],
+          "description": "Restore visibility of a previously hidden channel.",
+          "usage": "unhide [channel] [reason]",
+          "slash_syntax": null,
+          "prefix_syntax": "unhide [channel] [reason]",
+          "command_type": "prefix",
+          "is_prefix": true,
+          "is_slash": false,
+          "permissions": "Manage Channels",
+          "examples": [
+            "unhide",
+            "unhide #leaks Maintenance done"
+          ]
+        },
+        {
+          "name": "unlock",
+          "aliases": [],
+          "description": "Restore original channel permissions and lift lockdown.",
+          "usage": "unlock [channel] [reason]",
+          "slash_syntax": null,
+          "prefix_syntax": "unlock [channel] [reason]",
+          "command_type": "prefix",
+          "is_prefix": true,
+          "is_slash": false,
+          "permissions": "Manage Channels",
+          "examples": [
+            "unlock",
+            "unlock #general Raid resolved"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "analytics",
+      "name": "Analytics & Activity",
+      "emoji": "📊",
+      "description": "Server statistics, member leaderboards, activity tracking, and auto-roles.",
+      "commands": [
+        {
+          "name": "autorole",
+          "aliases": [],
+          "description": "Configure automatic milestone roles granted based on chat or voice activity.",
+          "usage": "/autorole <setup|view|blacklist_add|blacklist_remove|blacklist_list>",
+          "slash_syntax": "/autorole <setup|view|blacklist_add|blacklist_remove|blacklist_list>",
+          "prefix_syntax": null,
+          "command_type": "slash",
+          "is_prefix": false,
+          "is_slash": true,
+          "permissions": "Administrator",
+          "examples": [
+            "/autorole view",
+            "/autorole setup type: messages target: 1000 role: @Active"
+          ],
+          "subcommands": [
+            {
+              "name": "setup",
+              "description": "Configure weekly top 3 text/VC reward roles & announcement channel.",
+              "syntax": "/autorole setup"
+            },
+            {
+              "name": "view",
+              "description": "View current weekly auto-role reward bindings and configuration.",
+              "syntax": "/autorole view"
+            },
+            {
+              "name": "blacklist_add",
+              "description": "Blacklist a role from earning weekly leaderboard auto-roles.",
+              "syntax": "/autorole blacklist_add"
+            },
+            {
+              "name": "blacklist_remove",
+              "description": "Remove a role from the weekly reward blacklist.",
+              "syntax": "/autorole blacklist_remove"
+            },
+            {
+              "name": "blacklist_list",
+              "description": "View all roles currently excluded from weekly auto-roles.",
+              "syntax": "/autorole blacklist_list"
+            }
+          ]
+        },
+        {
+          "name": "peakactivity",
+          "aliases": [],
+          "description": "Visualize the most active days of the week and peak chatting hours.",
+          "usage": "/peakactivity | peakactivity",
+          "slash_syntax": "/peakactivity",
+          "prefix_syntax": "peakactivity",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/peakactivity",
+            "peakactivity"
+          ]
+        },
+        {
+          "name": "serverstats",
+          "aliases": [],
+          "description": "Display aggregate server message counts, voice hours, and active trends.",
+          "usage": "/serverstats | serverstats",
+          "slash_syntax": "/serverstats",
+          "prefix_syntax": "serverstats",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/serverstats",
+            "serverstats"
+          ]
+        },
+        {
+          "name": "topchatters",
+          "aliases": [],
+          "description": "Display the server leaderboard for most active text chatters.",
+          "usage": "/topchatters [days] [limit] | topchatters [days] [limit]",
+          "slash_syntax": "/topchatters [days: int] [limit: int]",
+          "prefix_syntax": "topchatters [days] [limit]",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/topchatters days: 7 limit: 10",
+            "topchatters 30"
+          ]
+        },
+        {
+          "name": "topvc",
+          "aliases": [],
+          "description": "Display the server leaderboard for highest voice channel time.",
+          "usage": "/topvc [days] [limit] | topvc [days] [limit]",
+          "slash_syntax": "/topvc [days: int] [limit: int]",
+          "prefix_syntax": "topvc [days] [limit]",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/topvc days: 7 limit: 10",
+            "topvc"
+          ]
+        },
+        {
+          "name": "userstats",
+          "aliases": [],
+          "description": "Display individual engagement stats (messages sent, voice time, active hours).",
+          "usage": "/userstats [user] | userstats [user]",
+          "slash_syntax": "/userstats [user: @member]",
+          "prefix_syntax": "userstats [user]",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/userstats",
+            "userstats @User"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "voice",
+      "name": "Voice Operations",
+      "emoji": "🔊",
+      "description": "Mass movement, user dragging, and automatic voice channel roles.",
+      "commands": [
+        {
+          "name": "drag",
+          "aliases": [],
+          "description": "Move a connected voice member into your voice channel or target voice room.",
+          "usage": "/drag member: <@user> channel: <#voice>",
+          "slash_syntax": "/drag member: <@user> channel: <#voice>",
+          "prefix_syntax": null,
+          "command_type": "slash",
+          "is_prefix": false,
+          "is_slash": true,
+          "permissions": "Move Members",
+          "examples": [
+            "/drag member: @User channel: #Gaming"
+          ]
+        },
+        {
+          "name": "moveall",
+          "aliases": [],
+          "description": "Mass relocate all connected users from one voice channel to another.",
+          "usage": "/moveall from_channel: <#voice> to_channel: <#voice>",
+          "slash_syntax": "/moveall from_channel: <#voice> to_channel: <#voice>",
+          "prefix_syntax": null,
+          "command_type": "slash",
+          "is_prefix": false,
+          "is_slash": true,
+          "permissions": "Move Members",
+          "examples": [
+            "/moveall from_channel: #GeneralVC to_channel: #MeetingRoom"
+          ]
+        },
+        {
+          "name": "vcrole",
+          "aliases": [],
+          "description": "Configure a role automatically assigned to members while connected to voice.",
+          "usage": "/vcrole role: <@role>",
+          "slash_syntax": "/vcrole role: <@role>",
+          "prefix_syntax": null,
+          "command_type": "slash",
+          "is_prefix": false,
+          "is_slash": true,
+          "permissions": "Manage Roles, Administrator",
+          "examples": [
+            "/vcrole role: @InVC",
+            "/vcrole role: @VoiceMember"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "utility",
+      "name": "Utility & Community",
       "emoji": "✨",
-      "description": "Standard user actions, configuration components, and metadata readers.",
+      "description": "General tools, information lookup, user customization, and community features.",
       "commands": [
         {
           "name": "afk",
           "aliases": [],
-          "description": "Caches an AFK status block to automatically trigger back-references.",
-          "usage": "afk [status message]",
-          "permissions": "None",
+          "description": "Set your AFK status with reason, custom auto-replies, and nickname tag.",
+          "usage": "afk [reason]",
+          "slash_syntax": "/afk [reason: text]",
+          "prefix_syntax": "afk [reason]",
+          "command_type": "hybrid",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/afk reason: Eating dinner",
+            "afk Studying for exams"
+          ]
         },
         {
           "name": "avatar",
@@ -331,114 +862,185 @@
             "av",
             "pfp"
           ],
-          "description": "Generates a clear image embed block isolating a user's avatar.",
-          "usage": "avatar [@user]",
-          "permissions": "None",
+          "description": "Display user global or server avatar in high resolution.",
+          "usage": "avatar [member]",
+          "slash_syntax": "/avatar [user: @member]",
+          "prefix_syntax": "avatar [member]",
+          "command_type": "hybrid",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/avatar",
+            "/avatar user: @Friend",
+            "av @User"
+          ]
         },
         {
           "name": "banner",
+          "aliases": [
+            "serverbanner",
+            "userbanner"
+          ],
+          "description": "Fetch and display user banner or guild server banner.",
+          "usage": "banner [member]",
+          "slash_syntax": "/banner [user: @member]",
+          "prefix_syntax": "banner [member]",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/banner",
+            "/banner user: @Friend",
+            "banner"
+          ]
+        },
+        {
+          "name": "cleartag",
           "aliases": [],
-          "description": "Extracts and displays a profile banner asset block.",
-          "usage": "banner [@user]",
-          "permissions": "None",
+          "description": "Remove active vanity clan tag autorole monitoring.",
+          "usage": "cleartag",
+          "slash_syntax": null,
+          "prefix_syntax": "cleartag",
+          "command_type": "prefix",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": false,
+          "permissions": "Manage Roles, Administrator",
+          "examples": [
+            "cleartag"
+          ]
         },
         {
-          "name": "ping",
+          "name": "fuck",
           "aliases": [
-            "latency"
+            "cook",
+            "destroy",
+            "roast"
           ],
-          "description": "Measures heartbeat connection latency.",
-          "usage": "ping",
-          "permissions": "None",
+          "description": "Deliver hilarious, savage banter roasts directed at a target member.",
+          "usage": "fuck <@member>",
+          "slash_syntax": null,
+          "prefix_syntax": "fuck <@member>",
+          "command_type": "prefix",
           "is_prefix": true,
-          "is_slash": false
+          "is_slash": false,
+          "permissions": "None (Public)",
+          "examples": [
+            "fuck @Friend",
+            "roast @Friend"
+          ]
         },
-        {
-          "name": "serverinfo",
-          "aliases": [
-            "si",
-            "guildinfo"
-          ],
-          "description": "Generates a summary isolating vanity levels and member tallies.",
-          "usage": "serverinfo",
-          "permissions": "None",
-          "is_prefix": true,
-          "is_slash": false
-        },
-        {
-          "name": "shards",
-          "aliases": [
-            "shardinfo"
-          ],
-          "description": "Audits internal cluster configurations.",
-          "usage": "shards",
-          "permissions": "None",
-          "is_prefix": true,
-          "is_slash": false
-        },
-        {
-          "name": "steal",
-          "aliases": [
-            "addemoji"
-          ],
-          "description": "Copies a raw custom emoji payload to local guild assets.",
-          "usage": "steal <emoji> [name]",
-          "permissions": "Manage Guild Expressions",
-          "is_prefix": true,
-          "is_slash": false
-        }
-      ]
-    },
-    {
-      "id": "vc_modules",
-      "name": "Voice Management",
-      "emoji": "🔊",
-      "description": "Voice configuration actions used to manipulate room structures.",
-      "commands": [
-        {
-          "name": "drag",
-          "aliases": [
-            "grab"
-          ],
-          "description": "Pulls a specific target member forcefully into your audio lounge.",
-          "usage": "drag <@user>",
-          "permissions": "Move Members",
-          "is_prefix": true,
-          "is_slash": false
-        },
-        {
-          "name": "moveall",
-          "aliases": [
-            "massmove"
-          ],
-          "description": "Migrates every speaker into a targeted alternative room.",
-          "usage": "moveall <channel>",
-          "permissions": "Move Members",
-          "is_prefix": true,
-          "is_slash": false
-        }
-      ]
-    },
-    {
-      "id": "hybrid_cmd",
-      "name": "System Help",
-      "emoji": "📖",
-      "description": "Hybrid commands usable across prefix styles and slash entry formats.",
-      "commands": [
         {
           "name": "help",
           "aliases": [
             "h"
           ],
-          "description": "Launches the interactive modular interface menu.",
+          "description": "Interactive system directory and command manual with syntax overview.",
           "usage": "help [command]",
-          "permissions": "None",
+          "slash_syntax": "/help [command_name: text]",
+          "prefix_syntax": "help [command]",
+          "command_type": "hybrid",
           "is_prefix": true,
-          "is_slash": true
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/help",
+            "/help command_name: ban",
+            "help timeout"
+          ]
+        },
+        {
+          "name": "ping",
+          "aliases": [],
+          "description": "Check bot WebSocket heartbeat latency and REST API round-trip delay.",
+          "usage": "ping",
+          "slash_syntax": "/ping",
+          "prefix_syntax": "ping",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/ping",
+            "ping"
+          ]
+        },
+        {
+          "name": "serverinfo",
+          "aliases": [
+            "ginfo",
+            "guildinfo",
+            "server",
+            "si"
+          ],
+          "description": "Display server statistics, member counts, boost level, and creation date.",
+          "usage": "serverinfo",
+          "slash_syntax": "/serverinfo",
+          "prefix_syntax": "serverinfo",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/serverinfo",
+            "si"
+          ]
+        },
+        {
+          "name": "settag",
+          "aliases": [],
+          "description": "Configure vanity clan tag and assignable autorole for supporters.",
+          "usage": "settag <tag> <@role>",
+          "slash_syntax": null,
+          "prefix_syntax": "settag <tag> <@role>",
+          "command_type": "prefix",
+          "is_prefix": true,
+          "is_slash": false,
+          "permissions": "Manage Roles, Administrator",
+          "examples": [
+            "settag [DV] @Supporter",
+            "settag .gg/dv @Vanity"
+          ]
+        },
+        {
+          "name": "shards",
+          "aliases": [
+            "botstats",
+            "diagnostics",
+            "shardinfo"
+          ],
+          "description": "Show system health, memory usage, uptime, and gateway shard latency.",
+          "usage": "shards",
+          "slash_syntax": "/shards",
+          "prefix_syntax": "shards",
+          "command_type": "hybrid",
+          "is_prefix": true,
+          "is_slash": true,
+          "permissions": "None (Public)",
+          "examples": [
+            "/shards",
+            "shards"
+          ]
+        },
+        {
+          "name": "steal",
+          "aliases": [
+            "addemoji",
+            "stealemoji"
+          ],
+          "description": "Steal an emoji or sticker from another server by url or emoji string.",
+          "usage": "steal <emoji|url> [name]",
+          "slash_syntax": null,
+          "prefix_syntax": "steal <emoji|url> [name]",
+          "command_type": "prefix",
+          "is_prefix": true,
+          "is_slash": false,
+          "permissions": "Manage Expressions (Manage Emojis)",
+          "examples": [
+            "steal :custom_emoji: my_emoji",
+            "steal https://image.png cool_emoji"
+          ]
         }
       ]
     }

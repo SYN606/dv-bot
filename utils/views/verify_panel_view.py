@@ -7,7 +7,7 @@ from utils.logging.mod_log import send_mod_log
 from db.db_helpers.verification import (set_verification_config,
                                         get_verification_config,
                                         delete_verification_config)
-from utils.views.verification_views.verify_button_view import VerifyButtonView
+from utils.views.verify_button_view import VerifyButtonView
 
 
 class VerificationView(View):

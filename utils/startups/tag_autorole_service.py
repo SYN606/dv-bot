@@ -8,7 +8,7 @@ from db.db_helpers.tag_helper import get_tag_config
 from utils.core.ratelimiter import RateLimiter
 
 logger = logging.getLogger("DigitalVigital")
-_ROLE_LIMITER = RateLimiter(delay=0.3)
+_ROLE_LIMITER = RateLimiter(delay=1.0)
 
 
 class TagAutoRoleService:
@@ -32,6 +32,15 @@ class TagAutoRoleService:
         self.bot.remove_listener(self.on_user_update, "on_user_update")
 
     # PURE LOGIC HELPERS
+    @staticmethod
+    def _extract_custom_status(member: discord.Member) -> str:
+        if member.activities:
+            for activity in member.activities:
+                if isinstance(activity,
+                              discord.CustomActivity) and activity.state:
+                    return activity.state.lower()
+        return ""
+
     @staticmethod
     def has_tag(member: discord.Member, tag: str) -> bool:
         """
@@ -141,7 +150,11 @@ class TagAutoRoleService:
     async def on_presence_update(self, before: discord.Member,
                                  after: discord.Member) -> None:
         """Triggers when custom status text changes."""
-        if after.guild is None:
+        if after.guild is None or after.bot:
+            return
+
+        # Skip unless custom status actually changed
+        if self._extract_custom_status(before) == self._extract_custom_status(after):
             return
 
         config = await get_tag_config(after.guild.id)
@@ -155,17 +168,20 @@ class TagAutoRoleService:
     async def on_member_update(self, before: discord.Member,
                                after: discord.Member) -> None:
         """Triggers when server nickname or guild profile details change."""
-        if before.display_name != after.display_name or before.roles != after.roles:
-            if after.guild is None:
-                return
+        if after.guild is None or after.bot:
+            return
 
-            config = await get_tag_config(after.guild.id)
-            if not config:
-                return
+        # Only evaluate if display name / nickname actually changed to avoid role-change feedback loops
+        if before.display_name == after.display_name:
+            return
 
-            role = after.guild.get_role(config.role_id)
-            if role and after.guild.me and role < after.guild.me.top_role:
-                await self.check_and_update_member(after, config.tag, role)
+        config = await get_tag_config(after.guild.id)
+        if not config:
+            return
+
+        role = after.guild.get_role(config.role_id)
+        if role and after.guild.me and role < after.guild.me.top_role:
+            await self.check_and_update_member(after, config.tag, role)
 
     async def on_user_update(self, before: discord.User,
                              after: discord.User) -> None:

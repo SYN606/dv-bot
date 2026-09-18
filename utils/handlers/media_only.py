@@ -1,10 +1,14 @@
 import discord
 import re
 import asyncio
+import time
 from collections import defaultdict
 from typing import Dict, Tuple, Optional
-from db.db_helpers.media_only import (get_media_only_config,
-                                      update_sticky_message_id)
+from db.db_helpers.media_only import (
+    get_media_only_config,
+    is_media_channel_cached,
+    update_sticky_message_id,
+)
 from utils.core.embeds import make_embed
 from utils.logging.mod_log import send_mod_log
 from .sticky._sticky_manager import StickyPayload, process_sticky
@@ -20,6 +24,10 @@ MEDIA_LINK_REGEX = re.compile(
 
 # IN-MEMORY VIOLATION TRACKING
 _violation_counter: Dict[Tuple[int, int], int] = defaultdict(int)
+
+# MOD LOG THROTTLE CACHE: {(guild_id, user_id): last_log_time}
+_MOD_LOG_THROTTLE: Dict[Tuple[int, int], float] = {}
+MOD_LOG_COOLDOWN_SECONDS = 30.0
 
 
 def build_media_only_sticky_embed() -> discord.Embed:
@@ -70,6 +78,8 @@ async def decay_violations(guild_id: int, user_id: int) -> None:
         _violation_counter[key] -= 1
         if _violation_counter[key] <= 0:
             _violation_counter.pop(key, None)
+    if key in _MOD_LOG_THROTTLE:
+        _MOD_LOG_THROTTLE.pop(key, None)
 
 
 async def _refresh_sticky(channel: discord.TextChannel,
@@ -77,8 +87,8 @@ async def _refresh_sticky(channel: discord.TextChannel,
     """Internal helper to safely push sticky notifications through the processor."""
     payload = StickyPayload(embed=build_media_only_sticky_embed(),
                             message_id=current_message_id)
-    new_id = await process_sticky(channel, payload, cooldown=10)
-    if new_id:
+    new_id = await process_sticky(channel, payload, cooldown=15)
+    if new_id and new_id != current_message_id:
         await update_sticky_message_id(channel.guild.id, channel.id, new_id)
 
 
@@ -90,6 +100,10 @@ async def enforce_media_only(message: discord.Message) -> bool:
 
     channel = message.channel
     if not isinstance(channel, discord.TextChannel):
+        return False
+
+    # Fast synchronous check to avoid database queries on standard channels
+    if not is_media_channel_cached(channel.id):
         return False
 
     config = await get_media_only_config(guild.id, channel.id)
@@ -143,20 +157,24 @@ async def enforce_media_only(message: discord.Message) -> bool:
             except discord.Forbidden:
                 pass
 
-    # Ship diagnostic output logs downstream
-    try:
-        await send_mod_log(
-            guild=guild,
-            category="MEDIA",
-            title="Media-Only Violation",
-            description=(f"User: {message.author.mention}\n"
-                         f"Channel: {channel.mention}\n"
-                         f"Violations: {_violation_counter[key]}"),
-            level="WARNING",
-            actor=message.author)
-    except Exception:
-        pass
+    # Ship diagnostic output logs downstream (throttled to avoid log-channel rate limits)
+    now = time.time()
+    last_logged = _MOD_LOG_THROTTLE.get(key, 0.0)
+    should_log = (now - last_logged >= MOD_LOG_COOLDOWN_SECONDS) or (_violation_counter[key] == 3)
 
-    # Update sticky footer location positioning
-    await _refresh_sticky(channel, config.sticky_message_id)
+    if should_log:
+        _MOD_LOG_THROTTLE[key] = now
+        try:
+            await send_mod_log(
+                guild=guild,
+                category="MEDIA",
+                title="Media-Only Violation",
+                description=(f"User: {message.author.mention}\n"
+                             f"Channel: {channel.mention}\n"
+                             f"Violations: {_violation_counter[key]}"),
+                level="WARNING",
+                actor=message.author)
+        except Exception:
+            pass
+
     return True

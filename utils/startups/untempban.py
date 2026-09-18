@@ -9,6 +9,8 @@ from utils.logging.mod_log import send_mod_log
 
 logger = logging.getLogger("Digital Vigital")
 
+_FAILED_ATTEMPTS: dict[tuple[int, int], int] = {}
+
 
 class TempbanBackgroundHandler:
 
@@ -64,10 +66,22 @@ class TempbanBackgroundHandler:
                 tempban_role = guild.get_role(role_id) if role_id else None
 
                 # Check bot management permissions
+                key = (guild.id, record.user_id)
                 if not guild.me or not guild.me.guild_permissions.manage_roles:
                     logger.warning(
-                        f"[TEMPBAN] Cannot untempban {member.id} in {guild.id}: Missing Manage Roles."
+                        f"[TEMPBAN] Cannot untempban {record.user_id} in {guild.id}: Missing Manage Roles."
                     )
+                    _FAILED_ATTEMPTS[key] = _FAILED_ATTEMPTS.get(key, 0) + 1
+                    if _FAILED_ATTEMPTS[key] >= 3:
+                        logger.error(
+                            f"[TEMPBAN] Aborting untempban retries for {record.user_id} in {guild.id} due to missing permissions."
+                        )
+                        await remove_tempban(
+                            guild_id=guild.id,
+                            user_id=record.user_id,
+                            moderator_id=bot_user_id,
+                        )
+                        _FAILED_ATTEMPTS.pop(key, None)
                     continue
 
                 action_successful = False
@@ -103,11 +117,24 @@ class TempbanBackgroundHandler:
                     )
 
                 if action_successful:
+                    _FAILED_ATTEMPTS.pop(key, None)
                     await remove_tempban(
                         guild_id=guild.id,
                         user_id=member.id,
                         moderator_id=bot_user_id,
                     )
+                else:
+                    _FAILED_ATTEMPTS[key] = _FAILED_ATTEMPTS.get(key, 0) + 1
+                    if _FAILED_ATTEMPTS[key] >= 3:
+                        logger.error(
+                            f"[TEMPBAN] Deactivating expired tempban for {member.id} in {guild.id} after 3 failed attempts (role hierarchy/Forbidden)."
+                        )
+                        await remove_tempban(
+                            guild_id=guild.id,
+                            user_id=member.id,
+                            moderator_id=bot_user_id,
+                        )
+                        _FAILED_ATTEMPTS.pop(key, None)
 
                     try:
                         await send_mod_log(
