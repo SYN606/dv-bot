@@ -139,7 +139,7 @@ class BaseAdminCog(commands.Cog):
         if config_mode and perms is not None and getattr(perms, "manage_guild", False):
             return True
 
-        target: Union[discord.Interaction, commands.Context, discord.Member] = (
+        target: Union[discord.Interaction, commands.Context, discord.Member, discord.User, Any] = (
             interaction if interaction is not None else (ctx if ctx is not None else member)
         )
         if await is_bot_admin(target):
