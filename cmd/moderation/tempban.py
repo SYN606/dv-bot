@@ -67,18 +67,7 @@ class Tempban(BaseAdminCog):
 
     async def has_tempban_permission(self, ctx: commands.Context) -> bool:
         """Check if the execution author has permission to issue tempbans."""
-        guild = ctx.guild
-        if guild is None:
-            return True
-
-        author = ctx.author
-        if not isinstance(author, discord.Member):
-            return False
-
-        if author.id == guild.owner_id or author.guild_permissions.administrator:
-            return True
-
-        return await is_bot_admin_ctx(ctx)
+        return await self.has_mod_access(ctx, "ban_members")
 
     async def validate_target(
         self,

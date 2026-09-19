@@ -22,22 +22,7 @@ class BanSystem(BaseAdminCog):
 
     async def has_ban_permission(self, ctx: commands.Context) -> bool:
         """Check if the context author has permission to ban members."""
-        guild = ctx.guild
-        if guild is None:
-            return False
-
-        author = ctx.author
-        if not isinstance(author, discord.Member):
-            return False
-
-        if author.id == guild.owner_id:
-            return True
-
-        perms = author.guild_permissions
-        if perms.administrator:
-            return True
-
-        return perms.ban_members
+        return await self.has_mod_access(ctx, "ban_members")
 
     async def _reply(
         self,

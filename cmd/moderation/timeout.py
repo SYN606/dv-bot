@@ -61,15 +61,7 @@ class TimeoutAdmin(BaseAdminCog):
 
     async def has_timeout_permission(self, member: discord.Member) -> bool:
         """Check if the executing member has permissions to issue timeouts."""
-        guild = member.guild
-        if member.id == guild.owner_id:
-            return True
-
-        perms = member.guild_permissions
-        if perms.administrator:
-            return True
-
-        return perms.moderate_members
+        return await self.has_mod_access(member, "moderate_members")
 
     async def _reply(
         self,

@@ -59,12 +59,11 @@ class Roles(BaseAdminCog):
 
         author = ctx.author
 
-        if not (author.id == guild.owner_id
-                or author.guild_permissions.manage_roles):
+        if not await self.has_role_access(author):
             await ctx.send(
                 embed=make_embed(
                     title="Access Denied",
-                    description="Requires `Manage Roles` permission.",
+                    description="Requires `Manage Roles` permission or bot administrator privileges.",
                     level="ERROR",
                 ),
                 delete_after=5,

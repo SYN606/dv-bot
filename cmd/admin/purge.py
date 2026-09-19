@@ -25,18 +25,8 @@ class Purge(BaseAdminCog):
         self.bot = bot
 
     async def has_purge_permission(self, ctx: commands.Context) -> bool:
-        guild = ctx.guild
-        if guild is None:
-            return False
-
-        author = ctx.author
-        if not isinstance(author, discord.Member):
-            return False
-
-        if await self._has_access(member=author, guild=guild, ctx=ctx):
-            return True
-
-        return author.guild_permissions.manage_messages
+        """Check if the context author has permission to purge messages."""
+        return await self.has_mod_access(ctx, "manage_messages")
 
     async def _reply(
         self,

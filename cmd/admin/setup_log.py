@@ -8,7 +8,7 @@ from db.db_helpers.mod_logs import set_log_channel
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import _log_cache, send_mod_log
-from utils.permissions.base_admin import BaseAdminCog
+from utils.permissions.base_admin import BaseAdminCog, config_command
 
 logger = logging.getLogger("bot")
 
@@ -43,6 +43,7 @@ class SetupLog(BaseAdminCog):
     )
     @app_commands.describe(
         channel="Channel where moderation logs will be sent")
+    @config_command
     async def setup_log(self, interaction: discord.Interaction,
                         channel: discord.TextChannel) -> None:
         guild = interaction.guild
@@ -122,9 +123,6 @@ class SetupLog(BaseAdminCog):
         except Exception:
             logger.exception("Failed to send log setup moderation log")
 
-
-# CENTRALIZED CONFIG ACCESS
-setattr(SetupLog.setup_log, "config_command", True)
 
 
 async def setup(bot: commands.Bot) -> None:

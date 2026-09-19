@@ -16,18 +16,10 @@ from db.db_helpers.autoresponder import (
 )
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
-from utils.permissions.base_admin import BaseAdminCog
+from utils.permissions.base_admin import BaseAdminCog, config_command
 
 # Python 3.12+ PEP 695 Type Alias
 type MatchType = Literal["exact", "contains", "startswith", "endswith", "regex"]
-
-
-def config_command():
-    def decorator(func):
-        func.config_command = True
-        return func
-
-    return decorator
 
 
 class AutoResponderCommands(BaseAdminCog):

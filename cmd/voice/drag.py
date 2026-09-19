@@ -137,8 +137,11 @@ class VCDrag(BaseAdminCog):
             return
 
         # 7. Permission Check: Moderator Permissions
-        if (not target_channel.permissions_for(author).move_members
-                or not source_channel.permissions_for(author).move_members):
+        is_admin = await self.has_admin_access(author)
+        if not is_admin and (
+            not target_channel.permissions_for(author).move_members
+            or not source_channel.permissions_for(author).move_members
+        ):
             embed = make_embed(
                 title=f"{EMOJIS['fail']} Permission Denied",
                 description=

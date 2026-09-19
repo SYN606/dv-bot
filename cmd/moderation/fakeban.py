@@ -23,22 +23,7 @@ class FakeBanSystem(BaseAdminCog):
 
     async def has_fake_ban_permission(self, ctx: commands.Context) -> bool:
         """Check if the author has required permissions to execute simulated ban commands."""
-        guild = ctx.guild
-        if guild is None:
-            return False
-
-        author = ctx.author
-        if not isinstance(author, discord.Member):
-            return False
-
-        if author.id == guild.owner_id:
-            return True
-
-        perms = author.guild_permissions
-        if perms.administrator:
-            return True
-
-        return perms.ban_members or perms.manage_messages
+        return await self.has_mod_access(ctx, ["ban_members", "manage_messages"])
 
     async def _reply(
         self,

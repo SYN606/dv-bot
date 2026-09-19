@@ -94,9 +94,11 @@ class VCMoveAll(BaseAdminCog):
                 return
 
         # 4. Permission Check: Author
-        if not source.permissions_for(
-                author).move_members or not target.permissions_for(
-                    author).move_members:
+        is_admin = await self.has_admin_access(author)
+        if not is_admin and (
+            not source.permissions_for(author).move_members
+            or not target.permissions_for(author).move_members
+        ):
             embed = make_embed(
                 title=f"{EMOJIS['fail']} Permission Denied",
                 description=

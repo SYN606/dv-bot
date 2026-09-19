@@ -5,17 +5,8 @@ from discord.ext import commands
 from utils.core.embeds import make_embed
 from utils.core.emojis import EMOJIS
 from utils.logging.mod_log import send_mod_log
-from utils.permissions.base_admin import BaseAdminCog
+from utils.permissions.base_admin import BaseAdminCog, config_command
 from utils.views.media_only_views import MediaOnlyView
-
-
-def config_command():
-
-    def decorator(func):
-        func.config_command = True
-        return func
-
-    return decorator
 
 
 class MediaOnly(BaseAdminCog):

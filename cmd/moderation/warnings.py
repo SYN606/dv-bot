@@ -30,33 +30,11 @@ class WarnSystem(BaseAdminCog):
 
     async def has_warn_permission(self, ctx: commands.Context) -> bool:
         """Check if the context author has permission to issue or delete warnings."""
-        guild = ctx.guild
-        if guild is None:
-            return False
-        author = ctx.author
-        if not isinstance(author, discord.Member):
-            return False
-        if author.id == guild.owner_id:
-            return True
-        perms = author.guild_permissions
-        if perms.administrator or perms.manage_messages or perms.moderate_members:
-            return True
-        return await is_bot_admin_ctx(ctx)
+        return await self.has_mod_access(ctx, ["manage_messages", "moderate_members"])
 
     async def has_clear_permission(self, ctx: commands.Context) -> bool:
         """Check if the context author has permission to clear warning histories."""
-        guild = ctx.guild
-        if guild is None:
-            return False
-        author = ctx.author
-        if not isinstance(author, discord.Member):
-            return False
-        if author.id == guild.owner_id:
-            return True
-        perms = author.guild_permissions
-        if perms.administrator or perms.manage_guild or perms.moderate_members:
-            return True
-        return await is_bot_admin_ctx(ctx)
+        return await self.has_mod_access(ctx, ["manage_guild", "moderate_members"])
 
     async def _reply(
         self,
