@@ -91,21 +91,21 @@ class BaseAdminCog(commands.Cog):
 
     async def has_admin_access(
         self,
-        target: Union[discord.Interaction, commands.Context, discord.Member],
+        target: Union[discord.Interaction, commands.Context, discord.Member, discord.User, Any],
     ) -> bool:
         """Check if target has Bot Admin, Administrator, or Owner access."""
         return await is_bot_admin(target)
 
     async def has_config_access(
         self,
-        target: Union[discord.Interaction, commands.Context, discord.Member],
+        target: Union[discord.Interaction, commands.Context, discord.Member, discord.User, Any],
     ) -> bool:
         """Check if target has Server Configuration access."""
         return await has_config_access(target)
 
     async def has_mod_access(
         self,
-        target: Union[discord.Interaction, commands.Context, discord.Member],
+        target: Union[discord.Interaction, commands.Context, discord.Member, discord.User, Any],
         required_permission: Optional[Union[str, Iterable[str]]] = None,
     ) -> bool:
         """Check if target has Moderation access or the specified permission(s)."""
@@ -113,7 +113,7 @@ class BaseAdminCog(commands.Cog):
 
     async def has_role_access(
         self,
-        target: Union[discord.Interaction, commands.Context, discord.Member],
+        target: Union[discord.Interaction, commands.Context, discord.Member, discord.User, Any],
     ) -> bool:
         """Check if target has Role Management access."""
         return await has_role_management_access(target)
@@ -121,7 +121,7 @@ class BaseAdminCog(commands.Cog):
     async def _has_access(
         self,
         *,
-        member: discord.Member,
+        member: Union[discord.Member, discord.User, Any],
         guild: discord.Guild,
         config_mode: bool = False,
         required_permission: Optional[Union[str, Iterable[str]]] = None,
@@ -198,13 +198,22 @@ class BaseAdminCog(commands.Cog):
             except Exception:
                 pass
 
-        try:
-            return await target.reply(embed=embed, mention_author=False, delete_after=delete_after)
-        except (discord.NotFound, discord.HTTPException):
+        if delete_after is not None:
             try:
-                return await target.send(embed=embed, delete_after=delete_after)
-            except Exception:
-                return None
+                return await target.reply(embed=embed, mention_author=False, delete_after=delete_after)
+            except (discord.NotFound, discord.HTTPException):
+                try:
+                    return await target.send(embed=embed, delete_after=delete_after)
+                except Exception:
+                    return None
+        else:
+            try:
+                return await target.reply(embed=embed, mention_author=False)
+            except (discord.NotFound, discord.HTTPException):
+                try:
+                    return await target.send(embed=embed)
+                except Exception:
+                    return None
 
     async def cog_check(self, ctx: commands.Context) -> bool:  # type: ignore
         guild = ctx.guild

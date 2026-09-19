@@ -103,7 +103,7 @@ async def is_bot_admin_member(member: discord.Member) -> bool:
 
 # SLASH / UNIVERSAL BOT ADMIN CHECK
 async def is_bot_admin(
-    target: Union[discord.Interaction, commands.Context, discord.Member],
+    target: Union[discord.Interaction, commands.Context, discord.Member, discord.User, Any],
 ) -> bool:
     """Universal check: returns True if target has bot administrative authority."""
     member, _ = _resolve_member_and_guild(target)
@@ -120,7 +120,7 @@ async def is_bot_admin_ctx(ctx: commands.Context) -> bool:
 
 # CONFIG ACCESS
 async def has_config_access(
-    target: Union[discord.Interaction, commands.Context, discord.Member],
+    target: Union[discord.Interaction, commands.Context, discord.Member, discord.User, Any],
 ) -> bool:
     """Universal check for server configuration access (Owner, Admin, Manage Server, or Bot Admin)."""
     member, guild = _resolve_member_and_guild(target)
@@ -149,7 +149,7 @@ async def has_config_access_ctx(ctx: commands.Context) -> bool:
 
 # ROLE MANAGEMENT ACCESS
 async def has_role_management_access(
-    target: Union[discord.Interaction, commands.Context, discord.Member],
+    target: Union[discord.Interaction, commands.Context, discord.Member, discord.User, Any],
 ) -> bool:
     """Universal check for role management access (Owner, Admin, Manage Roles, or Bot Admin)."""
     member, guild = _resolve_member_and_guild(target)
@@ -173,7 +173,7 @@ async def has_role_management_access(
 
 # MODERATION ACCESS
 async def has_moderation_access(
-    target: Union[discord.Interaction, commands.Context, discord.Member],
+    target: Union[discord.Interaction, commands.Context, discord.Member, discord.User, Any],
     required_permission: Optional[Union[str, Iterable[str]]] = None,
 ) -> bool:
     """
