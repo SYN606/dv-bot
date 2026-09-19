@@ -5,19 +5,16 @@ from typing import Sequence, cast
 
 import discord
 
+from db.db_helpers.common import (
+    ensure_guild,
+    ensure_guild_and_user,
+    ensure_guild_and_users,
+    ensure_user,
+)
 from db.models import (AutoRoleRewardConfig, ChannelActivity,
                        ChannelRestriction, DailyActivitySnapshot,
                        FeatureModule, Guild, HourlyActivity, MemberAnalytics,
                        RestrictionScope, RoleRestriction, User)
-
-
-# Foreign Key Helpers
-async def ensure_guild_and_user(guild_id: int,
-                                user_id: int) -> tuple[Guild, User]:
-    """Ensures primary Guild and User relational records exist."""
-    guild, _ = await Guild.get_or_create(guild_id=guild_id)
-    user, _ = await User.get_or_create(user_id=user_id)
-    return guild, user
 
 
 # Event & Metric Logging Helpers

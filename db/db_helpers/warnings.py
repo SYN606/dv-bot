@@ -1,13 +1,13 @@
-from db.models import Guild, User, WarningRecord
+from __future__ import annotations
+
+from db.db_helpers.common import ensure_guild_and_users
+from db.models import WarningRecord
 
 
 async def add_warning(guild_id: int, user_id: int, moderator_id: int,
                       reason: str) -> tuple[bool, int]:
     """Issues a warning to a user and returns a tuple of (success_status, total_user_warnings)."""
-    # Ensure foreign key records exist in 'guilds' and 'users' tables
-    await Guild.get_or_create(guild_id=guild_id)
-    await User.get_or_create(user_id=user_id)
-    await User.get_or_create(user_id=moderator_id)
+    await ensure_guild_and_users(guild_id, user_id, moderator_id)
 
     await WarningRecord.create(guild_id=guild_id,
                                user_id=user_id,

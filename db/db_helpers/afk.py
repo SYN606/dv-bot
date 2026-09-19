@@ -3,7 +3,8 @@ from __future__ import annotations
 import time
 from typing import Optional, Set
 from tortoise.expressions import Q
-from db.models import AFK, Guild, User
+from db.db_helpers.common import ensure_guild_and_user
+from db.models import AFK
 
 _ACTIVE_AFK_USERS: Optional[Set[int]] = None
 
@@ -40,9 +41,7 @@ async def set_afk(
     original_nickname: Optional[str] = None,
 ) -> AFK:
     """Sets or updates a user's AFK status for a given guild with local or global scope."""
-    # Fixed: Use primary key field names (guild_id / user_id) instead of 'id'
-    await Guild.get_or_create(guild_id=guild_id)
-    await User.get_or_create(user_id=user_id)
+    await ensure_guild_and_user(guild_id, user_id)
 
     now = int(time.time())
 

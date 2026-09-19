@@ -2,8 +2,9 @@ import asyncio
 from typing import cast
 import discord
 
+from db.db_helpers.common import ensure_guild
 from db.db_helpers.verification import get_verification_config
-from db.models import ChannelPermissionSnapshot, Guild
+from db.models import ChannelPermissionSnapshot
 
 # Descriptive type alias for channel handling consistency
 GuildChannel = (discord.TextChannel
@@ -62,7 +63,7 @@ async def create_permission_snapshots(
         return
 
     # Ensure foreign key record exists in the 'guilds' table
-    await Guild.get_or_create(guild_id=guild_id)
+    await ensure_guild(guild_id)
 
     snapshot_objects = [
         ChannelPermissionSnapshot(

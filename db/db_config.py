@@ -71,9 +71,20 @@ TORTOISE_ORM = {
 
 
 async def init_tortoise() -> None:
-    """Initializes Tortoise ORM and generates matching schema tables safely."""
+    """Initializes Tortoise ORM, applies performance pragmas, and generates schema tables safely."""
     try:
         await Tortoise.init(config=TORTOISE_ORM)
+
+        # High-performance runtime tuning for SQLite (WAL, cache, concurrency)
+        if DB_TYPE == "sqlite":
+            conn = Tortoise.get_connection("default")
+            await conn.execute_query("PRAGMA journal_mode=WAL;")
+            await conn.execute_query("PRAGMA synchronous=NORMAL;")
+            await conn.execute_query("PRAGMA foreign_keys=ON;")
+            await conn.execute_query("PRAGMA busy_timeout=5000;")
+            await conn.execute_query("PRAGMA cache_size=-64000;")
+            await conn.execute_query("PRAGMA temp_store=MEMORY;")
+
         await Tortoise.generate_schemas(safe=True)
         print(
             f"[DB] Using {DB_TYPE.upper()} database | Connection & Schema ready."
@@ -88,7 +99,12 @@ async def init_tortoise() -> None:
 
 
 async def close_tortoise() -> None:
-    """Safely terminates active connection pools across drivers."""
+    """Safely terminates active connection pools across drivers and clears caches."""
+    try:
+        from db.db_helpers.common import clear_entity_cache
+        clear_entity_cache()
+    except Exception:
+        pass
     try:
         await Tortoise.close_connections()
     except Exception:

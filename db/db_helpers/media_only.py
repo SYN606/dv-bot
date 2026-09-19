@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from typing import Any, Dict, Optional, Set, Tuple, cast
-from db.models import Guild, MediaOnlyChannel
+from db.db_helpers.common import ensure_guild
+from db.models import MediaOnlyChannel
 
 _MEDIA_CHANNELS_CACHE: Optional[Set[int]] = None
 _MEDIA_CONFIG_CACHE: Dict[Tuple[int, int], Optional[MediaOnlyChannel]] = {}
@@ -40,8 +43,7 @@ async def enable_media_only(
     nsfw_bypass: bool = True,
 ) -> bool:
     """Creates a MediaOnlyChannel record if it doesn't already exist."""
-    # Ensure foreign key record exists in the 'guilds' table
-    await Guild.get_or_create(guild_id=guild_id)
+    await ensure_guild(guild_id)
 
     _, created = await MediaOnlyChannel.get_or_create(
         guild_id=guild_id,

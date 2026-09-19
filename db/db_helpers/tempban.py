@@ -1,12 +1,18 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from db.models import Guild, TempbanConfig, TempbanRecord, User
+from db.db_helpers.common import (
+    ensure_guild,
+    ensure_guild_and_users,
+    ensure_user,
+)
+from db.models import TempbanConfig, TempbanRecord
 
 
 # Set tempban role
 async def set_tempban_role(guild_id: int, role_id: int) -> None:
     """Sets or updates the designated tempban role for a guild."""
-    # Ensure foreign key record exists in the 'guilds' table
-    await Guild.get_or_create(guild_id=guild_id)
+    await ensure_guild(guild_id)
 
     await TempbanConfig.update_or_create(
         guild_id=guild_id,
@@ -31,10 +37,7 @@ async def add_tempban(
     expires_at: datetime | None = None,
 ) -> None:
     """Creates or updates an active tempban record for a user."""
-    # Ensure foreign key records exist in 'guilds' and 'users' tables
-    await Guild.get_or_create(guild_id=guild_id)
-    await User.get_or_create(user_id=user_id)
-    await User.get_or_create(user_id=moderator_id)
+    await ensure_guild_and_users(guild_id, user_id, moderator_id)
 
     now_utc = datetime.now(timezone.utc)
 
@@ -59,8 +62,7 @@ async def add_tempban(
 async def remove_tempban(*, guild_id: int, user_id: int,
                          moderator_id: int) -> bool:
     """Deactivates an active tempban record for a user."""
-    # Ensure the performing moderator exists in 'users' table
-    await User.get_or_create(user_id=moderator_id)
+    await ensure_user(moderator_id)
 
     now_utc = datetime.now(timezone.utc)
 

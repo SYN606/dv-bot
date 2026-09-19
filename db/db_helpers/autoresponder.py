@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from typing import Any, List, Optional, Tuple
-from db.models import AutoResponder, AutoResponderReaction, Guild, MatchType
+from db.db_helpers.common import ensure_guild
+from db.models import AutoResponder, AutoResponderReaction, MatchType
 from tortoise.transactions import in_transaction
 
 
@@ -21,8 +24,7 @@ async def upsert_autoresponder(
 
     Returns the primary key (`responder_id`).
     """
-    # Ensure foreign key record exists in the 'guilds' table
-    await Guild.get_or_create(guild_id=guild_id)
+    await ensure_guild(guild_id)
 
     fields_map: dict[str, Any] = {
         "match_type": match_type,

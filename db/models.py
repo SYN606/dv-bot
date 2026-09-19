@@ -332,6 +332,7 @@ class TempbanRecord(Model, TimestampMixin):
         table = "tempban_records"
         unique_together = (("guild", "user"), )
         indexes = (
+            ("guild", "user", "active"),
             ("guild", "active"),
             ("expires_at", ),
         )
@@ -428,7 +429,10 @@ class WarningRecord(Model, TimestampMixin):
 
     class Meta:
         table = "warnings"
-        indexes = (("guild", "user"), )
+        indexes = (
+            ("guild", "user"),
+            ("guild", "user", "created_at"),
+        )
 
     def __repr__(self) -> str:
         return f"<WarningRecord id={self.warn_id} guild_id={self.guild_id} user_id={self.user_id}>"
@@ -562,6 +566,8 @@ class MemberAnalytics(Model, TimestampMixin):
             ("guild", "is_active"),
             ("guild", "weekly_messages"),
             ("guild", "weekly_vc_seconds"),
+            ("guild", "total_messages"),
+            ("guild", "total_vc_seconds"),
         )
 
 
@@ -586,7 +592,6 @@ class DailyActivitySnapshot(Model):
     class Meta:
         table = "daily_activity_snapshots"
         unique_together = (("guild", "date"), )
-        indexes = (("guild", "date"), )
 
 
 class ChannelActivity(Model):

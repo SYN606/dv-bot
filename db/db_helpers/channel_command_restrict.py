@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from typing import List, Tuple, cast
-from db.models import Guild, RestrictedCommand, RestrictionScope
+from db.db_helpers.common import ensure_guild
+from db.models import RestrictedCommand, RestrictionScope
 from tortoise.exceptions import IntegrityError
 
 
@@ -16,7 +19,7 @@ async def restrict_command(guild_id: int,
     Returns True if created/updated, False if already exists with the same values.
     """
     command_name = _normalize(command_name)
-    await Guild.get_or_create(guild_id=guild_id)
+    await ensure_guild(guild_id)
     try:
         enum_scope = RestrictionScope(scope.lower())
     except ValueError:

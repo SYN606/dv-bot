@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 from typing import Dict, Optional
-from db.models import Guild, TagConfig
+from db.db_helpers.common import ensure_guild
+from db.models import TagConfig
 
 _TAG_CONFIG_CACHE: Dict[int, Optional[TagConfig]] = {}
 
 
 async def set_tag_config(guild_id: int, tag: str, role_id: int) -> TagConfig:
     """Creates or updates the tag auto-role configuration for a guild."""
-    guild, _ = await Guild.get_or_create(guild_id=guild_id)
+    await ensure_guild(guild_id)
     config, _ = await TagConfig.update_or_create(
-        guild=guild,
+        guild_id=guild_id,
         defaults={
             "tag": tag,
             "role_id": role_id
