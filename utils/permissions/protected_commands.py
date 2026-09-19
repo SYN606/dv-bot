@@ -4,4 +4,9 @@ PROTECTED_COMMANDS: set[str] = {
 
     # Bot admin role management
     "adminrole",
+
+    # Command management safeguards
+    "command",
+    "disable",
+    "enable",
 }
