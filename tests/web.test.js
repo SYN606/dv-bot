@@ -80,6 +80,10 @@ describe("Web Dashboard & API Tests", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("The Modern Discord Bot Dashboard");
+    expect(html).toContain("https://digitalvigital.fun");
+    expect(html).toContain("Digital vigital Network");
+    expect(html).toContain("https://syn606.wtf");
+    expect(html).toContain("SYN 606 | cybermind Networks");
   });
 
   it("GET /api/guilds/1001/meta without auth should return 401", async () => {

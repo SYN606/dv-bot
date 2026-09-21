@@ -59,6 +59,25 @@ function renderLayout({
       ]
     : [];
 
+  const footerHtml = `
+  <footer class="border-t border-white/5 py-6 text-xs text-slate-400 font-sans mt-auto">
+    <div class="max-w-6xl mx-auto px-4 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+      <div class="flex items-center gap-1.5 justify-center sm:justify-start">
+        <span>Powered by</span>
+        <a href="https://digitalvigital.fun" target="_blank" rel="noopener noreferrer" class="font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
+          Digital vigital Network
+        </a>
+      </div>
+      <div class="flex items-center gap-1.5 justify-center sm:justify-end text-slate-400 text-xs">
+        <span>Developed by</span>
+        <a href="https://syn606.wtf" target="_blank" rel="noopener noreferrer" class="font-semibold text-slate-200 hover:text-indigo-400 transition-colors">
+          SYN 606 | cybermind Networks
+        </a>
+      </div>
+    </div>
+  </footer>
+  `;
+
   return `<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
@@ -281,6 +300,8 @@ function renderLayout({
         <main class="p-4 sm:p-8 max-w-6xl w-full mx-auto flex-1">
           ${content}
         </main>
+
+        ${footerHtml}
       </div>
     </div>
     `
@@ -326,6 +347,8 @@ function renderLayout({
     <main class="max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 flex-1">
       ${content}
     </main>
+
+    ${footerHtml}
     `
   }
 
@@ -334,10 +357,6 @@ function renderLayout({
     <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 shrink-0"></i>
     <span id="toastMsg">Settings Saved Successfully!</span>
   </div>
-
-  <footer class="border-t border-white/5 py-6 text-center text-xs text-slate-500 font-mono">
-    <span>Powered by <strong class="text-indigo-400">${botName}</strong> • Pure JS Bun Engine</span>
-  </footer>
 
   <script>
     // Initialize Lucide Icons
