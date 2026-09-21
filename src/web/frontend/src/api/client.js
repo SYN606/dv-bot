@@ -139,10 +139,21 @@ export async function saveAutoresponder(guildId, payload) {
   });
 }
 
+export async function toggleAutoresponder(guildId, ruleId) {
+  return fetchApi(`/api/guilds/${guildId}/autoresponder/${ruleId}/toggle`, {
+    method: "POST",
+  });
+}
+
 export async function deleteAutoresponder(guildId, ruleId) {
   return fetchApi(`/api/guilds/${guildId}/autoresponder/${ruleId}`, {
     method: "DELETE",
   });
+}
+
+// Server Emojis
+export async function getGuildEmojis(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/emojis`);
 }
 
 // General Server Config

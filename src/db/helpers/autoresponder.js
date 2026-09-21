@@ -55,6 +55,57 @@ export async function deleteAutoresponder(guildId, responderId) {
   return deleted;
 }
 
+export async function updateAutoresponder(guildId, responderId, data) {
+  const gId = String(guildId);
+  const [updatedCount] = await AutoResponder.update(data, {
+    where: {
+      guild_id: gId,
+      responder_id: Number(responderId),
+    },
+  });
+  invalidateAutoresponderCache(gId);
+  return updatedCount > 0;
+}
+
+export async function toggleAutoresponder(guildId, responderId) {
+  const gId = String(guildId);
+  const rule = await AutoResponder.findOne({
+    where: {
+      guild_id: gId,
+      responder_id: Number(responderId),
+    },
+  });
+  if (!rule) return null;
+
+  rule.enabled = !rule.enabled;
+  await rule.save();
+  invalidateAutoresponderCache(gId);
+  return rule.enabled;
+}
+
+export async function setResponderReactions(responderId, emojiList) {
+  const id = Number(responderId);
+  await AutoResponderReaction.destroy({
+    where: { responder_id: id },
+  });
+
+  if (Array.isArray(emojiList) && emojiList.length > 0) {
+    const records = emojiList
+      .map((em) => (typeof em === "string" ? em.trim() : ""))
+      .filter(Boolean)
+      .map((emoji) => ({
+        responder_id: id,
+        emoji,
+      }));
+
+    if (records.length > 0) {
+      await AutoResponderReaction.bulkCreate(records);
+    }
+  }
+
+  invalidateAutoresponderCache();
+}
+
 export async function addResponderReaction(responderId, emoji) {
   const res = await AutoResponderReaction.findOrCreate({
     where: {
@@ -78,3 +129,4 @@ export async function clearResponderReactions(responderId) {
   invalidateAutoresponderCache();
   return res;
 }
+

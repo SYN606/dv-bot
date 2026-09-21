@@ -25,12 +25,29 @@ describe("Web Dashboard & API Tests", () => {
     mockCommands.set("ping", { name: "ping", description: "Latency test", category: "utility" });
     mockCommands.set("userstats", { name: "userstats", description: "View member statistics", category: "analytics" });
 
+    const mockEmojis = new Collection();
+    mockEmojis.set("5001", {
+      id: "5001",
+      name: "pepe_cool",
+      animated: false,
+      imageURL: () => "https://cdn.discordapp.com/emojis/5001.png",
+      toString: () => "<:pepe_cool:5001>",
+    });
+    mockEmojis.set("5002", {
+      id: "5002",
+      name: "party_blob",
+      animated: true,
+      imageURL: () => "https://cdn.discordapp.com/emojis/5002.gif",
+      toString: () => "<a:party_blob:5002>",
+    });
+
     const mockGuilds = new Collection();
     mockGuilds.set(testGuildId, {
       id: testGuildId,
       name: "Test Server",
       channels: { cache: mockChannels },
       roles: { cache: mockRoles },
+      emojis: { cache: mockEmojis },
     });
 
     const mockClient = {
@@ -126,7 +143,7 @@ describe("Web Dashboard & API Tests", () => {
   });
 
   // 3. Authenticated Guild Metadata
-  it("GET /api/guilds/1001/meta with auth should return channels and roles", async () => {
+  it("GET /api/guilds/1001/meta with auth should return channels, roles, and emojis", async () => {
     const res = await app.request("/api/guilds/1001/meta", {
       headers: { Cookie: validCookie },
     });
@@ -134,7 +151,21 @@ describe("Web Dashboard & API Tests", () => {
     const body = await res.json();
     expect(Array.isArray(body.channels)).toBe(true);
     expect(Array.isArray(body.roles)).toBe(true);
+    expect(Array.isArray(body.emojis)).toBe(true);
     expect(body.channels.some((c) => c.name === "general")).toBe(true);
+    expect(body.emojis.length).toBe(2);
+    expect(body.emojis.some((e) => e.name === "pepe_cool")).toBe(true);
+  });
+
+  it("GET /api/guilds/1001/emojis should return server custom emojis list", async () => {
+    const res = await app.request("/api/guilds/1001/emojis", {
+      headers: { Cookie: validCookie },
+    });
+    expect(res.status).toBe(200);
+    const emojis = await res.json();
+    expect(Array.isArray(emojis)).toBe(true);
+    expect(emojis.length).toBe(2);
+    expect(emojis.some((e) => e.name === "party_blob" && e.animated)).toBe(true);
   });
 
   // 4. Verification Setup API
@@ -248,7 +279,7 @@ describe("Web Dashboard & API Tests", () => {
   });
 
   // 7. Autoresponder API
-  it("POST & GET & DELETE /api/guilds/1001/autoresponder should manage rules", async () => {
+  it("POST & GET & TOGGLE & DELETE /api/guilds/1001/autoresponder should manage rules and reactions", async () => {
     const postRes = await app.request("/api/guilds/1001/autoresponder", {
       method: "POST",
       headers: {
@@ -256,22 +287,50 @@ describe("Web Dashboard & API Tests", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        trigger_phrase: "rules_query",
-        reply_content: "Please read the server rules!",
-        match_type: "exact",
+        trigger: "rules_query",
+        reply: "Please read the server rules!",
+        matchMode: "exact",
+        reactions: ["<:pepe_cool:5001>", "🔥"],
+        isEmbed: true,
+        embedTitle: "Server Guidelines",
       }),
     });
     expect(postRes.status).toBe(200);
     const postBody = await postRes.json();
     const responderId = postBody.responder.responder_id;
 
+    // Verify GET returns rule with reactions and aliases
     const getRes = await app.request("/api/guilds/1001/autoresponder", {
       headers: { Cookie: validCookie },
     });
     expect(getRes.status).toBe(200);
     const rules = await getRes.json();
-    expect(rules.some((r) => r.trigger_phrase === "rules_query")).toBe(true);
+    const createdRule = rules.find((r) => r.trigger_phrase === "rules_query");
+    expect(createdRule).toBeDefined();
+    expect(createdRule.trigger).toBe("rules_query");
+    expect(createdRule.reactions).toContain("<:pepe_cool:5001>");
+    expect(createdRule.reactions).toContain("🔥");
+    expect(createdRule.enabled).toBe(true);
 
+    // Toggle rule off
+    const toggleOffRes = await app.request(`/api/guilds/1001/autoresponder/${responderId}/toggle`, {
+      method: "POST",
+      headers: { Cookie: validCookie },
+    });
+    expect(toggleOffRes.status).toBe(200);
+    const toggleOffBody = await toggleOffRes.json();
+    expect(toggleOffBody.enabled).toBe(false);
+
+    // Toggle rule back on
+    const toggleOnRes = await app.request(`/api/guilds/1001/autoresponder/${responderId}/toggle`, {
+      method: "POST",
+      headers: { Cookie: validCookie },
+    });
+    expect(toggleOnRes.status).toBe(200);
+    const toggleOnBody = await toggleOnRes.json();
+    expect(toggleOnBody.enabled).toBe(true);
+
+    // Delete rule
     const delRes = await app.request(`/api/guilds/1001/autoresponder/${responderId}`, {
       method: "DELETE",
       headers: { Cookie: validCookie },
