@@ -505,6 +505,7 @@ apiRouter.get("/guilds/:guildId/analytics", async (c) => {
       date,
       messages: Number(s?.total_messages || 0),
       vc_minutes: Math.round(Number(s?.total_vc_seconds || 0) / 60),
+      voiceMinutes: Math.round(Number(s?.total_vc_seconds || 0) / 60),
       joins: Number(s?.joins_count || 0),
       leaves: Number(s?.leaves_count || 0),
     };
@@ -522,7 +523,8 @@ apiRouter.get("/guilds/:guildId/analytics", async (c) => {
       userId: String(m.user_id),
       username: member?.user?.username || `User ${m.user_id}`,
       avatar: member?.user?.displayAvatarURL?.() || null,
-      messages: Number(m.total_messages),
+      messages: Number(m.total_messages || 0),
+      count: Number(m.total_messages || 0),
     };
   });
 
@@ -532,7 +534,8 @@ apiRouter.get("/guilds/:guildId/analytics", async (c) => {
       userId: String(m.user_id),
       username: member?.user?.username || `User ${m.user_id}`,
       avatar: member?.user?.displayAvatarURL?.() || null,
-      vcMinutes: Math.round(Number(m.total_vc_seconds) / 60),
+      vcMinutes: Math.round(Number(m.total_vc_seconds || 0) / 60),
+      minutes: Math.round(Number(m.total_vc_seconds || 0) / 60),
     };
   });
 

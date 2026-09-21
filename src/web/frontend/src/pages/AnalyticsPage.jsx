@@ -50,8 +50,8 @@ export default function AnalyticsPage({ user, botInfo }) {
 
   const timeline = data?.timeline || [];
   const labels = timeline.map((d) => d.date);
-  const messageCounts = timeline.map((d) => d.messages);
-  const voiceMinutes = timeline.map((d) => d.voiceMinutes);
+  const messageCounts = timeline.map((d) => d.messages ?? 0);
+  const voiceMinutes = timeline.map((d) => d.voiceMinutes ?? d.vc_minutes ?? 0);
 
   const lineChartData = {
     labels: labels.length ? labels : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
@@ -194,7 +194,9 @@ export default function AnalyticsPage({ user, botInfo }) {
                       <img
                         src={
                           user.avatar
-                            ? `https://cdn.discordapp.com/avatars/${user.userId}/${user.avatar}.png`
+                            ? user.avatar.startsWith("http")
+                              ? user.avatar
+                              : `https://cdn.discordapp.com/avatars/${user.userId}/${user.avatar}.png`
                             : "https://cdn.discordapp.com/embed/avatars/0.png"
                         }
                         alt=""
@@ -205,7 +207,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                       </span>
                     </div>
                     <span className="text-xs font-bold text-indigo-400 font-mono">
-                      {user.count.toLocaleString()}
+                      {(user.messages ?? user.count ?? 0).toLocaleString()}
                     </span>
                   </div>
                 ))
@@ -241,7 +243,9 @@ export default function AnalyticsPage({ user, botInfo }) {
                       <img
                         src={
                           user.avatar
-                            ? `https://cdn.discordapp.com/avatars/${user.userId}/${user.avatar}.png`
+                            ? user.avatar.startsWith("http")
+                              ? user.avatar
+                              : `https://cdn.discordapp.com/avatars/${user.userId}/${user.avatar}.png`
                             : "https://cdn.discordapp.com/embed/avatars/0.png"
                         }
                         alt=""
@@ -252,7 +256,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                       </span>
                     </div>
                     <span className="text-xs font-bold text-purple-400 font-mono">
-                      {user.minutes} min
+                      {(user.vcMinutes ?? user.minutes ?? 0).toLocaleString()} min
                     </span>
                   </div>
                 ))
