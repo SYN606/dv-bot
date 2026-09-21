@@ -49,7 +49,19 @@ metaRoutes.get("/guilds/:guildId/meta", async (c) => {
       })).sort((a, b) => a.name.localeCompare(b.name))
     : [];
 
-  const payload = { channels, roles, emojis };
+  const payload = {
+    channels,
+    roles,
+    emojis,
+    guild: {
+      id: botGuild.id,
+      name: botGuild.name,
+      memberCount: botGuild.memberCount || 0,
+      ownerId: botGuild.ownerId || "",
+      rulesChannelId: botGuild.rulesChannelId || null,
+      premiumSubscriptionCount: botGuild.premiumSubscriptionCount || 0,
+    },
+  };
 
   // Cache for 15 seconds
   apiCache.set(cacheKey, payload, 15000);

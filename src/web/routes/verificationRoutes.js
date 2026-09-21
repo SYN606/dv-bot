@@ -4,6 +4,7 @@ import { VerificationConfig } from "../../db/models/index.js";
 import { ensureGuild } from "../../db/helpers/common.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
+import { formatServerVariables } from "../../utils/templateParser.js";
 import { apiCache } from "./cache.js";
 
 export const verificationRoutes = new Hono();
@@ -92,19 +93,26 @@ verificationRoutes.post("/guilds/:guildId/verification", async (c) => {
   if (body.deployPanel && botGuild && config.verify_channel_id) {
     const channel = botGuild.channels.cache.get(String(config.verify_channel_id));
     if (channel && channel.send) {
+      const rawTitle = config.embed_title || "Server Verification";
+      const rawDesc =
+        config.embed_description ||
+        `${EMOJIS.get("welcome") || "🛡️"} Welcome to **{server}**!\n\n` +
+        `To gain access to the rest of the server channels, please click the verification button below.`;
+
+      const title = formatServerVariables(rawTitle, { guild: botGuild, channel, config });
+      const description = formatServerVariables(rawDesc, { guild: botGuild, channel, config });
+      const btnLabel = formatServerVariables(config.button_label || "Verify Access", { guild: botGuild, channel, config });
+
       const embed = makeEmbed({
-        title: config.embed_title || "Server Verification",
-        description:
-          config.embed_description ||
-          `${EMOJIS.get("welcome") || "🛡️"} Welcome to **${botGuild.name}**!\n\n` +
-          `To gain access to the rest of the server channels, please click the verification button below.`,
+        title,
+        description,
         level: "PRIMARY",
       });
 
       const button = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("verify_member_btn")
-          .setLabel(config.button_label || "Verify Access")
+          .setLabel(btnLabel)
           .setStyle(ButtonStyle.Success)
           .setEmoji(config.button_emoji || EMOJIS.get("success") || "✅")
       );
@@ -131,11 +139,15 @@ verificationRoutes.post("/guilds/:guildId/verification/post_button", async (c) =
     return c.json({ error: "Verification channel was not found or bot lacks send access." }, 404);
   }
 
-  const title = config.embed_title || "Server Verification";
-  const description =
+  const rawTitle = config.embed_title || "Server Verification";
+  const rawDesc =
     config.embed_description ||
-    `${EMOJIS.get("welcome") || "🛡️"} Welcome to **${botGuild.name}**!\n\n` +
+    `${EMOJIS.get("welcome") || "🛡️"} Welcome to **{server}**!\n\n` +
     `To gain access to the rest of the server channels, please click the verification button below.`;
+
+  const title = formatServerVariables(rawTitle, { guild: botGuild, channel, config });
+  const description = formatServerVariables(rawDesc, { guild: botGuild, channel, config });
+  const btnLabel = formatServerVariables(config.button_label || "Verify Access", { guild: botGuild, channel, config });
 
   const embed = makeEmbed({
     title,
@@ -146,7 +158,7 @@ verificationRoutes.post("/guilds/:guildId/verification/post_button", async (c) =
   const button = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("verify_member_btn")
-      .setLabel(config.button_label || "Verify Access")
+      .setLabel(btnLabel)
       .setStyle(ButtonStyle.Success)
       .setEmoji(config.button_emoji || EMOJIS.get("success") || "✅")
   );
