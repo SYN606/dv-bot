@@ -8,6 +8,7 @@ import {
   hasModerationAccess,
   isBotAdmin,
 } from "../core/permissions.js";
+import { isExecutionAllowed } from "../db/helpers/acl.js";
 import { isCommandRestricted } from "../db/helpers/channelCommandRestrict.js";
 
 export default {
@@ -74,8 +75,27 @@ export default {
       });
     }
 
-    // B. Channel Restriction Check (Admins bypass)
+    // B. ACL Policy & Channel Restriction Check (Admins bypass)
     if (interaction.guild && interaction.channel) {
+      const aclCheck = await isExecutionAllowed(
+        interaction.guild.id,
+        interaction.channel.id,
+        interaction.member,
+        commandName
+      );
+      if (!aclCheck.allowed) {
+        return await interaction.reply({
+          embeds: [
+            makeEmbed({
+              title: "Access Restricted",
+              description: `${EMOJIS.get("warning") || "⚠️"} ${aclCheck.reason}`,
+              level: "WARNING",
+            }),
+          ],
+          ephemeral: true,
+        });
+      }
+
       const isAdmin = interaction.member?.permissions?.has(PermissionFlagsBits.Administrator);
       if (!isAdmin) {
         const restricted = await isCommandRestricted(

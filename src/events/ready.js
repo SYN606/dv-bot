@@ -2,6 +2,8 @@ import { Events } from "discord.js";
 import { CONFIG } from "../config.js";
 import { ANALYTICS_BATCHER } from "../handlers/analyticsBatcher.js";
 import { TempbanWorker } from "../handlers/tempbanWorker.js";
+import { initAfkCache } from "../db/helpers/afk.js";
+import { initStickyCache } from "../db/helpers/sticky.js";
 
 export default {
   name: Events.ClientReady,
@@ -14,7 +16,11 @@ export default {
       await client.registerSlashCommands();
     }
 
-    // 2. Start Background Workers
+    // 2. Pre-warm Hot-path zero-query filter caches
+    await Promise.all([initAfkCache(), initStickyCache()]);
+    console.log("[CACHE] Hot-path AFK and Sticky caches pre-warmed.");
+
+    // 3. Start Background Workers
     ANALYTICS_BATCHER.start();
     const tempbanWorker = new TempbanWorker(client);
     tempbanWorker.start();

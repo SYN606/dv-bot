@@ -9,6 +9,7 @@ import {
   hasModerationAccess,
   isBotAdmin,
 } from "../core/permissions.js";
+import { isExecutionAllowed } from "../db/helpers/acl.js";
 import { isCommandRestricted } from "../db/helpers/channelCommandRestrict.js";
 import { handleAfk } from "../handlers/afkHandler.js";
 import { ANALYTICS_BATCHER } from "../handlers/analyticsBatcher.js";
@@ -69,7 +70,27 @@ export default {
       return;
     }
 
-    // B. Channel Restriction Check (Admins bypass)
+    // B. ACL Policy & Channel Restriction Check (Admins bypass)
+    const aclCheck = await isExecutionAllowed(
+      message.guild.id,
+      message.channel.id,
+      message.member,
+      resolvedName
+    );
+    if (!aclCheck.allowed) {
+      const reply = await message.reply({
+        embeds: [
+          makeEmbed({
+            title: "Access Restricted",
+            description: `${EMOJIS.get("warning") || "⚠️"} ${aclCheck.reason}`,
+            level: "WARNING",
+          }),
+        ],
+      }).catch(() => {});
+      if (reply) setTimeout(() => reply.delete().catch(() => {}), 6000);
+      return;
+    }
+
     const isAdmin = message.member?.permissions?.has(PermissionFlagsBits.Administrator);
     if (!isAdmin) {
       const restricted = await isCommandRestricted(

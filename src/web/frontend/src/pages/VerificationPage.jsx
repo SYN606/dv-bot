@@ -7,7 +7,7 @@ import {
   saveVerification,
   postVerificationButton,
 } from "../api/client";
-import { ShieldCheck, Send, Check } from "lucide-react";
+import { ShieldCheck, Send, Check, AlertTriangle, KeyRound, Clock, Sliders } from "lucide-react";
 
 export default function VerificationPage({ user, botInfo, showToast }) {
   const { guildId } = useParams();
@@ -19,6 +19,12 @@ export default function VerificationPage({ user, botInfo, showToast }) {
     verifiedRoleId: "",
     unverifiedRoleId: "",
     logChannelId: "",
+    mode: "button",
+    minAccountAgeHours: 0,
+    embedTitle: "",
+    embedDescription: "",
+    buttonLabel: "Verify Access",
+    buttonEmoji: "✅",
   });
   const [saving, setSaving] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -31,15 +37,24 @@ export default function VerificationPage({ user, botInfo, showToast }) {
         if (verif) {
           setConfig({
             enabled: Boolean(verif.enabled),
-            channelId: verif.channel_id || "",
-            verifiedRoleId: verif.role_id || "",
-            unverifiedRoleId: verif.unverified_role_id || "",
-            logChannelId: verif.log_channel_id || "",
+            channelId: verif.channelId || verif.verify_channel_id || "",
+            verifiedRoleId: verif.verifiedRoleId || verif.verified_role_id || "",
+            unverifiedRoleId: verif.unverifiedRoleId || verif.unverified_role_id || "",
+            logChannelId: verif.logChannelId || verif.log_channel_id || "",
+            mode: verif.mode || "button",
+            minAccountAgeHours: verif.minAccountAgeHours || verif.min_account_age_hours || 0,
+            embedTitle: verif.embedTitle || verif.embed_title || "",
+            embedDescription: verif.embedDescription || verif.embed_description || "",
+            buttonLabel: verif.buttonLabel || verif.button_label || "Verify Access",
+            buttonEmoji: verif.buttonEmoji || verif.button_emoji || "✅",
           });
         }
       })
       .catch((err) => console.error(err));
   }, [guildId]);
+
+  const selectedRole = roles.find((r) => r.id === config.verifiedRoleId);
+  const isHierarchyError = selectedRole?.isAboveBot;
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -62,7 +77,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
     setPosting(true);
     try {
       await postVerificationButton(guildId);
-      showToast("Verification button prompt posted to channel!");
+      showToast("Verification prompt posted to channel!");
     } catch (err) {
       showToast(err.message || "Failed to post verification prompt.", "error");
     } finally {
@@ -83,9 +98,22 @@ export default function VerificationPage({ user, botInfo, showToast }) {
             <span>Verification Gate</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Safeguard your server against raids and bots with automated 1-click button verification.
+            Safeguard your server against raids and bots with automated 1-click or captcha challenge verification.
           </p>
         </div>
+
+        {isHierarchyError && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-200">
+              <p className="font-bold text-amber-300">Bot Role Hierarchy Warning</p>
+              <p className="mt-0.5">
+                The role <strong>@{selectedRole?.name}</strong> is positioned higher than (or equal to) the bot's role.
+                Discord will reject assigning this role to users. Please open <strong>Discord Server Settings &gt; Roles</strong> and drag the bot's role above @{selectedRole?.name}.
+              </p>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSave} className="space-y-6">
           <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-6">
@@ -110,8 +138,71 @@ export default function VerificationPage({ user, botInfo, showToast }) {
               </label>
             </div>
 
-            {/* Form Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Verification Mode & Anti-Raid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-white/5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Challenge Mode</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setConfig({ ...config, mode: "button" })}
+                    className={`py-2.5 px-4 rounded-xl text-xs font-semibold border transition-all text-center ${
+                      config.mode === "button"
+                        ? "bg-indigo-600/20 text-indigo-300 border-indigo-500/40 shadow-sm"
+                        : "bg-slate-900/60 text-slate-400 border-white/5 hover:border-white/10"
+                    }`}
+                  >
+                    1-Click Instant
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfig({ ...config, mode: "captcha" })}
+                    className={`py-2.5 px-4 rounded-xl text-xs font-semibold border transition-all text-center ${
+                      config.mode === "captcha"
+                        ? "bg-purple-600/20 text-purple-300 border-purple-500/40 shadow-sm"
+                        : "bg-slate-900/60 text-slate-400 border-white/5 hover:border-white/10"
+                    }`}
+                  >
+                    Captcha Modal
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1.5">
+                  {config.mode === "captcha"
+                    ? "Displays a Discord popup modal with a randomized code to thwart automated token raids."
+                    : "Instant verification with one button click."}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Minimum Account Age (Quarantine)</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="0"
+                    max="720"
+                    value={config.minAccountAgeHours}
+                    onChange={(e) =>
+                      setConfig({ ...config, minAccountAgeHours: Number(e.target.value) })
+                    }
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    placeholder="0 (Disabled)"
+                  />
+                  <span className="text-xs text-slate-400 whitespace-nowrap">hours old</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1.5">
+                  Block accounts newer than this from verifying (e.g. 24h prevents raid burners).
+                </p>
+              </div>
+            </div>
+
+            {/* Channel & Role Dropdowns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-white/5">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-2">
                   Verification Channel
@@ -141,12 +232,16 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                   onChange={(e) =>
                     setConfig({ ...config, verifiedRoleId: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className={`w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border text-xs text-white focus:outline-none ${
+                    isHierarchyError
+                      ? "border-amber-500/60 text-amber-200"
+                      : "border-white/10 focus:border-indigo-500"
+                  }`}
                 >
                   <option value="">Select role to give...</option>
                   {roles.map((r) => (
                     <option key={r.id} value={r.id}>
-                      @{r.name}
+                      @{r.name} {r.isAboveBot ? "(⚠️ Above Bot)" : ""}
                     </option>
                   ))}
                 </select>
@@ -154,7 +249,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-2">
-                  Unverified Role (Removed on Verify)
+                  Unverified Role (Assigned on join, removed on verify)
                 </label>
                 <select
                   value={config.unverifiedRoleId}
@@ -166,7 +261,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                   <option value="">None (Optional)</option>
                   {roles.map((r) => (
                     <option key={r.id} value={r.id}>
-                      @{r.name}
+                      @{r.name} {r.isAboveBot ? "(⚠️ Above Bot)" : ""}
                     </option>
                   ))}
                 </select>
@@ -190,6 +285,70 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            {/* Custom Embed & Button Options */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 font-mono flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Custom Message & Button Appearance</span>
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Embed Title (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={config.embedTitle}
+                    onChange={(e) => setConfig({ ...config, embedTitle: e.target.value })}
+                    placeholder="Server Verification"
+                    className="w-full px-4 py-2 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Button Label
+                    </label>
+                    <input
+                      type="text"
+                      value={config.buttonLabel}
+                      onChange={(e) => setConfig({ ...config, buttonLabel: e.target.value })}
+                      placeholder="Verify Access"
+                      className="w-full px-4 py-2 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Button Emoji
+                    </label>
+                    <input
+                      type="text"
+                      value={config.buttonEmoji}
+                      onChange={(e) => setConfig({ ...config, buttonEmoji: e.target.value })}
+                      placeholder="✅"
+                      className="w-full px-4 py-2 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Embed Description & Rules Markdown (Optional)
+                </label>
+                <textarea
+                  rows="3"
+                  value={config.embedDescription}
+                  onChange={(e) => setConfig({ ...config, embedDescription: e.target.value })}
+                  placeholder="Welcome to the server! Click the button below to verify and unlock channels."
+                  className="w-full px-4 py-2 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-y"
+                />
               </div>
             </div>
 

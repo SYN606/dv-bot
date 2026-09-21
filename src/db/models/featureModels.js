@@ -247,6 +247,34 @@ VerificationConfig.init(
       primaryKey: true,
       allowNull: false,
     },
+    enabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    mode: {
+      type: DataTypes.STRING(16),
+      defaultValue: "button",
+    },
+    min_account_age_hours: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    embed_title: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+    },
+    embed_description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    button_label: {
+      type: DataTypes.STRING(64),
+      defaultValue: "Verify Access",
+    },
+    button_emoji: {
+      type: DataTypes.STRING(32),
+      defaultValue: "✅",
+    },
     verify_channel_id: {
       type: DataTypes.BIGINT,
       allowNull: true,

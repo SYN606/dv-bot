@@ -7,6 +7,7 @@ import { verifySessionToken, fetchDiscordGuilds, createSessionToken } from "../a
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import { PROTECTED_COMMANDS } from "../../core/permissions.js";
+import { ensureGuild } from "../../db/helpers/common.js";
 import {
   VerificationConfig,
   ModerationLogConfig,
@@ -40,6 +41,13 @@ import {
   deleteAutoresponder,
   addResponderReaction,
 } from "../../db/helpers/autoresponder.js";
+import {
+  getGuildAcl,
+  addRoleRestriction,
+  removeRoleRestriction,
+  addChannelRestriction,
+  removeChannelRestriction,
+} from "../../db/helpers/acl.js";
 
 export const apiRouter = new Hono();
 
@@ -204,10 +212,18 @@ apiRouter.get("/guilds/:guildId/meta", async (c) => {
     .map((ch) => ({ id: ch.id, name: ch.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const botMember = botGuild?.members?.me;
   const roles = botGuild.roles.cache
     .filter((r) => r.id !== botGuild.id)
-    .map((r) => ({ id: r.id, name: r.name, color: r.hexColor }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      color: r.hexColor,
+      position: r.position,
+      managed: r.managed,
+      isAboveBot: botMember?.roles?.highest ? r.position >= botMember.roles.highest.position : false,
+    }))
+    .sort((a, b) => b.position - a.position);
 
   return c.json({ channels, roles });
 });
@@ -216,7 +232,21 @@ apiRouter.get("/guilds/:guildId/meta", async (c) => {
 apiRouter.get("/guilds/:guildId/verification", async (c) => {
   const guildId = c.req.param("guildId");
   const config = await VerificationConfig.findByPk(guildId);
-  return c.json(config || {});
+  const raw = config ? config.toJSON() : {};
+  return c.json({
+    ...raw,
+    enabled: Boolean(raw.enabled),
+    channelId: raw.verify_channel_id ? String(raw.verify_channel_id) : "",
+    verifiedRoleId: raw.verified_role_id ? String(raw.verified_role_id) : "",
+    unverifiedRoleId: raw.unverified_role_id ? String(raw.unverified_role_id) : "",
+    logChannelId: raw.log_channel_id ? String(raw.log_channel_id) : "",
+    mode: raw.mode || "button",
+    minAccountAgeHours: Number(raw.min_account_age_hours || 0),
+    embedTitle: raw.embed_title || "",
+    embedDescription: raw.embed_description || "",
+    buttonLabel: raw.button_label || "Verify Access",
+    buttonEmoji: raw.button_emoji || "✅",
+  });
 });
 
 apiRouter.post("/guilds/:guildId/verification", async (c) => {
@@ -224,24 +254,53 @@ apiRouter.post("/guilds/:guildId/verification", async (c) => {
   const body = await c.req.json();
   const botGuild = c.get("botGuild");
 
+  await ensureGuild(guildId);
+
   const [config] = await VerificationConfig.findOrCreate({
     where: { guild_id: guildId },
     defaults: { guild_id: guildId },
   });
 
-  if (body.verify_channel_id !== undefined) config.verify_channel_id = body.verify_channel_id || null;
-  if (body.verified_role_id !== undefined) config.verified_role_id = body.verified_role_id || null;
-  if (body.unverified_role_id !== undefined) config.unverified_role_id = body.unverified_role_id || null;
-  if (body.log_channel_id !== undefined) config.log_channel_id = body.log_channel_id || null;
+  if (body.enabled !== undefined) config.enabled = Boolean(body.enabled);
+  if (body.mode !== undefined) config.mode = String(body.mode);
+  if (body.min_account_age_hours !== undefined || body.minAccountAgeHours !== undefined) {
+    config.min_account_age_hours = Number(body.min_account_age_hours ?? body.minAccountAgeHours ?? 0);
+  }
+  if (body.embed_title !== undefined || body.embedTitle !== undefined) {
+    config.embed_title = body.embed_title ?? body.embedTitle ?? null;
+  }
+  if (body.embed_description !== undefined || body.embedDescription !== undefined) {
+    config.embed_description = body.embed_description ?? body.embedDescription ?? null;
+  }
+  if (body.button_label !== undefined || body.buttonLabel !== undefined) {
+    config.button_label = body.button_label ?? body.buttonLabel ?? "Verify Access";
+  }
+  if (body.button_emoji !== undefined || body.buttonEmoji !== undefined) {
+    config.button_emoji = body.button_emoji ?? body.buttonEmoji ?? "✅";
+  }
+
+  const channelId = body.channelId ?? body.verify_channel_id;
+  if (channelId !== undefined) config.verify_channel_id = channelId || null;
+
+  const verifiedRoleId = body.verifiedRoleId ?? body.verified_role_id;
+  if (verifiedRoleId !== undefined) config.verified_role_id = verifiedRoleId || null;
+
+  const unverifiedRoleId = body.unverifiedRoleId ?? body.unverified_role_id;
+  if (unverifiedRoleId !== undefined) config.unverified_role_id = unverifiedRoleId || null;
+
+  const logChannelId = body.logChannelId ?? body.log_channel_id;
+  if (logChannelId !== undefined) config.log_channel_id = logChannelId || null;
+
   await config.save();
 
-  // Deploy verification button panel if requested
+  // Deploy verification button panel if requested directly
   if (body.deployPanel && botGuild && config.verify_channel_id) {
     const channel = botGuild.channels.cache.get(String(config.verify_channel_id));
     if (channel && channel.send) {
       const embed = makeEmbed({
-        title: "Server Verification",
+        title: config.embed_title || "Server Verification",
         description:
+          config.embed_description ||
           `${EMOJIS.get("welcome") || "🛡️"} Welcome to **${botGuild.name}**!\n\n` +
           `To gain access to the rest of the server channels, please click the verification button below.`,
         level: "PRIMARY",
@@ -250,9 +309,9 @@ apiRouter.post("/guilds/:guildId/verification", async (c) => {
       const button = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("verify_member_btn")
-          .setLabel("Verify Access")
+          .setLabel(config.button_label || "Verify Access")
           .setStyle(ButtonStyle.Success)
-          .setEmoji(EMOJIS.get("success") || "✅")
+          .setEmoji(config.button_emoji || EMOJIS.get("success") || "✅")
       );
 
       await channel.send({ embeds: [embed], components: [button] }).catch(() => {});
@@ -260,6 +319,44 @@ apiRouter.post("/guilds/:guildId/verification", async (c) => {
   }
 
   return c.json({ success: true, config });
+});
+
+apiRouter.post("/guilds/:guildId/verification/post_button", async (c) => {
+  const guildId = c.req.param("guildId");
+  const botGuild = c.get("botGuild");
+  const config = await VerificationConfig.findByPk(guildId);
+
+  if (!config || !config.verify_channel_id) {
+    return c.json({ error: "Verification channel is not configured." }, 400);
+  }
+
+  const channel = botGuild?.channels.cache.get(String(config.verify_channel_id));
+  if (!channel || !channel.send) {
+    return c.json({ error: "Verification channel was not found or bot lacks send access." }, 404);
+  }
+
+  const title = config.embed_title || "Server Verification";
+  const description =
+    config.embed_description ||
+    `${EMOJIS.get("welcome") || "🛡️"} Welcome to **${botGuild.name}**!\n\n` +
+    `To gain access to the rest of the server channels, please click the verification button below.`;
+
+  const embed = makeEmbed({
+    title,
+    description,
+    level: "PRIMARY",
+  });
+
+  const button = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("verify_member_btn")
+      .setLabel(config.button_label || "Verify Access")
+      .setStyle(ButtonStyle.Success)
+      .setEmoji(config.button_emoji || EMOJIS.get("success") || "✅")
+  );
+
+  await channel.send({ embeds: [embed], components: [button] });
+  return c.json({ success: true, message: "Verification prompt posted to channel." });
 });
 
 // 3. Media-Only Channels Setup
@@ -540,4 +637,45 @@ apiRouter.get("/guilds/:guildId/analytics", async (c) => {
   });
 
   return c.json({ timeline, topChatters, topVoice });
+});
+
+// 10. Access Control List (ACL)
+apiRouter.get("/guilds/:guildId/acl", async (c) => {
+  const guildId = c.req.param("guildId");
+  const acl = await getGuildAcl(guildId);
+  return c.json(acl);
+});
+
+apiRouter.post("/guilds/:guildId/acl/roles", async (c) => {
+  const guildId = c.req.param("guildId");
+  const body = await c.req.json();
+  const { roleId, feature = "all", restrictionType = "deny" } = body;
+  if (!roleId) return c.json({ error: "roleId is required" }, 400);
+
+  const result = await addRoleRestriction(guildId, roleId, feature, restrictionType);
+  return c.json({ success: true, ...result });
+});
+
+apiRouter.delete("/guilds/:guildId/acl/roles/:id", async (c) => {
+  const guildId = c.req.param("guildId");
+  const id = c.req.param("id");
+  const deleted = await removeRoleRestriction(guildId, id);
+  return c.json({ success: deleted });
+});
+
+apiRouter.post("/guilds/:guildId/acl/channels", async (c) => {
+  const guildId = c.req.param("guildId");
+  const body = await c.req.json();
+  const { channelId, feature = "all", restrictionType = "deny" } = body;
+  if (!channelId) return c.json({ error: "channelId is required" }, 400);
+
+  const result = await addChannelRestriction(guildId, channelId, feature, restrictionType);
+  return c.json({ success: true, ...result });
+});
+
+apiRouter.delete("/guilds/:guildId/acl/channels/:id", async (c) => {
+  const guildId = c.req.param("guildId");
+  const id = c.req.param("id");
+  const deleted = await removeChannelRestriction(guildId, id);
+  return c.json({ success: deleted });
 });
