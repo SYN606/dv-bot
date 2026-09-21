@@ -7,6 +7,7 @@
   "scripts": {
     "start": "bun run src/bot.js",
     "dev": "bun --watch src/bot.js",
+    "build:web": "cd src/web/frontend && bun run build",
     "test": "bun test"
   },
   "dependencies": {

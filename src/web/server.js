@@ -1,5 +1,7 @@
+import path from "path";
+import { fileURLToPath } from "url";
 import { Hono } from "hono";
-import { setCookie, deleteCookie } from "hono/cookie";
+import { setCookie, deleteCookie, getCookie } from "hono/cookie";
 import { CONFIG } from "../config.js";
 import {
   getOAuthUrl,
@@ -7,9 +9,9 @@ import {
   fetchDiscordUser,
   fetchDiscordGuilds,
   createSessionToken,
+  verifySessionToken,
 } from "./auth.js";
 import { apiRouter } from "./routes/api.js";
-import { pagesRouter } from "./routes/pages.js";
 
 export function createWebApp(client = null) {
   const app = new Hono();
@@ -122,9 +124,69 @@ export function createWebApp(client = null) {
     return c.redirect("/");
   });
 
-  // 2. Mount API and Dashboard Routers
+  // 2. Mount API Router
   app.route("/api", apiRouter);
-  app.route("/", pagesRouter);
+
+  // 3. Static Asset Serving & SPA Routing for React Vite Frontend
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const distDir = path.resolve(__dirname, "dist");
+
+  // Assets bundle loader
+  app.get("/assets/:file", async (c) => {
+    const fileName = c.req.param("file");
+    const safeName = path.basename(fileName);
+    const assetPath = path.join(distDir, "assets", safeName);
+    const file = Bun.file(assetPath);
+    if (await file.exists()) {
+      return new Response(file, {
+        headers: {
+          "Content-Type": fileName.endsWith(".css")
+            ? "text/css"
+            : fileName.endsWith(".js")
+            ? "application/javascript"
+            : "application/octet-stream",
+          "Cache-Control": "public, max-age=31536000, immutable",
+        },
+      });
+    }
+    return c.notFound();
+  });
+
+  // Protected Dashboard Guards
+  app.get("/dashboard", (c) => {
+    const sessionCookie = getCookie(c, "dv_session");
+    const session = verifySessionToken(sessionCookie);
+    if (!session) {
+      return c.redirect("/auth/login");
+    }
+    const indexFile = Bun.file(path.join(distDir, "index.html"));
+    return new Response(indexFile, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  });
+
+  app.get("/dashboard/*", (c) => {
+    const sessionCookie = getCookie(c, "dv_session");
+    const session = verifySessionToken(sessionCookie);
+    if (!session) {
+      return c.redirect("/auth/login");
+    }
+    const indexFile = Bun.file(path.join(distDir, "index.html"));
+    return new Response(indexFile, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  });
+
+  // SPA Root & General HTML Fallback
+  app.get("/", async (c) => {
+    const indexFile = Bun.file(path.join(distDir, "index.html"));
+    if (await indexFile.exists()) {
+      return new Response(indexFile, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+    return c.html("<!DOCTYPE html><html><body><h1>Digital Vigital Dashboard</h1></body></html>");
+  });
 
   // 3. Fallbacks
   app.notFound((c) => {
