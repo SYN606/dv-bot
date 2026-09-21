@@ -45,7 +45,11 @@ export async function requireGuildAdmin(c, next) {
     return c.redirect("/dashboard");
   }
 
-  const botGuild = client?.guilds.cache.get(guildId) || null;
+  let botGuild = client?.guilds.cache.get(guildId) || null;
+  if (!botGuild && client?.guilds) {
+    botGuild = await client.guilds.fetch(guildId).catch(() => null);
+  }
+
   c.set("currentGuild", targetGuild);
   c.set("botGuild", botGuild);
 

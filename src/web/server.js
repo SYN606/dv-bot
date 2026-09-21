@@ -100,6 +100,7 @@ export function createWebApp(client = null) {
           avatar: user.avatar,
         },
         guilds,
+        accessToken: tokenData.access_token,
       });
 
       setCookie(c, "dv_session", sessionToken, {

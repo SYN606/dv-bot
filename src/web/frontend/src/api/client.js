@@ -30,6 +30,10 @@ export async function getAuthSession() {
   return fetchApi("/api/me");
 }
 
+export async function syncAuthSession() {
+  return fetchApi("/api/me/sync", { method: "POST" });
+}
+
 export async function getBotInfo() {
   return fetchApi("/api/bot");
 }

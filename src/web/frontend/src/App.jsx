@@ -62,7 +62,20 @@ export default function App() {
           path="/dashboard"
           element={
             user ? (
-              <ServerSelectorPage user={user} botInfo={botInfo} />
+              <ServerSelectorPage
+                user={user}
+                botInfo={botInfo}
+                onUserUpdate={(data) => {
+                  if (data?.user) {
+                    setUser({
+                      ...data.user,
+                      guilds: data.guilds || [],
+                    });
+                  }
+                  getBotInfo().then((b) => b && setBotInfo(b)).catch(() => {});
+                  showToast("Server list synced successfully from Discord!");
+                }}
+              />
             ) : (
               <Navigate to="/auth/login" replace />
             )
