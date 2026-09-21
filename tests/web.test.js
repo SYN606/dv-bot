@@ -376,4 +376,28 @@ describe("Web Dashboard & API Tests", () => {
     expect(Array.isArray(body.topChatters)).toBe(true);
     expect(Array.isArray(body.topVoice)).toBe(true);
   });
+
+  // 10. API In-Memory Cache Unit Tests
+  it("ApiCache should cache, expire, and invalidate by guild prefix", async () => {
+    const { ApiCache } = await import("../src/web/routes/cache.js");
+    const cache = new ApiCache(50); // 50ms TTL
+
+    cache.set("guild:1001:test", { data: 123 }, 50);
+    cache.set("guild:1001:meta", { name: "Test" }, 50);
+    cache.set("guild:2002:meta", { name: "Other" }, 50);
+
+    expect(cache.get("guild:1001:test")).toEqual({ data: 123 });
+    expect(cache.get("guild:2002:meta")).toEqual({ name: "Other" });
+
+    // Invalidate guild 1001
+    cache.invalidateGuild("1001");
+    expect(cache.get("guild:1001:test")).toBeNull();
+    expect(cache.get("guild:1001:meta")).toBeNull();
+    expect(cache.get("guild:2002:meta")).toEqual({ name: "Other" });
+
+    // Test TTL expiry
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(cache.get("guild:2002:meta")).toBeNull();
+  });
 });
+
