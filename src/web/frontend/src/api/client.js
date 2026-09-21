@@ -98,12 +98,20 @@ export async function deleteMediaOnly(guildId, channelId) {
 }
 
 // Command Restrictions
-export async function getCommands(guildId) {
-  return fetchApi(`/api/guilds/${guildId}/commands`);
+export async function getCommands(guildId, channelId) {
+  const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : "";
+  return fetchApi(`/api/guilds/${guildId}/commands${query}`);
 }
 
 export async function toggleCommand(guildId, payload) {
   return fetchApi(`/api/guilds/${guildId}/commands/toggle`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function toggleCommandModule(guildId, payload) {
+  return fetchApi(`/api/guilds/${guildId}/commands/module_toggle`, {
     method: "POST",
     body: payload,
   });

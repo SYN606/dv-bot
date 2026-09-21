@@ -23,6 +23,8 @@ describe("Web Dashboard & API Tests", () => {
 
     const mockCommands = new Collection();
     mockCommands.set("ping", { name: "ping", description: "Latency test", category: "utility" });
+    mockCommands.set("avatar", { name: "avatar", description: "User avatar", category: "utility" });
+    mockCommands.set("help", { name: "help", description: "Bot help command", category: "utility" });
     mockCommands.set("userstats", { name: "userstats", description: "View member statistics", category: "analytics" });
 
     const mockEmojis = new Collection();
@@ -276,6 +278,78 @@ describe("Web Dashboard & API Tests", () => {
     });
     const getBodyAfter = await getResAfter.json();
     expect(getBodyAfter.disabled).not.toContain("ping");
+
+    // Verify rejection when attempting to disable a protected command
+    const rejectRes = await app.request("/api/guilds/1001/commands/toggle", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        channel_id: "2001",
+        command_name: "help",
+        enable: false,
+      }),
+    });
+    expect(rejectRes.status).toBe(400);
+
+    // Verify GET returns modules grouping and stats
+    expect(getBodyAfter.modules).toBeDefined();
+    expect(getBodyAfter.modules.some((m) => m.id === "utility")).toBe(true);
+    expect(getBodyAfter.stats).toBeDefined();
+    expect(getBodyAfter.stats.total).toBe(4);
+    expect(getBodyAfter.stats.protected).toBe(1); // help is protected
+
+    // Module Bulk Toggle: disable entire 'utility' module
+    const bulkDisableRes = await app.request("/api/guilds/1001/commands/module_toggle", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        channel_id: "2001",
+        category: "utility",
+        enable: false,
+      }),
+    });
+    expect(bulkDisableRes.status).toBe(200);
+    const bulkDisableBody = await bulkDisableRes.json();
+    expect(bulkDisableBody.success).toBe(true);
+    expect(bulkDisableBody.affectedCount).toBe(2); // ping and avatar (help skipped)
+    expect(bulkDisableBody.skippedProtected).toBe(1); // help
+
+    // Verify channel commands disabled state
+    const checkBulkRes = await app.request("/api/guilds/1001/commands?channel_id=2001", {
+      headers: { Cookie: validCookie },
+    });
+    const checkBulkBody = await checkBulkRes.json();
+    expect(checkBulkBody.disabled).toContain("ping");
+    expect(checkBulkBody.disabled).toContain("avatar");
+    expect(checkBulkBody.disabled).not.toContain("help");
+
+    // Module Bulk Toggle: re-enable entire 'utility' module
+    const bulkEnableRes = await app.request("/api/guilds/1001/commands/module_toggle", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        channel_id: "2001",
+        category: "utility",
+        enable: true,
+      }),
+    });
+    expect(bulkEnableRes.status).toBe(200);
+
+    const checkFinalRes = await app.request("/api/guilds/1001/commands?channel_id=2001", {
+      headers: { Cookie: validCookie },
+    });
+    const checkFinalBody = await checkFinalRes.json();
+    expect(checkFinalBody.disabled).not.toContain("ping");
+    expect(checkFinalBody.disabled).not.toContain("avatar");
   });
 
   // 7. Autoresponder API

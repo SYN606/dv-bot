@@ -12,6 +12,8 @@ import {
   enableCommand,
   getDisabledCommands,
   isCommandRestricted,
+  bulkRestrictCommands,
+  bulkUnrestrictCommands,
 } from "../src/db/helpers/channelCommandRestrict.js";
 
 describe("Database & Model Tests (Sequelize Multi-DB)", () => {
@@ -52,5 +54,34 @@ describe("Database & Model Tests (Sequelize Multi-DB)", () => {
 
     const isBlockedAfter = await isCommandRestricted(guildId, channelId, "userstats");
     expect(isBlockedAfter).toBe(false);
+  });
+
+  it("should handle bulk restrict and unrestrict with protected command safeguards", async () => {
+    const guildId = "1001";
+    const channelId = "3002";
+    await RestrictedCommand.destroy({ where: { guild_id: guildId, channel_id: channelId } });
+
+    // Attempt to bulk restrict a list including protected commands ('help', 'adminrole')
+    const toRestrict = ["ping", "avatar", "help", "adminrole", "banner"];
+    const result = await bulkRestrictCommands(guildId, channelId, toRestrict);
+
+    expect(result.restrictedCount).toBe(3); // ping, avatar, banner
+    expect(result.skipped).toContain("help");
+    expect(result.skipped).toContain("adminrole");
+
+    // Check that ping, avatar, banner are restricted, but help and adminrole are not
+    expect(await isCommandRestricted(guildId, channelId, "ping")).toBe(true);
+    expect(await isCommandRestricted(guildId, channelId, "avatar")).toBe(true);
+    expect(await isCommandRestricted(guildId, channelId, "banner")).toBe(true);
+    expect(await isCommandRestricted(guildId, channelId, "help")).toBe(false);
+    expect(await isCommandRestricted(guildId, channelId, "adminrole")).toBe(false);
+
+    // Bulk unrestrict
+    const unrestrictRes = await bulkUnrestrictCommands(guildId, channelId, ["ping", "banner"]);
+    expect(unrestrictRes.unrestrictCount).toBe(2);
+
+    expect(await isCommandRestricted(guildId, channelId, "ping")).toBe(false);
+    expect(await isCommandRestricted(guildId, channelId, "banner")).toBe(false);
+    expect(await isCommandRestricted(guildId, channelId, "avatar")).toBe(true);
   });
 });
