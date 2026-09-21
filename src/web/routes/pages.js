@@ -11,10 +11,19 @@ function renderLayout({
   currentGuild = null,
   activeTab = "",
   breadcrumbs = [],
+  client = null,
 }) {
   const avatarUrl = user?.avatar
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
     : "https://cdn.discordapp.com/embed/avatars/0.png";
+
+  const botAvatar =
+    client?.user?.displayAvatarURL?.({ extension: "png", size: 256 }) ||
+    (client?.user?.avatar
+      ? `https://cdn.discordapp.com/avatars/${client.user.id}/${client.user.avatar}.png`
+      : "https://cdn.discordapp.com/embed/avatars/0.png");
+
+  const botName = client?.user?.username || "Digital Vigital";
 
   const navItems = currentGuild
     ? [
@@ -55,8 +64,11 @@ function renderLayout({
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} • Digital Vigital Dashboard</title>
+  <title>${title} • ${botName} Dashboard</title>
   
+  <!-- Favicon uses bot picture -->
+  <link rel="icon" type="image/png" href="${botAvatar}">
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,7 +97,7 @@ function renderLayout({
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    /* Glassmorphism custom enhancements */
+    /* Glassmorphism custom styling */
     .glass-panel {
       background: rgba(15, 23, 42, 0.65);
       backdrop-filter: blur(16px);
@@ -132,11 +144,11 @@ function renderLayout({
       
       <!-- Mobile Top Bar with Drawer Toggle -->
       <div class="md:hidden flex items-center justify-between p-4 glass-panel border-b border-white/10 sticky top-0 z-50">
-        <a href="/" class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
-            <i data-lucide="shield-check" class="w-4 h-4"></i>
+        <a href="/" class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-indigo-500/40">
+            <img src="${botAvatar}" alt="${botName}" class="w-full h-full object-cover">
           </div>
-          <span class="font-extrabold text-sm text-white tracking-tight">Digital<span class="text-indigo-400">Vigital</span></span>
+          <span class="font-extrabold text-sm text-white tracking-tight">${botName}</span>
         </a>
         <button id="mobileMenuBtn" class="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-300">
           <i data-lucide="menu" class="w-5 h-5"></i>
@@ -149,16 +161,14 @@ function renderLayout({
       <!-- Left Glass Sidebar -->
       <aside id="sidebarDrawer" class="fixed inset-y-0 left-0 w-64 glass-panel border-r border-white/10 flex flex-col z-50 transform -translate-x-full md:translate-x-0 md:static md:h-screen transition-transform duration-300 shrink-0">
         
-        <!-- Sidebar Brand Header -->
+        <!-- Sidebar Brand Header with Bot Picture -->
         <div class="p-4 border-b border-white/5 flex items-center justify-between">
           <a href="/" class="flex items-center gap-2.5 group">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shadow-lg shadow-indigo-500/20">
-              <div class="w-full h-full bg-slate-950/80 rounded-[11px] flex items-center justify-center">
-                <i data-lucide="shield-check" class="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform"></i>
-              </div>
+            <div class="w-9 h-9 rounded-xl overflow-hidden ring-1 ring-indigo-500/50 shadow-md shadow-indigo-500/20 shrink-0">
+              <img src="${botAvatar}" alt="${botName}" class="w-full h-full object-cover group-hover:scale-105 transition-transform">
             </div>
             <div class="flex flex-col">
-              <span class="font-bold text-sm tracking-tight text-white leading-tight">Digital<span class="text-indigo-400">Vigital</span></span>
+              <span class="font-bold text-sm tracking-tight text-white leading-tight truncate max-w-[130px]">${botName}</span>
               <span class="text-[9px] font-mono text-slate-400 uppercase tracking-wider">Control Panel</span>
             </div>
           </a>
@@ -180,7 +190,7 @@ function renderLayout({
           </div>
           <div class="flex-1 min-w-0">
             <h4 class="text-xs font-bold text-white truncate">${currentGuild.name}</h4>
-            <span class="inline-flex items-center gap-1 text-[10px] text-emerald-400">
+            <span class="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               Connected
             </span>
@@ -216,18 +226,18 @@ function renderLayout({
             .join("")}
         </nav>
 
-        <!-- Sidebar User Profile Footer -->
+        <!-- Sidebar User Profile Footer with Discord PFP -->
         <div class="p-3 border-t border-white/5">
-          <div class="flex items-center justify-between p-2 rounded-xl bg-slate-900/40 border border-white/5">
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-white/10">
             <div class="flex items-center gap-2.5 min-w-0">
-              <img src="${avatarUrl}" alt="" class="w-7 h-7 rounded-full ring-1 ring-indigo-500/40 shrink-0">
+              <img src="${avatarUrl}" alt="${user?.username || 'User'}" class="w-8 h-8 rounded-full ring-2 ring-indigo-500/40 shrink-0 object-cover">
               <div class="min-w-0">
                 <p class="text-xs font-bold text-white truncate">${user?.username || "Admin"}</p>
                 <p class="text-[10px] text-slate-400 font-mono">ID: ${(user?.id || "").slice(0, 8)}...</p>
               </div>
             </div>
             <a href="/auth/logout" class="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors" title="Logout">
-              <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+              <i data-lucide="log-out" class="w-4 h-4"></i>
             </a>
           </div>
         </div>
@@ -256,10 +266,13 @@ function renderLayout({
             }
           </div>
 
-          <div class="flex items-center gap-2">
-            <a href="https://discord.com/oauth2/authorize?client_id=${CONFIG.CLIENT_ID}&scope=bot%20applications.commands&permissions=8" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all">
-              <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-indigo-400"></i>
-              <span>Invite Digital Vigital</span>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/60 border border-white/10">
+              <img src="${avatarUrl}" alt="${user?.username || ''}" class="w-5 h-5 rounded-full ring-1 ring-indigo-500/50">
+              <span class="text-xs font-semibold text-slate-200">${user?.username || "User"}</span>
+            </div>
+            <a href="/auth/logout" class="p-1.5 rounded-xl bg-white/5 hover:bg-rose-500/20 border border-white/10 text-slate-400 hover:text-rose-300 transition-all" title="Logout">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
             </a>
           </div>
         </header>
@@ -275,14 +288,12 @@ function renderLayout({
     <!-- Top-nav Layout (for Landing & Server Selector) -->
     <header class="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/75 border-b border-white/10 px-6 py-3.5 flex items-center justify-between">
       <a href="/" class="flex items-center gap-3 group">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shadow-lg shadow-indigo-500/25">
-          <div class="w-full h-full bg-slate-950/80 backdrop-blur-md rounded-[11px] flex items-center justify-center">
-            <i data-lucide="shield-check" class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform"></i>
-          </div>
+        <div class="w-10 h-10 rounded-xl overflow-hidden ring-1 ring-indigo-500/50 shadow-lg shadow-indigo-500/25 shrink-0">
+          <img src="${botAvatar}" alt="${botName}" class="w-full h-full object-cover group-hover:scale-105 transition-transform">
         </div>
         <div class="flex flex-col">
           <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-200 bg-clip-text text-transparent">
-            Digital<span class="text-indigo-400">Vigital</span>
+            ${botName}
           </span>
           <span class="text-[10px] font-mono tracking-widest text-slate-400 uppercase -mt-1">Dashboard</span>
         </div>
@@ -292,22 +303,20 @@ function renderLayout({
         ${
           user
             ? `
-            <a href="/dashboard" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-md text-xs font-semibold text-slate-200 transition-all">
-              <img src="${avatarUrl}" alt="${user.username}" class="w-5 h-5 rounded-full ring-1 ring-indigo-400/50">
-              <span>${user.username}</span>
-            </a>
-            <a href="/auth/logout" class="p-2 rounded-xl bg-white/5 hover:bg-rose-500/15 border border-white/10 text-slate-400 hover:text-rose-300 transition-all" title="Logout">
-              <i data-lucide="log-out" class="w-4 h-4"></i>
-            </a>
+            <div class="flex items-center gap-3">
+              <a href="/dashboard" class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-900 border border-white/10 backdrop-blur-md text-xs font-semibold text-slate-200 transition-all shadow-md">
+                <img src="${avatarUrl}" alt="${user.username}" class="w-6 h-6 rounded-full ring-2 ring-indigo-400/50 object-cover">
+                <span>${user.username}</span>
+              </a>
+              <a href="/auth/logout" class="p-2 rounded-xl bg-white/5 hover:bg-rose-500/15 border border-white/10 text-slate-400 hover:text-rose-300 transition-all" title="Logout">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+              </a>
+            </div>
           `
             : `
-            <a href="/auth/dev-login" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-amber-300 backdrop-blur-md transition-all">
-              <i data-lucide="zap" class="w-3.5 h-3.5"></i>
-              <span>Dev Login</span>
-            </a>
-            <a href="/auth/login" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 border border-indigo-400/30 transition-all">
-              <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
-              <span>Login</span>
+            <a href="/auth/login" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#5865F2] hover:bg-[#4752c4] text-white shadow-lg shadow-indigo-500/25 transition-all">
+              <i data-lucide="disc" class="w-4 h-4"></i>
+              <span>Login with Discord</span>
             </a>
           `
         }
@@ -327,7 +336,7 @@ function renderLayout({
   </div>
 
   <footer class="border-t border-white/5 py-6 text-center text-xs text-slate-500 font-mono">
-    <span>Powered by <strong class="text-indigo-400">Digital Vigital</strong> • Pure JS Bun Engine</span>
+    <span>Powered by <strong class="text-indigo-400">${botName}</strong> • Pure JS Bun Engine</span>
   </footer>
 
   <script>
@@ -369,39 +378,74 @@ function renderLayout({
 </html>`;
 }
 
-// 1. Landing Page
+// 1. Landing Page with Bot Banner and Bot Avatar
 pagesRouter.get("/", (c) => {
+  const client = c.get("discordClient");
+  const user = c.get("user");
+
+  const botAvatar =
+    client?.user?.displayAvatarURL?.({ extension: "png", size: 256 }) ||
+    "https://cdn.discordapp.com/embed/avatars/0.png";
+  const botBanner = client?.user?.bannerURL?.({ extension: "png", size: 1024 }) || null;
+  const botUsername = client?.user?.username || "Digital Vigital";
+
   return c.html(
     renderLayout({
       title: "Home",
+      client,
+      user,
       content: `
-      <div class="py-12 sm:py-20 text-center max-w-3xl mx-auto">
-        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 mb-6 backdrop-blur-md shadow-inner">
-          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
-          <span>The Modern Discord Bot Dashboard</span>
-        </div>
+      <!-- Bot Hero Banner Card -->
+      <div class="relative w-full max-w-4xl mx-auto mb-10 rounded-3xl overflow-hidden glass-panel border border-white/10 shadow-2xl">
+        ${
+          botBanner
+            ? `
+          <div class="w-full h-44 sm:h-64 relative overflow-hidden">
+            <img src="${botBanner}" alt="${botUsername} Banner" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+          </div>
+        `
+            : `
+          <div class="w-full h-44 sm:h-56 relative overflow-hidden bg-gradient-to-r from-indigo-900/50 via-purple-900/40 to-slate-950">
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent"></div>
+            <div class="absolute -right-10 -bottom-10 opacity-10">
+              <img src="${botAvatar}" class="w-64 h-64 rounded-full">
+            </div>
+          </div>
+        `
+        }
 
-        <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
-          Next-Gen Control with <br>
-          <span class="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">Digital Vigital</span>
-        </h1>
+        <!-- Bot Picture & Brand Badge Floating Over Banner -->
+        <div class="relative px-6 sm:px-8 pb-8 pt-0 flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16 sm:-mt-20">
+          <div class="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl bg-slate-950 p-1.5 ring-4 ring-indigo-500/40 shadow-2xl relative shrink-0">
+            <img src="${botAvatar}" alt="${botUsername}" class="w-full h-full rounded-[22px] object-cover">
+            <span class="absolute bottom-2 right-2 w-4 h-4 rounded-full bg-emerald-400 ring-4 ring-slate-950 animate-pulse" title="Online"></span>
+          </div>
 
-        <p class="text-slate-300 text-base sm:text-lg leading-relaxed mb-8 max-w-2xl mx-auto">
-          Configure automated verification gates, media-only channels, command restrictions, autoresponder triggers, and audit logs without tedious Discord chat commands.
-        </p>
+          <div class="text-center sm:text-left flex-1 min-w-0">
+            <div class="flex items-center justify-center sm:justify-start gap-2.5">
+              <h1 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">${botUsername}</h1>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">DISCORD BOT</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1">
+              The Modern Discord Bot Dashboard — Verification, Media Channels, Command Controls, and Real-Time Analytics
+            </p>
+          </div>
 
-        <div class="flex flex-wrap items-center justify-center gap-4">
-          <a href="/dashboard" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-xl shadow-indigo-500/25 border border-indigo-400/30 transition-all hover:scale-105">
-            <span>Open Dashboard</span>
-            <i data-lucide="arrow-right" class="w-4 h-4"></i>
-          </a>
-          <a href="/auth/dev-login" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-amber-300 hover:text-white backdrop-blur-md transition-all">
-            <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
-            <span>Instant Dev Login</span>
-          </a>
+          <div class="shrink-0 flex items-center gap-3">
+            <a href="/dashboard" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-xl shadow-indigo-500/25 border border-indigo-400/30 transition-all hover:scale-105">
+              <span>Open Dashboard</span>
+              <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </a>
+            <a href="https://discord.com/oauth2/authorize?client_id=${CONFIG.CLIENT_ID}&scope=bot%20applications.commands&permissions=8" target="_blank" class="inline-flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 hover:text-white backdrop-blur-md transition-all">
+              <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-400"></i>
+              <span>Invite</span>
+            </a>
+          </div>
         </div>
       </div>
 
+      <!-- Feature Grid -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-4 mb-12">
         <div class="glass-panel p-6 rounded-2xl glass-card-hover">
           <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4 text-indigo-400">
@@ -489,7 +533,7 @@ pagesRouter.get("/dashboard", requireAuth, (c) => {
                 : `
               <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-400">
                 <i data-lucide="plus" class="w-3 h-3"></i>
-                Invite Digital Vigital
+                Invite Bot
               </span>
             `
             }
@@ -508,10 +552,11 @@ pagesRouter.get("/dashboard", requireAuth, (c) => {
     renderLayout({
       title: "Select Server",
       user,
+      client,
       content: `
       <div class="mb-8">
         <h1 class="text-2xl font-bold tracking-tight text-white mb-2">Select a Server</h1>
-        <p class="text-xs text-slate-400">Choose a server where you have Administrator or Manage Server permissions to configure Digital Vigital.</p>
+        <p class="text-xs text-slate-400">Choose a server where you have Administrator or Manage Server permissions to configure the bot.</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -527,11 +572,13 @@ pagesRouter.get("/dashboard/:guildId", requireAuth, requireGuildAdmin, (c) => {
   const user = c.get("user");
   const currentGuild = c.get("currentGuild");
   const botGuild = c.get("botGuild");
+  const client = c.get("discordClient");
 
   return c.html(
     renderLayout({
       title: currentGuild.name,
       user,
+      client,
       currentGuild,
       activeTab: "overview",
       breadcrumbs: ["Overview"],
@@ -621,11 +668,13 @@ pagesRouter.get("/dashboard/:guildId/analytics", requireAuth, requireGuildAdmin,
   const user = c.get("user");
   const currentGuild = c.get("currentGuild");
   const guildId = currentGuild.id;
+  const client = c.get("discordClient");
 
   return c.html(
     renderLayout({
       title: `Analytics • ${currentGuild.name}`,
       user,
+      client,
       currentGuild,
       activeTab: "analytics",
       breadcrumbs: ["Analytics & Trends"],
@@ -837,11 +886,13 @@ pagesRouter.get("/dashboard/:guildId/verification", requireAuth, requireGuildAdm
   const user = c.get("user");
   const currentGuild = c.get("currentGuild");
   const guildId = currentGuild.id;
+  const client = c.get("discordClient");
 
   return c.html(
     renderLayout({
       title: `Verification • ${currentGuild.name}`,
       user,
+      client,
       currentGuild,
       activeTab: "verification",
       breadcrumbs: ["Verification Gate"],
@@ -957,11 +1008,13 @@ pagesRouter.get("/dashboard/:guildId/admin-roles", requireAuth, requireGuildAdmi
   const user = c.get("user");
   const currentGuild = c.get("currentGuild");
   const guildId = currentGuild.id;
+  const client = c.get("discordClient");
 
   return c.html(
     renderLayout({
       title: `Staff Admin Roles • ${currentGuild.name}`,
       user,
+      client,
       currentGuild,
       activeTab: "admin_roles",
       breadcrumbs: ["Staff Admin Roles"],
@@ -1063,11 +1116,13 @@ pagesRouter.get("/dashboard/:guildId/media-only", requireAuth, requireGuildAdmin
   const user = c.get("user");
   const currentGuild = c.get("currentGuild");
   const guildId = currentGuild.id;
+  const client = c.get("discordClient");
 
   return c.html(
     renderLayout({
       title: `Media-Only Channels • ${currentGuild.name}`,
       user,
+      client,
       currentGuild,
       activeTab: "media_only",
       breadcrumbs: ["Media-Only Channels"],
@@ -1173,11 +1228,13 @@ pagesRouter.get("/dashboard/:guildId/commands", requireAuth, requireGuildAdmin, 
   const user = c.get("user");
   const currentGuild = c.get("currentGuild");
   const guildId = currentGuild.id;
+  const client = c.get("discordClient");
 
   return c.html(
     renderLayout({
       title: `Command Restrictions • ${currentGuild.name}`,
       user,
+      client,
       currentGuild,
       activeTab: "commands",
       breadcrumbs: ["Command Restrictions"],
@@ -1276,11 +1333,13 @@ pagesRouter.get("/dashboard/:guildId/sticky", requireAuth, requireGuildAdmin, (c
   const user = c.get("user");
   const currentGuild = c.get("currentGuild");
   const guildId = currentGuild.id;
+  const client = c.get("discordClient");
 
   return c.html(
     renderLayout({
       title: `Sticky Messages • ${currentGuild.name}`,
       user,
+      client,
       currentGuild,
       activeTab: "sticky",
       breadcrumbs: ["Sticky Channel Notice"],
@@ -1371,11 +1430,13 @@ pagesRouter.get("/dashboard/:guildId/autoresponder", requireAuth, requireGuildAd
   const user = c.get("user");
   const currentGuild = c.get("currentGuild");
   const guildId = currentGuild.id;
+  const client = c.get("discordClient");
 
   return c.html(
     renderLayout({
       title: `Autoresponder • ${currentGuild.name}`,
       user,
+      client,
       currentGuild,
       activeTab: "autoresponder",
       breadcrumbs: ["Autoresponder"],
@@ -1508,11 +1569,13 @@ pagesRouter.get("/dashboard/:guildId/config", requireAuth, requireGuildAdmin, (c
   const user = c.get("user");
   const currentGuild = c.get("currentGuild");
   const guildId = currentGuild.id;
+  const client = c.get("discordClient");
 
   return c.html(
     renderLayout({
       title: `Roles & Logs • ${currentGuild.name}`,
       user,
+      client,
       currentGuild,
       activeTab: "config",
       breadcrumbs: ["Roles & Audit Logs"],

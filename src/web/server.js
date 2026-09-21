@@ -20,133 +20,46 @@ export function createWebApp(client = null) {
     await next();
   });
 
-  // 1. OAuth & Dev Login Routes
+  // 1. Discord OAuth Routes
   app.get("/auth/login", (c) => {
-    const directDiscord = c.req.query("direct") === "true";
-    const hasOAuthCreds =
-      CONFIG.CLIENT_ID &&
-      CONFIG.CLIENT_SECRET &&
-      CONFIG.CLIENT_ID !== "123456789012345678";
-
-    // Direct redirect to Discord OAuth if requested and credentials exist
-    if (directDiscord && hasOAuthCreds) {
-      return c.redirect(getOAuthUrl());
-    }
-
-    // If production and has credentials, redirect directly
-    if (CONFIG.ENV === "production" && hasOAuthCreds) {
-      return c.redirect(getOAuthUrl());
-    }
-
-    // Dev mode / Dual Login Page
-    return c.html(`
-      <!DOCTYPE html>
-      <html lang="en" class="dark">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Login • Digital Vigital Dashboard</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script src="https://unpkg.com/lucide@latest"></script>
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-        <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
-      </head>
-      <body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4 relative overflow-hidden antialiased">
-        <div class="fixed top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-indigo-600/15 blur-[140px] pointer-events-none"></div>
-        <div class="fixed bottom-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full bg-purple-600/15 blur-[140px] pointer-events-none"></div>
-
-        <div class="max-w-md w-full p-8 rounded-3xl bg-slate-900/65 backdrop-blur-2xl border border-white/10 shadow-2xl text-center relative z-10">
-          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shadow-lg shadow-indigo-500/25 mx-auto mb-5">
-            <div class="w-full h-full bg-slate-950/80 backdrop-blur-md rounded-[15px] flex items-center justify-center">
-              <i data-lucide="shield-check" class="w-8 h-8 text-indigo-400"></i>
+    if (
+      !CONFIG.CLIENT_ID ||
+      !CONFIG.CLIENT_SECRET ||
+      CONFIG.CLIENT_ID === "123456789012345678"
+    ) {
+      return c.html(`
+        <!DOCTYPE html>
+        <html lang="en" class="dark">
+        <head>
+          <meta charset="UTF-8">
+          <title>OAuth Configuration Error • Digital Vigital</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+          <script src="https://unpkg.com/lucide@latest"></script>
+          <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+          <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+        </head>
+        <body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4 relative overflow-hidden antialiased">
+          <div class="fixed top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-indigo-600/15 blur-[140px] pointer-events-none"></div>
+          <div class="max-w-md w-full p-8 rounded-3xl bg-slate-900/65 backdrop-blur-2xl border border-white/10 shadow-2xl text-center relative z-10">
+            <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-4">
+              <i data-lucide="alert-triangle" class="w-8 h-8"></i>
             </div>
-          </div>
-
-          <h2 class="text-2xl font-extrabold text-white mb-1 tracking-tight">
-            Digital<span class="text-indigo-400">Vigital</span>
-          </h2>
-          <p class="text-xs text-slate-400 mb-6">Choose your authentication method to access the control panel</p>
-
-          <div class="space-y-3">
-            ${
-              hasOAuthCreds
-                ? `
-              <a href="${getOAuthUrl()}" class="flex items-center justify-center gap-2.5 w-full px-5 py-3.5 rounded-xl text-xs font-bold bg-[#5865F2] hover:bg-[#4752c4] text-white shadow-lg shadow-indigo-500/25 transition-all">
-                <i data-lucide="disc" class="w-4 h-4"></i>
-                <span>Continue with Discord OAuth</span>
-              </a>
-            `
-                : `
-              <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs text-left mb-2">
-                <div class="flex items-center gap-1.5 font-bold mb-1">
-                  <i data-lucide="info" class="w-4 h-4 text-amber-400"></i>
-                  <span>Discord OAuth Credential Notice</span>
-                </div>
-                <code>CLIENT_ID</code> / <code>CLIENT_SECRET</code> not set in <code>.env</code>. You can use instant Dev Mode login below.
-              </div>
-            `
-            }
-
-            <a href="/auth/dev-login" class="flex items-center justify-center gap-2.5 w-full px-5 py-3.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 hover:text-white backdrop-blur-md transition-all shadow-lg">
-              <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
-              <span>⚡ Instant Dev Mode Login</span>
+            <h2 class="text-xl font-bold text-white mb-2">Discord OAuth2 Required</h2>
+            <p class="text-xs text-slate-400 leading-relaxed mb-6">
+              Please set valid <code class="px-2 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono">CLIENT_ID</code> and <code class="px-2 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono">CLIENT_SECRET</code> in your <code class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">.env</code> file to authenticate with Discord.
+            </p>
+            <a href="/" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/15 text-white transition-all">
+              <i data-lucide="arrow-left" class="w-4 h-4"></i>
+              <span>Back to Home</span>
             </a>
           </div>
-
-          <div class="mt-6 pt-6 border-t border-white/5 text-[11px] text-slate-500 flex items-center justify-center gap-1 font-mono">
-            <i data-lucide="shield" class="w-3.5 h-3.5 text-indigo-400"></i>
-            <span>Secured with HMAC Session Verification</span>
-          </div>
-        </div>
-        <script>if (window.lucide) lucide.createIcons();</script>
-      </body>
-      </html>
-    `);
-  });
-
-  // Dev mode login shortcut for local testing
-  app.get("/auth/dev-login", (c) => {
-    let mockGuilds = [];
-
-    // Dynamically pull active guilds from the live Discord client cache
-    if (client?.guilds?.cache?.size > 0) {
-      mockGuilds = client.guilds.cache.map((g) => ({
-        id: g.id,
-        name: g.name,
-        icon: g.icon,
-        permissions: "8", // Full Administrator permission
-        owner: true,
-      }));
-    } else {
-      mockGuilds = [
-        {
-          id: "123456789012345678",
-          name: "Dev Test Guild",
-          icon: null,
-          permissions: "8",
-          owner: true,
-        },
-      ];
+          <script>if (window.lucide) lucide.createIcons();</script>
+        </body>
+        </html>
+      `, 500);
     }
 
-    const sessionToken = createSessionToken({
-      user: {
-        id: "123456789012345678",
-        username: "DeveloperAdmin",
-        discriminator: "0001",
-        avatar: null,
-      },
-      guilds: mockGuilds,
-    });
-
-    setCookie(c, "dv_session", sessionToken, {
-      path: "/",
-      httpOnly: true,
-      sameSite: "Lax",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-
-    return c.redirect("/dashboard");
+    return c.redirect(getOAuthUrl());
   });
 
   app.get("/auth/callback", async (c) => {
