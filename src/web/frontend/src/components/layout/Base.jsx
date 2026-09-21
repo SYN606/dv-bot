@@ -58,10 +58,10 @@ export default function Base({
 
   return (
     <div className="h-screen w-screen flex bg-slate-950 text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200 antialiased overflow-hidden relative">
-      {/* Ambient background glows (fixed to viewport, behind all layers) */}
-      <div className="fixed top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-indigo-600/15 blur-[140px] pointer-events-none -z-10" />
-      <div className="fixed bottom-[-100px] right-[-100px] w-[550px] h-[550px] rounded-full bg-purple-600/15 blur-[150px] pointer-events-none -z-10" />
-      <div className="fixed top-[40%] left-[50%] -translate-x-1/2 w-[400px] h-[400px] rounded-full bg-cyan-600/10 blur-[130px] pointer-events-none -z-10" />
+      {/* Ambient background glows (controlled via theme.css variables) */}
+      <div className="fixed top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full glow-orb-primary blur-[140px] pointer-events-none -z-10" />
+      <div className="fixed bottom-[-100px] right-[-100px] w-[550px] h-[550px] rounded-full glow-orb-secondary blur-[150px] pointer-events-none -z-10" />
+      <div className="fixed top-[40%] left-[50%] -translate-x-1/2 w-[400px] h-[400px] rounded-full glow-orb-tertiary blur-[130px] pointer-events-none -z-10" />
 
       {/* Stationary Sidebar (never moves on scroll) */}
       {!hideSidebar && (

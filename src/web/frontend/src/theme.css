@@ -1,0 +1,249 @@
+/**
+ * ============================================================================
+ * DIGITAL VIGITAL — CENTRAL THEME & DESIGN TOKENS (TAILWIND CSS 4)
+ * ============================================================================
+ * Edit this central file to control all global design variables across the app:
+ * - Font families, sizes, weights, and letter spacing
+ * - Backgrounds, surfaces, sidebar, and glow orbs
+ * - Glassmorphism blur, panels, and borders
+ * - Brand accents, success/warning/error semantic colors
+ * - Border radii and custom scrollbars
+ *
+ * All CSS variables defined in :root are exposed to Tailwind CSS 4 via @theme.
+ */
+
+@import "tailwindcss";
+
+@theme {
+  /* Typography Families */
+  --font-sans: var(--font-family-sans);
+  --font-mono: var(--font-family-mono);
+
+  /* Font Sizes */
+  --text-xs: var(--font-size-xs);
+  --text-xs--line-height: var(--leading-tight);
+  --text-sm: var(--font-size-sm);
+  --text-sm--line-height: var(--leading-normal);
+  --text-base: var(--font-size-base);
+  --text-base--line-height: var(--leading-normal);
+  --text-lg: var(--font-size-lg);
+  --text-lg--line-height: var(--leading-relaxed);
+  --text-xl: var(--font-size-xl);
+  --text-xl--line-height: var(--leading-relaxed);
+  --text-2xl: var(--font-size-2xl);
+  --text-2xl--line-height: var(--leading-tight);
+  --text-3xl: var(--font-size-3xl);
+  --text-3xl--line-height: var(--leading-tight);
+  --text-4xl: var(--font-size-4xl);
+  --text-4xl--line-height: var(--leading-tight);
+
+  /* Font Weights */
+  --font-weight-normal: var(--weight-normal);
+  --font-weight-medium: var(--weight-medium);
+  --font-weight-semibold: var(--weight-semibold);
+  --font-weight-bold: var(--weight-bold);
+  --font-weight-extrabold: var(--weight-extrabold);
+
+  /* Semantic Theme Colors */
+  --color-slate-950: var(--bg-primary);
+  --color-slate-900: var(--bg-secondary);
+  --color-slate-800: var(--bg-card);
+
+  --color-brand: var(--brand-primary);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-glow: var(--brand-glow);
+
+  --color-app-bg: var(--bg-primary);
+  --color-app-surface: var(--bg-secondary);
+  --color-app-card: var(--bg-card);
+  --color-app-border: var(--border-subtle);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-accent: var(--text-accent);
+
+  /* Status Colors */
+  --color-status-success: var(--status-success);
+  --color-status-warning: var(--status-warning);
+  --color-status-error: var(--status-error);
+  --color-status-info: var(--status-info);
+
+  /* Radii */
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-3xl: var(--radius-3xl);
+  --radius-full: var(--radius-full);
+}
+
+:root {
+  /* ==========================================================================
+     1. TYPOGRAPHY & FONT CONFIGURATION
+     ========================================================================== */
+  --font-family-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Font Scale */
+  --font-size-xs: 0.75rem;       /* 12px */
+  --font-size-sm: 0.875rem;      /* 14px */
+  --font-size-base: 1rem;        /* 16px */
+  --font-size-lg: 1.125rem;      /* 18px */
+  --font-size-xl: 1.25rem;       /* 20px */
+  --font-size-2xl: 1.5rem;       /* 24px */
+  --font-size-3xl: 1.875rem;     /* 30px */
+  --font-size-4xl: 2.25rem;      /* 36px */
+
+  /* Line Heights */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* Font Weights */
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+
+  /* Letter Spacing */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.025em;
+  --tracking-widest: 0.1em;
+
+  /* ==========================================================================
+     2. BACKGROUNDS & SURFACES
+     ========================================================================== */
+  --bg-primary: #090d16;
+  --bg-secondary: #0f172a;
+  --bg-sidebar: rgba(9, 13, 22, 0.85);
+  --bg-topbar: rgba(9, 13, 22, 0.75);
+  --bg-card: rgba(15, 23, 42, 0.55);
+  --bg-card-hover: rgba(30, 41, 59, 0.50);
+  --bg-input: rgba(15, 23, 42, 0.85);
+
+  /* Ambient Background Glow Orbs */
+  --glow-primary: rgba(99, 102, 241, 0.15);
+  --glow-secondary: rgba(168, 85, 247, 0.15);
+  --glow-tertiary: rgba(6, 182, 212, 0.10);
+
+  /* ==========================================================================
+     3. GLASSMORPHISM & BLUR STYLING
+     ========================================================================== */
+  --glass-panel-bg: rgba(15, 23, 42, 0.72);
+  --glass-panel-border: rgba(255, 255, 255, 0.08);
+  --glass-panel-blur: 16px;
+
+  --glass-card-bg: rgba(30, 41, 59, 0.40);
+  --glass-card-border: rgba(255, 255, 255, 0.06);
+  --glass-card-border-hover: rgba(99, 102, 241, 0.40);
+  --glass-card-blur: 12px;
+
+  /* ==========================================================================
+     4. BRANDING, ACCENTS & STATUS COLORS
+     ========================================================================== */
+  --brand-primary: #6366f1;           /* Indigo 500 */
+  --brand-hover: #4f46e5;             /* Indigo 600 */
+  --brand-active: #4338ca;            /* Indigo 700 */
+  --brand-glow: rgba(99, 102, 241, 0.25);
+  --brand-subtle: rgba(99, 102, 241, 0.12);
+
+  --accent-purple: #a855f7;
+  --accent-cyan: #06b6d4;
+
+  --status-success: #34d399;          /* Emerald 400 */
+  --status-success-bg: rgba(52, 211, 153, 0.12);
+  --status-warning: #fbbf24;          /* Amber 400 */
+  --status-warning-bg: rgba(251, 191, 36, 0.12);
+  --status-error: #f87171;            /* Rose 400 */
+  --status-error-bg: rgba(248, 113, 113, 0.12);
+  --status-info: #38bdf8;             /* Sky 400 */
+  --status-info-bg: rgba(56, 189, 248, 0.12);
+
+  /* ==========================================================================
+     5. TEXT & CONTENT COLORS
+     ========================================================================== */
+  --text-primary: #f8fafc;            /* White / Slate 50 */
+  --text-secondary: #94a3b8;          /* Slate 400 */
+  --text-muted: #64748b;              /* Slate 500 */
+  --text-accent: #a5b4fc;             /* Indigo 300 */
+
+  /* ==========================================================================
+     6. BORDERS & RADII
+     ========================================================================== */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-focus: rgba(99, 102, 241, 0.50);
+
+  --radius-xs: 0.25rem;               /* 4px */
+  --radius-sm: 0.375rem;              /* 6px */
+  --radius-md: 0.5rem;                /* 8px */
+  --radius-lg: 0.75rem;               /* 12px */
+  --radius-xl: 1rem;                  /* 16px */
+  --radius-2xl: 1.5rem;               /* 24px */
+  --radius-3xl: 2rem;                 /* 32px */
+  --radius-full: 9999px;
+
+  /* ==========================================================================
+     7. SCROLLBARS
+     ========================================================================== */
+  --scrollbar-width: 6px;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.30);
+  --scrollbar-track: transparent;
+}
+
+/* ==========================================================================
+   8. UTILITY CLASSES BUILT ON VARIABLES
+   ========================================================================== */
+.glass-panel {
+  background: var(--glass-panel-bg);
+  backdrop-filter: blur(var(--glass-panel-blur));
+  -webkit-backdrop-filter: blur(var(--glass-panel-blur));
+  border: 1px solid var(--glass-panel-border);
+}
+
+.glass-card {
+  background: var(--glass-card-bg);
+  backdrop-filter: blur(var(--glass-card-blur));
+  -webkit-backdrop-filter: blur(var(--glass-card-blur));
+  border: 1px solid var(--glass-card-border);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card-hover:hover {
+  transform: translateY(-2px);
+  border-color: var(--glass-card-border-hover);
+  box-shadow: 0 15px 25px -5px var(--brand-subtle);
+}
+
+/* Ambient Glow Orbs */
+.glow-orb-primary {
+  background: var(--glow-primary);
+}
+.glow-orb-secondary {
+  background: var(--glow-secondary);
+}
+.glow-orb-tertiary {
+  background: var(--glow-tertiary);
+}
+
+/* Custom Webkit Scrollbars controlled by variables */
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
