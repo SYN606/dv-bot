@@ -37,7 +37,7 @@ export default {
     await handleAutoresponder(message);
 
     // 5. Sticky Message Repin
-    await handleSticky(message);
+    await handleSticky(message).catch((err) => console.error("[STICKY ERROR]:", err));
 
     // 6. Prefix Command Execution
     if (message.author.bot) return;

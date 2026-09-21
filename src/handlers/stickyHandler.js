@@ -16,17 +16,23 @@ export async function handleSticky(message) {
   const sticky = await getStickyMessage(guildId, channelId);
   if (!sticky || !sticky.sticky_content) return;
 
+  const lastMsgId = sticky.last_message_id ? String(sticky.last_message_id) : null;
+
   // Don't re-send if the last message in the channel is already the sticky message
-  if (sticky.last_message_id && sticky.last_message_id === message.id) return;
+  if (lastMsgId && lastMsgId === message.id) return;
 
   stickyLocks.add(lockKey);
 
   try {
     // Delete the previous sticky message if it exists
-    if (sticky.last_message_id) {
-      const prevMsg = await message.channel.messages.fetch(sticky.last_message_id).catch(() => null);
-      if (prevMsg) {
-        await prevMsg.delete().catch(() => {});
+    if (lastMsgId && /^\d{17,20}$/.test(lastMsgId)) {
+      try {
+        const prevMsg = await message.channel.messages.fetch(lastMsgId).catch(() => null);
+        if (prevMsg && typeof prevMsg.delete === "function" && prevMsg.id === lastMsgId) {
+          await prevMsg.delete();
+        }
+      } catch {
+        // Message already deleted or missing permissions, ignore safely
       }
     }
 
@@ -38,9 +44,11 @@ export async function handleSticky(message) {
     });
 
     const newMsg = await message.channel.send({ embeds: [embed] }).catch(() => null);
-    if (newMsg) {
+    if (newMsg && newMsg.id) {
       await updateStickyLastMessage(guildId, channelId, newMsg.id);
     }
+  } catch (err) {
+    console.error(`[STICKY ERROR] Channel ${channelId}:`, err);
   } finally {
     stickyLocks.delete(lockKey);
   }
