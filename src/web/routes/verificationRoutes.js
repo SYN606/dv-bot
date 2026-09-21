@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, parseEmoji } from "discord.js";
 import { VerificationConfig } from "../../db/models/index.js";
 import { ensureGuild } from "../../db/helpers/common.js";
 import { makeEmbed } from "../../core/embeds.js";
@@ -109,12 +109,15 @@ verificationRoutes.post("/guilds/:guildId/verification", async (c) => {
         level: "PRIMARY",
       });
 
+      const emojiVal = config.button_emoji || EMOJIS.get("success") || "✅";
+      const parsedEmoji = parseEmoji(emojiVal) || emojiVal;
+
       const button = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("verify_member_btn")
           .setLabel(btnLabel)
           .setStyle(ButtonStyle.Success)
-          .setEmoji(config.button_emoji || EMOJIS.get("success") || "✅")
+          .setEmoji(parsedEmoji)
       );
 
       await channel.send({ embeds: [embed], components: [button] }).catch(() => {});
@@ -155,12 +158,15 @@ verificationRoutes.post("/guilds/:guildId/verification/post_button", async (c) =
     level: "PRIMARY",
   });
 
+  const emojiVal = config.button_emoji || EMOJIS.get("success") || "✅";
+  const parsedEmoji = parseEmoji(emojiVal) || emojiVal;
+
   const button = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("verify_member_btn")
       .setLabel(btnLabel)
       .setStyle(ButtonStyle.Success)
-      .setEmoji(config.button_emoji || EMOJIS.get("success") || "✅")
+      .setEmoji(parsedEmoji)
   );
 
   await channel.send({ embeds: [embed], components: [button] });
