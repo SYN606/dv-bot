@@ -116,12 +116,12 @@ export default function Sidebar({
 
       {/* Sidebar Drawer */}
       <aside
-        className={`fixed inset-y-0 left-0 w-64 glass-panel border-r border-white/10 flex flex-col z-50 transform transition-transform duration-300 shrink-0 md:static md:translate-x-0 md:h-screen ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed inset-y-0 left-0 w-64 glass-panel border-r border-white/10 flex flex-col z-50 transform transition-transform duration-300 shrink-0 md:sticky md:top-0 md:left-0 md:h-screen md:translate-x-0 select-none ${
+          mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
       >
         {/* Sidebar Brand Header */}
-        <div className="p-4 border-b border-white/5 flex items-center justify-between">
+        <div className="p-4 border-b border-white/5 flex items-center justify-between shrink-0">
           <Link
             to="/"
             className="flex items-center gap-2.5 group"
@@ -163,7 +163,7 @@ export default function Sidebar({
         </div>
 
         {/* Active Server Badge */}
-        <div className="p-3 m-3 rounded-xl bg-slate-900/60 border border-white/5 flex items-center gap-3">
+        <div className="p-3 m-3 rounded-xl bg-slate-900/60 border border-white/5 flex items-center gap-3 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shrink-0">
             <div className="w-full h-full bg-slate-900 rounded-[11px] flex items-center justify-center overflow-hidden">
               {currentGuild.icon ? (
@@ -191,7 +191,7 @@ export default function Sidebar({
         </div>
 
         {/* Navigation Modules */}
-        <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto">
+        <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto min-h-0">
           {navGroups.map((group) => (
             <div key={group.group}>
               <div className="px-3 mb-1.5 text-[9px] font-mono tracking-widest text-slate-400 uppercase font-semibold">
@@ -230,7 +230,7 @@ export default function Sidebar({
         </nav>
 
         {/* Bottom User Pill */}
-        <div className="p-3 border-t border-white/5 flex items-center justify-between">
+        <div className="p-3 border-t border-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <img
               src={
