@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { Op } from "sequelize";
 import { requireAuth, requireGuildAdmin } from "../middleware/auth.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
@@ -8,7 +9,14 @@ import {
   VerificationConfig,
   ModerationLogConfig,
   VCRoleConfig,
+  DailyActivitySnapshot,
 } from "../../db/models/index.js";
+import {
+  getAdminRoles,
+  addAdminRole,
+  removeAdminRole,
+} from "../../db/helpers/adminRoles.js";
+import { getLeaderboard } from "../../db/helpers/analytics.js";
 import {
   getMediaOnlyChannels,
   setMediaOnlyChannel,
@@ -279,4 +287,105 @@ apiRouter.post("/guilds/:guildId/config", async (c) => {
   }
 
   return c.json({ success: true });
+});
+
+// 8. Admin Roles Management
+apiRouter.get("/guilds/:guildId/admin_roles", async (c) => {
+  const guildId = c.req.param("guildId");
+  const botGuild = c.get("botGuild");
+  const roleIds = await getAdminRoles(guildId);
+
+  const roles = roleIds.map((rId) => {
+    const r = botGuild?.roles.cache.get(rId);
+    return {
+      id: rId,
+      name: r?.name || `Role ${rId}`,
+      color: r?.hexColor || "#99aab5",
+    };
+  });
+
+  return c.json({ adminRoles: roles });
+});
+
+apiRouter.post("/guilds/:guildId/admin_roles", async (c) => {
+  const guildId = c.req.param("guildId");
+  const { role_id } = await c.req.json();
+
+  if (!role_id) {
+    return c.json({ error: "role_id is required" }, 400);
+  }
+
+  const created = await addAdminRole(guildId, role_id);
+  return c.json({ success: true, created });
+});
+
+apiRouter.delete("/guilds/:guildId/admin_roles/:roleId", async (c) => {
+  const guildId = c.req.param("guildId");
+  const roleId = c.req.param("roleId");
+
+  const removed = await removeAdminRole(guildId, roleId);
+  return c.json({ success: removed });
+});
+
+// 9. Analytics Telemetry & Leaderboards
+apiRouter.get("/guilds/:guildId/analytics", async (c) => {
+  const guildId = c.req.param("guildId");
+  const botGuild = c.get("botGuild");
+
+  // Get last 7 days of dates (YYYY-MM-DD)
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().split("T")[0]);
+  }
+
+  // Fetch daily snapshots
+  const snapshots = await DailyActivitySnapshot.findAll({
+    where: {
+      guild_id: String(guildId),
+      date: { [Op.in]: days },
+    },
+    order: [["date", "ASC"]],
+  });
+
+  const snapshotMap = new Map(snapshots.map((s) => [s.date, s]));
+  const timeline = days.map((date) => {
+    const s = snapshotMap.get(date);
+    return {
+      date,
+      messages: Number(s?.total_messages || 0),
+      vc_minutes: Math.round(Number(s?.total_vc_seconds || 0) / 60),
+      joins: Number(s?.joins_count || 0),
+      leaves: Number(s?.leaves_count || 0),
+    };
+  });
+
+  // Top Chatters & Top Voice Members
+  const [topChattersRaw, topVoiceRaw] = await Promise.all([
+    getLeaderboard(guildId, "messages", "total", 5),
+    getLeaderboard(guildId, "vc", "total", 5),
+  ]);
+
+  const topChatters = topChattersRaw.map((m) => {
+    const member = botGuild?.members.cache.get(String(m.user_id));
+    return {
+      userId: String(m.user_id),
+      username: member?.user?.username || `User ${m.user_id}`,
+      avatar: member?.user?.displayAvatarURL?.() || null,
+      messages: Number(m.total_messages),
+    };
+  });
+
+  const topVoice = topVoiceRaw.map((m) => {
+    const member = botGuild?.members.cache.get(String(m.user_id));
+    return {
+      userId: String(m.user_id),
+      username: member?.user?.username || `User ${m.user_id}`,
+      avatar: member?.user?.displayAvatarURL?.() || null,
+      vcMinutes: Math.round(Number(m.total_vc_seconds) / 60),
+    };
+  });
+
+  return c.json({ timeline, topChatters, topVoice });
 });

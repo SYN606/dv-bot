@@ -248,4 +248,43 @@ describe("Web Dashboard & API Tests", () => {
     });
     expect(delRes.status).toBe(200);
   });
+
+  // 8. Staff Admin Roles API
+  it("POST & GET & DELETE /api/guilds/1001/admin_roles should manage admin roles", async () => {
+    const postRes = await app.request("/api/guilds/1001/admin_roles", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ role_id: "3001" }),
+    });
+    expect(postRes.status).toBe(200);
+
+    const getRes = await app.request("/api/guilds/1001/admin_roles", {
+      headers: { Cookie: validCookie },
+    });
+    expect(getRes.status).toBe(200);
+    const body = await getRes.json();
+    expect(body.adminRoles.some((r) => r.id === "3001")).toBe(true);
+
+    const delRes = await app.request("/api/guilds/1001/admin_roles/3001", {
+      method: "DELETE",
+      headers: { Cookie: validCookie },
+    });
+    expect(delRes.status).toBe(200);
+  });
+
+  // 9. Analytics API & Timeline
+  it("GET /api/guilds/1001/analytics should return 7-day timeline and leaderboards", async () => {
+    const res = await app.request("/api/guilds/1001/analytics", {
+      headers: { Cookie: validCookie },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.timeline)).toBe(true);
+    expect(body.timeline.length).toBe(7);
+    expect(Array.isArray(body.topChatters)).toBe(true);
+    expect(Array.isArray(body.topVoice)).toBe(true);
+  });
 });
