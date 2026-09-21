@@ -33,13 +33,10 @@ const QUICK_UNICODE_EMOJIS = [
 ];
 
 const VARIABLE_TAGS = [
-  { key: "{server}", label: "Server Name", desc: "Discord server name" },
-  { key: "{memberCount}", label: "Member Count", desc: "Total server members count" },
-  { key: "{verifiedRole}", label: "Verified Role", desc: "Role mention (@Verified)" },
-  { key: "{channel}", label: "Channel", desc: "Verification channel link" },
-  { key: "{rules}", label: "Rules Channel", desc: "Rules channel link (#rules)" },
-  { key: "{owner}", label: "Owner", desc: "Server owner mention" },
-  { key: "{boosts}", label: "Boosts", desc: "Nitro boost count" },
+  { key: "{server}", label: "Server Name" },
+  { key: "{memberCount}", label: "Member Count" },
+  { key: "{verifiedRole}", label: "Verified Role" },
+  { key: "{rules}", label: "Rules Channel" },
 ];
 
 function renderEmoji(emojiString) {
@@ -203,8 +200,10 @@ export default function VerificationPage({ user, botInfo, showToast }) {
     }
     setPosting(true);
     try {
-      await postVerificationButton(guildId);
-      showToast("Verification prompt posted to channel!");
+      // Auto-save current configuration first
+      await saveVerification(guildId, config);
+      const res = await postVerificationButton(guildId, { channelId: config.channelId });
+      showToast(res.message || "Verification prompt posted to channel!");
     } catch (err) {
       showToast(err.message || "Failed to post prompt.", "error");
     } finally {
@@ -431,9 +430,23 @@ export default function VerificationPage({ user, botInfo, showToast }) {
               {/* Title & Button Label */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Embed Title
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Embed Title
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfig((prev) => ({
+                          ...prev,
+                          embedTitle: prev.embedTitle ? `${prev.embedTitle} {server}` : "{server} Verification",
+                        }))
+                      }
+                      className="text-[10px] font-mono text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded-lg cursor-pointer transition-all"
+                    >
+                      + {`{server}`}
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={config.embedTitle}
@@ -578,23 +591,24 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                   <label className="block text-xs font-semibold text-slate-300">
                     Embed Description & Rules Markdown
                   </label>
-                  <span className="text-[11px] text-indigo-400 font-medium">
-                    Click any tag below to insert into message
+                  <span className="text-[11px] text-slate-400">
+                    Click variable to insert into text:
                   </span>
                 </div>
 
-                {/* 1-Click Variable Insert Buttons */}
-                <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-2xl bg-slate-900/90 border border-white/10">
+                {/* 1-Click Essential Variable Insert Buttons */}
+                <div className="flex flex-wrap items-center gap-2 p-2 rounded-2xl bg-slate-900/90 border border-white/10">
                   {VARIABLE_TAGS.map((v) => (
                     <button
                       key={v.key}
                       type="button"
                       onClick={() => handleInsertVariable(v.key)}
-                      title={v.desc}
-                      className="px-2.5 py-1 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-500/30 text-xs font-mono font-medium transition-all hover:scale-105 cursor-pointer flex items-center gap-1"
+                      title={`Insert ${v.label}`}
+                      className="px-2.5 py-1 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-500/30 text-xs font-mono font-medium transition-all hover:scale-105 cursor-pointer flex items-center gap-1.5 shadow-sm"
                     >
-                      <span>+</span>
+                      <span className="text-indigo-400 font-bold">+</span>
                       <span>{v.key}</span>
+                      <span className="text-[10px] text-slate-400 font-sans">({v.label})</span>
                     </button>
                   ))}
                 </div>

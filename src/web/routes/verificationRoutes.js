@@ -91,7 +91,10 @@ verificationRoutes.post("/guilds/:guildId/verification", async (c) => {
 
   // Deploy verification button panel if requested directly
   if (body.deployPanel && botGuild && config.verify_channel_id) {
-    const channel = botGuild.channels.cache.get(String(config.verify_channel_id));
+    let channel = botGuild.channels.cache.get(String(config.verify_channel_id));
+    if (!channel && botGuild.channels?.fetch) {
+      channel = await botGuild.channels.fetch(String(config.verify_channel_id)).catch(() => null);
+    }
     if (channel && channel.send) {
       const rawTitle = config.embed_title || "Server Verification";
       const rawDesc =
@@ -131,15 +134,61 @@ verificationRoutes.post("/guilds/:guildId/verification", async (c) => {
 verificationRoutes.post("/guilds/:guildId/verification/post_button", async (c) => {
   const guildId = c.req.param("guildId");
   const botGuild = c.get("botGuild");
-  const config = await VerificationConfig.findByPk(guildId);
+  const body = await c.req.json().catch(() => ({}));
 
-  if (!config || !config.verify_channel_id) {
-    return c.json({ error: "Verification channel is not configured." }, 400);
+  let [config] = await VerificationConfig.findOrCreate({
+    where: { guild_id: guildId },
+    defaults: { guild_id: guildId },
+  });
+
+  const targetChannelId = body.channelId || body.channel_id || config.verify_channel_id;
+
+  if (!targetChannelId) {
+    return c.json({ error: "Verification channel is not configured. Please select a channel first." }, 400);
   }
 
-  const channel = botGuild?.channels.cache.get(String(config.verify_channel_id));
-  if (!channel || !channel.send) {
-    return c.json({ error: "Verification channel was not found or bot lacks send access." }, 404);
+  // Auto-sync channel if provided
+  if (config.verify_channel_id !== String(targetChannelId)) {
+    config.verify_channel_id = String(targetChannelId);
+    await config.save();
+    apiCache.delete(`guild:${guildId}:verification`);
+  }
+
+  // Fetch channel from cache or Discord API
+  let channel = botGuild?.channels?.cache?.get(String(targetChannelId));
+  if (!channel && botGuild?.channels?.fetch) {
+    channel = await botGuild.channels.fetch(String(targetChannelId)).catch(() => null);
+  }
+
+  if (!channel) {
+    return c.json({ error: "Verification channel was not found on this server. Please verify the bot is in this server and has access." }, 404);
+  }
+
+  if (!channel.send) {
+    return c.json({ error: `#${channel.name || "channel"} is not a text channel the bot can send messages to.` }, 400);
+  }
+
+  // Validate channel send permissions
+  const botMember = botGuild?.members?.me;
+  if (botMember && channel.permissionsFor) {
+    const perms = channel.permissionsFor(botMember);
+    if (perms) {
+      if (!perms.has("ViewChannel")) {
+        return c.json({
+          error: `The bot cannot view #${channel.name}. Please grant the bot 'View Channel' permission in #${channel.name}.`,
+        }, 403);
+      }
+      if (!perms.has("SendMessages")) {
+        return c.json({
+          error: `The bot cannot send messages in #${channel.name}. Please grant the bot 'Send Messages' permission in #${channel.name}.`,
+        }, 403);
+      }
+      if (!perms.has("EmbedLinks")) {
+        return c.json({
+          error: `The bot cannot send embeds in #${channel.name}. Please grant the bot 'Embed Links' permission in #${channel.name}.`,
+        }, 403);
+      }
+    }
   }
 
   const rawTitle = config.embed_title || "Server Verification";
@@ -169,6 +218,13 @@ verificationRoutes.post("/guilds/:guildId/verification/post_button", async (c) =
       .setEmoji(parsedEmoji)
   );
 
-  await channel.send({ embeds: [embed], components: [button] });
-  return c.json({ success: true, message: "Verification prompt posted to channel." });
+  try {
+    await channel.send({ embeds: [embed], components: [button] });
+    return c.json({ success: true, message: `Verification prompt posted to #${channel.name}!` });
+  } catch (err) {
+    console.error("[VERIFICATION PROMPT SEND ERROR]:", err);
+    return c.json({
+      error: `Discord error while sending message to #${channel.name}: ${err.message || "Missing channel permissions"}.`,
+    }, 400);
+  }
 });

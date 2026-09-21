@@ -55,9 +55,10 @@ export async function saveVerification(guildId, payload) {
   });
 }
 
-export async function postVerificationButton(guildId) {
+export async function postVerificationButton(guildId, payload = {}) {
   return fetchApi(`/api/guilds/${guildId}/verification/post_button`, {
     method: "POST",
+    body: payload,
   });
 }
 
