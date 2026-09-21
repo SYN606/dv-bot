@@ -11,7 +11,6 @@ import {
   Bot,
   Sliders,
   ArrowLeftRight,
-  LogOut,
   X,
 } from "lucide-react";
 
@@ -228,34 +227,6 @@ export default function Sidebar({
             </div>
           ))}
         </nav>
-
-        {/* Bottom User Pill */}
-        <div className="p-3 border-t border-white/5 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <img
-              src={
-                user?.avatar
-                  ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
-                  : "https://cdn.discordapp.com/embed/avatars/0.png"
-              }
-              alt=""
-              className="w-7 h-7 rounded-full ring-1 ring-indigo-500/30 object-cover shrink-0"
-            />
-            <div className="truncate">
-              <p className="text-xs font-semibold text-slate-200 truncate">
-                {user?.username || "User"}
-              </p>
-              <p className="text-[10px] text-slate-400 truncate">Logged in</p>
-            </div>
-          </div>
-          <a
-            href="/auth/logout"
-            className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors"
-            title="Sign out"
-          >
-            <LogOut className="w-4 h-4" />
-          </a>
-        </div>
       </aside>
     </>
   );
