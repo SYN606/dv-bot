@@ -1,7 +1,9 @@
 import { Hono } from "hono";
+import { getCookie } from "hono/cookie";
 import { ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { Op } from "sequelize";
 import { requireAuth, requireGuildAdmin } from "../middleware/auth.js";
+import { verifySessionToken } from "../auth.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import { PROTECTED_COMMANDS } from "../../core/permissions.js";
@@ -40,6 +42,59 @@ import {
 } from "../../db/helpers/autoresponder.js";
 
 export const apiRouter = new Hono();
+
+// Current User & Session Info
+apiRouter.get("/me", async (c) => {
+  const sessionCookie = getCookie(c, "dv_session");
+  const session = verifySessionToken(sessionCookie);
+  if (!session || !session.user) {
+    return c.json({ user: null, guilds: [] });
+  }
+
+  const client = c.get("discordClient");
+  const botGuildIds = client?.guilds?.cache ? Array.from(client.guilds.cache.keys()) : [];
+
+  const guilds = (session.guilds || []).map((g) => ({
+    ...g,
+    botPresent: botGuildIds.includes(String(g.id)),
+  }));
+
+  return c.json({
+    user: session.user,
+    guilds,
+  });
+});
+
+// Bot Profile Metadata (Avatar PFP, Banner, Username, ID)
+apiRouter.get("/bot", async (c) => {
+  const client = c.get("discordClient");
+  const botUser = client?.user;
+
+  const botAvatar =
+    botUser?.displayAvatarURL?.({ extension: "png", size: 256 }) ||
+    (botUser?.avatar
+      ? `https://cdn.discordapp.com/avatars/${botUser.id}/${botUser.avatar}.png`
+      : "https://cdn.discordapp.com/embed/avatars/0.png");
+
+  let botBanner = null;
+  try {
+    if (botUser?.banner) {
+      botBanner = `https://cdn.discordapp.com/banners/${botUser.id}/${botUser.banner}.png?size=1024`;
+    } else if (typeof botUser?.bannerURL === "function") {
+      botBanner = botUser.bannerURL({ size: 1024 });
+    }
+  } catch {}
+
+  const guildIds = client?.guilds?.cache ? Array.from(client.guilds.cache.keys()) : [];
+
+  return c.json({
+    id: botUser?.id || null,
+    username: botUser?.username || "Digital Vigital",
+    avatar: botAvatar,
+    banner: botBanner,
+    guildIds,
+  });
+});
 
 apiRouter.use("/guilds/:guildId/*", requireAuth, requireGuildAdmin);
 

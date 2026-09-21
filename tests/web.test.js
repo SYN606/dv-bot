@@ -99,6 +99,32 @@ describe("Web Dashboard & API Tests", () => {
     expect(res.headers.get("location")).toBe("/auth/login");
   });
 
+  it("GET /api/me should return current user session and guilds", async () => {
+    const unauthRes = await app.request("/api/me");
+    expect(unauthRes.status).toBe(200);
+    const unauthBody = await unauthRes.json();
+    expect(unauthBody.user).toBeNull();
+
+    const authRes = await app.request("/api/me", {
+      headers: { Cookie: validCookie },
+    });
+    expect(authRes.status).toBe(200);
+    const authBody = await authRes.json();
+    expect(authBody.user.id).toBe("9001");
+    expect(authBody.user.username).toBe("DashboardAdmin");
+    expect(authBody.guilds.length).toBeGreaterThan(0);
+  });
+
+  it("GET /api/bot should return bot user profile, avatar, and banner", async () => {
+    const res = await app.request("/api/bot");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty("avatar");
+    expect(body).toHaveProperty("banner");
+    expect(body).toHaveProperty("username");
+    expect(body).toHaveProperty("guildIds");
+  });
+
   // 3. Authenticated Guild Metadata
   it("GET /api/guilds/1001/meta with auth should return channels and roles", async () => {
     const res = await app.request("/api/guilds/1001/meta", {
