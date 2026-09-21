@@ -178,6 +178,8 @@ pyrightconfig.json
 .vscode/
 
 # Local regression tests and code review notes
-/tests/
+/tests/test_regressions.py
+/tests/__pycache__/
 /CODE_REVIEW.md
+node_modules/
 # End of https://www.toptal.com/developers/gitignore/api/python

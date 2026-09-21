@@ -1,0 +1,95 @@
+import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { createCommand } from "../../core/command.js";
+import { makeEmbed } from "../../core/embeds.js";
+import { EMOJIS } from "../../core/emojis.js";
+import { PunishmentRecord } from "../../db/models/index.js";
+import { sendModLog } from "../../utils/modLog.js";
+
+const slashBuilder = new SlashCommandBuilder()
+  .setName("ban")
+  .setDescription("Permanently ban a member from the server")
+  .addUserOption((opt) => opt.setName("user").setDescription("The target user to ban").setRequired(true))
+  .addStringOption((opt) => opt.setName("reason").setDescription("Reason for the ban").setRequired(false));
+
+export default createCommand({
+  name: "ban",
+  description: "Permanently ban a member from the server",
+  category: "Moderation",
+  modOnly: true,
+  requiredPermission: PermissionFlagsBits.BanMembers,
+  slashBuilder,
+
+  async execute(ctx) {
+    const { guild, user } = ctx;
+    if (!guild) return;
+
+    const targetUserId = ctx.options.user || ctx.options._args?.[0]?.replace(/[<@!>]/g, "");
+    const reason = ctx.options.reason || ctx.options._args?.slice(1).join(" ") || "No reason provided";
+
+    if (!targetUserId) {
+      return await ctx.reply({ content: "Please specify a valid user to ban.", ephemeral: true });
+    }
+
+    const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
+
+    // Hierarchy check
+    if (targetMember) {
+      if (!targetMember.bannable) {
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "Ban Failed",
+              description: `${EMOJIS.get("fail") || "❌"} I cannot ban this member. Their role is higher than mine.`,
+              level: "ERROR",
+            }),
+          ],
+          ephemeral: true,
+        });
+      }
+
+      if (ctx.member && targetMember.roles.highest.position >= ctx.member.roles.highest.position && guild.ownerId !== user.id) {
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "Ban Failed",
+              description: `${EMOJIS.get("fail") || "❌"} You cannot ban a member with an equal or higher role than yourself.`,
+              level: "ERROR",
+            }),
+          ],
+          ephemeral: true,
+        });
+      }
+    }
+
+    await guild.bans.create(targetUserId, { reason }).catch(() => {});
+
+    // Record punishment in database
+    await PunishmentRecord.create({
+      guild_id: String(guild.id),
+      user_id: String(targetUserId),
+      moderator_id: String(user.id),
+      action_type: "ban",
+      reason,
+    }).catch(() => {});
+
+    await sendModLog({
+      guild,
+      category: "MODERATION",
+      title: "Member Banned",
+      description: `User <@${targetUserId}> was banned by <@${user.id}>.\n\n• **Reason:** ${reason}`,
+      level: "ERROR",
+      actor: user,
+      extraFields: { Target: `<@${targetUserId}> (\`${targetUserId}\`)` },
+    });
+
+    return await ctx.reply({
+      embeds: [
+        makeEmbed({
+          title: "Member Banned",
+          description: `${EMOJIS.get("ban") || "🔨"} Successfully banned <@${targetUserId}>.\n\n• **Reason:** ${reason}`,
+          level: "SUCCESS",
+        }),
+      ],
+    });
+  },
+});

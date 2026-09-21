@@ -1,0 +1,22 @@
+{
+  "name": "dv-bot",
+  "version": "2.0.0",
+  "description": "High-performance multi-functional Discord Bot built with Bun and discord.js",
+  "type": "module",
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "bun run src/bot.js",
+    "dev": "bun --watch src/bot.js",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.4.5",
+    "hono": "^4.13.8",
+    "mysql2": "^3.12.0",
+    "pg": "^8.13.1",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.5",
+    "sqlite3": "^5.1.7"
+  }
+}
