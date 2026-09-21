@@ -4,124 +4,278 @@ import { CONFIG } from "../../config.js";
 
 export const pagesRouter = new Hono();
 
-function renderLayout({ title, content, user = null, currentGuild = null, activeTab = "" }) {
+function renderLayout({
+  title,
+  content,
+  user = null,
+  currentGuild = null,
+  activeTab = "",
+}) {
   const avatarUrl = user?.avatar
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
     : "https://cdn.discordapp.com/embed/avatars/0.png";
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} • DV-BOT Dashboard</title>
+  <title>${title} • Digital Vigital Dashboard</title>
+  
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg-dark: #1e1f22;
-      --bg-card: #2b2d31;
-      --bg-elevated: #313338;
-      --border: #383a40;
-      --text-main: #f2f3f5;
-      --text-muted: #949ba4;
-      --primary: #5865f2;
-      --primary-hover: #4752c4;
-      --success: #57f287;
-      --danger: #ed4245;
-      --warning: #fee75c;
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-    body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-    header { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
-    .logo { font-size: 1.25rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; text-decoration: none; }
-    .logo span { color: var(--primary); }
-    .user-pill { display: flex; align-items: center; gap: 10px; background: var(--bg-elevated); padding: 6px 14px; border-radius: 20px; text-decoration: none; color: inherit; font-size: 0.9rem; font-weight: 500; }
-    .user-pill img { width: 28px; height: 28px; border-radius: 50%; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; text-decoration: none; cursor: pointer; border: none; transition: 0.15s; }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-danger { background: var(--danger); color: #fff; }
-    .btn-secondary { background: var(--bg-elevated); color: var(--text-main); border: 1px solid var(--border); }
-    .btn-secondary:hover { background: #3c3e44; }
-    .container { max-width: 1100px; margin: 0 auto; width: 100%; padding: 32px 20px; flex: 1; }
-    .grid-guilds { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 24px; }
-    .card-guild { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px; text-decoration: none; color: inherit; transition: transform 0.15s, border-color 0.15s; }
-    .card-guild:hover { transform: translateY(-3px); border-color: var(--primary); }
-    .guild-icon { width: 54px; height: 54px; border-radius: 16px; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; }
-    .guild-icon img { width: 100%; height: 100%; border-radius: 16px; object-fit: cover; }
-    .tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 24px; overflow-x: auto; padding-bottom: 8px; }
-    .tab { padding: 10px 18px; border-radius: 8px; font-weight: 600; text-decoration: none; color: var(--text-muted); font-size: 0.95rem; }
-    .tab.active, .tab:hover { background: var(--bg-elevated); color: var(--text-main); }
-    .module-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
-    .module-card h2 { font-size: 1.2rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-    .module-card p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5; }
-    .form-group { margin-bottom: 18px; }
-    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .form-control { width: 100%; background: var(--bg-elevated); border: 1px solid var(--border); padding: 12px 14px; border-radius: 8px; color: var(--text-main); font-size: 0.95rem; outline: none; }
-    .form-control:focus { border-color: var(--primary); }
-    .switch-group { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
-    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--primary); color: #fff; padding: 12px 20px; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none; z-index: 1000; }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Glassmorphism custom enhancements */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+    }
+    .glass-input {
+      background: rgba(2, 6, 23, 0.6);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.2s ease;
+    }
+    .glass-input:focus {
+      border-color: rgba(99, 102, 241, 0.8);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    .glass-card-hover {
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-card-hover:hover {
+      transform: translateY(-3px);
+      border-color: rgba(99, 102, 241, 0.4);
+      box-shadow: 0 20px 30px -10px rgba(99, 102, 241, 0.15);
+    }
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
   </style>
 </head>
-<body>
-  <header>
-    <a href="/" class="logo">🛡️ DV-<span>BOT</span></a>
-    <div>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200 antialiased relative overflow-x-hidden">
+  
+  <!-- Glowing ambient background orbs -->
+  <div class="fixed top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-indigo-600/15 blur-[140px] pointer-events-none -z-10"></div>
+  <div class="fixed bottom-[-100px] right-[-100px] w-[550px] h-[550px] rounded-full bg-purple-600/15 blur-[150px] pointer-events-none -z-10"></div>
+  <div class="fixed top-[40%] left-[50%] -translate-x-1/2 w-[400px] h-[400px] rounded-full bg-cyan-600/10 blur-[130px] pointer-events-none -z-10"></div>
+
+  <!-- Sticky Glass Navbar -->
+  <header class="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/75 border-b border-white/10 px-6 py-3.5 flex items-center justify-between transition-all">
+    <div class="flex items-center gap-6">
+      <a href="/" class="flex items-center gap-3 group">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shadow-lg shadow-indigo-500/25">
+          <div class="w-full h-full bg-slate-950/80 backdrop-blur-md rounded-[11px] flex items-center justify-center">
+            <i data-lucide="shield-check" class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform"></i>
+          </div>
+        </div>
+        <div class="flex flex-col">
+          <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-200 bg-clip-text text-transparent">
+            Digital<span class="text-indigo-400">Vigital</span>
+          </span>
+          <span class="text-[10px] font-mono tracking-widest text-slate-400 uppercase -mt-1">Dashboard</span>
+        </div>
+      </a>
+    </div>
+
+    <!-- User Pill / Actions -->
+    <div class="flex items-center gap-3">
       ${
         user
-          ? `<div style="display: flex; gap: 12px; align-items: center;">
-              <a href="/dashboard" class="user-pill">
-                <img src="${avatarUrl}" alt="${user.username}">
-                <span>${user.username}</span>
-              </a>
-              <a href="/auth/logout" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">Logout</a>
-            </div>`
-          : `<a href="/auth/login" class="btn btn-primary">Login with Discord</a>`
+          ? `
+          <div class="flex items-center gap-3">
+            <a href="/dashboard" class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-md text-xs font-semibold text-slate-200 transition-all">
+              <img src="${avatarUrl}" alt="${user.username}" class="w-5 h-5 rounded-full ring-1 ring-indigo-400/50">
+              <span>${user.username}</span>
+            </a>
+            <a href="/auth/logout" class="p-2 rounded-xl bg-white/5 hover:bg-rose-500/15 border border-white/10 hover:border-rose-500/30 text-slate-400 hover:text-rose-300 transition-all" title="Logout">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </a>
+          </div>
+        `
+          : `
+          <a href="/auth/login" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 border border-indigo-400/30 transition-all">
+            <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+            <span>Login with Discord</span>
+          </a>
+        `
       }
     </div>
   </header>
-  <main class="container">
+
+  <!-- Main View Container -->
+  <main class="max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 flex-1">
     ${
       currentGuild
         ? `
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <div class="guild-icon">
-              ${
-                currentGuild.icon
-                  ? `<img src="https://cdn.discordapp.com/icons/${currentGuild.id}/${currentGuild.icon}.png" alt="">`
-                  : currentGuild.name.slice(0, 2)
-              }
+        <!-- Server Header Card -->
+        <div class="glass-panel rounded-2xl p-5 sm:p-6 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-lg shadow-indigo-500/20">
+              <div class="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center overflow-hidden">
+                ${
+                  currentGuild.icon
+                    ? `<img src="https://cdn.discordapp.com/icons/${currentGuild.id}/${currentGuild.icon}.png" alt="" class="w-full h-full object-cover">`
+                    : `<span class="font-bold text-lg text-indigo-300 font-mono">${currentGuild.name.slice(0, 2).toUpperCase()}</span>`
+                }
+              </div>
             </div>
             <div>
-              <h1 style="font-size: 1.6rem; font-weight: 700;">${currentGuild.name}</h1>
-              <p style="color: var(--text-muted); font-size: 0.85rem;">Server Management & Module Configurations</p>
+              <div class="flex items-center gap-2">
+                <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">${currentGuild.name}</h1>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Active
+                </span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">Digital Vigital Management & Module Controls</p>
             </div>
           </div>
-          <a href="/dashboard" class="btn btn-secondary">Switch Server</a>
+
+          <div class="flex items-center gap-2">
+            <a href="/dashboard" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white backdrop-blur-md transition-all">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              <span>Switch Server</span>
+            </a>
+          </div>
         </div>
-        <nav class="tabs">
-          <a href="/dashboard/${currentGuild.id}" class="tab ${activeTab === "overview" ? "active" : ""}">Overview</a>
-          <a href="/dashboard/${currentGuild.id}/verification" class="tab ${activeTab === "verification" ? "active" : ""}">🛡️ Verification</a>
-          <a href="/dashboard/${currentGuild.id}/media-only" class="tab ${activeTab === "media_only" ? "active" : ""}">📷 Media-Only</a>
-          <a href="/dashboard/${currentGuild.id}/commands" class="tab ${activeTab === "commands" ? "active" : ""}">⚡ Commands</a>
-          <a href="/dashboard/${currentGuild.id}/autoresponder" class="tab ${activeTab === "autoresponder" ? "active" : ""}">🤖 Autoresponder</a>
-          <a href="/dashboard/${currentGuild.id}/sticky" class="tab ${activeTab === "sticky" ? "active" : ""}">📌 Sticky Notice</a>
-          <a href="/dashboard/${currentGuild.id}/config" class="tab ${activeTab === "config" ? "active" : ""}">⚙️ Roles & Logs</a>
+
+        <!-- Glass Navigation Tabs -->
+        <nav class="flex gap-2 p-1.5 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl mb-8 overflow-x-auto shadow-inner">
+          <a href="/dashboard/${currentGuild.id}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "overview"
+              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-indigo-400/40 shadow-lg shadow-indigo-500/20"
+              : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent"
+          }">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            <span>Overview</span>
+          </a>
+
+          <a href="/dashboard/${currentGuild.id}/verification" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "verification"
+              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-indigo-400/40 shadow-lg shadow-indigo-500/20"
+              : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent"
+          }">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+            <span>Verification</span>
+          </a>
+
+          <a href="/dashboard/${currentGuild.id}/media-only" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "media_only"
+              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-indigo-400/40 shadow-lg shadow-indigo-500/20"
+              : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent"
+          }">
+            <i data-lucide="image" class="w-4 h-4"></i>
+            <span>Media-Only</span>
+          </a>
+
+          <a href="/dashboard/${currentGuild.id}/commands" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "commands"
+              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-indigo-400/40 shadow-lg shadow-indigo-500/20"
+              : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent"
+          }">
+            <i data-lucide="terminal" class="w-4 h-4"></i>
+            <span>Commands</span>
+          </a>
+
+          <a href="/dashboard/${currentGuild.id}/autoresponder" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "autoresponder"
+              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-indigo-400/40 shadow-lg shadow-indigo-500/20"
+              : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent"
+          }">
+            <i data-lucide="bot" class="w-4 h-4"></i>
+            <span>Autoresponder</span>
+          </a>
+
+          <a href="/dashboard/${currentGuild.id}/sticky" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "sticky"
+              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-indigo-400/40 shadow-lg shadow-indigo-500/20"
+              : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent"
+          }">
+            <i data-lucide="pin" class="w-4 h-4"></i>
+            <span>Sticky Notice</span>
+          </a>
+
+          <a href="/dashboard/${currentGuild.id}/config" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "config"
+              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-indigo-400/40 shadow-lg shadow-indigo-500/20"
+              : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent"
+          }">
+            <i data-lucide="sliders" class="w-4 h-4"></i>
+            <span>Roles & Logs</span>
+          </a>
         </nav>
       `
         : ""
     }
+
     ${content}
   </main>
-  <div id="toast" class="toast">Settings Saved Successfully!</div>
+
+  <!-- Modern Floating Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 glass-panel border-emerald-500/30 text-emerald-300 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-semibold transition-all duration-300 transform translate-y-12 opacity-0 pointer-events-none">
+    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+    <span id="toastMsg">Settings Saved Successfully!</span>
+  </div>
+
+  <footer class="mt-auto border-t border-white/5 py-6 text-center text-xs text-slate-500 font-mono">
+    <span>Powered by <strong class="text-indigo-400">Digital Vigital</strong> • Pure JS Bun Engine</span>
+  </footer>
+
   <script>
+    // Initialize Lucide Icons
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.lucide) lucide.createIcons();
+    });
+
     function showToast(msg = "Settings Saved Successfully!") {
-      const t = document.getElementById("toast");
-      t.textContent = msg;
-      t.style.display = "block";
-      setTimeout(() => { t.style.display = "none"; }, 3000);
+      const toast = document.getElementById("toast");
+      const msgEl = document.getElementById("toastMsg");
+      msgEl.textContent = msg;
+      toast.classList.remove("translate-y-12", "opacity-0", "pointer-events-none");
+      toast.classList.add("translate-y-0", "opacity-100");
+      if (window.lucide) lucide.createIcons();
+      setTimeout(() => {
+        toast.classList.remove("translate-y-0", "opacity-100");
+        toast.classList.add("translate-y-12", "opacity-0", "pointer-events-none");
+      }, 3000);
     }
   </script>
 </body>
@@ -134,12 +288,65 @@ pagesRouter.get("/", (c) => {
     renderLayout({
       title: "Home",
       content: `
-      <div style="text-align: center; padding: 60px 0;">
-        <h1 style="font-size: 3rem; font-weight: 800; margin-bottom: 16px;">The Modern Discord Bot Dashboard</h1>
-        <p style="font-size: 1.15rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 32px auto; line-height: 1.6;">
-          Configure verification gates, media-only channels, channel command restrictions, autoresponders, and audit logs without tedious Discord chat commands.
+      <!-- Hero Section -->
+      <div class="py-12 sm:py-20 text-center max-w-3xl mx-auto">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 mb-6 backdrop-blur-md shadow-inner">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
+          <span>The Modern Discord Bot Dashboard</span>
+        </div>
+
+        <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+          Next-Gen Control with <br>
+          <span class="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">Digital Vigital</span>
+        </h1>
+
+        <p class="text-slate-300 text-base sm:text-lg leading-relaxed mb-8 max-w-2xl mx-auto">
+          Configure automated verification gates, media-only channels, command restrictions, autoresponder triggers, and audit logs without tedious Discord chat commands.
         </p>
-        <a href="/dashboard" class="btn btn-primary" style="padding: 14px 28px; font-size: 1.05rem;">Open Dashboard &rarr;</a>
+
+        <div class="flex flex-wrap items-center justify-center gap-4">
+          <a href="/dashboard" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-xl shadow-indigo-500/25 border border-indigo-400/30 transition-all hover:scale-105">
+            <span>Open Dashboard</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </a>
+          <a href="https://discord.com/oauth2/authorize?client_id=${CONFIG.CLIENT_ID}&scope=bot%20applications.commands&permissions=8" target="_blank" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 hover:text-white backdrop-blur-md transition-all">
+            <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-400"></i>
+            <span>Invite Bot</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Feature Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-4 mb-12">
+        <div class="glass-panel p-6 rounded-2xl glass-card-hover">
+          <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4 text-indigo-400">
+            <i data-lucide="shield-check" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-base font-bold text-white mb-2">Automated Verification</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Deploy interactive click-to-verify buttons inside your welcome channel with instant role assignment and unverified role clearance.
+          </p>
+        </div>
+
+        <div class="glass-panel p-6 rounded-2xl glass-card-hover">
+          <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4 text-purple-400">
+            <i data-lucide="image" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-base font-bold text-white mb-2">Media-Only Channels</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Enforce media-first channels by automatically purging regular text messages while keeping art, screenshots, and video posts clean.
+          </p>
+        </div>
+
+        <div class="glass-panel p-6 rounded-2xl glass-card-hover">
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4 text-cyan-400">
+            <i data-lucide="terminal" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-base font-bold text-white mb-2">Command Restrictions</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Disable intrusive bot commands in chat or serious channels with visual toggles while keeping them available everywhere else.
+          </p>
+        </div>
       </div>
     `,
     })
@@ -160,19 +367,54 @@ pagesRouter.get("/dashboard", requireAuth, (c) => {
   const cardsHtml = adminGuilds
     .map((g) => {
       const isBotPresent = !!client?.guilds.cache.has(g.id);
-      const iconUrl = g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : null;
+      const iconUrl = g.icon
+        ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png`
+        : null;
 
       return `
-      <a href="${isBotPresent ? `/dashboard/${g.id}` : `https://discord.com/oauth2/authorize?client_id=${CONFIG.CLIENT_ID}&scope=bot%20applications.commands&permissions=8&guild_id=${g.id}`}" 
-         class="card-guild">
-        <div class="guild-icon">
-          ${iconUrl ? `<img src="${iconUrl}" alt="">` : g.name.slice(0, 2)}
+      <a href="${
+        isBotPresent
+          ? `/dashboard/${g.id}`
+          : `https://discord.com/oauth2/authorize?client_id=${CONFIG.CLIENT_ID}&scope=bot%20applications.commands&permissions=8&guild_id=${g.id}`
+      }" 
+         class="glass-panel p-5 rounded-2xl glass-card-hover flex items-center gap-4 group">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-lg shadow-indigo-500/20 flex-shrink-0">
+          <div class="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center overflow-hidden">
+            ${
+              iconUrl
+                ? `<img src="${iconUrl}" alt="" class="w-full h-full object-cover">`
+                : `<span class="font-bold text-indigo-300 font-mono">${g.name
+                    .slice(0, 2)
+                    .toUpperCase()}</span>`
+            }
+          </div>
         </div>
-        <div style="flex: 1; min-width: 0;">
-          <h3 style="font-size: 1.05rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${g.name}</h3>
-          <span style="font-size: 0.8rem; color: ${isBotPresent ? "var(--success)" : "var(--primary)"}; font-weight: 600;">
-            ${isBotPresent ? "🟢 Manage Server" : "➕ Invite Bot"}
-          </span>
+
+        <div class="flex-1 min-w-0">
+          <h3 class="text-sm font-bold text-white truncate group-hover:text-indigo-300 transition-colors">${
+            g.name
+          }</h3>
+          <div class="mt-1 flex items-center gap-1.5">
+            ${
+              isBotPresent
+                ? `
+              <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                Manage Server
+              </span>
+            `
+                : `
+              <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-400">
+                <i data-lucide="plus" class="w-3 h-3"></i>
+                Invite Digital Vigital
+              </span>
+            `
+            }
+          </div>
+        </div>
+
+        <div class="text-slate-500 group-hover:text-indigo-400 transition-colors">
+          <i data-lucide="chevron-right" class="w-5 h-5"></i>
         </div>
       </a>
     `;
@@ -184,9 +426,14 @@ pagesRouter.get("/dashboard", requireAuth, (c) => {
       title: "Select Server",
       user,
       content: `
-      <h1 style="font-size: 1.7rem; font-weight: 700; margin-bottom: 8px;">Select a Server</h1>
-      <p style="color: var(--text-muted); margin-bottom: 24px;">Choose a server where you have administrative permissions to configure DV-BOT.</p>
-      <div class="grid-guilds">${cardsHtml}</div>
+      <div class="mb-8">
+        <h1 class="text-2xl font-bold tracking-tight text-white mb-2">Select a Server</h1>
+        <p class="text-xs text-slate-400">Choose a server where you have Administrator or Manage Server permissions to configure Digital Vigital.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        ${cardsHtml}
+      </div>
     `,
     })
   );
@@ -205,23 +452,82 @@ pagesRouter.get("/dashboard/:guildId", requireAuth, requireGuildAdmin, (c) => {
       currentGuild,
       activeTab: "overview",
       content: `
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
-        <div class="module-card" style="margin-bottom: 0;">
-          <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">MEMBERS</span>
-          <h3 style="font-size: 1.8rem; margin-top: 8px;">${botGuild?.memberCount || "N/A"}</h3>
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div class="glass-panel p-6 rounded-2xl flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <i data-lucide="users" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <span class="text-[11px] font-mono tracking-wider uppercase text-slate-400 font-semibold">Total Members</span>
+            <h3 class="text-2xl font-extrabold text-white mt-0.5">${botGuild?.memberCount || "N/A"}</h3>
+          </div>
         </div>
-        <div class="module-card" style="margin-bottom: 0;">
-          <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">TEXT CHANNELS</span>
-          <h3 style="font-size: 1.8rem; margin-top: 8px;">${botGuild?.channels.cache.filter((ch) => ch.type === 0).size || 0}</h3>
+
+        <div class="glass-panel p-6 rounded-2xl flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+            <i data-lucide="hash" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <span class="text-[11px] font-mono tracking-wider uppercase text-slate-400 font-semibold">Text Channels</span>
+            <h3 class="text-2xl font-extrabold text-white mt-0.5">${
+              botGuild?.channels.cache.filter((ch) => ch.type === 0).size || 0
+            }</h3>
+          </div>
         </div>
-        <div class="module-card" style="margin-bottom: 0;">
-          <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">ROLES</span>
-          <h3 style="font-size: 1.8rem; margin-top: 8px;">${botGuild?.roles.cache.size || 0}</h3>
+
+        <div class="glass-panel p-6 rounded-2xl flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+            <i data-lucide="shield" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <span class="text-[11px] font-mono tracking-wider uppercase text-slate-400 font-semibold">Configured Roles</span>
+            <h3 class="text-2xl font-extrabold text-white mt-0.5">${
+              botGuild?.roles.cache.size || 0
+            }</h3>
+          </div>
         </div>
       </div>
-      <div class="module-card">
-        <h2>Quick Module Navigation</h2>
-        <p>Manage all server automations and channel policies directly using the navigation tabs above.</p>
+
+      <!-- Quick Action Cards -->
+      <div class="glass-panel p-6 sm:p-8 rounded-2xl">
+        <h2 class="text-base font-bold text-white mb-2 flex items-center gap-2">
+          <i data-lucide="sparkles" class="w-5 h-5 text-indigo-400"></i>
+          <span>Active Server Modules</span>
+        </h2>
+        <p class="text-xs text-slate-400 mb-6">Access and configure each server policy using the navigation tabs above or the quick links below.</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <a href="/dashboard/${currentGuild.id}/verification" class="p-4 rounded-xl bg-slate-900/40 border border-white/5 hover:border-indigo-500/40 hover:bg-slate-900/80 transition-all group">
+            <div class="flex items-center gap-3">
+              <i data-lucide="shield-check" class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform"></i>
+              <div>
+                <h4 class="text-xs font-bold text-white">Verification Gate</h4>
+                <p class="text-[11px] text-slate-400">Setup member entry panel</p>
+              </div>
+            </div>
+          </a>
+
+          <a href="/dashboard/${currentGuild.id}/media-only" class="p-4 rounded-xl bg-slate-900/40 border border-white/5 hover:border-purple-500/40 hover:bg-slate-900/80 transition-all group">
+            <div class="flex items-center gap-3">
+              <i data-lucide="image" class="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform"></i>
+              <div>
+                <h4 class="text-xs font-bold text-white">Media-Only Channels</h4>
+                <p class="text-[11px] text-slate-400">Filter chat vs attachments</p>
+              </div>
+            </div>
+          </a>
+
+          <a href="/dashboard/${currentGuild.id}/commands" class="p-4 rounded-xl bg-slate-900/40 border border-white/5 hover:border-cyan-500/40 hover:bg-slate-900/80 transition-all group">
+            <div class="flex items-center gap-3">
+              <i data-lucide="terminal" class="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform"></i>
+              <div>
+                <h4 class="text-xs font-bold text-white">Command Restrictions</h4>
+                <p class="text-[11px] text-slate-400">Disable commands in channels</p>
+              </div>
+            </div>
+          </a>
+        </div>
       </div>
     `,
     })
@@ -241,30 +547,58 @@ pagesRouter.get("/dashboard/:guildId/verification", requireAuth, requireGuildAdm
       currentGuild,
       activeTab: "verification",
       content: `
-      <div class="module-card">
-        <h2>🛡️ Verification Gate Configuration</h2>
-        <p>Set up an automated entry gate where new members click a button to receive access roles.</p>
-        
-        <form id="verifyForm">
-          <div class="form-group">
-            <label>Verification Channel</label>
-            <select id="verifyChannel" class="form-control"><option value="">Loading channels...</option></select>
+      <div class="glass-panel p-6 sm:p-8 rounded-2xl">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <i data-lucide="shield-check" class="w-5 h-5"></i>
           </div>
-          <div class="form-group">
-            <label>Verified Role (Role granted upon verification)</label>
-            <select id="verifiedRole" class="form-control"><option value="">Loading roles...</option></select>
+          <div>
+            <h2 class="text-lg font-bold text-white">Verification Gate Configuration</h2>
+            <p class="text-xs text-slate-400">Deploy an interactive verification button panel to automatically grant member roles.</p>
           </div>
-          <div class="form-group">
-            <label>Unverified Role (Role removed upon verification, optional)</label>
-            <select id="unverifiedRole" class="form-control"><option value="">None</option></select>
+        </div>
+
+        <form id="verifyForm" class="mt-6 space-y-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Verification Channel</label>
+              <select id="verifyChannel" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none">
+                <option value="">Loading channels...</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Verified Role (Granted on Click)</label>
+              <select id="verifiedRole" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none">
+                <option value="">Loading roles...</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Unverified Role (Removed on Click, Optional)</label>
+              <select id="unverifiedRole" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none">
+                <option value="">None</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Verification Audit Log Channel (Optional)</label>
+              <select id="logChannel" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none">
+                <option value="">None</option>
+              </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Verification Log Channel (optional)</label>
-            <select id="logChannel" class="form-control"><option value="">None</option></select>
-          </div>
-          <div style="display: flex; gap: 12px; margin-top: 24px;">
-            <button type="submit" class="btn btn-primary">Save Settings</button>
-            <button type="button" id="deployBtn" class="btn btn-secondary">Save & Deploy Verification Panel in Channel</button>
+
+          <div class="pt-4 flex flex-wrap items-center gap-3">
+            <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 border border-indigo-400/30 transition-all cursor-pointer">
+              <i data-lucide="save" class="w-4 h-4"></i>
+              <span>Save Settings</span>
+            </button>
+
+            <button type="button" id="deployBtn" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 hover:text-white backdrop-blur-md transition-all cursor-pointer">
+              <i data-lucide="send" class="w-4 h-4 text-indigo-400"></i>
+              <span>Save & Deploy Panel in Discord</span>
+            </button>
           </div>
         </form>
       </div>
@@ -332,19 +666,36 @@ pagesRouter.get("/dashboard/:guildId/media-only", requireAuth, requireGuildAdmin
       currentGuild,
       activeTab: "media_only",
       content: `
-      <div class="module-card">
-        <h2>📷 Media-Only Channel Configuration</h2>
-        <p>Designate channels where only images, videos, and media link attachments are permitted. Non-media chat is automatically deleted.</p>
-
-        <form id="addMediaForm" style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 24px;">
-          <div class="form-group" style="flex: 1; margin-bottom: 0;">
-            <label>Select Channel</label>
-            <select id="mediaChannelSelect" class="form-control"><option value="">Loading channels...</option></select>
+      <div class="glass-panel p-6 sm:p-8 rounded-2xl">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+            <i data-lucide="image" class="w-5 h-5"></i>
           </div>
-          <button type="submit" class="btn btn-primary" style="height: 44px;">Enable Media-Only</button>
+          <div>
+            <h2 class="text-lg font-bold text-white">Media-Only Channel Policies</h2>
+            <p class="text-xs text-slate-400">Channels where only images, videos, and media link attachments are permitted.</p>
+          </div>
+        </div>
+
+        <form id="addMediaForm" class="mt-6 flex flex-col sm:flex-row gap-3 items-end mb-8">
+          <div class="w-full sm:flex-1">
+            <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Select Target Channel</label>
+            <select id="mediaChannelSelect" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none">
+              <option value="">Loading channels...</option>
+            </select>
+          </div>
+          <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 border border-indigo-400/30 transition-all cursor-pointer flex-shrink-0">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Enable Media-Only</span>
+          </button>
         </form>
 
-        <div id="mediaChannelsList">Loading active media-only channels...</div>
+        <div class="border-t border-white/10 pt-6">
+          <h3 class="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-4">Active Media-Only Channels</h3>
+          <div id="mediaChannelsList" class="space-y-3">
+            <div class="p-4 rounded-xl bg-slate-900/40 text-xs text-slate-400">Loading active channels...</div>
+          </div>
+        </div>
       </div>
 
       <script>
@@ -361,23 +712,36 @@ pagesRouter.get("/dashboard/:guildId/media-only", requireAuth, requireGuildAdmin
 
           const list = document.getElementById('mediaChannelsList');
           if (media.length === 0) {
-            list.innerHTML = '<p style="color: var(--text-muted);">No channels are currently configured as media-only.</p>';
+            list.innerHTML = '<div class="p-6 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-xl">No channels are currently configured as media-only.</div>';
             return;
           }
 
           list.innerHTML = media.map(m => {
-            const ch = meta.channels.find(c => c.id === String(m.channel_id));
+            const ch = meta.channels.find(c => String(c.id) === String(m.channel_id));
             const name = ch ? '#' + ch.name : 'Channel ' + m.channel_id;
-            return '<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px; background: var(--bg-elevated); border-radius: 8px; margin-bottom: 10px;">' +
-              '<div><strong>' + name + '</strong><br><span style="font-size: 0.8rem; color: var(--text-muted);">Image Only: ' + (m.image_only ? 'Yes' : 'No') + ' | NSFW Bypass: ' + (m.nsfw_bypass ? 'Yes' : 'No') + '</span></div>' +
-              '<button class="btn btn-danger" style="padding: 6px 14px; font-size: 0.8rem;" onclick="removeMedia(' + m.channel_id + ')">Remove</button>' +
+            return '<div class="flex items-center justify-between p-4 rounded-xl bg-slate-900/40 border border-white/5">' +
+              '<div class="flex items-center gap-3">' +
+                '<i data-lucide="image" class="w-4 h-4 text-purple-400"></i>' +
+                '<div>' +
+                  '<strong class="text-xs font-bold text-white">' + name + '</strong>' +
+                  '<div class="flex gap-2 text-[10px] text-slate-400 mt-0.5">' +
+                    '<span>Image Only: ' + (m.image_only ? 'Yes' : 'No') + '</span> • ' +
+                    '<span>NSFW Bypass: ' + (m.nsfw_bypass ? 'Yes' : 'No') + '</span>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+              '<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 transition-all cursor-pointer" onclick="removeMedia(' + m.channel_id + ')">' +
+                '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>' +
+                '<span>Remove</span>' +
+              '</button>' +
             '</div>';
           }).join('');
+          if (window.lucide) lucide.createIcons();
         }
 
         async function removeMedia(channelId) {
           const res = await fetch('/api/guilds/${guildId}/media_only/' + channelId, { method: 'DELETE' });
-          if (res.ok) { showToast("Channel Removed!"); loadChannels(); }
+          if (res.ok) { showToast("Media Policy Removed!"); loadChannels(); }
         }
 
         document.getElementById('addMediaForm').onsubmit = async (e) => {
@@ -411,21 +775,34 @@ pagesRouter.get("/dashboard/:guildId/commands", requireAuth, requireGuildAdmin, 
       currentGuild,
       activeTab: "commands",
       content: `
-      <div class="module-card">
-        <h2>⚡ Channel Command Restrictions</h2>
-        <p>Disable specific bot commands in selected channels. Server Administrators always bypass these restrictions.</p>
-
-        <div class="form-group">
-          <label>Target Channel</label>
-          <select id="channelPicker" class="form-control" onchange="loadCommands()"><option value="">Loading channels...</option></select>
+      <div class="glass-panel p-6 sm:p-8 rounded-2xl">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+            <i data-lucide="terminal" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-white">Channel Command Restrictions</h2>
+            <p class="text-xs text-slate-400">Disable specific bot commands in target channels. Administrators always bypass these restrictions.</p>
+          </div>
         </div>
 
-        <div id="commandsTable" style="margin-top: 24px;">Loading command list...</div>
+        <div class="mt-6 max-w-sm mb-6">
+          <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Select Channel</label>
+          <select id="channelPicker" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none" onchange="loadCommands()">
+            <option value="">Loading channels...</option>
+          </select>
+        </div>
+
+        <div class="border-t border-white/10 pt-6">
+          <h3 class="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-4">Command Availability</h3>
+          <div id="commandsTable" class="space-y-2">
+            <div class="p-4 rounded-xl bg-slate-900/40 text-xs text-slate-400">Loading command list...</div>
+          </div>
+        </div>
       </div>
 
       <script>
         let allChannels = [];
-        let commandsData = [];
 
         async function init() {
           const meta = await (await fetch('/api/guilds/${guildId}/meta')).json();
@@ -445,16 +822,26 @@ pagesRouter.get("/dashboard/:guildId/commands", requireAuth, requireGuildAdmin, 
 
           table.innerHTML = data.commands.map(cmd => {
             const isDis = disabledSet.has(cmd.name.toLowerCase());
-            return '<div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-elevated); border-radius: 8px; margin-bottom: 8px;">' +
-              '<div><strong>/' + cmd.name + '</strong> <span style="color: var(--text-muted); font-size: 0.85rem;">(' + cmd.category + ')</span><br><span style="font-size: 0.8rem; color: var(--text-muted);">' + cmd.description + '</span></div>' +
+            return '<div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-900/40 border border-white/5">' +
+              '<div>' +
+                '<div class="flex items-center gap-2">' +
+                  '<span class="font-mono text-xs font-bold text-indigo-300">/' + cmd.name + '</span>' +
+                  '<span class="px-2 py-0.5 rounded-md text-[10px] font-mono bg-white/5 text-slate-400 uppercase">' + cmd.category + '</span>' +
+                '</div>' +
+                '<p class="text-[11px] text-slate-400 mt-0.5">' + cmd.description + '</p>' +
+              '</div>' +
               '<div>' +
                 (cmd.isProtected
-                  ? '<span style="font-size: 0.8rem; color: var(--warning);">Protected</span>'
-                  : '<button class="btn ' + (isDis ? 'btn-primary' : 'btn-danger') + '" style="padding: 6px 14px; font-size: 0.8rem;" onclick="toggleCmd(\\'' + cmd.name + '\\', ' + isDis + ')">' + (isDis ? 'Enable' : 'Disable') + '</button>'
+                  ? '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="lock" class="w-3 h-3"></i> Protected</span>'
+                  : '<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ' + (isDis ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30') + ' transition-all cursor-pointer" onclick="toggleCmd(\\'' + cmd.name + '\\', ' + isDis + ')">' +
+                      '<i data-lucide="' + (isDis ? 'check' : 'slash') + '" class="w-3.5 h-3.5"></i>' +
+                      '<span>' + (isDis ? 'Enable' : 'Disable') + '</span>' +
+                    '</button>'
                 ) +
               '</div>' +
             '</div>';
           }).join('');
+          if (window.lucide) lucide.createIcons();
         }
 
         async function toggleCmd(cmdName, enable) {
@@ -465,7 +852,7 @@ pagesRouter.get("/dashboard/:guildId/commands", requireAuth, requireGuildAdmin, 
             body: JSON.stringify({ channel_id: chId, command_name: cmdName, enable })
           });
           if (res.ok) {
-            showToast(enable ? "Command Re-enabled!" : "Command Disabled in Channel!");
+            showToast(enable ? "Command Re-enabled in Channel!" : "Command Disabled in Channel!");
             loadCommands();
           }
         }
@@ -490,20 +877,40 @@ pagesRouter.get("/dashboard/:guildId/config", requireAuth, requireGuildAdmin, (c
       currentGuild,
       activeTab: "config",
       content: `
-      <div class="module-card">
-        <h2>⚙️ Server Audit Logs & Voice Roles</h2>
-        <p>Configure the moderation audit log channel and automated voice channel roles.</p>
+      <div class="glass-panel p-6 sm:p-8 rounded-2xl">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <i data-lucide="sliders" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-white">Server Audit Logs & Automated Roles</h2>
+            <p class="text-xs text-slate-400">Manage moderation logging channels and automatic voice channel roles.</p>
+          </div>
+        </div>
 
-        <form id="configForm">
-          <div class="form-group">
-            <label>Moderation Audit Log Channel</label>
-            <select id="logChannel" class="form-control"><option value="">Loading channels...</option></select>
+        <form id="configForm" class="mt-6 space-y-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Moderation Audit Log Channel</label>
+              <select id="logChannel" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none">
+                <option value="">Loading channels...</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Voice Channel Auto-Role (While in VC)</label>
+              <select id="vcRole" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none">
+                <option value="">Loading roles...</option>
+              </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Voice Channel Auto-Role (Role granted while inside voice channels)</label>
-            <select id="vcRole" class="form-control"><option value="">Loading roles...</option></select>
+
+          <div class="pt-4">
+            <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 border border-indigo-400/30 transition-all cursor-pointer">
+              <i data-lucide="save" class="w-4 h-4"></i>
+              <span>Save Configurations</span>
+            </button>
           </div>
-          <button type="submit" class="btn btn-primary" style="margin-top: 16px;">Save Configuration</button>
         </form>
       </div>
 
@@ -537,7 +944,7 @@ pagesRouter.get("/dashboard/:guildId/config", requireAuth, requireGuildAdmin, (c
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
           });
-          if (res.ok) showToast("Configurations Saved!");
+          if (res.ok) showToast("Configurations Saved Successfully!");
         };
 
         loadConfig();
@@ -560,38 +967,64 @@ pagesRouter.get("/dashboard/:guildId/autoresponder", requireAuth, requireGuildAd
       currentGuild,
       activeTab: "autoresponder",
       content: `
-      <div class="module-card">
-        <h2>🤖 Autoresponder Triggers</h2>
-        <p>Automatically reply or react with emojis when specific phrases are sent in chat.</p>
+      <div class="glass-panel p-6 sm:p-8 rounded-2xl">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+            <i data-lucide="bot" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-white">Automated Trigger Responses</h2>
+            <p class="text-xs text-slate-400">Automatically reply with text and add emoji reactions when designated phrases appear in chat.</p>
+          </div>
+        </div>
 
-        <form id="arForm" style="background: var(--bg-elevated); padding: 20px; border-radius: 8px; margin-bottom: 24px;">
-          <h3 style="margin-bottom: 16px; font-size: 1rem;">Create New Trigger</h3>
-          <div class="form-group">
-            <label>Trigger Phrase</label>
-            <input type="text" id="arTrigger" class="form-control" placeholder="e.g. !discord or hello" required>
+        <!-- Add Trigger Form -->
+        <form id="arForm" class="mt-6 p-5 rounded-2xl bg-slate-900/50 border border-white/10 space-y-4 mb-8">
+          <h3 class="text-xs font-mono uppercase tracking-wider text-indigo-300 font-bold flex items-center gap-2">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>Create New Trigger</span>
+          </h3>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Trigger Phrase</label>
+              <input type="text" id="arTrigger" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none" placeholder="e.g. !discord or welcome" required>
+            </div>
+
+            <div>
+              <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Match Pattern</label>
+              <select id="arMatchType" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none">
+                <option value="contains">Contains (Default)</option>
+                <option value="exact">Exact Match</option>
+                <option value="startswith">Starts With</option>
+                <option value="endswith">Ends With</option>
+                <option value="regex">Regular Expression</option>
+              </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Match Type</label>
-            <select id="arMatchType" class="form-control">
-              <option value="contains">Contains (Default)</option>
-              <option value="exact">Exact Match</option>
-              <option value="startswith">Starts With</option>
-              <option value="endswith">Ends With</option>
-              <option value="regex">Regular Expression</option>
-            </select>
+
+          <div>
+            <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Reply Message Text</label>
+            <textarea id="arReply" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none" rows="3" placeholder="Message content to reply with..." required></textarea>
           </div>
-          <div class="form-group">
-            <label>Reply Text</label>
-            <textarea id="arReply" class="form-control" rows="3" placeholder="Message content to reply with..." required></textarea>
+
+          <div>
+            <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Reaction Emojis (Separated by space)</label>
+            <input type="text" id="arReactions" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none" placeholder="👍 ❤️ 🔥">
           </div>
-          <div class="form-group">
-            <label>Emoji Reactions (separated by spaces, e.g. 👍 ❤️)</label>
-            <input type="text" id="arReactions" class="form-control" placeholder="👍 🔥">
-          </div>
-          <button type="submit" class="btn btn-primary">Create Trigger</button>
+
+          <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 border border-indigo-400/30 transition-all cursor-pointer">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Create Trigger</span>
+          </button>
         </form>
 
-        <div id="arList">Loading active triggers...</div>
+        <div class="border-t border-white/10 pt-6">
+          <h3 class="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-4">Active Triggers</h3>
+          <div id="arList" class="space-y-3">
+            <div class="p-4 rounded-xl bg-slate-900/40 text-xs text-slate-400">Loading triggers...</div>
+          </div>
+        </div>
       </div>
 
       <script>
@@ -601,18 +1034,28 @@ pagesRouter.get("/dashboard/:guildId/autoresponder", requireAuth, requireGuildAd
           const list = document.getElementById('arList');
 
           if (rules.length === 0) {
-            list.innerHTML = '<p style="color: var(--text-muted);">No autoresponder triggers created yet.</p>';
+            list.innerHTML = '<div class="p-6 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-xl">No autoresponder triggers configured yet.</div>';
             return;
           }
 
           list.innerHTML = rules.map(r => {
             const emojis = (r.reactions || []).map(re => re.emoji).join(' ');
-            return '<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px; background: var(--bg-elevated); border-radius: 8px; margin-bottom: 10px;">' +
-              '<div><strong>"' + r.trigger_phrase + '"</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(' + r.match_type + ')</span><br>' +
-              '<span style="font-size: 0.85rem; color: var(--text-muted);">' + r.reply_content + ' ' + (emojis ? '| Reactions: ' + emojis : '') + '</span></div>' +
-              '<button class="btn btn-danger" style="padding: 6px 14px; font-size: 0.8rem;" onclick="deleteAR(' + r.responder_id + ')">Delete</button>' +
+            return '<div class="flex items-center justify-between p-4 rounded-xl bg-slate-900/40 border border-white/5">' +
+              '<div>' +
+                '<div class="flex items-center gap-2">' +
+                  '<span class="font-mono text-xs font-bold text-indigo-300">"' + r.trigger_phrase + '"</span>' +
+                  '<span class="px-2 py-0.5 rounded-md text-[10px] font-mono bg-white/5 text-slate-400 uppercase">' + r.match_type + '</span>' +
+                '</div>' +
+                '<p class="text-xs text-slate-300 mt-1">' + r.reply_content + '</p>' +
+                (emojis ? '<span class="text-xs text-slate-400 mt-1 inline-block">Reactions: ' + emojis + '</span>' : '') +
+              '</div>' +
+              '<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 transition-all cursor-pointer" onclick="deleteAR(' + r.responder_id + ')">' +
+                '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>' +
+                '<span>Delete</span>' +
+              '</button>' +
             '</div>';
           }).join('');
+          if (window.lucide) lucide.createIcons();
         }
 
         async function deleteAR(id) {
@@ -634,7 +1077,7 @@ pagesRouter.get("/dashboard/:guildId/autoresponder", requireAuth, requireGuildAd
             body: JSON.stringify(body)
           });
           if (res.ok) {
-            showToast("Trigger Created!");
+            showToast("Trigger Created Successfully!");
             document.getElementById('arForm').reset();
             loadAR();
           }
@@ -660,22 +1103,40 @@ pagesRouter.get("/dashboard/:guildId/sticky", requireAuth, requireGuildAdmin, (c
       currentGuild,
       activeTab: "sticky",
       content: `
-      <div class="module-card">
-        <h2>📌 Persistent Sticky Notice</h2>
-        <p>Configure a message notice that automatically stays pinned at the bottom of a channel as users chat.</p>
+      <div class="glass-panel p-6 sm:p-8 rounded-2xl">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+            <i data-lucide="pin" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-white">Persistent Sticky Channel Notice</h2>
+            <p class="text-xs text-slate-400">Set up a notice that automatically repins itself to the bottom of the channel as members chat.</p>
+          </div>
+        </div>
 
-        <form id="stickyForm">
-          <div class="form-group">
-            <label>Target Channel</label>
-            <select id="stickyChannel" class="form-control" onchange="loadSticky()"><option value="">Loading channels...</option></select>
+        <form id="stickyForm" class="mt-6 space-y-5">
+          <div class="max-w-sm">
+            <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Select Channel</label>
+            <select id="stickyChannel" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none" onchange="loadSticky()">
+              <option value="">Loading channels...</option>
+            </select>
           </div>
-          <div class="form-group">
-            <label>Sticky Message Content</label>
-            <textarea id="stickyContent" class="form-control" rows="4" placeholder="Enter notice text..."></textarea>
+
+          <div>
+            <label class="block text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2">Sticky Notice Message Content</label>
+            <textarea id="stickyContent" class="glass-input rounded-xl w-full px-4 py-2.5 text-xs text-white outline-none font-sans" rows="5" placeholder="Enter notice announcement text..."></textarea>
           </div>
-          <div style="display: flex; gap: 12px;">
-            <button type="submit" class="btn btn-primary">Save Sticky Notice</button>
-            <button type="button" id="removeStickyBtn" class="btn btn-danger">Remove from Channel</button>
+
+          <div class="pt-2 flex flex-wrap items-center gap-3">
+            <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 border border-indigo-400/30 transition-all cursor-pointer">
+              <i data-lucide="save" class="w-4 h-4"></i>
+              <span>Save Sticky Notice</span>
+            </button>
+
+            <button type="button" id="removeStickyBtn" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 transition-all cursor-pointer">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+              <span>Remove Notice</span>
+            </button>
           </div>
         </form>
       </div>
@@ -704,7 +1165,7 @@ pagesRouter.get("/dashboard/:guildId/sticky", requireAuth, requireGuildAdmin, (c
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ channel_id: chId, content })
           });
-          if (res.ok) showToast("Sticky Notice Saved!");
+          if (res.ok) showToast("Sticky Notice Saved Successfully!");
         };
 
         document.getElementById('removeStickyBtn').onclick = async () => {
