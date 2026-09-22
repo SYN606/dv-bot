@@ -207,6 +207,18 @@ export async function saveConfig(guildId, payload) {
   });
 }
 
+// Tempban Role Config
+export async function getTempban(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/tempban`);
+}
+
+export async function saveTempban(guildId, roleId) {
+  return fetchApi(`/api/guilds/${guildId}/tempban`, {
+    method: "POST",
+    body: { roleId },
+  });
+}
+
 // Analytics
 export async function getAnalytics(guildId, days = 7) {
   return fetchApi(`/api/guilds/${guildId}/analytics?days=${days}`);

@@ -6,8 +6,18 @@ export async function getTempbanConfig(guildId) {
   return await TempbanConfig.findByPk(String(guildId));
 }
 
+export async function removeTempbanConfig(guildId) {
+  const gId = String(guildId);
+  const deleted = await TempbanConfig.destroy({ where: { guild_id: gId } });
+  return deleted > 0;
+}
+
 export async function setTempbanConfig(guildId, roleId) {
   const gId = String(guildId);
+  if (!roleId) {
+    await removeTempbanConfig(gId);
+    return null;
+  }
   await ensureGuild(gId);
   const [config, created] = await TempbanConfig.findOrCreate({
     where: { guild_id: gId },

@@ -15,6 +15,11 @@ import {
   addAdminUser,
   removeAdminUser,
 } from "../../db/helpers/adminRoles.js";
+import {
+  getTempbanConfig,
+  setTempbanConfig,
+  removeTempbanConfig,
+} from "../../db/helpers/tempban.js";
 import { ModerationLogConfig, VCRoleConfig } from "../../db/models/index.js";
 import { apiCache } from "./cache.js";
 
@@ -225,7 +230,7 @@ moderationRoutes.delete("/guilds/:guildId/admin_users/:userId", async (c) => {
   return c.json({ success: removed });
 });
 
-// 3. Modlog & VC Role Config
+// 3. Modlog, VC Role, and Tempban Config
 moderationRoutes.get("/guilds/:guildId/config", async (c) => {
   const guildId = c.req.param("guildId");
   const cacheKey = `guild:${guildId}:config`;
@@ -234,18 +239,22 @@ moderationRoutes.get("/guilds/:guildId/config", async (c) => {
     return c.json(cached);
   }
 
-  const [modlog, vcrole] = await Promise.all([
+  const [modlog, vcrole, tempbanCfg] = await Promise.all([
     ModerationLogConfig.findByPk(guildId),
     VCRoleConfig.findByPk(guildId),
+    getTempbanConfig(guildId),
   ]);
 
   const payload = {
     modlog,
     vcrole,
+    tempban: tempbanCfg,
     modLogChannelId: modlog?.channel_id ? String(modlog.channel_id) : "",
     log_channel_id: modlog?.channel_id ? String(modlog.channel_id) : "",
     vcRoleId: vcrole?.role_id ? String(vcrole.role_id) : "",
     vc_role_id: vcrole?.role_id ? String(vcrole.role_id) : "",
+    tempbanRoleId: tempbanCfg?.role_id ? String(tempbanCfg.role_id) : "",
+    tempban_role_id: tempbanCfg?.role_id ? String(tempbanCfg.role_id) : "",
   };
   apiCache.set(cacheKey, payload, 30000);
   return c.json(payload);
@@ -260,6 +269,9 @@ moderationRoutes.post("/guilds/:guildId/config", async (c) => {
   const vcRoleId = body.vc_role_id !== undefined
     ? body.vc_role_id
     : (body.vcRoleId !== undefined ? body.vcRoleId : body.vc_role);
+  const tempbanRoleId = body.tempban_role_id !== undefined
+    ? body.tempban_role_id
+    : (body.tempbanRoleId !== undefined ? body.tempbanRoleId : body.tempban_role);
 
   if (logChannelId !== undefined) {
     if (logChannelId) {
@@ -277,6 +289,58 @@ moderationRoutes.post("/guilds/:guildId/config", async (c) => {
     }
   }
 
+  if (tempbanRoleId !== undefined) {
+    if (tempbanRoleId) {
+      await setTempbanConfig(guildId, String(tempbanRoleId));
+    } else {
+      await removeTempbanConfig(guildId);
+    }
+  }
+
   apiCache.delete(`guild:${guildId}:config`);
+  apiCache.delete(`guild:${guildId}:tempban`);
   return c.json({ success: true });
+});
+
+// Dedicated Tempban Config Endpoints
+moderationRoutes.get("/guilds/:guildId/tempban", async (c) => {
+  const guildId = c.req.param("guildId");
+  const cacheKey = `guild:${guildId}:tempban`;
+  const cached = apiCache.get(cacheKey);
+  if (cached) {
+    return c.json(cached);
+  }
+
+  const tempbanCfg = await getTempbanConfig(guildId);
+  const payload = {
+    guild_id: guildId,
+    role_id: tempbanCfg?.role_id ? String(tempbanCfg.role_id) : null,
+    tempbanRoleId: tempbanCfg?.role_id ? String(tempbanCfg.role_id) : "",
+    enabled: !!tempbanCfg?.role_id,
+  };
+  apiCache.set(cacheKey, payload, 30000);
+  return c.json(payload);
+});
+
+moderationRoutes.post("/guilds/:guildId/tempban", async (c) => {
+  const guildId = c.req.param("guildId");
+  const body = await c.req.json().catch(() => ({}));
+  const roleId = body.role_id !== undefined
+    ? body.role_id
+    : (body.roleId !== undefined ? body.roleId : body.tempbanRoleId);
+
+  if (roleId) {
+    await setTempbanConfig(guildId, String(roleId));
+  } else {
+    await removeTempbanConfig(guildId);
+  }
+
+  apiCache.delete(`guild:${guildId}:config`);
+  apiCache.delete(`guild:${guildId}:tempban`);
+  return c.json({
+    success: true,
+    guild_id: guildId,
+    role_id: roleId ? String(roleId) : null,
+    enabled: !!roleId,
+  });
 });

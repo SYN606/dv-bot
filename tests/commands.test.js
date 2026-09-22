@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import banCommand from "../src/commands/moderation/ban.js";
 import fakebanCommand from "../src/commands/moderation/fakeban.js";
 import kickCommand from "../src/commands/moderation/kick.js";
@@ -6,7 +6,7 @@ import tempbanCommand from "../src/commands/moderation/tempban.js";
 import timeoutCommand from "../src/commands/moderation/timeout.js";
 import renameCommand from "../src/commands/admin/rename.js";
 import stealCommand from "../src/commands/utility/steal.js";
-import { TempbanRecord, VerificationConfig } from "../src/db/models/index.js";
+import { TempbanRecord, TempbanConfig, VerificationConfig } from "../src/db/models/index.js";
 import { TempbanWorker } from "../src/handlers/tempbanWorker.js";
 
 // Mock helper to build mock command context
@@ -235,6 +235,11 @@ describe("Moderation Command Safeguards", () => {
 });
 
 describe("Ported Python Commands: fakeban, tempban, steal, rename", () => {
+  beforeEach(async () => {
+    await TempbanRecord.destroy({ where: { guild_id: "500000000000000005" } }).catch(() => {});
+    await TempbanConfig.destroy({ where: { guild_id: "500000000000000005" } }).catch(() => {});
+  });
+
   it("fakeban: should prevent fakebanning self and owner", async () => {
     const selfCtx = createMockCtx({ userId: "1001", options: { user: "1001" } });
     await fakebanCommand.execute(selfCtx.ctx);
@@ -277,6 +282,13 @@ describe("Ported Python Commands: fakeban, tempban, steal, rename", () => {
   });
 
   it("tempban: untempban should deactivate active record", async () => {
+    const { ctx: addCtx } = createMockCtx({
+      userRoles: 50,
+      targetRoles: 5,
+      options: { user: "200000000000000002", duration: "2h", reason: "Tempban before lift" },
+    });
+    await tempbanCommand.execute(addCtx);
+
     const { ctx, getReply } = createMockCtx({
       commandName: "untempban",
       subcommand: "remove",
@@ -289,6 +301,54 @@ describe("Ported Python Commands: fakeban, tempban, steal, rename", () => {
       where: { guild_id: "500000000000000005", user_id: "200000000000000002" },
     });
     expect(record.active).toBe(false);
+  });
+
+  it("tempban role: should configure and clear isolation role", async () => {
+    // 1. Configure role via subcommand
+    const { ctx: setCtx, getReply: getSetReply } = createMockCtx({
+      userId: "999999999999999999", // Owner
+      subcommand: "role",
+      options: { role: "666666666666666666" },
+    });
+    setCtx.guild.roles.cache.set("666666666666666666", { id: "666666666666666666", name: "Jailed", position: 5 });
+
+    await tempbanCommand.execute(setCtx);
+    expect(getSetReply()?.embeds[0]?.data?.title).toContain("Tempban Role Configured");
+
+    // 2. View current config
+    const { ctx: viewCtx, getReply: getViewReply } = createMockCtx({
+      userId: "999999999999999999",
+      subcommand: "role",
+      options: {},
+    });
+    viewCtx.guild.roles.cache.set("666666666666666666", { id: "666666666666666666", name: "Jailed", position: 5 });
+    await tempbanCommand.execute(viewCtx);
+    expect(getViewReply()?.embeds[0]?.data?.description).toContain("Jailed");
+
+    // 3. Clear role via clear option
+    const { ctx: clearCtx, getReply: getClearReply } = createMockCtx({
+      userId: "999999999999999999",
+      subcommand: "role",
+      options: { clear: true },
+    });
+    await tempbanCommand.execute(clearCtx);
+    expect(getClearReply()?.embeds[0]?.data?.title).toContain("Tempban Role Cleared");
+  });
+
+  it("tempban: prefix with 'add' keyword should parse target user and duration properly", async () => {
+    const { ctx, getReply } = createMockCtx({
+      userRoles: 50,
+      targetRoles: 5,
+      options: { _args: ["add", "<@200000000000000002>", "3h", "Prefix add test"] },
+    });
+    await tempbanCommand.execute(ctx);
+    expect(getReply()?.embeds[0]?.data?.title).toContain("Member Tempbanned");
+
+    const record = await TempbanRecord.findOne({
+      where: { guild_id: "500000000000000005", user_id: "200000000000000002" },
+    });
+    expect(record.active).toBe(true);
+    expect(record.tempban_reason).toBe("Prefix add test");
   });
 
   it("tempbanWorker: should automatically restore verified role on expiry", async () => {

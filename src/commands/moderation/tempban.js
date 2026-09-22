@@ -1,19 +1,20 @@
 import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
-import { makeEmbed } from "../../core/embeds.js";
+import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import {
   createTempban,
   deactivateTempban,
   getTempbanConfig,
   setTempbanConfig,
+  removeTempbanConfig,
 } from "../../db/helpers/tempban.js";
 import { TempbanRecord, VerificationConfig } from "../../db/models/index.js";
 import { sendModLog } from "../../utils/modLog.js";
 
 function parseDuration(str) {
   if (!str) return null;
-  const match = str.match(/^(\d+)([smhdw])$/i);
+  const match = String(str).trim().match(/^(\d+)\s*([smhdw])$/i);
   if (!match) return null;
   const num = parseInt(match[1], 10);
   const unit = match[2].toLowerCase();
@@ -64,8 +65,9 @@ const slashBuilder = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("role")
-      .setDescription("Configure a role used for isolation-based tempbans")
-      .addRoleOption((opt) => opt.setName("role").setDescription("The isolation role (or leave empty to view)").setRequired(false))
+      .setDescription("Configure or view the role used for isolation-based tempbans")
+      .addRoleOption((opt) => opt.setName("role").setDescription("The isolation role to set").setRequired(false))
+      .addBooleanOption((opt) => opt.setName("clear").setDescription("Remove isolation role to revert to native server bans").setRequired(false))
   );
 
 export default createCommand({
@@ -98,7 +100,7 @@ export default createCommand({
       sub = "role";
     }
 
-    // 1. SUBCOMMAND: ROLE (Set or view isolation role)
+    // 1. SUBCOMMAND: ROLE (Set, view, or reset isolation role)
     if (sub === "role") {
       if (!member?.permissions?.has(PermissionFlagsBits.Administrator) && guild.ownerId !== user.id) {
         return await ctx.reply({
@@ -107,24 +109,48 @@ export default createCommand({
               title: "Permission Denied",
               description: `${EMOJIS.get("fail") || "❌"} Only Administrators can configure the tempban isolation role.`,
               level: "ERROR",
+              color: COLORS.DARK,
+              headerDivider: false,
             }),
           ],
           ephemeral: true,
         });
       }
 
-      const roleId = ctx.options.role || ctx.options._args?.[1]?.replace(/[<@&>]/g, "");
-      if (!roleId) {
-        const config = await getTempbanConfig(guild.id);
-        const currentRole = config?.role_id ? guild.roles.cache.get(config.role_id) : null;
+      const rawRoleArg = ctx.options.role || ctx.options._args?.[1];
+      const isClear = ctx.options.clear || ["none", "clear", "reset", "remove", "disable", "off"].includes(String(rawRoleArg || "").toLowerCase().trim());
+
+      if (isClear) {
+        await removeTempbanConfig(guild.id);
         return await ctx.reply({
           embeds: [
             makeEmbed({
-              title: "Tempban Configuration",
+              title: "Tempban Role Cleared",
+              description: `${EMOJIS.get("success") || "✅"} Tempban isolation role has been removed.\n\n• Tempbans will now execute **native Discord server bans** and automatically unban when expired.\n• You can also configure this in the **Web Dashboard** under Roles & Audit Logs.`,
+              level: "SUCCESS",
+              color: COLORS.DARK,
+              headerDivider: false,
+            }),
+          ],
+        });
+      }
+
+      const roleId = rawRoleArg ? String(rawRoleArg).replace(/[<@&>]/g, "").trim() : null;
+      if (!roleId) {
+        const config = await getTempbanConfig(guild.id);
+        const currentRole = config?.role_id ? guild.roles.cache.get(String(config.role_id)) : null;
+        const roleName = currentRole?.name || "Configured Role";
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              author: { name: "Tempban Configuration", iconURL: guild.iconURL?.({ dynamic: true }) || undefined },
+              title: "Tempban Isolation Role",
               description: currentRole
-                ? `Current isolation role: ${currentRole} (\`${currentRole.id}\`)`
-                : "No isolation role configured. Tempbans will execute native server bans.",
+                ? `• **Current Isolation Role:** <@&${config.role_id}> (${roleName})\n• **Mode:** Role-Based Isolation (strips verification, applies isolation role, and auto-restores on expiry).\n\n-# To clear and revert to native bans: \`/tempban role clear:True\` or \`ts tempban role clear\``
+                : `• **Current Mode:** Native Discord Server Ban (no isolation role configured).\n\n-# To set a role: \`/tempban role role:@Role\` or \`ts tempban role @Role\`, or use the **Web Dashboard** under Roles & Audit Logs.`,
               level: "INFO",
+              color: COLORS.DARK,
+              headerDivider: false,
             }),
           ],
         });
@@ -136,8 +162,10 @@ export default createCommand({
           embeds: [
             makeEmbed({
               title: "Role Not Found",
-              description: `${EMOJIS.get("fail") || "❌"} Could not find role with ID \`${roleId}\`.`,
+              description: `${EMOJIS.get("fail") || "❌"} Could not find role with ID or mention \`${roleId}\`.`,
               level: "ERROR",
+              color: COLORS.DARK,
+              headerDivider: false,
             }),
           ],
           ephemeral: true,
@@ -152,6 +180,8 @@ export default createCommand({
               title: "Role Hierarchy Issue",
               description: `${EMOJIS.get("fail") || "❌"} The bot's role must be higher than ${targetRole} to manage it.`,
               level: "ERROR",
+              color: COLORS.DARK,
+              headerDivider: false,
             }),
           ],
           ephemeral: true,
@@ -162,9 +192,12 @@ export default createCommand({
       return await ctx.reply({
         embeds: [
           makeEmbed({
+            author: { name: "Tempban Configuration", iconURL: guild.iconURL?.({ dynamic: true }) || undefined },
             title: "Tempban Role Configured",
-            description: `${EMOJIS.get("success") || "✅"} Tempban isolation role set to ${targetRole}.`,
+            description: `${EMOJIS.get("success") || "✅"} Tempban isolation role set to ${targetRole}.\n\n• **Behavior:** When members are tempbanned via \`/tempban add\` or \`ts tempban\`, this role is assigned, verified status is temporarily removed, and everything is automatically restored when the timer ends.\n• Can also be changed anytime in the **Web Dashboard** (Roles & Audit Logs).`,
             level: "SUCCESS",
+            color: COLORS.DARK,
+            headerDivider: false,
           }),
         ],
       });
@@ -258,9 +291,15 @@ export default createCommand({
       return await ctx.reply({
         embeds: [
           makeEmbed({
+            author: { name: "Moderation Enforcement", iconURL: guild.iconURL?.({ dynamic: true }) || undefined },
             title: "Tempban Lifted",
-            description: `${EMOJIS.get("success") || "✅"} Active tempban successfully lifted for <@${targetUserId}>.`,
+            description: `${EMOJIS.get("success") || "✅"} Active tempban successfully lifted for <@${targetUserId}>.\n\n` +
+              `• **Target:** <@${targetUserId}>\n` +
+              `• **Moderator:** <@${user.id}>\n` +
+              `• **Reason:** \`${reason}\``,
             level: "SUCCESS",
+            color: COLORS.DARK,
+            headerDivider: false,
           }),
         ],
       });
@@ -272,9 +311,14 @@ export default createCommand({
     let reason = ctx.options.reason;
 
     if (!targetUserId) {
-      targetUserId = ctx.options._args?.[0]?.replace(/[<@!>]/g, "");
-      durationStr = ctx.options._args?.[1];
-      reason = ctx.options._args?.slice(2).join(" ");
+      const isAddKeyword = firstArg === "add";
+      const userIdx = isAddKeyword ? 1 : 0;
+      const durIdx = isAddKeyword ? 2 : 1;
+      const reasonIdx = isAddKeyword ? 3 : 2;
+
+      targetUserId = ctx.options._args?.[userIdx]?.replace(/[<@!>]/g, "");
+      durationStr = ctx.options._args?.[durIdx];
+      reason = ctx.options._args?.slice(reasonIdx).join(" ");
     }
 
     if (!targetUserId) {
@@ -434,15 +478,24 @@ export default createCommand({
       },
     });
 
+    const modeLabel = (tempbanCfg && tempbanCfg.role_id)
+      ? `Role-Based Isolation (<@&${tempbanCfg.role_id}>)`
+      : "Native Discord Server Ban";
+
     return await ctx.reply({
       embeds: [
         makeEmbed({
+          author: { name: "Moderation Enforcement", iconURL: guild.iconURL?.({ dynamic: true }) || undefined },
           title: "Member Tempbanned",
           description: `${EMOJIS.get("ban") || "🔨"} Successfully tempbanned <@${targetUserId}>.\n\n` +
             `• **Duration:** ${humanDuration}\n` +
-            `• **Expires:** <t:${discordTimestamp}:R>\n` +
-            `• **Reason:** ${reason}`,
+            `• **Expires:** <t:${discordTimestamp}:R> (<t:${discordTimestamp}:F>)\n` +
+            `• **Action Taken:** ${modeLabel}\n` +
+            `• **Reason:** \`${reason}\`\n\n` +
+            `- # Automatic unban / isolation lift worker will restore access once time expires.`,
           level: "SUCCESS",
+          color: COLORS.DARK,
+          headerDivider: false,
         }),
       ],
     });

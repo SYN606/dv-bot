@@ -785,7 +785,7 @@ describe("Web Dashboard & API Tests", () => {
     expect(delRes.status).toBe(200);
   });
 
-  // 8c. General Modlog & VC Role Config API
+  // 8c. General Modlog, VC Role, and Tempban Config API
   it("POST & GET /api/guilds/1001/config should manage modlog and vcrole settings", async () => {
     const postRes = await app.request("/api/guilds/1001/config", {
       method: "POST",
@@ -796,6 +796,7 @@ describe("Web Dashboard & API Tests", () => {
       body: JSON.stringify({
         modLogChannelId: "2001",
         vcRoleId: "3001",
+        tempbanRoleId: "4001",
       }),
     });
     expect(postRes.status).toBe(200);
@@ -807,6 +808,30 @@ describe("Web Dashboard & API Tests", () => {
     const body = await getRes.json();
     expect(body.modLogChannelId).toBe("2001");
     expect(body.vcRoleId).toBe("3001");
+    expect(body.tempbanRoleId).toBe("4001");
+
+    // Dedicated /tempban endpoints
+    const dedicatedGet = await app.request("/api/guilds/1001/tempban", {
+      headers: { Cookie: validCookie },
+    });
+    expect(dedicatedGet.status).toBe(200);
+    const tempbanBody = await dedicatedGet.json();
+    expect(tempbanBody.role_id).toBe("4001");
+    expect(tempbanBody.enabled).toBe(true);
+
+    // Clear tempban role via dedicated endpoint
+    const clearRes = await app.request("/api/guilds/1001/tempban", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ roleId: "" }),
+    });
+    expect(clearRes.status).toBe(200);
+    const clearBody = await clearRes.json();
+    expect(clearBody.enabled).toBe(false);
+    expect(clearBody.role_id).toBeNull();
   });
 
   // 9. Analytics API & Timeline
