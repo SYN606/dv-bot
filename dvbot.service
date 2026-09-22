@@ -10,10 +10,10 @@ User=syn
 Group=webhost
 
 # Path to your bot's directory
-WorkingDirectory=/var/webhost
+WorkingDirectory=/var/webhost/dv-bot
 
 # Path to the entrypoint script
-ExecStart=/bin/bash /var/webhost/entrypoint.sh
+ExecStart=/bin/bash /var/webhost/dv-bot/entrypoint.sh
 
 # Automatically restart if the bot crashes
 Restart=always
