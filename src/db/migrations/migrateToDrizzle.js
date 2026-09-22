@@ -2,8 +2,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { Database } from "bun:sqlite";
 
-const dbPath = path.resolve(".DB_DND/bot.db");
-const backupPath = path.resolve(".DB_DND/bot.db.bak");
+const dbDir = path.resolve(process.env.DB_DIR || ".DB_DND");
+const dbPath = process.env.DB_STORAGE ? path.resolve(process.env.DB_STORAGE) : path.join(dbDir, "bot.db");
+const backupPath = `${dbPath}.bak`;
+
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
 
 if (fs.existsSync(dbPath)) {
   fs.copyFileSync(dbPath, backupPath);

@@ -14,13 +14,16 @@ export function getDatabaseConfig() {
   const dbType = CONFIG.DB_TYPE || "sqlite";
 
   if (dbType === "sqlite") {
-    const dbDir = path.join(CONFIG.ROOT_DIR, ".DB_DND");
+    const isTest = process.env.NODE_ENV === "test" || process.env.BUN_ENV === "test";
+    const dbDir = isTest
+      ? path.join(CONFIG.ROOT_DIR, ".DB_DND")
+      : (CONFIG.DB_DIR || path.join(CONFIG.ROOT_DIR, ".DB_DND"));
+
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
     }
-    const isTest = process.env.NODE_ENV === "test" || process.env.BUN_ENV === "test";
     const dbName = isTest ? "test.db" : (CONFIG.SQLITE_NAME || "bot.db");
-    const storage = path.join(dbDir, dbName);
+    const storage = CONFIG.DB_STORAGE || path.join(dbDir, dbName);
     return { dialect: "sqlite", storage };
   }
 

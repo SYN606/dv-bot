@@ -6,14 +6,14 @@ After=network.target
 [Service]
 Type=simple
 # Change to the user running the bot (e.g. ubuntu, debian, botuser)
-User=ubuntu
-Group=ubuntu
+User=syn
+Group=webhost
 
 # Path to your bot's directory
-WorkingDirectory=/home/ubuntu/DV-BOT
+WorkingDirectory=/var/webhost
 
 # Path to the entrypoint script
-ExecStart=/bin/bash /home/ubuntu/DV-BOT/entrypoint.sh
+ExecStart=/bin/bash /var/webhost/entrypoint.sh
 
 # Automatically restart if the bot crashes
 Restart=always
@@ -26,6 +26,7 @@ TimeoutStopSec=30s
 # Security and resource limits
 LimitNOFILE=65536
 Environment=NODE_ENV=production
+Environment=DB_DIR=/var/db
 
 [Install]
 WantedBy=multi-user.target

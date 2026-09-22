@@ -17,6 +17,8 @@ export const CONFIG = {
 
   // Multi-Database Configuration
   DB_TYPE: (process.env.DB_TYPE || "sqlite").toLowerCase(),
+  DB_DIR: process.env.DB_DIR || null,
+  DB_STORAGE: process.env.DB_STORAGE || null,
   SQLITE_NAME: process.env.SQLITE_NAME || "bot.db",
   DATABASE_URL: process.env.DATABASE_URL || null,
   DB_USER: process.env.DB_USER || null,

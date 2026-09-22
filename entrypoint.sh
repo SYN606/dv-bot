@@ -45,8 +45,17 @@ if [ ! -f ".env" ]; then
 fi
 
 # 4. Ensure Database Directory Exists with Secure Permissions
-mkdir -p .DB_DND
-chmod 700 .DB_DND 2>/dev/null || true
+if [ -z "${DB_DIR:-}" ] && [ -f ".env" ]; then
+  ENV_DB_DIR="$(grep -E '^[[:space:]]*DB_DIR=' .env | head -n1 | cut -d '=' -f2- | tr -d ' "\r' || true)"
+  if [ -n "$ENV_DB_DIR" ]; then
+    export DB_DIR="$ENV_DB_DIR"
+  fi
+fi
+
+TARGET_DB_DIR="${DB_DIR:-.DB_DND}"
+mkdir -p "$TARGET_DB_DIR" 2>/dev/null || true
+chmod 700 "$TARGET_DB_DIR" 2>/dev/null || true
+
 
 # 5. Dependency Check
 if [ ! -d "node_modules" ]; then
