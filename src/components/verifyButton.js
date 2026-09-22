@@ -5,9 +5,10 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
-import { TempbanRecord, VerificationConfig } from "../db/models/index.js";
+import { VerificationConfig } from "../db/models/index.js";
 import { makeEmbed } from "../core/embeds.js";
 import { EMOJIS } from "../core/emojis.js";
+import { VerificationService } from "../services/index.js";
 
 // In-memory concurrency locks and temporary captcha store
 const pendingVerifications = new Set();
@@ -23,40 +24,19 @@ function generateCaptchaCode(length = 6) {
 }
 
 /**
- * Execute role grant & unverified role removal with audit logging
+ * Execute role grant & unverified role removal with audit logging via VerificationService
  */
 async function executeVerificationGrant(interaction, config) {
   const guildId = interaction.guild.id;
   const userId = interaction.user.id;
   const lockKey = `${guildId}:${userId}`;
+
   if (interaction.user.bot) {
     return await interaction.reply({
       embeds: [
         makeEmbed({
           title: "Verification Denied",
           description: "Automated bot accounts cannot undergo member verification.",
-          level: "ERROR",
-        }),
-      ],
-      flags: MessageFlags.Ephemeral,
-    });
-  }
-
-  // Security check: Block actively tempbanned accounts
-  const activeTempban = await TempbanRecord.findOne({
-    where: {
-      guild_id: String(guildId),
-      user_id: String(userId),
-      active: true,
-    },
-  });
-
-  if (activeTempban) {
-    return await interaction.reply({
-      embeds: [
-        makeEmbed({
-          title: "Verification Blocked",
-          description: `${EMOJIS.get("fail") || "❌"} You are currently temporarily banned on this server and cannot verify.`,
           level: "ERROR",
         }),
       ],
@@ -80,16 +60,19 @@ async function executeVerificationGrant(interaction, config) {
   pendingVerifications.add(lockKey);
 
   try {
-    const verifiedRoleId = config.verified_role_id ? String(config.verified_role_id) : null;
-    const unverifiedRoleId = config.unverified_role_id ? String(config.unverified_role_id) : null;
-    const botMember = interaction.guild.members.me;
+    const result = await VerificationService.verifyMember({
+      guild: interaction.guild,
+      user: interaction.user,
+      member: interaction.member,
+      config,
+    });
 
-    if (!verifiedRoleId || verifiedRoleId === "null" || verifiedRoleId === "undefined") {
+    if (!result.success) {
       return await interaction.reply({
         embeds: [
           makeEmbed({
-            title: "Verification Role Missing",
-            description: `${EMOJIS.get("fail") || "❌"} The verified role is not configured. Please alert an administrator to select a role in the dashboard.`,
+            title: "Verification Failed",
+            description: `${EMOJIS.get("fail") || "❌"} ${result.message}`,
             level: "ERROR",
           }),
         ],
@@ -97,74 +80,6 @@ async function executeVerificationGrant(interaction, config) {
       });
     }
 
-    let verifiedRole = interaction.guild.roles.cache.get(verifiedRoleId);
-    if (!verifiedRole && interaction.guild.roles.fetch) {
-      verifiedRole = await interaction.guild.roles.fetch(verifiedRoleId).catch(() => null);
-    }
-
-    // 1. Role Existence and Hierarchy Safeguard
-    if (!verifiedRole) {
-      return await interaction.reply({
-        embeds: [
-          makeEmbed({
-            title: "Verification Role Missing",
-            description: `${EMOJIS.get("fail") || "❌"} The configured verified role no longer exists on this server. Please alert an administrator.`,
-            level: "ERROR",
-          }),
-        ],
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-
-    if (botMember && verifiedRole.position >= botMember.roles.highest.position) {
-      return await interaction.reply({
-        embeds: [
-          makeEmbed({
-            title: "Role Hierarchy Error",
-            description: `${EMOJIS.get("fail") || "❌"} The bot cannot assign the verified role because **@${verifiedRole.name}** is positioned higher than (or equal to) the bot's highest role.\n\n${EMOJIS.get("arrow_point") || "👉"} An administrator must move the bot's role higher in **Server Settings > Roles**.`,
-            level: "ERROR",
-          }),
-        ],
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-
-    // 2. Perform Role Updates
-    await interaction.member.roles.add(verifiedRoleId, "Member completed server verification");
-
-    if (unverifiedRoleId && interaction.member.roles.cache.has(unverifiedRoleId)) {
-      await interaction.member.roles.remove(unverifiedRoleId, "Removed unverified role upon verification").catch(() => {});
-    }
-
-    // 3. Simple Audit Log
-    if (config.log_channel_id) {
-      let logChannel = interaction.guild.channels.cache.get(String(config.log_channel_id));
-      if (!logChannel && interaction.guild.channels.fetch) {
-        logChannel = await interaction.guild.channels.fetch(String(config.log_channel_id)).catch(() => null);
-      }
-      if (logChannel && logChannel.send) {
-        const timestamp = Math.floor(Date.now() / 1000);
-        const logEmbed = makeEmbed({
-          title: "🛡️ Member Verified",
-          description:
-            `**Member:** ${interaction.user} (\`${interaction.user.id}\`)\n` +
-            `**Role Granted:** <@&${verifiedRoleId}>\n` +
-            (unverifiedRoleId ? `**Role Removed:** <@&${unverifiedRoleId}>\n` : "") +
-            `**Channel:** ${interaction.channel ? interaction.channel.toString() : "Unknown"}\n` +
-            `**Time:** <t:${timestamp}:R>`,
-          level: "SUCCESS",
-          footer: `Server: ${interaction.guild.name}`,
-        });
-
-        if (interaction.user.displayAvatarURL) {
-          logEmbed.data.thumbnail = { url: interaction.user.displayAvatarURL() };
-        }
-
-        await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
-      }
-    }
-
-    // 4. Success Response
     return await interaction.reply({
       embeds: [
         makeEmbed({
@@ -375,5 +290,11 @@ export function registerVerificationComponent(client) {
     }
 
     await executeVerificationGrant(interaction, config);
+  });
+
+  // Alias for backward compatibility
+  client.components.set("btn_verify_gate", async (interaction) => {
+    const handler = client.components.get("verify_member_btn");
+    if (handler) return await handler(interaction);
   });
 }

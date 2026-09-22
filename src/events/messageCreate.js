@@ -52,7 +52,7 @@ export default {
     const prefix = (CONFIG.PREFIX || "ts").toLowerCase();
     const rawContent = message.content.trim();
 
-    // A. Check for direct Bot Mention (@Bot / @Ofira)
+    // A. Check for direct Bot Mention (@Bot)
     const mentionRegex = new RegExp(`^<@!?${client.user.id}>(?:\\s+)?`);
     let commandString = null;
 
@@ -237,7 +237,7 @@ export default {
  * Sends an interactive quickstart card when the bot is mentioned
  */
 async function sendMentionReply(client, message, prefix) {
-  const botName = CONFIG.BOT_NAME || client.user?.username || "Digital Vigil";
+  const botName = CONFIG.BOT_NAME || client.user?.username || "Digital Vigital";
   const avatar = client.user?.displayAvatarURL({ dynamic: true, size: 256 }) || null;
   const wsPing = Math.round(client.ws?.ping || 0);
 

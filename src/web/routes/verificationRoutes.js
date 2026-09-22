@@ -6,6 +6,7 @@ import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import { formatServerVariables } from "../../utils/templateParser.js";
 import { apiCache } from "./cache.js";
+import { VerificationService } from "../../services/index.js";
 
 export const verificationRoutes = new Hono();
 
@@ -136,48 +137,14 @@ verificationRoutes.post("/guilds/:guildId/verification", async (c) => {
 
   // Deploy verification button panel if requested directly
   if (body.deployPanel && config.verify_channel_id) {
-    const client = c.get("discordClient");
     const targetChannelId = String(config.verify_channel_id).trim();
-
-    let channel = botGuild?.channels?.cache?.get(targetChannelId) || null;
-    if (!channel && botGuild?.channels?.fetch) {
-      channel = await botGuild.channels.fetch(targetChannelId).catch(() => null);
-    }
-    if (!channel && client?.channels?.cache) {
-      channel = client.channels.cache.get(targetChannelId) || null;
-    }
-    if (!channel && client?.channels?.fetch) {
-      channel = await client.channels.fetch(targetChannelId).catch(() => null);
-    }
-
-    if (channel && channel.send) {
-      const rawTitle = config.embed_title || "Server Verification";
-      const rawDesc =
-        config.embed_description ||
-        `${EMOJIS.get("welcome") || "🛡️"} Click the button below to verify and get access to the server.`;
-
-      const title = formatServerVariables(rawTitle, { guild: botGuild || channel.guild, channel, config });
-      const description = formatServerVariables(rawDesc, { guild: botGuild || channel.guild, channel, config });
-      const btnLabel = formatServerVariables(config.button_label || "Verify Access", { guild: botGuild || channel.guild, channel, config });
-
-      const embed = makeEmbed({
-        title,
-        description,
-        level: "PRIMARY",
-      });
-
-      const emojiVal = config.button_emoji || EMOJIS.get("success") || "✅";
-      const parsedEmoji = parseEmoji(emojiVal) || emojiVal;
-
-      const button = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("verify_member_btn")
-          .setLabel(btnLabel)
-          .setStyle(ButtonStyle.Success)
-          .setEmoji(parsedEmoji)
-      );
-
-      await channel.send({ embeds: [embed], components: [button] }).catch((err) => {
+    const guildObj = botGuild || c.get("discordClient")?.guilds?.cache?.get(guildId);
+    if (guildObj) {
+      await VerificationService.deployVerificationPrompt({
+        guild: guildObj,
+        channelId: targetChannelId,
+        config,
+      }).catch((err) => {
         console.warn("[VERIFICATION DIRECT DEPLOY FAILED]:", err?.message);
       });
     }
@@ -337,38 +304,16 @@ verificationRoutes.post("/guilds/:guildId/verification/post_button", async (c) =
     }, 400);
   }
 
-  const rawTitle = config.embed_title || "Server Verification";
-  const rawDesc =
-    config.embed_description ||
-    `${EMOJIS.get("welcome") || "🛡️"} Click the button below to verify and get access to the server.`;
-
-  const title = formatServerVariables(rawTitle, { guild: guildObj, channel, config });
-  const description = formatServerVariables(rawDesc, { guild: guildObj, channel, config });
-  const btnLabel = formatServerVariables(config.button_label || "Verify Access", { guild: guildObj, channel, config });
-
-  const embed = makeEmbed({
-    title,
-    description,
-    level: "PRIMARY",
-  });
-
-  const emojiVal = config.button_emoji || EMOJIS.get("success") || "✅";
-  const parsedEmoji = parseEmoji(emojiVal) || emojiVal;
-
-  const button = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("verify_member_btn")
-      .setLabel(btnLabel)
-      .setStyle(ButtonStyle.Success)
-      .setEmoji(parsedEmoji)
-  );
-
   try {
-    await channel.send({ embeds: [embed], components: [button] });
+    await VerificationService.deployVerificationPrompt({
+      guild: guildObj,
+      channelId: targetChannelId,
+      config,
+    });
     return c.json({ success: true, message: `Verification prompt posted to #${channel.name}!` });
   } catch (err) {
     console.error("[VERIFICATION PROMPT SEND ERROR]:", err);
-    if (err.code === 50013 || err.message?.includes("Missing Permissions")) {
+    if (err.code === 50013 || err.message?.includes("Missing Permissions") || err.message?.includes("Bot lacks")) {
       return c.json({
         error: `Discord permission error in #${channel.name}: Missing Permissions. Please grant the bot "Send Messages" and "Embed Links" in #${channel.name}.`,
       }, 403);

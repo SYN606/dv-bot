@@ -2,8 +2,7 @@ import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
-import { PunishmentRecord } from "../../db/models/index.js";
-import { sendModLog } from "../../utils/modLog.js";
+import { ModerationService } from "../../services/index.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("ban")
@@ -88,7 +87,12 @@ export default createCommand({
     }
 
     try {
-      await guild.bans.create(targetUserId, { reason });
+      await ModerationService.executeBan({
+        guild,
+        moderator: user,
+        targetUser: targetMember || targetUserId,
+        reason,
+      });
     } catch (err) {
       return await ctx.reply({
         embeds: [
@@ -101,25 +105,6 @@ export default createCommand({
         ephemeral: true,
       });
     }
-
-    // Record punishment in database
-    await PunishmentRecord.create({
-      guild_id: String(guild.id),
-      user_id: String(targetUserId),
-      moderator_id: String(user.id),
-      action_type: "ban",
-      reason,
-    }).catch(() => {});
-
-    await sendModLog({
-      guild,
-      category: "MODERATION",
-      title: "Member Banned",
-      description: `User <@${targetUserId}> was banned by <@${user.id}>.\n\n• **Reason:** ${reason}`,
-      level: "ERROR",
-      actor: user,
-      extraFields: { Target: `<@${targetUserId}> (\`${targetUserId}\`)` },
-    });
 
     return await ctx.reply({
       embeds: [

@@ -144,7 +144,7 @@ describe("Embed System Tests", () => {
     expect(md.role("789")).toBe("<@&789>");
   });
 
-  it("should construct Ofira-style trackEmbed matching modern music bot UI", () => {
+  it("should construct modern audio trackEmbed matching media bot UI", () => {
     const embed = trackEmbed({
       status: "Now Playing",
       statusIcon: "https://example.com/sound.png",

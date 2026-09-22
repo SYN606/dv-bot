@@ -3,46 +3,16 @@ import { createCommand } from "../../core/command.js";
 import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import {
-  createTempban,
-  deactivateTempban,
   getTempbanConfig,
   setTempbanConfig,
   removeTempbanConfig,
 } from "../../db/helpers/tempban.js";
-import { TempbanRecord, VerificationConfig } from "../../db/models/index.js";
-import { sendModLog } from "../../utils/modLog.js";
-
-function parseDuration(str) {
-  if (!str) return null;
-  const match = String(str).trim().match(/^(\d+)\s*([smhdw])$/i);
-  if (!match) return null;
-  const num = parseInt(match[1], 10);
-  const unit = match[2].toLowerCase();
-  switch (unit) {
-    case "s": return num;
-    case "m": return num * 60;
-    case "h": return num * 3600;
-    case "d": return num * 86400;
-    case "w": return num * 604800;
-    default: return null;
-  }
-}
-
-function formatDuration(seconds) {
-  if (seconds >= 86400) {
-    const days = Math.floor(seconds / 86400);
-    return `${days} day${days > 1 ? "s" : ""}`;
-  }
-  if (seconds >= 3600) {
-    const hours = Math.floor(seconds / 3600);
-    return `${hours} hour${hours > 1 ? "s" : ""}`;
-  }
-  if (seconds >= 60) {
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes} minute${minutes > 1 ? "s" : ""}`;
-  }
-  return `${seconds} second${seconds > 1 ? "s" : ""}`;
-}
+import {
+  executeTempban,
+  liftTempban,
+  parseDuration,
+  formatDuration,
+} from "../../services/tempbanService.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("tempban")
@@ -100,7 +70,7 @@ export default createCommand({
       sub = "role";
     }
 
-    // 1. SUBCOMMAND: ROLE (Set, view, or reset isolation role)
+    // ── 1. SUBCOMMAND: ROLE ──────────────────────────────────────────────────
     if (sub === "role") {
       if (!member?.permissions?.has(PermissionFlagsBits.Administrator) && guild.ownerId !== user.id) {
         return await ctx.reply({
@@ -203,7 +173,7 @@ export default createCommand({
       });
     }
 
-    // 2. SUBCOMMAND: REMOVE / UNTEMPBAN
+    // ── 2. SUBCOMMAND: REMOVE / UNTEMPBAN ─────────────────────────────────────
     if (sub === "remove") {
       let targetUserId = ctx.options.user;
       let reason = ctx.options.reason;
@@ -232,60 +202,13 @@ export default createCommand({
         });
       }
 
-      reason = reason?.trim() || "Manual untempban by moderator";
+      reason = reason?.trim() || "Early lift by staff";
 
-      const activeRecord = await TempbanRecord.findOne({
-        where: {
-          guild_id: String(guild.id),
-          user_id: String(targetUserId),
-          active: true,
-        },
-      });
-
-      if (!activeRecord) {
-        return await ctx.reply({
-          embeds: [
-            makeEmbed({
-              title: "Not Tempbanned",
-              description: `${EMOJIS.get("warning") || "⚠️"} <@${targetUserId}> has no active tempban record.`,
-              level: "WARNING",
-            }),
-          ],
-          ephemeral: true,
-        });
-      }
-
-      const tempbanCfg = await getTempbanConfig(guild.id);
-      if (tempbanCfg && tempbanCfg.role_id) {
-        const isolationRole = guild.roles.cache.get(String(tempbanCfg.role_id));
-        const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
-        if (targetMember && isolationRole) {
-          await targetMember.roles.remove(isolationRole, `Tempban lifted by ${user.tag}`).catch(() => {});
-        }
-
-        // Restore verified role if verification is configured
-        try {
-          const verifConfig = await VerificationConfig.findByPk(guild.id);
-          if (verifConfig && verifConfig.enabled && verifConfig.verified_role_id && targetMember) {
-            const verifiedRole = guild.roles.cache.get(String(verifConfig.verified_role_id));
-            if (verifiedRole && !targetMember.roles.cache.has(verifiedRole.id)) {
-              await targetMember.roles.add(verifiedRole, "Restoring verified status after tempban lift").catch(() => {});
-            }
-          }
-        } catch {}
-      } else {
-        await guild.bans.remove(targetUserId, `Tempban lifted by ${user.tag}`).catch(() => {});
-      }
-
-      await deactivateTempban(guild.id, targetUserId);
-
-      await sendModLog({
+      await liftTempban({
         guild,
-        category: "MODERATION",
-        title: "Tempban Lifted",
-        description: `Tempban on <@${targetUserId}> was lifted by <@${user.id}>.\n\n• **Reason:** ${reason}`,
-        level: "SUCCESS",
-        actor: user,
+        targetUserId,
+        moderator: user,
+        reason,
       });
 
       return await ctx.reply({
@@ -293,10 +216,7 @@ export default createCommand({
           makeEmbed({
             author: { name: "Moderation Enforcement", iconURL: guild.iconURL?.({ dynamic: true }) || undefined },
             title: "Tempban Lifted",
-            description: `${EMOJIS.get("success") || "✅"} Active tempban successfully lifted for <@${targetUserId}>.\n\n` +
-              `• **Target:** <@${targetUserId}>\n` +
-              `• **Moderator:** <@${user.id}>\n` +
-              `• **Reason:** \`${reason}\``,
+            description: `${EMOJIS.get("success") || "✅"} Active tempban has been lifted for <@${targetUserId}>.\n\n• **Reason:** \`${reason}\`\n• **Staff Moderator:** <@${user.id}>`,
             level: "SUCCESS",
             color: COLORS.DARK,
             headerDivider: false,
@@ -305,28 +225,36 @@ export default createCommand({
       });
     }
 
-    // 3. SUBCOMMAND: ADD (Default)
+    // ── 3. SUBCOMMAND: ADD / TEMPBAN ─────────────────────────────────────────
     let targetUserId = ctx.options.user;
     let durationStr = ctx.options.duration;
     let reason = ctx.options.reason;
 
-    if (!targetUserId) {
-      const isAddKeyword = firstArg === "add";
-      const userIdx = isAddKeyword ? 1 : 0;
-      const durIdx = isAddKeyword ? 2 : 1;
-      const reasonIdx = isAddKeyword ? 3 : 2;
+    if (!targetUserId && ctx.options._args) {
+      const args = ctx.options._args;
+      const startIndex = args[0]?.toLowerCase() === "add" ? 1 : 0;
+      targetUserId = args[startIndex]?.replace(/[<@!>]/g, "");
+      durationStr = args[startIndex + 1];
+      reason = args.slice(startIndex + 2).join(" ");
+    }
 
-      targetUserId = ctx.options._args?.[userIdx]?.replace(/[<@!>]/g, "");
-      durationStr = ctx.options._args?.[durIdx];
-      reason = ctx.options._args?.slice(reasonIdx).join(" ");
+    if (!targetUserId && ctx.message?.reference?.messageId) {
+      const ref = await ctx.channel.messages.fetch(ctx.message.reference.messageId).catch(() => null);
+      if (ref?.author) {
+        targetUserId = ref.author.id;
+        if (!durationStr && ctx.options._args?.[0]) {
+          durationStr = ctx.options._args[0];
+          reason = ctx.options._args.slice(1).join(" ");
+        }
+      }
     }
 
     if (!targetUserId) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
-            title: "Missing Arguments",
-            description: "Usage: `/tempban add <user> <duration> [reason]` or `!tempban <user> <duration> [reason]`\nExample: `!tempban @user 1d rule violation`",
+            title: "Missing User",
+            description: `${EMOJIS.get("fail") || "❌"} Please mention or provide the ID of the user you want to tempban.`,
             level: "ERROR",
           }),
         ],
@@ -375,9 +303,6 @@ export default createCommand({
     }
 
     reason = reason?.trim() || "No reason provided";
-    const humanDuration = formatDuration(durationSec);
-    const expiresAt = new Date(Date.now() + durationSec * 1000);
-    const discordTimestamp = Math.floor(expiresAt.getTime() / 1000);
 
     const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
     if (targetMember) {
@@ -395,91 +320,16 @@ export default createCommand({
       }
     }
 
-    // Try sending DM to target
-    if (targetMember) {
-      await targetMember.send({
-        embeds: [
-          makeEmbed({
-            title: "You Were Tempbanned",
-            description: `${EMOJIS.get("warning") || "⚠️"} You were tempbanned in **${guild.name}**\n\n` +
-              `• **Moderator:** <@${user.id}>\n` +
-              `• **Duration:** ${humanDuration} (Expires <t:${discordTimestamp}:R>)\n` +
-              `• **Reason:** ${reason}`,
-            level: "WARNING",
-          }),
-        ],
-      }).catch(() => {});
-    }
-
-    const tempbanCfg = await getTempbanConfig(guild.id);
-    if (tempbanCfg && tempbanCfg.role_id) {
-      // Role-based isolation
-      const isolationRole = guild.roles.cache.get(String(tempbanCfg.role_id));
-      if (!isolationRole) {
-        return await ctx.reply({
-          embeds: [
-            makeEmbed({
-              title: "Role Missing",
-              description: `${EMOJIS.get("fail") || "❌"} The configured isolation role could not be found.`,
-              level: "ERROR",
-            }),
-          ],
-          ephemeral: true,
-        });
-      }
-
-      if (targetMember) {
-        // Strip verified role if present
-        try {
-          const verifConfig = await VerificationConfig.findByPk(guild.id);
-          if (verifConfig && verifConfig.verified_role_id) {
-            const verifiedRole = guild.roles.cache.get(String(verifConfig.verified_role_id));
-            if (verifiedRole && targetMember.roles.cache.has(verifiedRole.id)) {
-              await targetMember.roles.remove(verifiedRole, "Tempban applied").catch(() => {});
-            }
-          }
-        } catch {}
-
-        await targetMember.roles.add(isolationRole, `Tempban applied by ${user.tag} | ${humanDuration}`);
-      }
-    } else {
-      // Native Discord ban
-      try {
-        await guild.bans.create(targetUserId, { reason: `Tempban by ${user.tag} | ${humanDuration} | ${reason}` });
-      } catch (err) {
-        return await ctx.reply({
-          embeds: [
-            makeEmbed({
-              title: "Tempban Failed",
-              description: `${EMOJIS.get("fail") || "❌"} Failed to ban <@${targetUserId}>: ${err?.message || "Discord API error"}.`,
-              level: "ERROR",
-            }),
-          ],
-          ephemeral: true,
-        });
-      }
-    }
-
-    await createTempban(guild.id, targetUserId, user.id, reason, expiresAt);
-
-    await sendModLog({
+    const res = await executeTempban({
       guild,
-      category: "MODERATION",
-      title: "Member Tempbanned",
-      description: `<@${targetUserId}> was tempbanned by <@${user.id}>.\n\n` +
-        `• **Duration:** ${humanDuration}\n` +
-        `• **Expires:** <t:${discordTimestamp}:F> (<t:${discordTimestamp}:R>)\n` +
-        `• **Reason:** ${reason}`,
-      level: "WARNING",
-      actor: user,
-      extraFields: {
-        Duration: humanDuration,
-        "Expires At": `<t:${discordTimestamp}:F>`,
-      },
+      moderator: user,
+      targetMember: targetMember || { id: targetUserId, send: async () => {} },
+      durationSeconds: durationSec,
+      reason,
     });
 
-    const modeLabel = (tempbanCfg && tempbanCfg.role_id)
-      ? `Role-Based Isolation (<@&${tempbanCfg.role_id}>)`
+    const modeLabel = res.isRoleIsolation
+      ? `Role-Based Isolation (<@&${res.isolationRole.id}>)`
       : "Native Discord Server Ban";
 
     return await ctx.reply({
@@ -488,8 +338,8 @@ export default createCommand({
           author: { name: "Moderation Enforcement", iconURL: guild.iconURL?.({ dynamic: true }) || undefined },
           title: "Member Tempbanned",
           description: `${EMOJIS.get("ban") || "🔨"} Successfully tempbanned <@${targetUserId}>.\n\n` +
-            `• **Duration:** ${humanDuration}\n` +
-            `• **Expires:** <t:${discordTimestamp}:R> (<t:${discordTimestamp}:F>)\n` +
+            `• **Duration:** ${res.formattedTime}\n` +
+            `• **Expires:** <t:${Math.floor(res.expiresAt.getTime() / 1000)}:R> (<t:${Math.floor(res.expiresAt.getTime() / 1000)}:F>)\n` +
             `• **Action Taken:** ${modeLabel}\n` +
             `• **Reason:** \`${reason}\`\n\n` +
             `- # Automatic unban / isolation lift worker will restore access once time expires.`,

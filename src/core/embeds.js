@@ -317,8 +317,8 @@ export function cardEmbed({
 }
 
 /**
- * Modern Ofira-style Music & Media Track Embed
- * Modeled directly after modern Discord music bots (Now Playing, track status, etc.)
+ * Modern Audio & Media Track Embed
+ * Modeled after top-tier Discord bots (Now Playing, track status, etc.)
  */
 export function trackEmbed({
   status = "Now Playing",
@@ -358,7 +358,7 @@ export function trackEmbed({
 }
 
 /**
- * Ultra-smooth Minimal Card Embed (Clean Dark Ofira Style)
+ * Ultra-smooth Minimal Card Embed (Clean Dark Modern Style)
  */
 export function smoothEmbed({
   title,

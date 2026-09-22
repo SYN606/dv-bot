@@ -25,7 +25,7 @@ export function startPresence(client) {
   }
 
   const prefix = CONFIG.PREFIX || "ts";
-  const botName = CONFIG.BOT_NAME || "Ofira";
+  const botName = CONFIG.BOT_NAME || "Digital Vigil";
   const customText = CONFIG.BOT_ACTIVITY_TEXT;
   const rawType = (CONFIG.BOT_ACTIVITY_TYPE || "LISTENING").toUpperCase();
   const activityType = ACTIVITY_TYPE_MAP[rawType] ?? ActivityType.Listening;

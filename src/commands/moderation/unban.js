@@ -2,7 +2,7 @@ import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
-import { sendModLog } from "../../utils/modLog.js";
+import { ModerationService } from "../../services/index.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("unban")
@@ -29,8 +29,14 @@ export default createCommand({
       return await ctx.reply({ content: "Please provide a valid user ID.", ephemeral: true });
     }
 
-    const unbanned = await guild.bans.remove(targetUserId, reason).catch(() => null);
-    if (!unbanned) {
+    try {
+      await ModerationService.executeUnban({
+        guild,
+        moderator: user,
+        targetUserId,
+        reason,
+      });
+    } catch {
       return await ctx.reply({
         embeds: [
           makeEmbed({
@@ -42,16 +48,6 @@ export default createCommand({
         ephemeral: true,
       });
     }
-
-    await sendModLog({
-      guild,
-      category: "MODERATION",
-      title: "Member Unbanned",
-      description: `User <@${targetUserId}> was unbanned by <@${user.id}>.`,
-      level: "INFO",
-      actor: user,
-      extraFields: { Target: `<@${targetUserId}> (\`${targetUserId}\`)` },
-    });
 
     return await ctx.reply({
       embeds: [

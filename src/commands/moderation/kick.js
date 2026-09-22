@@ -2,8 +2,7 @@ import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
-import { PunishmentRecord } from "../../db/models/index.js";
-import { sendModLog } from "../../utils/modLog.js";
+import { ModerationService } from "../../services/index.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("kick")
@@ -87,19 +86,13 @@ export default createCommand({
       });
     }
 
-    // Try sending DM notice prior to kicking
-    await targetMember.send({
-      embeds: [
-        makeEmbed({
-          title: "You Were Kicked",
-          description: `You have been kicked from **${guild.name}**.\n\n• **Moderator:** <@${user.id}>\n• **Reason:** ${reason}`,
-          level: "WARNING",
-        }),
-      ],
-    }).catch(() => {});
-
     try {
-      await targetMember.kick(reason);
+      await ModerationService.executeKick({
+        guild,
+        moderator: user,
+        targetMember,
+        reason,
+      });
     } catch (err) {
       return await ctx.reply({
         embeds: [
@@ -112,23 +105,6 @@ export default createCommand({
         ephemeral: true,
       });
     }
-
-    await PunishmentRecord.create({
-      guild_id: String(guild.id),
-      user_id: String(targetUserId),
-      moderator_id: String(user.id),
-      action_type: "kick",
-      reason,
-    }).catch(() => {});
-
-    await sendModLog({
-      guild,
-      category: "MODERATION",
-      title: "Member Kicked",
-      description: `User <@${targetUserId}> was kicked by <@${user.id}>.\n\n• **Reason:** ${reason}`,
-      level: "WARNING",
-      actor: user,
-    });
 
     return await ctx.reply({
       embeds: [

@@ -80,6 +80,18 @@ export function formatServerVariables(text, { guild, channel, config = {}, user 
   return result;
 }
 
+export function parseServerVariables(text, guildOrOptions, channel, config, user) {
+  if (guildOrOptions && typeof guildOrOptions === "object" && ("guild" in guildOrOptions || "channel" in guildOrOptions || "config" in guildOrOptions)) {
+    return formatServerVariables(text, guildOrOptions);
+  }
+  return formatServerVariables(text, {
+    guild: guildOrOptions,
+    channel,
+    config,
+    user,
+  });
+}
+
 export const SERVER_VARIABLES_LIST = [
   { key: "{verifiedRole}", desc: "Verified Role Mention", example: "@Verified" },
 ];
