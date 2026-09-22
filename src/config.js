@@ -8,10 +8,34 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 export const ROOT_DIR = path.resolve(__dirname, "..");
 
+const env = (process.env.ENV || "production").toLowerCase();
+const isDev = env === "dev" || env === "development" || env === "test";
+
+const dashboardPort = parseInt(process.env.DASHBOARD_PORT || process.env.PORT || "3000", 10);
+const dashboardUrlDev = process.env.DASHBOARD_URL_DEV || `http://localhost:${dashboardPort}`;
+const dashboardUrlProd = process.env.DASHBOARD_URL_PROD || process.env.DASHBOARD_DOMAIN || "https://bot.digitalvigital.fun";
+
+// Dynamic Dashboard & OAuth2 Redirect URL:
+// Automatically selects dev URL (localhost) in dev mode and production domain in prod mode.
+let dashboardUrl;
+if (process.env.DASHBOARD_URL) {
+  if (isDev && process.env.DASHBOARD_URL_DEV) {
+    dashboardUrl = process.env.DASHBOARD_URL_DEV;
+  } else if (!isDev && process.env.DASHBOARD_URL_PROD) {
+    dashboardUrl = process.env.DASHBOARD_URL_PROD;
+  } else if (!isDev && process.env.DASHBOARD_URL === "http://localhost:3000") {
+    dashboardUrl = dashboardUrlProd;
+  } else {
+    dashboardUrl = process.env.DASHBOARD_URL;
+  }
+} else {
+  dashboardUrl = isDev ? dashboardUrlDev : dashboardUrlProd;
+}
+
 export const CONFIG = {
   TOKEN: process.env.DISCORD_TOKEN || "",
   PREFIX: process.env.BOT_PREFIX || "!",
-  ENV: process.env.ENV || "production",
+  ENV: env,
   DEV_GUILD_ID: process.env.DEV_GUILD_ID || null,
   SYNC_COMMANDS: (process.env.SYNC_COMMANDS || "true").toLowerCase() === "true",
 
@@ -26,11 +50,14 @@ export const CONFIG = {
   DB_HOST: process.env.DB_HOST || "localhost",
   DB_PORT: process.env.DB_PORT || null,
   DB_NAME: process.env.DB_NAME || null,
+
   // Dashboard & OAuth2 Configuration
   CLIENT_ID: process.env.DISCORD_CLIENT_ID || "",
   CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET || "",
-  DASHBOARD_PORT: parseInt(process.env.DASHBOARD_PORT || process.env.PORT || "3000", 10),
-  DASHBOARD_URL: process.env.DASHBOARD_URL || "http://localhost:3000",
+  DASHBOARD_PORT: dashboardPort,
+  DASHBOARD_URL: dashboardUrl,
+  DASHBOARD_URL_DEV: dashboardUrlDev,
+  DASHBOARD_URL_PROD: dashboardUrlProd,
   SESSION_SECRET: process.env.SESSION_SECRET || "dv-bot-super-secure-secret-key-2026",
 
   ROOT_DIR,

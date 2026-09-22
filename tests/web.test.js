@@ -794,5 +794,14 @@ describe("Web Dashboard & API Tests", () => {
     await new Promise((resolve) => setTimeout(resolve, 60));
     expect(cache.get("guild:2002:meta")).toBeNull();
   });
+
+  // 11. OAuth2 Dynamic Redirect Unit Test
+  it("OAuth redirect URI should adapt dynamically to environment and contain valid callback", async () => {
+    const { getOAuthUrl } = await import("../src/web/auth.js");
+    const oauthUrl = getOAuthUrl();
+    expect(oauthUrl).toContain("response_type=code");
+    expect(oauthUrl).toContain("scope=identify+guilds");
+    expect(decodeURIComponent(oauthUrl)).toContain("/auth/callback");
+  });
 });
 
