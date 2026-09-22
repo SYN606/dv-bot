@@ -1,4 +1,16 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
+
+function normalizePayload(content) {
+  if (typeof content === "string") return { content };
+  const payload = { ...content };
+  if (payload.ephemeral !== undefined) {
+    if (payload.ephemeral) {
+      payload.flags = (payload.flags || 0) | MessageFlags.Ephemeral;
+    }
+    delete payload.ephemeral;
+  }
+  return payload;
+}
 
 export class CommandContext {
   constructor({ client, interaction = null, message = null, command, options = {}, subcommand = null }) {
@@ -16,14 +28,15 @@ export class CommandContext {
     this.member = interaction ? interaction.member : message?.member;
   }
 
-  async defer({ ephemeral = false } = {}) {
+  async defer({ ephemeral = false, flags = 0 } = {}) {
     if (this.isInteraction && !this.interaction.deferred && !this.interaction.replied) {
-      await this.interaction.deferReply({ ephemeral });
+      const deferFlags = ephemeral ? (flags | MessageFlags.Ephemeral) : flags;
+      await this.interaction.deferReply(deferFlags ? { flags: deferFlags } : {});
     }
   }
 
   async reply(content) {
-    const payload = typeof content === "string" ? { content } : content;
+    const payload = normalizePayload(content);
 
     if (this.isInteraction) {
       if (this.interaction.deferred) {
@@ -46,11 +59,11 @@ export class CommandContext {
   }
 
   async followup(content) {
-    const payload = typeof content === "string" ? { content } : content;
+    const payload = normalizePayload(content);
     if (this.isInteraction) {
       return await this.interaction.followUp(payload);
     }
-    return await this.reply(content);
+    return await this.reply(payload);
   }
 
   async send(content) {

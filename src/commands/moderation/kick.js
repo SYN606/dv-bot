@@ -30,6 +30,32 @@ export default createCommand({
       return await ctx.reply({ content: "Please specify a valid member to kick.", ephemeral: true });
     }
 
+    if (targetUserId === user.id) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Kick Failed",
+            description: `${EMOJIS.get("fail") || "❌"} You cannot kick yourself.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    if (targetUserId === guild.ownerId) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Kick Failed",
+            description: `${EMOJIS.get("fail") || "❌"} You cannot kick the server owner.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
     const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
     if (!targetMember) {
       return await ctx.reply({ content: "Member not found in this server.", ephemeral: true });
@@ -48,7 +74,44 @@ export default createCommand({
       });
     }
 
-    await targetMember.kick(reason).catch(() => {});
+    if (ctx.member && targetMember.roles.highest.position >= ctx.member.roles.highest.position && guild.ownerId !== user.id) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Kick Failed",
+            description: `${EMOJIS.get("fail") || "❌"} You cannot kick a member with an equal or higher role than yourself.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    // Try sending DM notice prior to kicking
+    await targetMember.send({
+      embeds: [
+        makeEmbed({
+          title: "You Were Kicked",
+          description: `You have been kicked from **${guild.name}**.\n\n• **Moderator:** <@${user.id}>\n• **Reason:** ${reason}`,
+          level: "WARNING",
+        }),
+      ],
+    }).catch(() => {});
+
+    try {
+      await targetMember.kick(reason);
+    } catch (err) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Kick Failed",
+            description: `${EMOJIS.get("fail") || "❌"} Failed to kick <@${targetUserId}>: ${err?.message || "Discord API error"}.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
 
     await PunishmentRecord.create({
       guild_id: String(guild.id),

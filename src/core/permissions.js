@@ -1,5 +1,5 @@
 import { PermissionFlagsBits } from "discord.js";
-import { getAdminRoles } from "../db/helpers/adminRoles.js";
+import { getAdminRoles, getAdminUsers } from "../db/helpers/adminRoles.js";
 
 export const PROTECTED_COMMANDS = new Set([
   "help",
@@ -24,8 +24,10 @@ export async function isBotAdmin(target) {
   const { member, guild, user } = extractMemberAndGuild(target);
   if (!guild || !member) return false;
 
+  const targetUserId = user?.id || member.id;
+
   // 1. Guild Owner always has full authority
-  if (guild.ownerId === (user?.id || member.id)) {
+  if (guild.ownerId === targetUserId) {
     return true;
   }
 
@@ -42,6 +44,12 @@ export async function isBotAdmin(target) {
         return true;
       }
     }
+  }
+
+  // 4. Database configured Admin Users
+  const adminUserIds = await getAdminUsers(guild.id);
+  if (adminUserIds.includes(String(targetUserId))) {
+    return true;
   }
 
   return false;

@@ -12,6 +12,10 @@ import CommandsPage from "./pages/CommandsPage";
 import StickyPage from "./pages/StickyPage";
 import AutoresponderPage from "./pages/AutoresponderPage";
 import ConfigPage from "./pages/ConfigPage";
+import DocumentationPage from "./pages/DocumentationPage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import ErrorPage from "./pages/ErrorPage";
 import Toast from "./components/ui/Toast";
 
 export default function App() {
@@ -171,7 +175,18 @@ export default function App() {
             />
           }
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
+
+        {/* Public & Unprotected Pages */}
+        <Route path="/docs" element={<DocumentationPage user={user} botInfo={botInfo} />} />
+        <Route path="/documentation" element={<DocumentationPage user={user} botInfo={botInfo} />} />
+        <Route path="/terms" element={<TermsPage user={user} botInfo={botInfo} />} />
+        <Route path="/terms-of-service" element={<TermsPage user={user} botInfo={botInfo} />} />
+        <Route path="/privacy" element={<PrivacyPage user={user} botInfo={botInfo} />} />
+        <Route path="/privacy-policy" element={<PrivacyPage user={user} botInfo={botInfo} />} />
+        <Route path="/error" element={<ErrorPage user={user} botInfo={botInfo} />} />
+
+        {/* 404 Catch-all */}
+        <Route path="*" element={<ErrorPage user={user} botInfo={botInfo} />} />
       </Routes>
 
       <Toast {...toast} />

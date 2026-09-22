@@ -7,16 +7,33 @@ import {
   addMediaOnly,
   deleteMediaOnly,
 } from "../api/client";
-import { Image as ImageIcon, Plus, Trash2, Hash } from "lucide-react";
+import {
+  Image as ImageIcon,
+  Film,
+  Plus,
+  Trash2,
+  Hash,
+  ShieldCheck,
+  Pin,
+  AlertTriangle,
+  Sliders,
+  CheckCircle2,
+  Sparkles,
+} from "lucide-react";
 
 export default function MediaOnlyPage({ user, botInfo, showToast }) {
   const { guildId } = useParams();
   const [channels, setChannels] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [activeChannels, setActiveChannels] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     channelId: "",
-    allowNsfw: false,
-    autoMute: false,
+    imageOnly: false,
+    whitelistRoleId: "",
+    allowNsfw: true,
+    autoMute: true,
+    postStickyNotice: true,
   });
   const [loading, setLoading] = useState(true);
 
@@ -24,6 +41,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
     Promise.all([getGuildMeta(guildId), getMediaOnly(guildId)])
       .then(([meta, mediaData]) => {
         setChannels(meta.channels || []);
+        setRoles(meta.roles || []);
         setActiveChannels(mediaData || []);
       })
       .catch((err) => console.error(err))
@@ -36,14 +54,36 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!formData.channelId) return;
+    if (!formData.channelId) {
+      showToast("Please select a channel to enforce.", "error");
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      await addMediaOnly(guildId, formData);
-      showToast("Media-only channel rule configured!");
-      setFormData({ channelId: "", allowNsfw: false, autoMute: false });
+      await addMediaOnly(guildId, {
+        channel_id: formData.channelId,
+        image_only: formData.imageOnly,
+        whitelist_role_id: formData.whitelistRoleId || null,
+        nsfw_bypass: formData.allowNsfw,
+        auto_mute: formData.autoMute,
+        post_sticky_notice: formData.postStickyNotice,
+      });
+
+      showToast("Media-only channel rule configured gracefully!");
+      setFormData({
+        channelId: "",
+        imageOnly: false,
+        whitelistRoleId: "",
+        allowNsfw: true,
+        autoMute: true,
+        postStickyNotice: true,
+      });
       loadData();
     } catch (err) {
       showToast(err.message || "Failed to configure media rule.", "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -58,6 +98,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
   };
 
   const channelMap = new Map(channels.map((ch) => [ch.id, ch.name]));
+  const roleMap = new Map(roles.map((r) => [r.id, r.name]));
 
   return (
     <DashboardLayout
@@ -65,124 +106,274 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
       botInfo={botInfo}
       breadcrumbs={["Media-Only Channels"]}
     >
-      <div className="space-y-6">
+      <div className="space-y-8 max-w-6xl mx-auto pb-12">
+        {/* Header Title */}
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
-            <ImageIcon className="w-6 h-6 text-pink-400" />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-pink-600/30 to-purple-600/30 border border-pink-500/20 text-pink-400">
+              <ImageIcon className="w-6 h-6" />
+            </div>
             <span>Media-Only Channels</span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Automatically purge non-media messages to keep art, photography, and showcase channels clean.
+          <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
+            Automatically purge non-media messages to keep art, photography, meme, and video channels pristine. Features 3-strike escalation, whitelist bypass, and automated sticky notices.
           </p>
         </div>
 
-        {/* Add Channel Card */}
-        <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-4">
-          <h3 className="font-bold text-sm text-white">Add Media-Only Channel</h3>
-          <form onSubmit={handleAdd} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="sm:col-span-1">
+        {/* Add Channel Configuration Card */}
+        <div className="glass-card p-6 sm:p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
+          <div className="flex items-center gap-3 pb-6 border-b border-white/5">
+            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+              <Sliders className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base text-white">Configure Media Channel</h3>
+              <p className="text-xs text-slate-400">Setup channel boundaries, bypass roles, and violation actions</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleAdd} className="space-y-6 pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Channel Selector */}
+              <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-2">
-                  Select Channel
+                  Select Channel <span className="text-pink-400">*</span>
                 </label>
                 <select
                   value={formData.channelId}
                   onChange={(e) =>
                     setFormData({ ...formData, channelId: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
                 >
-                  <option value="">Select text channel...</option>
+                  <option value="">Select target text channel...</option>
                   {channels.map((ch) => (
                     <option key={ch.id} value={ch.id}>
                       #{ch.name}
                     </option>
                   ))}
                 </select>
+                <p className="text-[11px] text-slate-500 mt-1.5">Channel where non-media text messages will be removed.</p>
               </div>
 
-              <div className="flex items-center gap-2 pt-6">
-                <input
-                  type="checkbox"
-                  id="allowNsfw"
-                  checked={formData.allowNsfw}
-                  onChange={(e) =>
-                    setFormData({ ...formData, allowNsfw: e.target.checked })
-                  }
-                  className="rounded bg-slate-900 border-white/10 text-indigo-600 focus:ring-indigo-500"
-                />
-                <label htmlFor="allowNsfw" className="text-xs text-slate-300">
-                  Allow NSFW Media Bypass
+              {/* Whitelist / Bypass Role */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-2">
+                  Whitelist / Bypass Role (Optional)
                 </label>
+                <select
+                  value={formData.whitelistRoleId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, whitelistRoleId: e.target.value })
+                  }
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                >
+                  <option value="">None (Everyone must adhere)</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      @{r.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-500 mt-1.5">Members with this role can chat freely without media restrictions.</p>
               </div>
+            </div>
 
-              <div className="flex items-center gap-2 pt-6">
+            {/* Enforcement Mode Cards */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-2">
+                Allowed Content Mode
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, imageOnly: false })}
+                  className={`p-4 rounded-2xl border text-left transition-all ${
+                    !formData.imageOnly
+                      ? "bg-indigo-600/15 border-indigo-500/50 shadow-lg shadow-indigo-500/5"
+                      : "bg-slate-900/40 border-white/5 hover:border-white/10"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 font-semibold text-xs text-white">
+                    <Film className="w-4 h-4 text-indigo-400" />
+                    <span>All Media Mode (Default)</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1.5">
+                    Permits photos, videos (MP4/MOV/WebM), GIFs, Tenor/Giphy/Imgur links, and attached files.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, imageOnly: true })}
+                  className={`p-4 rounded-2xl border text-left transition-all ${
+                    formData.imageOnly
+                      ? "bg-pink-600/15 border-pink-500/50 shadow-lg shadow-pink-500/5"
+                      : "bg-slate-900/40 border-white/5 hover:border-white/10"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 font-semibold text-xs text-white">
+                    <ImageIcon className="w-4 h-4 text-pink-400" />
+                    <span>Images Only Mode</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1.5">
+                    Strictly limits channel to images (PNG, JPG, JPEG, GIF, WebP). Videos and other files are purged.
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* Feature Checkbox Toggles */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <label className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex items-start gap-3 cursor-pointer hover:bg-slate-900/70 transition-colors">
                 <input
                   type="checkbox"
-                  id="autoMute"
                   checked={formData.autoMute}
                   onChange={(e) =>
                     setFormData({ ...formData, autoMute: e.target.checked })
                   }
-                  className="rounded bg-slate-900 border-white/10 text-indigo-600 focus:ring-indigo-500"
+                  className="mt-1 rounded bg-slate-800 border-white/10 text-indigo-600 focus:ring-indigo-500"
                 />
-                <label htmlFor="autoMute" className="text-xs text-slate-300">
-                  Auto-Mute Repeat Violators
-                </label>
-              </div>
+                <div>
+                  <span className="text-xs font-semibold text-white block">Auto-Mute on 3 Strikes</span>
+                  <span className="text-[11px] text-slate-400 block mt-0.5">
+                    Times out user for 60s upon 3 repeat violations within 5 mins.
+                  </span>
+                </div>
+              </label>
+
+              <label className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex items-start gap-3 cursor-pointer hover:bg-slate-900/70 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={formData.allowNsfw}
+                  onChange={(e) =>
+                    setFormData({ ...formData, allowNsfw: e.target.checked })
+                  }
+                  className="mt-1 rounded bg-slate-800 border-white/10 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div>
+                  <span className="text-xs font-semibold text-white block">Allow NSFW Bypass</span>
+                  <span className="text-[11px] text-slate-400 block mt-0.5">
+                    Exempt age-restricted/NSFW channels from media enforcement.
+                  </span>
+                </div>
+              </label>
+
+              <label className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex items-start gap-3 cursor-pointer hover:bg-slate-900/70 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={formData.postStickyNotice}
+                  onChange={(e) =>
+                    setFormData({ ...formData, postStickyNotice: e.target.checked })
+                  }
+                  className="mt-1 rounded bg-slate-800 border-white/10 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div>
+                  <span className="text-xs font-semibold text-white block">Post Sticky Notice</span>
+                  <span className="text-[11px] text-slate-400 block mt-0.5">
+                    Pins and maintains an informational embed notice at bottom.
+                  </span>
+                </div>
+              </label>
             </div>
 
-            <button
-              type="submit"
-              disabled={!formData.channelId}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Enforce Media Rule</span>
-            </button>
+            {/* Submit Action */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={!formData.channelId || submitting}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{submitting ? "Enforcing Rule..." : "Enforce Media Rule"}</span>
+              </button>
+            </div>
           </form>
         </div>
 
-        {/* Active Enforcements */}
-        <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-4">
+        {/* Active Enforcements List */}
+        <div className="glass-card p-6 sm:p-8 rounded-3xl border border-white/5 shadow-2xl space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-sm text-white">Active Media Channels</h3>
-            <span className="text-xs text-slate-400 font-mono">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-pink-500/10 text-pink-400">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-white">Active Media Channels</h3>
+                <p className="text-xs text-slate-400">Currently monitored and protected channels</p>
+              </div>
+            </div>
+            <span className="text-xs font-semibold px-3 py-1 rounded-xl bg-white/5 text-slate-300 font-mono">
               {activeChannels.length} Enforced
             </span>
           </div>
 
           {activeChannels.length === 0 ? (
-            <div className="text-center py-8 text-xs text-slate-500">
-              No media-only channels configured yet.
+            <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-slate-900/30">
+              <ImageIcon className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-slate-400">No media-only channels configured</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                Select a channel above to keep art, photography, or clips channels free of chat clutter.
+              </p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-3">
               {activeChannels.map((item) => (
                 <div
                   key={item.channel_id}
-                  className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 flex items-center justify-between"
+                  className="p-5 rounded-2xl bg-slate-900/60 border border-white/5 hover:border-white/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-pink-500/10 text-pink-400">
-                      <Hash className="w-4 h-4" />
+                  <div className="flex items-start sm:items-center gap-3.5">
+                    <div className="p-2.5 rounded-xl bg-pink-500/10 text-pink-400 mt-0.5 sm:mt-0">
+                      <Hash className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-xs text-white">
-                        #{channelMap.get(item.channel_id) || item.channel_id}
-                      </p>
-                      <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
-                        <span>NSFW Bypass: {item.allow_nsfw ? "Yes" : "No"}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-white">
+                          #{channelMap.get(item.channel_id) || item.channel_id}
+                        </span>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg border ${
+                          item.image_only
+                            ? "bg-pink-500/10 text-pink-300 border-pink-500/20"
+                            : "bg-indigo-500/10 text-indigo-300 border-indigo-500/20"
+                        }`}>
+                          {item.image_only ? "Images Only" : "All Media"}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mt-1.5">
+                        {item.whitelist_role_id && (
+                          <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                            <ShieldCheck className="w-3 h-3" />
+                            Bypass: @{roleMap.get(item.whitelist_role_id) || item.whitelist_role_id}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-amber-400" />
+                          Auto-Mute: {item.auto_mute ? "3-Strikes (60s)" : "Disabled"}
+                        </span>
                         <span>•</span>
-                        <span>Auto-Mute: {item.auto_mute ? "Yes" : "No"}</span>
+                        <span>NSFW Bypass: {item.nsfw_bypass ? "Enabled" : "Disabled"}</span>
+                        {item.sticky_message_id && (
+                          <>
+                            <span>•</span>
+                            <span className="inline-flex items-center gap-1 text-purple-400">
+                              <Pin className="w-3 h-3" />
+                              Sticky Notice Pinned
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
+
                   <button
                     onClick={() => handleDelete(item.channel_id)}
-                    className="p-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors"
+                    className="self-end sm:self-center inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 text-xs font-semibold transition-colors cursor-pointer"
+                    title="Remove restriction"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Remove</span>
                   </button>
                 </div>
               ))}

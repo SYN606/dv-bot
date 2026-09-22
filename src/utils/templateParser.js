@@ -31,7 +31,10 @@ export function formatServerVariables(text, { guild, channel, config = {}, user 
   const channelMention = channel?.id ? `<#${channel.id}>` : (channel?.name ? `#${channel.name}` : "");
   const channelName = channel?.name ? `#${channel.name}` : "";
 
-  const verifiedRoleId = config?.verified_role_id || config?.verifiedRoleId;
+  const rawVerifiedRoleId = config?.verified_role_id || config?.verifiedRoleId;
+  const verifiedRoleId = rawVerifiedRoleId && String(rawVerifiedRoleId) !== "null" && String(rawVerifiedRoleId) !== "undefined"
+    ? String(rawVerifiedRoleId).trim()
+    : null;
   const verifiedRoleMention = verifiedRoleId ? `<@&${verifiedRoleId}>` : "@Verified";
 
   const unverifiedRoleId = config?.unverified_role_id || config?.unverifiedRoleId;
@@ -78,12 +81,5 @@ export function formatServerVariables(text, { guild, channel, config = {}, user 
 }
 
 export const SERVER_VARIABLES_LIST = [
-  { key: "{server}", desc: "Server Name", example: "My Gaming Guild" },
-  { key: "{memberCount}", desc: "Total Members", example: "1,420" },
-  { key: "{channel}", desc: "Verify Channel", example: "#verify" },
-  { key: "{verifiedRole}", desc: "Verified Role", example: "@Verified" },
-  { key: "{rules}", desc: "Rules Channel", example: "#rules" },
-  { key: "{owner}", desc: "Server Owner", example: "@Owner" },
-  { key: "{boosts}", desc: "Boost Count", example: "14" },
-  { key: "{server.id}", desc: "Server ID", example: "10987654321" },
+  { key: "{verifiedRole}", desc: "Verified Role Mention", example: "@Verified" },
 ];

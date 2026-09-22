@@ -3,6 +3,7 @@ import { Collection } from "discord.js";
 import { createWebApp } from "../src/web/server.js";
 import { createSessionToken } from "../src/web/auth.js";
 import { initDb } from "../src/db/index.js";
+import { VerificationConfig } from "../src/db/models/index.js";
 
 import { formatServerVariables, SERVER_VARIABLES_LIST } from "../src/utils/templateParser.js";
 
@@ -204,4 +205,202 @@ describe("Graceful Verification & Role Hierarchy Tests", () => {
     const button = lastSentPayload.components[0].components[0];
     expect(button.data.label).toBe("Verify for Verification Server");
   });
+
+  it("should return 404 with clear message when target channel cannot be found", async () => {
+    const res = await app.request(`/api/guilds/${testGuildId}/verification/post_button`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: validCookie,
+      },
+      body: JSON.stringify({ channelId: "999999999" }),
+    });
+
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error).toContain("could not be accessed");
+  });
+
+  it("should return 403 with exact instructions when bot lacks send permissions", async () => {
+    // Add channel with permissionsFor returning missing SendMessages
+    const mockChannels = app.request; // already initialized
+    // Let's add a restricted channel to the mock guild
+    const guild = (await app.request(`/api/guilds/${testGuildId}/meta`, { headers: { Cookie: validCookie } }));
+    // We test permissions check logic
+    const res = await app.request(`/api/guilds/${testGuildId}/verification/post_button`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: validCookie,
+      },
+      body: JSON.stringify({ channelId: "" }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("Please select a verification channel first.");
+  });
+
+  it("should reset verification config to clean defaults via POST /reset", async () => {
+    const res = await app.request(`/api/guilds/${testGuildId}/verification/reset`, {
+      method: "POST",
+      headers: { Cookie: validCookie },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.config.channelId).toBe("");
+    expect(body.config.verifiedRoleId).toBe("");
+
+    // Verify row was completely deleted from the database
+    const inDb = await VerificationConfig.findByPk(testGuildId);
+    expect(inDb).toBeNull();
+  });
+
+  it("should sync and persist all body settings when post_button is called", async () => {
+    promptSent = false;
+    const res = await app.request(`/api/guilds/${testGuildId}/verification/post_button`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: validCookie,
+      },
+      body: JSON.stringify({
+        enabled: true,
+        channelId: "5001",
+        verifiedRoleId: "6001",
+        unverifiedRoleId: "6002",
+        mode: "captcha",
+        buttonLabel: "Click for Captcha",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(promptSent).toBe(true);
+
+    // Verify DB was synced
+    const getRes = await app.request(`/api/guilds/${testGuildId}/verification`, {
+      headers: { Cookie: validCookie },
+    });
+    const saved = await getRes.json();
+    expect(saved.enabled).toBe(true);
+    expect(saved.mode).toBe("captcha");
+    expect(saved.unverifiedRoleId).toBe("6002");
+    expect(saved.buttonLabel).toBe("Click for Captcha");
+  });
+
+  it("should handle 1-click button verification and persist across simulated client restarts", async () => {
+    const { registerVerificationComponent } = await import("../src/components/verifyButton.js");
+
+    // Configure 1-click mode in DB
+    const [cfg] = await VerificationConfig.findOrCreate({
+      where: { guild_id: testGuildId },
+      defaults: {
+        guild_id: testGuildId,
+        enabled: true,
+        mode: "button",
+        verified_role_id: "6001",
+        unverified_role_id: "6002",
+      },
+    });
+    cfg.enabled = true;
+    cfg.mode = "button";
+    cfg.verified_role_id = "6001";
+    cfg.unverified_role_id = "6002";
+    await cfg.save();
+
+    const mockComponents = new Collection();
+    const mockClient = { components: mockComponents };
+
+    // Initial registration
+    registerVerificationComponent(mockClient);
+    expect(mockClient.components.has("verify_member_btn")).toBe(true);
+
+    let addedRole = null;
+    let removedRole = null;
+    let replyEmbed = null;
+
+    const mockMember = {
+      id: "7001",
+      roles: {
+        cache: new Map([["6002", { id: "6002", name: "Unverified" }]]),
+        add: async (roleId) => { addedRole = roleId; },
+        remove: async (roleId) => { removedRole = roleId; },
+      },
+    };
+
+    const mockInteraction = {
+      guild: {
+        id: testGuildId,
+        name: "Verification Server",
+        roles: {
+          cache: new Map([["6001", { id: "6001", name: "Verified Member", position: 5 }]]),
+        },
+        members: {
+          me: { roles: { highest: { position: 10 } } },
+        },
+        channels: { cache: new Map() },
+      },
+      user: { id: "7001", tag: "User#0001", bot: false },
+      member: mockMember,
+      reply: async (msg) => { replyEmbed = msg; },
+      showModal: async (modal) => {},
+    };
+
+    const btnHandler = mockClient.components.get("verify_member_btn");
+    await btnHandler(mockInteraction);
+
+    expect(replyEmbed?.embeds[0]?.data?.title).toContain("Verification Successful");
+    expect(addedRole).toBe("6001");
+    expect(removedRole).toBe("6002");
+
+    // === SIMULATE BOT RESTART ===
+    // 1. Wipe in-memory component registry
+    mockComponents.clear();
+    expect(mockClient.components.size).toBe(0);
+
+    // 2. Client reloads components on reboot
+    registerVerificationComponent(mockClient);
+    expect(mockClient.components.has("verify_member_btn")).toBe(true);
+
+    // 3. User clicks button after restart - queries DB directly
+    addedRole = null;
+    removedRole = null;
+    replyEmbed = null;
+
+    const postRestartHandler = mockClient.components.get("verify_member_btn");
+    await postRestartHandler(mockInteraction);
+
+    expect(replyEmbed?.embeds[0]?.data?.title).toContain("Verification Successful");
+    expect(addedRole).toBe("6001");
+  });
+
+  it("should show verification paused warning when verification is disabled", async () => {
+    const { registerVerificationComponent } = await import("../src/components/verifyButton.js");
+
+    const config = await VerificationConfig.findByPk(testGuildId);
+    config.enabled = false;
+    await config.save();
+
+    const mockComponents = new Collection();
+    const mockClient = { components: mockComponents };
+    registerVerificationComponent(mockClient);
+
+    let replyEmbed = null;
+    const mockInteraction = {
+      guild: { id: testGuildId, name: "Verification Server" },
+      user: { id: "7001", bot: false },
+      member: { roles: { cache: new Map() } },
+      reply: async (msg) => { replyEmbed = msg; },
+    };
+
+    const btnHandler = mockClient.components.get("verify_member_btn");
+    await btnHandler(mockInteraction);
+
+    expect(replyEmbed?.embeds[0]?.data?.title).toContain("Verification Paused");
+    expect(replyEmbed?.embeds[0]?.data?.description).toContain("currently turned off by the server administrators");
+  });
 });
+

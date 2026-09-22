@@ -1,4 +1,4 @@
-import { PermissionFlagsBits } from "discord.js";
+import { MessageFlags, PermissionFlagsBits } from "discord.js";
 import { CommandContext } from "../core/command.js";
 import { GLOBAL_COOLDOWN } from "../core/cooldown.js";
 import { makeEmbed } from "../core/embeds.js";
@@ -56,7 +56,7 @@ export default {
             level: "ERROR",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -71,7 +71,7 @@ export default {
             level: "WARNING",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -92,7 +92,7 @@ export default {
               level: "WARNING",
             }),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -112,7 +112,7 @@ export default {
                 level: "WARNING",
               }),
             ],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
       }
@@ -128,7 +128,7 @@ export default {
             level: "ERROR",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -141,7 +141,7 @@ export default {
             level: "ERROR",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -154,7 +154,7 @@ export default {
             level: "ERROR",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -188,9 +188,9 @@ export default {
       });
 
       if (interaction.deferred || interaction.replied) {
-        await interaction.followUp({ embeds: [errEmbed], ephemeral: true }).catch(() => {});
+        await interaction.followUp({ embeds: [errEmbed], flags: MessageFlags.Ephemeral }).catch(() => {});
       } else {
-        await interaction.reply({ embeds: [errEmbed], ephemeral: true }).catch(() => {});
+        await interaction.reply({ embeds: [errEmbed], flags: MessageFlags.Ephemeral }).catch(() => {});
       }
     }
   },

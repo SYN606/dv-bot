@@ -1,5 +1,5 @@
 import { VCRoleConfig, MemberAnalytics } from "../db/models/index.js";
-import { incrementVoiceTime } from "../db/helpers/analytics.js";
+import { recordVoiceActivity, incrementVoiceTime } from "../db/helpers/analytics.js";
 
 const activeVoiceSessions = new Map(); // `${guildId}:${userId}` -> timestamp
 
@@ -43,7 +43,7 @@ export default {
         activeVoiceSessions.delete(sessionKey);
 
         if (elapsedSeconds > 5) {
-          await incrementVoiceTime(guildId, userId, elapsedSeconds).catch(() => {});
+          await recordVoiceActivity(guildId, userId, oldState.channelId, elapsedSeconds).catch(() => {});
         }
       }
     }

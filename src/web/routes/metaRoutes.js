@@ -18,10 +18,17 @@ metaRoutes.get("/guilds/:guildId/meta", async (c) => {
     return c.json({ error: "Bot is not present in this server." }, 404);
   }
 
-  const channels = botGuild.channels.cache
-    .filter((ch) => ch.type === ChannelType.GuildText)
-    .map((ch) => ({ id: ch.id, name: ch.name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  let channelsCollection = botGuild.channels.cache;
+  if (!channelsCollection || channelsCollection.size === 0) {
+    channelsCollection = await botGuild.channels.fetch().catch(() => botGuild.channels.cache);
+  }
+
+  const channels = channelsCollection
+    ? Array.from(channelsCollection.values())
+        .filter((ch) => ch && (ch.type === ChannelType.GuildText || ch.type === ChannelType.GuildAnnouncement || (ch.isTextBased?.() && !ch.isThread?.() && !ch.isVoiceBased?.())))
+        .map((ch) => ({ id: ch.id, name: ch.name }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    : [];
 
   const botMember = botGuild?.members?.me;
   const roles = botGuild.roles.cache
@@ -100,4 +107,82 @@ metaRoutes.get("/guilds/:guildId/emojis", async (c) => {
   apiCache.set(cacheKey, emojis, 15000);
 
   return c.json(emojis);
+});
+
+// Guild Members Endpoint (for staff/admin member selection)
+metaRoutes.get("/guilds/:guildId/members", async (c) => {
+  const guildId = c.req.param("guildId");
+  const botGuild = c.get("botGuild");
+  if (!botGuild) {
+    return c.json({ error: "Bot is not present in this server." }, 404);
+  }
+
+  const query = (c.req.query("q") || "").trim();
+  const limit = Math.min(Math.max(parseInt(c.req.query("limit") || "25", 10) || 25, 1), 50);
+
+  let memberList = [];
+
+  try {
+    if (query) {
+      // If query is an exact snowflake ID, try fetching directly
+      if (/^\d{17,20}$/.test(query)) {
+        const directMember = await botGuild.members.fetch(query).catch(() => null);
+        if (directMember) {
+          memberList.push(directMember);
+        }
+      }
+
+      // If search method exists on members
+      if (typeof botGuild.members?.search === "function") {
+        const searched = await botGuild.members.search({ query, limit }).catch(() => null);
+        if (searched && searched.size > 0) {
+          for (const m of searched.values()) {
+            if (!memberList.some((x) => x.id === m.id)) {
+              memberList.push(m);
+            }
+          }
+        }
+      }
+
+      // If still fewer than limit, search cached members
+      if (memberList.length < limit && botGuild.members?.cache) {
+        const qLower = query.toLowerCase();
+        for (const m of botGuild.members.cache.values()) {
+          if (memberList.length >= limit) break;
+          if (memberList.some((x) => x.id === m.id)) continue;
+          const username = m.user?.username?.toLowerCase() || "";
+          const displayName = m.displayName?.toLowerCase() || "";
+          if (username.includes(qLower) || displayName.includes(qLower) || m.id.includes(query)) {
+            memberList.push(m);
+          }
+        }
+      }
+    } else {
+      // No query, return from cache up to limit
+      if (botGuild.members?.cache) {
+        for (const m of botGuild.members.cache.values()) {
+          if (memberList.length >= limit) break;
+          memberList.push(m);
+        }
+      }
+    }
+  } catch (err) {
+    // Graceful fallback to cache
+    if (botGuild.members?.cache) {
+      memberList = Array.from(botGuild.members.cache.values()).slice(0, limit);
+    }
+  }
+
+  const results = memberList.map((m) => ({
+    id: m.id,
+    username: m.user?.username || m.displayName || `User ${m.id}`,
+    displayName: m.displayName || m.user?.username || `User ${m.id}`,
+    avatar: typeof m.user?.displayAvatarURL === "function"
+      ? m.user.displayAvatarURL({ extension: "png", size: 64 })
+      : (m.user?.avatar ? `https://cdn.discordapp.com/avatars/${m.id}/${m.user.avatar}.png` : null),
+    isBot: Boolean(m.user?.bot),
+    isOwner: botGuild.ownerId === m.id,
+  }));
+
+  return c.json(results);
 });

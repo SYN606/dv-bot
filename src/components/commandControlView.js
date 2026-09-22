@@ -2,6 +2,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  MessageFlags,
   StringSelectMenuBuilder,
 } from "discord.js";
 import { makeEmbed } from "../core/embeds.js";
@@ -42,7 +43,7 @@ export function registerCommandControlComponents(client) {
             level: "ERROR",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -97,7 +98,7 @@ export function registerCommandControlComponents(client) {
               level: "WARNING",
             }),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -122,7 +123,7 @@ export function registerCommandControlComponents(client) {
           }),
         ],
         components: [row],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -137,7 +138,7 @@ export function registerCommandControlComponents(client) {
               level: "INFO",
             }),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -162,7 +163,7 @@ export function registerCommandControlComponents(client) {
           }),
         ],
         components: [row],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   });

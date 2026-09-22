@@ -178,8 +178,8 @@ export function createWebApp(client = null) {
     });
   });
 
-  // SPA Root & General HTML Fallback
-  app.get("/", async (c) => {
+  // SPA Root & Public Unprotected Routes
+  const serveSpa = async (c) => {
     const indexFile = Bun.file(path.join(distDir, "index.html"));
     if (await indexFile.exists()) {
       return new Response(indexFile, {
@@ -187,12 +187,27 @@ export function createWebApp(client = null) {
       });
     }
     return c.html("<!DOCTYPE html><html><body><h1>Digital Vigital Dashboard</h1></body></html>");
-  });
+  };
+
+  app.get("/", serveSpa);
+  app.get("/docs", serveSpa);
+  app.get("/documentation", serveSpa);
+  app.get("/terms", serveSpa);
+  app.get("/terms-of-service", serveSpa);
+  app.get("/privacy", serveSpa);
+  app.get("/privacy-policy", serveSpa);
+  app.get("/error", serveSpa);
 
   // 3. Fallbacks
-  app.notFound((c) => {
+  app.notFound(async (c) => {
     if (c.req.path.startsWith("/api/")) {
       return c.json({ error: "API route not found" }, 404);
+    }
+    const indexFile = Bun.file(path.join(distDir, "index.html"));
+    if (await indexFile.exists()) {
+      return new Response(indexFile, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
     }
     return c.html(`
       <!DOCTYPE html>

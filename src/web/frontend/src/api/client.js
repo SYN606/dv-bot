@@ -43,6 +43,11 @@ export async function getGuildMeta(guildId) {
   return fetchApi(`/api/guilds/${guildId}/meta`);
 }
 
+export async function getGuildMembers(guildId, query = "") {
+  const q = query ? `?q=${encodeURIComponent(query)}` : "";
+  return fetchApi(`/api/guilds/${guildId}/members${q}`);
+}
+
 // Verification Gate
 export async function getVerification(guildId) {
   return fetchApi(`/api/guilds/${guildId}/verification`);
@@ -62,7 +67,13 @@ export async function postVerificationButton(guildId, payload = {}) {
   });
 }
 
-// Staff Admin Roles
+export async function resetVerification(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/verification/reset`, {
+    method: "POST",
+  });
+}
+
+// Staff Admin Roles & Users
 export async function getAdminRoles(guildId) {
   return fetchApi(`/api/guilds/${guildId}/admin_roles`);
 }
@@ -76,6 +87,19 @@ export async function addAdminRole(guildId, roleId) {
 
 export async function deleteAdminRole(guildId, roleId) {
   return fetchApi(`/api/guilds/${guildId}/admin_roles/${roleId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function addAdminUser(guildId, userId) {
+  return fetchApi(`/api/guilds/${guildId}/admin_users`, {
+    method: "POST",
+    body: { userId },
+  });
+}
+
+export async function deleteAdminUser(guildId, userId) {
+  return fetchApi(`/api/guilds/${guildId}/admin_users/${userId}`, {
     method: "DELETE",
   });
 }
@@ -142,6 +166,12 @@ export async function getAutoresponders(guildId) {
 }
 
 export async function saveAutoresponder(guildId, payload) {
+  if (payload.id) {
+    return fetchApi(`/api/guilds/${guildId}/autoresponder/${payload.id}`, {
+      method: "PUT",
+      body: payload,
+    });
+  }
   return fetchApi(`/api/guilds/${guildId}/autoresponder`, {
     method: "POST",
     body: payload,
@@ -178,6 +208,12 @@ export async function saveConfig(guildId, payload) {
 }
 
 // Analytics
-export async function getAnalytics(guildId) {
-  return fetchApi(`/api/guilds/${guildId}/analytics`);
+export async function getAnalytics(guildId, days = 7) {
+  return fetchApi(`/api/guilds/${guildId}/analytics?days=${days}`);
 }
+
+// Public Documentation & Commands
+export async function getPublicCommands() {
+  return fetchApi("/api/commands");
+}
+

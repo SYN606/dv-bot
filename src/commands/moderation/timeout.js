@@ -48,15 +48,94 @@ export default createCommand({
       return await ctx.reply({ content: "Please specify a target member.", ephemeral: true });
     }
 
+    if (targetUserId === user.id) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Timeout Failed",
+            description: `${EMOJIS.get("fail") || "❌"} You cannot timeout yourself.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    if (targetUserId === guild.ownerId) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Timeout Failed",
+            description: `${EMOJIS.get("fail") || "❌"} You cannot timeout the server owner.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
     const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
     if (!targetMember) {
       return await ctx.reply({ content: "Member not found in this server.", ephemeral: true });
     }
 
-    const durationSec = parseDuration(durationStr);
+    if (!targetMember.moderatable) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Timeout Failed",
+            description: `${EMOJIS.get("fail") || "❌"} I cannot timeout this member. Their role is higher than or equal to mine.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    if (ctx.member && targetMember.roles.highest.position >= ctx.member.roles.highest.position && guild.ownerId !== user.id) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Timeout Failed",
+            description: `${EMOJIS.get("fail") || "❌"} You cannot timeout a member with an equal or higher role than yourself.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    let durationSec = parseDuration(durationStr);
+    if (durationSec <= 0) durationSec = 60;
+    if (durationSec > 2419200) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Invalid Duration",
+            description: `${EMOJIS.get("warning") || "⚠️"} Timeout duration cannot exceed **28 days** (Discord limit).`,
+            level: "WARNING",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
     const durationMs = durationSec * 1000;
 
-    await targetMember.timeout(durationMs, reason).catch(() => {});
+    try {
+      await targetMember.timeout(durationMs, reason);
+    } catch (err) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Timeout Failed",
+            description: `${EMOJIS.get("fail") || "❌"} Failed to timeout <@${targetUserId}>: ${err?.message || "Discord API error"}.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
 
     await PunishmentRecord.create({
       guild_id: String(guild.id),

@@ -1,4 +1,5 @@
 import { getExpiredTempbans, getTempbanConfig } from "../db/helpers/tempban.js";
+import { VerificationConfig } from "../db/models/index.js";
 import { sendModLog } from "../utils/modLog.js";
 
 export class TempbanWorker {
@@ -41,6 +42,25 @@ export class TempbanWorker {
           const member = await guild.members.fetch(String(record.user_id)).catch(() => null);
           if (member) {
             await member.roles.remove(String(config.role_id)).catch(() => {});
+
+            // Graceful restoration of verified role if verification is configured
+            try {
+              const verifConfig = await VerificationConfig.findByPk(guild.id);
+              if (verifConfig && verifConfig.enabled && verifConfig.verified_role_id) {
+                const verifiedRole = guild.roles.cache.get(String(verifConfig.verified_role_id));
+                const botMember = guild.members.me;
+                if (
+                  verifiedRole &&
+                  botMember &&
+                  verifiedRole.position < botMember.roles.highest.position &&
+                  !member.roles.cache.has(verifiedRole.id)
+                ) {
+                  await member.roles.add(verifiedRole, "Restoring verified status (Tempban expired)").catch(() => {});
+                }
+              }
+            } catch (err) {
+              console.warn("[TEMPBAN WORKER VERIFICATION RESTORE ERROR]:", err?.message);
+            }
           }
         } else {
           // Native guild unban

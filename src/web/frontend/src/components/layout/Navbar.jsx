@@ -57,11 +57,11 @@ export default function Navbar({ user, botInfo, currentGuild, breadcrumbs = [] }
   return (
     <header className="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/75 border-b border-white/10 px-6 py-3.5 flex items-center justify-between">
       <Link to="/" className="flex items-center gap-3 group">
-        <div className="w-10 h-10 rounded-xl overflow-hidden ring-1 ring-indigo-500/50 shadow-lg shadow-indigo-500/25 shrink-0">
+        <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-indigo-500/30 shadow-md shadow-indigo-500/10 shrink-0">
           <img
             src={botAvatar}
             alt={botName}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+            className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform"
           />
         </div>
         <div className="flex flex-col">
@@ -73,6 +73,18 @@ export default function Navbar({ user, botInfo, currentGuild, breadcrumbs = [] }
           </span>
         </div>
       </Link>
+
+      <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-400">
+        <Link to="/docs" className="hover:text-white transition-colors">
+          Documentation
+        </Link>
+        <Link to="/terms" className="hover:text-white transition-colors">
+          Terms of Service
+        </Link>
+        <Link to="/privacy" className="hover:text-white transition-colors">
+          Privacy Policy
+        </Link>
+      </nav>
 
       <div className="flex items-center gap-3">
         {user ? (

@@ -1,3 +1,4 @@
+import { PermissionFlagsBits } from "discord.js";
 import { RoleRestriction, ChannelRestriction } from "../models/index.js";
 import { ensureGuild } from "./common.js";
 import { isBotAdmin } from "../../core/permissions.js";
@@ -120,8 +121,6 @@ export async function removeChannelRestriction(guildId, restrictionId) {
   invalidateAclCache(gId);
   return deleted > 0;
 }
-
-import { PermissionFlagsBits } from "discord.js";
 
 /**
  * Unified ACL policy evaluation engine

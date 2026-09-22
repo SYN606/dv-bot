@@ -26,8 +26,10 @@ aclRoutes.get("/guilds/:guildId/acl", async (c) => {
 
 aclRoutes.post("/guilds/:guildId/acl/roles", async (c) => {
   const guildId = c.req.param("guildId");
-  const body = await c.req.json();
-  const { roleId, feature = "all", restrictionType = "deny" } = body;
+  const body = await c.req.json().catch(() => ({}));
+  const roleId = body.roleId || body.role_id;
+  const feature = (body.feature || "all").trim();
+  const restrictionType = (body.restrictionType || body.restriction_type || "deny").trim();
   if (!roleId) return c.json({ error: "roleId is required" }, 400);
 
   const result = await addRoleRestriction(guildId, roleId, feature, restrictionType);
@@ -45,8 +47,10 @@ aclRoutes.delete("/guilds/:guildId/acl/roles/:id", async (c) => {
 
 aclRoutes.post("/guilds/:guildId/acl/channels", async (c) => {
   const guildId = c.req.param("guildId");
-  const body = await c.req.json();
-  const { channelId, feature = "all", restrictionType = "deny" } = body;
+  const body = await c.req.json().catch(() => ({}));
+  const channelId = body.channelId || body.channel_id;
+  const feature = (body.feature || "all").trim();
+  const restrictionType = (body.restrictionType || body.restriction_type || "deny").trim();
   if (!channelId) return c.json({ error: "channelId is required" }, 400);
 
   const result = await addChannelRestriction(guildId, channelId, feature, restrictionType);

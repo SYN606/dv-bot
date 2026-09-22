@@ -24,7 +24,7 @@ export default {
 
     // 1. Analytics Tracking
     if (!message.author.bot) {
-      ANALYTICS_BATCHER.addMessage(message.guild.id, message.author.id).catch(() => {});
+      ANALYTICS_BATCHER.addMessage(message.guild.id, message.author.id, message.channel.id).catch(() => {});
     }
 
     // 2. Media-Only Channel Enforcement

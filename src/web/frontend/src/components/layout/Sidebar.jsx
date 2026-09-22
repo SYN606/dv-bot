@@ -55,7 +55,7 @@ export default function Sidebar({
         },
         {
           id: "admin_roles",
-          label: "Staff Admin Roles",
+          label: "Staff & Admin Access",
           icon: Shield,
           path: `/dashboard/${currentGuild.id}/admin-roles`,
         },
@@ -126,11 +126,11 @@ export default function Sidebar({
             className="flex items-center gap-2.5 group"
             onClick={() => setMobileOpen(false)}
           >
-            <div className="w-9 h-9 rounded-xl overflow-hidden ring-1 ring-indigo-500/50 shadow-md shadow-indigo-500/20 shrink-0">
+            <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-indigo-500/25 shadow-md shadow-indigo-500/10 shrink-0">
               <img
                 src={botAvatar}
                 alt={botName}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform"
               />
             </div>
             <div className="flex flex-col">
@@ -163,13 +163,13 @@ export default function Sidebar({
 
         {/* Active Server Badge */}
         <div className="p-3 m-3 rounded-xl bg-slate-900/60 border border-white/5 flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shrink-0">
-            <div className="w-full h-full bg-slate-900 rounded-[11px] flex items-center justify-center overflow-hidden">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shrink-0">
+            <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
               {currentGuild.icon ? (
                 <img
                   src={`https://cdn.discordapp.com/icons/${currentGuild.id}/${currentGuild.icon}.png`}
                   alt=""
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover rounded-full"
                 />
               ) : (
                 <span className="font-bold text-xs text-indigo-300 font-mono">

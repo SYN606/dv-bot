@@ -30,6 +30,32 @@ export default createCommand({
       return await ctx.reply({ content: "Please specify a valid user to ban.", ephemeral: true });
     }
 
+    if (targetUserId === user.id) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Ban Failed",
+            description: `${EMOJIS.get("fail") || "❌"} You cannot ban yourself.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    if (targetUserId === guild.ownerId) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Ban Failed",
+            description: `${EMOJIS.get("fail") || "❌"} You cannot ban the server owner.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
     const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
 
     // Hierarchy check
@@ -61,7 +87,20 @@ export default createCommand({
       }
     }
 
-    await guild.bans.create(targetUserId, { reason }).catch(() => {});
+    try {
+      await guild.bans.create(targetUserId, { reason });
+    } catch (err) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Ban Failed",
+            description: `${EMOJIS.get("fail") || "❌"} Failed to ban <@${targetUserId}>: ${err?.message || "Discord API error"}.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
 
     // Record punishment in database
     await PunishmentRecord.create({

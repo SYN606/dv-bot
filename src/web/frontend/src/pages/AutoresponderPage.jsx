@@ -249,8 +249,13 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
   // Save rule (Create or Update)
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!trigger.trim() || !reply.trim()) {
-      showToast?.("Trigger and reply message are required.", "error");
+    const hasAction = Boolean(reply.trim() || (isEmbed && embedTitle.trim()) || selectedEmojis.length > 0);
+    if (!trigger.trim()) {
+      showToast?.("Trigger keyword or phrase is required.", "error");
+      return;
+    }
+    if (!hasAction) {
+      showToast?.("Please provide a reply message, embed, or select at least one reaction emoji.", "error");
       return;
     }
 
@@ -275,7 +280,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
         reactions: selectedEmojis,
       });
 
-      showToast?.(editingId ? "Rule updated successfully!" : "Autoresponder rule created!");
+      showToast?.(editingId ? `Rule #${editingId} updated successfully!` : "Autoresponder rule created!");
       resetForm();
       loadData();
     } catch (err) {
@@ -362,6 +367,35 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
 
         {/* Creator / Editor Form Card */}
         <div className="glass-card p-6 sm:p-8 rounded-3xl border border-white/10 shadow-2xl relative space-y-6">
+          {/* Active Edit Mode Banner */}
+          {editingId && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-indigo-500/15 to-purple-500/15 border border-amber-500/30 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs text-white">Editing Rule #{editingId}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono font-semibold">
+                      ACTIVE EDIT
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    Modifying trigger <span className="font-mono text-amber-300 font-semibold">"{trigger || "..."}"</span>. Saving will update this rule directly.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors cursor-pointer shrink-0"
+              >
+                Cancel Edit
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center justify-between border-b border-white/5 pb-4">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
@@ -369,10 +403,10 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
               </div>
               <div>
                 <h3 className="font-bold text-sm text-white">
-                  {editingId ? "Edit Autoresponder Rule" : "Create New Autoresponder Rule"}
+                  {editingId ? `Edit Autoresponder Rule #${editingId}` : "Create New Autoresponder Rule"}
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  {editingId ? `Modifying Rule #${editingId}` : "Configure triggers, match conditions, reactions, and responses"}
+                  {editingId ? "Customize triggers, actions, cooldowns, or emoji reactions" : "Configure triggers, match conditions, reactions, and responses"}
                 </p>
               </div>
             </div>
@@ -381,7 +415,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
               <button
                 type="button"
                 onClick={resetForm}
-                className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
               >
                 Cancel Edit
               </button>
@@ -636,19 +670,53 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
               )}
 
               {/* Message Content */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300">
-                  {isEmbed ? "Embed Description / Content" : "Automated Reply Content"}{" "}
-                  <span className="text-rose-400">*</span>
-                </label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    {isEmbed ? "Embed Description / Content" : "Automated Reply Content"}{" "}
+                    {selectedEmojis.length === 0 && <span className="text-rose-400">*</span>}
+                  </label>
+                  {selectedEmojis.length > 0 && !reply.trim() && (
+                    <span className="text-[10px] text-amber-300 font-mono">
+                      (Optional: Reactions-only mode active)
+                    </span>
+                  )}
+                </div>
                 <textarea
                   rows={3}
-                  required
-                  placeholder="The message text that the bot will respond with..."
+                  placeholder={
+                    selectedEmojis.length > 0
+                      ? "Optional: Leave empty for reaction-only, or enter message..."
+                      : "The message text that the bot will respond with..."
+                  }
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
                   className="w-full p-4 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 leading-relaxed"
                 />
+
+                {/* Variable Quick-Insert Chips */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <span className="text-[10px] text-slate-400 font-mono">Variables:</span>
+                  {[
+                    { tag: "{user}", label: "@{user}" },
+                    { tag: "{username}", label: "{username}" },
+                    { tag: "{server}", label: "{server}" },
+                    { tag: "{channel}", label: "{channel}" },
+                    { tag: "{memberCount}", label: "{memberCount}" },
+                    { tag: "{owner}", label: "@{owner}" },
+                    { tag: "{boosts}", label: "{boosts}" },
+                  ].map((v) => (
+                    <button
+                      key={v.tag}
+                      type="button"
+                      onClick={() => setReply((prev) => (prev ? `${prev} ${v.tag}` : v.tag))}
+                      className="px-2 py-0.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-[10px] font-mono border border-indigo-500/20 transition-colors cursor-pointer"
+                      title={`Insert ${v.tag}`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -701,7 +769,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
             </div>
 
             {/* Live Discord Chat Simulation Preview */}
-            {(trigger.trim() || reply.trim()) && (
+            {(trigger.trim() || reply.trim() || selectedEmojis.length > 0) && (
               <div className="p-4 rounded-2xl bg-slate-950/70 border border-white/10 space-y-3">
                 <div className="flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
                   <Eye className="w-3.5 h-3.5 text-indigo-400" />
@@ -746,45 +814,55 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                   </div>
                 </div>
 
-                {/* Bot Response Message */}
-                <div className="flex items-start gap-3 pl-2 pt-2 border-t border-white/5">
-                  <img
-                    src={botInfo?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"}
-                    alt=""
-                    className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-indigo-500/40"
-                  />
-                  <div className="space-y-1.5 flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-bold text-xs text-indigo-400">
-                        {botInfo?.username || "Digital Vigital"}
-                      </span>
-                      <span className="px-1 py-0.2 rounded bg-[#5865F2] text-[9px] font-bold text-white uppercase">
-                        BOT
-                      </span>
-                      <span className="text-[10px] text-slate-500">Today at 12:00 PM</span>
-                    </div>
+                {/* Bot Response Message (If reply content or embed title present) */}
+                {(reply.trim() || embedTitle.trim()) && (
+                  <div className="flex items-start gap-3 pl-2 pt-2 border-t border-white/5">
+                    <img
+                      src={botInfo?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"}
+                      alt=""
+                      className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-indigo-500/40"
+                    />
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-bold text-xs text-indigo-400">
+                          {botInfo?.username || "Digital Vigital"}
+                        </span>
+                        <span className="px-1 py-0.2 rounded bg-[#5865F2] text-[9px] font-bold text-white uppercase">
+                          BOT
+                        </span>
+                        <span className="text-[10px] text-slate-500">Today at 12:00 PM</span>
+                      </div>
 
-                    {isEmbed ? (
-                      <div className="p-3.5 rounded-lg bg-[#2b2d31] border-l-4 border-indigo-500 max-w-lg space-y-2">
-                        {embedTitle && (
-                          <h4 className="font-bold text-xs text-white">{embedTitle}</h4>
-                        )}
+                      {isEmbed ? (
+                        <div className="p-3.5 rounded-lg bg-[#2b2d31] border-l-4 border-indigo-500 max-w-lg space-y-2">
+                          {embedTitle && (
+                            <h4 className="font-bold text-xs text-white">{embedTitle}</h4>
+                          )}
+                          <p className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
+                            {reply || "Autoresponder reply message content..."}
+                          </p>
+                          {imageUrl && (
+                            <div className="rounded overflow-hidden max-h-48 border border-white/5">
+                              <img src={imageUrl} alt="" className="w-full object-cover" />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
                         <p className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
                           {reply || "Autoresponder reply message content..."}
                         </p>
-                        {imageUrl && (
-                          <div className="rounded overflow-hidden max-h-48 border border-white/5">
-                            <img src={imageUrl} alt="" className="w-full object-cover" />
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
-                        {reply || "Autoresponder reply message content..."}
-                      </p>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Reaction-Only Notice (when no reply content/embed is configured) */}
+                {selectedEmojis.length > 0 && !reply.trim() && !embedTitle.trim() && (
+                  <div className="flex items-center gap-2 pl-2 pt-2 border-t border-white/5 text-xs text-indigo-300">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Reaction-Only Rule: DV-BOT will add reactions without posting a message.</span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -792,15 +870,20 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="submit"
-                disabled={saving || !trigger.trim() || !reply.trim() || (regexStatus && !regexStatus.valid)}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25 transition-all disabled:opacity-50"
+                disabled={
+                  saving ||
+                  !trigger.trim() ||
+                  (!reply.trim() && !embedTitle.trim() && selectedEmojis.length === 0) ||
+                  (regexStatus && !regexStatus.valid)
+                }
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {editingId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                 <span>
                   {saving
                     ? "Saving Rule..."
                     : editingId
-                    ? "Update Autoresponder Rule"
+                    ? `Save Changes to Rule #${editingId}`
                     : "Add Autoresponder Rule"}
                 </span>
               </button>
@@ -809,9 +892,9 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-4 py-2.5 rounded-xl text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 transition-colors"
+                  className="px-4 py-2.5 rounded-xl text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
                 >
-                  Cancel
+                  Cancel Edit
                 </button>
               )}
             </div>
@@ -864,7 +947,9 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                   <div
                     key={ruleId}
                     className={`p-5 rounded-2xl border transition-all ${
-                      isRuleActive
+                      editingId === ruleId
+                        ? "bg-indigo-950/40 border-amber-400/60 ring-2 ring-amber-400/30 shadow-xl shadow-amber-500/5"
+                        : isRuleActive
                         ? "bg-slate-900/70 border-white/10 hover:border-indigo-500/30"
                         : "bg-slate-950/40 border-white/5 opacity-60"
                     }`}
@@ -878,7 +963,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                           <button
                             type="button"
                             onClick={() => handleToggle(ruleId)}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-all ${
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
                               isRuleActive
                                 ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
                                 : "bg-slate-800 text-slate-400 border border-white/10"
@@ -887,6 +972,13 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                             <span className={`w-1.5 h-1.5 rounded-full ${isRuleActive ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`} />
                             {isRuleActive ? "Active" : "Disabled"}
                           </button>
+
+                          {/* Currently editing badge */}
+                          {editingId === ruleId && (
+                            <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold flex items-center gap-1">
+                              <Edit2 className="w-2.5 h-2.5" /> Editing
+                            </span>
+                          )}
 
                           {/* Match mode badge */}
                           <span className="px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[10px] font-mono uppercase">
@@ -934,16 +1026,25 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                         )}
 
                         {/* Response Content */}
-                        <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
-                          {rule.embed_title && (
-                            <p className="font-semibold text-xs text-indigo-300">
-                              {rule.embed_title}
-                            </p>
-                          )}
-                          <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed line-clamp-3">
-                            {rule.reply || rule.reply_content}
-                          </p>
-                        </div>
+                        {(rule.reply || rule.reply_content || rule.embed_title) ? (
+                          <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                            {rule.embed_title && (
+                              <p className="font-semibold text-xs text-indigo-300">
+                                {rule.embed_title}
+                              </p>
+                            )}
+                            {(rule.reply || rule.reply_content) && (
+                              <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed line-clamp-3">
+                                {rule.reply || rule.reply_content}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-xl bg-slate-950/40 border border-white/5 text-slate-400 text-xs italic flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>Reaction-only trigger: reacts with emojis without sending text.</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Right: Actions */}
@@ -951,15 +1052,19 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                         <button
                           type="button"
                           onClick={() => handleEditRule(rule)}
-                          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                          title="Edit rule"
+                          className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                            editingId === ruleId
+                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                              : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
+                          }`}
+                          title={editingId === ruleId ? "Currently editing" : "Edit rule"}
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(ruleId)}
-                          className="p-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors"
+                          className="p-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors cursor-pointer"
                           title="Delete rule"
                         >
                           <Trash2 className="w-4 h-4" />

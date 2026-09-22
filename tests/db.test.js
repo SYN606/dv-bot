@@ -6,6 +6,7 @@ import {
   RestrictedCommand,
   AdminRole,
   MemberAnalytics,
+  VerificationConfig,
 } from "../src/db/models/index.js";
 import {
   disableCommand,
@@ -83,5 +84,32 @@ describe("Database & Model Tests (Sequelize Multi-DB)", () => {
     expect(await isCommandRestricted(guildId, channelId, "ping")).toBe(false);
     expect(await isCommandRestricted(guildId, channelId, "banner")).toBe(false);
     expect(await isCommandRestricted(guildId, channelId, "avatar")).toBe(true);
+  });
+
+  it("should preserve 19-digit snowflake IDs verbatim without precision loss or truncation", async () => {
+    const guildId = "1550806635440644127";
+    const channelId = "1551651185835114560";
+    const roleId = "1551609897827967232";
+    const logId = "1551651201559429440";
+
+    const [config, created] = await VerificationConfig.upsert({
+      guild_id: guildId,
+      verify_channel_id: channelId,
+      verified_role_id: roleId,
+      log_channel_id: logId,
+      enabled: true,
+      mode: "captcha",
+      button_label: "Verify Real User",
+    });
+
+    const retrieved = await VerificationConfig.findByPk(guildId);
+    expect(retrieved).not.toBeNull();
+    // Critical: Verify that none of the last digits are rounded to 000!
+    expect(retrieved.guild_id).toBe("1550806635440644127");
+    expect(retrieved.verify_channel_id).toBe("1551651185835114560");
+    expect(retrieved.verified_role_id).toBe("1551609897827967232");
+    expect(retrieved.log_channel_id).toBe("1551651201559429440");
+    expect(retrieved.mode).toBe("captcha");
+    expect(retrieved.button_label).toBe("Verify Real User");
   });
 });

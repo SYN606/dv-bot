@@ -1,10 +1,11 @@
 import {
   ActionRowBuilder,
+  MessageFlags,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
-import { VerificationConfig } from "../db/models/index.js";
+import { TempbanRecord, VerificationConfig } from "../db/models/index.js";
 import { makeEmbed } from "../core/embeds.js";
 import { EMOJIS } from "../core/emojis.js";
 
@@ -28,6 +29,40 @@ async function executeVerificationGrant(interaction, config) {
   const guildId = interaction.guild.id;
   const userId = interaction.user.id;
   const lockKey = `${guildId}:${userId}`;
+  if (interaction.user.bot) {
+    return await interaction.reply({
+      embeds: [
+        makeEmbed({
+          title: "Verification Denied",
+          description: "Automated bot accounts cannot undergo member verification.",
+          level: "ERROR",
+        }),
+      ],
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  // Security check: Block actively tempbanned accounts
+  const activeTempban = await TempbanRecord.findOne({
+    where: {
+      guild_id: String(guildId),
+      user_id: String(userId),
+      active: true,
+    },
+  });
+
+  if (activeTempban) {
+    return await interaction.reply({
+      embeds: [
+        makeEmbed({
+          title: "Verification Blocked",
+          description: `${EMOJIS.get("fail") || "❌"} You are currently temporarily banned on this server and cannot verify.`,
+          level: "ERROR",
+        }),
+      ],
+      flags: MessageFlags.Ephemeral,
+    });
+  }
 
   if (pendingVerifications.has(lockKey)) {
     return await interaction.reply({
@@ -38,17 +73,34 @@ async function executeVerificationGrant(interaction, config) {
           level: "WARNING",
         }),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
   pendingVerifications.add(lockKey);
 
   try {
-    const verifiedRoleId = String(config.verified_role_id);
+    const verifiedRoleId = config.verified_role_id ? String(config.verified_role_id) : null;
     const unverifiedRoleId = config.unverified_role_id ? String(config.unverified_role_id) : null;
     const botMember = interaction.guild.members.me;
-    const verifiedRole = interaction.guild.roles.cache.get(verifiedRoleId);
+
+    if (!verifiedRoleId || verifiedRoleId === "null" || verifiedRoleId === "undefined") {
+      return await interaction.reply({
+        embeds: [
+          makeEmbed({
+            title: "Verification Role Missing",
+            description: `${EMOJIS.get("fail") || "❌"} The verified role is not configured. Please alert an administrator to select a role in the dashboard.`,
+            level: "ERROR",
+          }),
+        ],
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    let verifiedRole = interaction.guild.roles.cache.get(verifiedRoleId);
+    if (!verifiedRole && interaction.guild.roles.fetch) {
+      verifiedRole = await interaction.guild.roles.fetch(verifiedRoleId).catch(() => null);
+    }
 
     // 1. Role Existence and Hierarchy Safeguard
     if (!verifiedRole) {
@@ -60,7 +112,7 @@ async function executeVerificationGrant(interaction, config) {
             level: "ERROR",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -73,7 +125,7 @@ async function executeVerificationGrant(interaction, config) {
             level: "ERROR",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -84,26 +136,24 @@ async function executeVerificationGrant(interaction, config) {
       await interaction.member.roles.remove(unverifiedRoleId, "Removed unverified role upon verification").catch(() => {});
     }
 
-    // 3. Send Rich Audit Log Card
+    // 3. Simple Audit Log
     if (config.log_channel_id) {
-      const logChannel = interaction.guild.channels.cache.get(String(config.log_channel_id));
+      let logChannel = interaction.guild.channels.cache.get(String(config.log_channel_id));
+      if (!logChannel && interaction.guild.channels.fetch) {
+        logChannel = await interaction.guild.channels.fetch(String(config.log_channel_id)).catch(() => null);
+      }
       if (logChannel && logChannel.send) {
-        const joinedDuration = interaction.member.joinedTimestamp
-          ? `${Math.max(1, Math.round((Date.now() - interaction.member.joinedTimestamp) / 1000))}s`
-          : "N/A";
-        const accountAgeDays = Math.floor((Date.now() - interaction.user.createdTimestamp) / (1000 * 60 * 60 * 24));
-        const isFresh = accountAgeDays < 1;
-
+        const timestamp = Math.floor(Date.now() / 1000);
         const logEmbed = makeEmbed({
           title: "🛡️ Member Verified",
           description:
-            `**User:** ${interaction.user} (\`${interaction.user.id}\`)\n` +
-            `**Account Age:** <t:${Math.floor(interaction.user.createdTimestamp / 1000)}:R> ${isFresh ? "⚠️ **[FRESH ACCOUNT]**" : ""}\n` +
-            `**Verification Time:** ${joinedDuration}\n` +
-            `**Roles Added:** <@&${verifiedRoleId}>\n` +
-            (unverifiedRoleId ? `**Roles Removed:** <@&${unverifiedRoleId}>\n` : ""),
-          level: isFresh ? "WARNING" : "SUCCESS",
-          footer: `Guild: ${interaction.guild.name}`,
+            `**Member:** ${interaction.user} (\`${interaction.user.id}\`)\n` +
+            `**Role Granted:** <@&${verifiedRoleId}>\n` +
+            (unverifiedRoleId ? `**Role Removed:** <@&${unverifiedRoleId}>\n` : "") +
+            `**Channel:** ${interaction.channel ? interaction.channel.toString() : "Unknown"}\n` +
+            `**Time:** <t:${timestamp}:R>`,
+          level: "SUCCESS",
+          footer: `Server: ${interaction.guild.name}`,
         });
 
         if (interaction.user.displayAvatarURL) {
@@ -123,7 +173,7 @@ async function executeVerificationGrant(interaction, config) {
           level: "SUCCESS",
         }),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   } catch (err) {
     console.error("[VERIFICATION GRANT ERROR]:", err);
@@ -135,7 +185,7 @@ async function executeVerificationGrant(interaction, config) {
           level: "ERROR",
         }),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   } finally {
     pendingVerifications.delete(lockKey);
@@ -154,23 +204,36 @@ export function registerVerificationComponent(client) {
             level: "ERROR",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
     const guildId = interaction.guild.id;
     const config = await VerificationConfig.findByPk(guildId);
 
-    if (!config || !config.enabled || !config.verified_role_id) {
+    if (!config || !config.enabled) {
       return await interaction.reply({
         embeds: [
           makeEmbed({
-            title: "Verification Unavailable",
-            description: `${EMOJIS.get("warning") || "⚠️"} Server verification is not currently active or configured. An administrator can enable it in the dashboard.`,
+            title: "Verification Paused",
+            description: `${EMOJIS.get("warning") || "⚠️"} Server verification is currently turned off by the server administrators. Please contact staff or try again later.`,
             level: "WARNING",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    if (!config.verified_role_id || config.verified_role_id === "null") {
+      return await interaction.reply({
+        embeds: [
+          makeEmbed({
+            title: "Verification Setup Incomplete",
+            description: `${EMOJIS.get("fail") || "❌"} The verified role is not configured yet. Please alert an administrator to select a role in the dashboard.`,
+            level: "ERROR",
+          }),
+        ],
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -184,7 +247,7 @@ export function registerVerificationComponent(client) {
             level: "INFO",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -201,7 +264,7 @@ export function registerVerificationComponent(client) {
               level: "WARNING",
             }),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     }
@@ -267,7 +330,7 @@ export function registerVerificationComponent(client) {
             level: "ERROR",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -280,21 +343,34 @@ export function registerVerificationComponent(client) {
             level: "ERROR",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
     const config = await VerificationConfig.findByPk(guildId);
-    if (!config || !config.enabled || !config.verified_role_id) {
+    if (!config || !config.enabled) {
       return await interaction.reply({
         embeds: [
           makeEmbed({
-            title: "Verification Unavailable",
-            description: `${EMOJIS.get("warning") || "⚠️"} Verification is not configured on this server.`,
+            title: "Verification Paused",
+            description: `${EMOJIS.get("warning") || "⚠️"} Server verification is currently turned off by the server administrators. Please contact staff or try again later.`,
             level: "WARNING",
           }),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    if (!config.verified_role_id || config.verified_role_id === "null") {
+      return await interaction.reply({
+        embeds: [
+          makeEmbed({
+            title: "Verification Setup Incomplete",
+            description: `${EMOJIS.get("fail") || "❌"} The verified role is not configured yet. Please alert an administrator to select a role in the dashboard.`,
+            level: "ERROR",
+          }),
+        ],
+        flags: MessageFlags.Ephemeral,
       });
     }
 

@@ -14,8 +14,14 @@ describe("Web Dashboard & API Tests", () => {
 
     // Mock client with Collection-backed caches
     const mockChannels = new Collection();
-    mockChannels.set("2001", { id: "2001", name: "general", type: 0, send: async () => {} });
-    mockChannels.set("2002", { id: "2002", name: "media-channel", type: 0, send: async () => {} });
+    mockChannels.set("2001", {
+      id: "2001",
+      name: "general",
+      type: 0,
+      send: async () => ({ id: "mock_sticky_2001" }),
+      messages: { fetch: async () => null },
+    });
+    mockChannels.set("2002", { id: "2002", name: "media-channel", type: 0, send: async () => ({ id: "mock_sticky_123" }) });
 
     const mockRoles = new Collection();
     mockRoles.set("3001", { id: "3001", name: "Verified", hexColor: "#57f287" });
@@ -26,6 +32,7 @@ describe("Web Dashboard & API Tests", () => {
     mockCommands.set("avatar", { name: "avatar", description: "User avatar", category: "utility" });
     mockCommands.set("help", { name: "help", description: "Bot help command", category: "utility" });
     mockCommands.set("userstats", { name: "userstats", description: "View member statistics", category: "analytics" });
+    mockCommands.set("kick", { name: "kick", description: "Kick a member", category: "moderation", modOnly: true });
 
     const mockEmojis = new Collection();
     mockEmojis.set("5001", {
@@ -43,13 +50,65 @@ describe("Web Dashboard & API Tests", () => {
       toString: () => "<a:party_blob:5002>",
     });
 
+    const mockMembers = new Collection();
+    mockMembers.set("900100000000000001", {
+      id: "900100000000000001",
+      displayName: "ServerOwnerUser",
+      user: {
+        id: "900100000000000001",
+        username: "ServerOwnerUser",
+        bot: false,
+        displayAvatarURL: () => "https://cdn.discordapp.com/avatars/owner.png",
+      },
+    });
+    mockMembers.set("900200000000000002", {
+      id: "900200000000000002",
+      displayName: "StaffUser",
+      user: {
+        id: "900200000000000002",
+        username: "StaffUser",
+        bot: false,
+        displayAvatarURL: () => null,
+      },
+    });
+    mockMembers.set("900300000000000003", {
+      id: "900300000000000003",
+      displayName: "MusicBot",
+      user: {
+        id: "900300000000000003",
+        username: "MusicBot",
+        bot: true,
+        displayAvatarURL: () => null,
+      },
+    });
+
     const mockGuilds = new Collection();
     mockGuilds.set(testGuildId, {
       id: testGuildId,
       name: "Test Server",
+      ownerId: "900100000000000001",
       channels: { cache: mockChannels },
       roles: { cache: mockRoles },
       emojis: { cache: mockEmojis },
+      members: {
+        cache: mockMembers,
+        fetch: async (id) => mockMembers.get(id) || null,
+        search: async ({ query, limit }) => {
+          const q = query.toLowerCase();
+          const filtered = new Collection();
+          for (const [id, m] of mockMembers) {
+            if (
+              m.displayName.toLowerCase().includes(q) ||
+              m.user.username.toLowerCase().includes(q) ||
+              id.includes(query)
+            ) {
+              filtered.set(id, m);
+              if (filtered.size >= limit) break;
+            }
+          }
+          return filtered;
+        },
+      },
     });
 
     const mockClient = {
@@ -116,6 +175,33 @@ describe("Web Dashboard & API Tests", () => {
     const res = await app.request("/dashboard");
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("/auth/login");
+  });
+
+  it("public routes (/docs, /terms, /privacy, /error) should return 200 HTML without auth", async () => {
+    for (const route of ["/docs", "/documentation", "/terms", "/terms-of-service", "/privacy", "/privacy-policy", "/error"]) {
+      const res = await app.request(route);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("text/html");
+    }
+  });
+
+  it("GET /api/commands should return public documentation for all slash and prefix commands", async () => {
+    const res = await app.request("/api/commands");
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.count).toBeGreaterThanOrEqual(5);
+    expect(Array.isArray(data.commands)).toBe(true);
+
+    const kickCmd = data.commands.find((c) => c.name === "kick");
+    expect(kickCmd).toBeDefined();
+    expect(kickCmd.category).toBe("moderation");
+    expect(kickCmd.prefixUsage).toContain("!kick");
+    expect(kickCmd.slashUsage).toBe("/kick");
+    expect(kickCmd.modOnly).toBe(true);
+
+    const pingCmd = data.commands.find((c) => c.name === "ping");
+    expect(pingCmd).toBeDefined();
+    expect(pingCmd.category).toBe("utility");
   });
 
   it("GET /api/me should return current user session and guilds", async () => {
@@ -201,7 +287,7 @@ describe("Web Dashboard & API Tests", () => {
 
   // 5. Media-Only Setup API
   it("POST & GET & DELETE /api/guilds/1001/media_only should manage media channels", async () => {
-    // Add media channel
+    // Add media channel with whitelist_role_id, image_only, auto_mute, and post_sticky_notice
     const postRes = await app.request("/api/guilds/1001/media_only", {
       method: "POST",
       headers: {
@@ -211,7 +297,9 @@ describe("Web Dashboard & API Tests", () => {
       body: JSON.stringify({
         channel_id: "2002",
         image_only: true,
-        auto_mute: false,
+        auto_mute: true,
+        whitelist_role_id: "3002",
+        post_sticky_notice: true,
       }),
     });
     expect(postRes.status).toBe(200);
@@ -222,7 +310,12 @@ describe("Web Dashboard & API Tests", () => {
     });
     expect(getRes.status).toBe(200);
     const channels = await getRes.json();
-    expect(channels.some((c) => String(c.channel_id) === "2002")).toBe(true);
+    const created = channels.find((c) => String(c.channel_id) === "2002");
+    expect(created).toBeDefined();
+    expect(Boolean(created.image_only)).toBe(true);
+    expect(Boolean(created.auto_mute)).toBe(true);
+    expect(String(created.whitelist_role_id)).toBe("3002");
+    expect(String(created.sticky_message_id)).toBe("mock_sticky_123");
 
     // Delete media channel
     const delRes = await app.request("/api/guilds/1001/media_only/2002", {
@@ -298,7 +391,7 @@ describe("Web Dashboard & API Tests", () => {
     expect(getBodyAfter.modules).toBeDefined();
     expect(getBodyAfter.modules.some((m) => m.id === "utility")).toBe(true);
     expect(getBodyAfter.stats).toBeDefined();
-    expect(getBodyAfter.stats.total).toBe(4);
+    expect(getBodyAfter.stats.total).toBe(5);
     expect(getBodyAfter.stats.protected).toBe(1); // help is protected
 
     // Module Bulk Toggle: disable entire 'utility' module
@@ -386,25 +479,72 @@ describe("Web Dashboard & API Tests", () => {
     expect(createdRule.reactions).toContain("🔥");
     expect(createdRule.enabled).toBe(true);
 
-    // Toggle rule off
-    const toggleOffRes = await app.request(`/api/guilds/1001/autoresponder/${responderId}/toggle`, {
-      method: "POST",
+    // Edit existing rule via PUT
+    const putRes = await app.request(`/api/guilds/1001/autoresponder/${responderId}`, {
+      method: "PUT",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        trigger: "rules_query_edited",
+        reply: "Updated guidelines text",
+        matchMode: "startswith",
+        reactions: ["✅"],
+      }),
+    });
+    expect(putRes.status).toBe(200);
+
+    // Fetch single rule via GET /api/guilds/1001/autoresponder/:id
+    const getSingleRes = await app.request(`/api/guilds/1001/autoresponder/${responderId}`, {
       headers: { Cookie: validCookie },
     });
-    expect(toggleOffRes.status).toBe(200);
-    const toggleOffBody = await toggleOffRes.json();
-    expect(toggleOffBody.enabled).toBe(false);
+    expect(getSingleRes.status).toBe(200);
+    const singleRule = await getSingleRes.json();
+    expect(singleRule.trigger).toBe("rules_query_edited");
+    expect(singleRule.reply).toBe("Updated guidelines text");
+    expect(singleRule.match_mode).toBe("startswith");
+    expect(singleRule.reactions).toEqual(["✅"]);
 
-    // Toggle rule back on
-    const toggleOnRes = await app.request(`/api/guilds/1001/autoresponder/${responderId}/toggle`, {
+    // Test reaction-only autoresponder (no reply, but valid reactions)
+    const reactionOnlyRes = await app.request("/api/guilds/1001/autoresponder", {
       method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        trigger: "gg",
+        matchMode: "exact",
+        reactions: ["🏆", "🎉"],
+      }),
+    });
+    expect(reactionOnlyRes.status).toBe(200);
+    const reactionOnlyBody = await reactionOnlyRes.json();
+    expect(reactionOnlyBody.success).toBe(true);
+
+    // Test regex syntax error rejection
+    const invalidRegexRes = await app.request("/api/guilds/1001/autoresponder", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        trigger: "[unclosed_regex(",
+        reply: "should fail",
+        matchMode: "regex",
+      }),
+    });
+    expect(invalidRegexRes.status).toBe(400);
+
+    // Clean up reaction-only rule
+    await app.request(`/api/guilds/1001/autoresponder/${reactionOnlyBody.id}`, {
+      method: "DELETE",
       headers: { Cookie: validCookie },
     });
-    expect(toggleOnRes.status).toBe(200);
-    const toggleOnBody = await toggleOnRes.json();
-    expect(toggleOnBody.enabled).toBe(true);
 
-    // Delete rule
+    // Delete original rule
     const delRes = await app.request(`/api/guilds/1001/autoresponder/${responderId}`, {
       method: "DELETE",
       headers: { Cookie: validCookie },
@@ -414,13 +554,14 @@ describe("Web Dashboard & API Tests", () => {
 
   // 8. Staff Admin Roles API
   it("POST & GET & DELETE /api/guilds/1001/admin_roles should manage admin roles", async () => {
+    // Supports camelCase roleId
     const postRes = await app.request("/api/guilds/1001/admin_roles", {
       method: "POST",
       headers: {
         Cookie: validCookie,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ role_id: "3001" }),
+      body: JSON.stringify({ roleId: "3001" }),
     });
     expect(postRes.status).toBe(200);
 
@@ -430,12 +571,175 @@ describe("Web Dashboard & API Tests", () => {
     expect(getRes.status).toBe(200);
     const body = await getRes.json();
     expect(body.adminRoles.some((r) => r.id === "3001")).toBe(true);
+    expect(body.roleIds).toContain("3001");
 
     const delRes = await app.request("/api/guilds/1001/admin_roles/3001", {
       method: "DELETE",
       headers: { Cookie: validCookie },
     });
     expect(delRes.status).toBe(200);
+  });
+
+  // 8a. Guild Members Endpoint
+  it("GET /api/guilds/1001/members should list server members and support search", async () => {
+    // List all
+    const allRes = await app.request("/api/guilds/1001/members", {
+      headers: { Cookie: validCookie },
+    });
+    expect(allRes.status).toBe(200);
+    const allMembers = await allRes.json();
+    expect(Array.isArray(allMembers)).toBe(true);
+    expect(allMembers.length).toBeGreaterThanOrEqual(2);
+
+    const owner = allMembers.find((m) => m.id === "900100000000000001");
+    expect(owner).toBeDefined();
+    expect(owner.isOwner).toBe(true);
+
+    const botMember = allMembers.find((m) => m.id === "900300000000000003");
+    expect(botMember).toBeDefined();
+    expect(botMember.isBot).toBe(true);
+
+    // Search query
+    const searchRes = await app.request("/api/guilds/1001/members?q=Staff", {
+      headers: { Cookie: validCookie },
+    });
+    expect(searchRes.status).toBe(200);
+    const searchResults = await searchRes.json();
+    expect(searchResults.some((m) => m.username === "StaffUser")).toBe(true);
+  });
+
+  // 8b. Staff Admin Users API
+  it("POST & GET & DELETE /api/guilds/1001/admin_users should manage individual admin users and protect owner", async () => {
+    const adminUserId = "900200000000000002";
+
+    // 1. Rejection on invalid snowflake ID
+    const invalidRes = await app.request("/api/guilds/1001/admin_users", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ userId: "invalid_not_a_snowflake" }),
+    });
+    expect(invalidRes.status).toBe(400);
+    const invalidBody = await invalidRes.json();
+    expect(invalidBody.error).toContain("Snowflake");
+
+    // 2. Add valid admin user
+    const addRes = await app.request("/api/guilds/1001/admin_users", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ userId: adminUserId }),
+    });
+    expect(addRes.status).toBe(200);
+    const addBody = await addRes.json();
+    expect(addBody.success).toBe(true);
+
+    // 3. Verify in GET /api/guilds/1001/admin_roles
+    const getRes = await app.request("/api/guilds/1001/admin_roles", {
+      headers: { Cookie: validCookie },
+    });
+    expect(getRes.status).toBe(200);
+    const getData = await getRes.json();
+    expect(getData.userIds).toContain(adminUserId);
+    expect(getData.adminUsers.some((u) => u.id === adminUserId)).toBe(true);
+    expect(getData.ownerId).toBe("900100000000000001");
+
+    // 4. Server Owner Protection: Cannot delete server owner
+    const deleteOwnerRes = await app.request("/api/guilds/1001/admin_users/900100000000000001", {
+      method: "DELETE",
+      headers: { Cookie: validCookie },
+    });
+    expect(deleteOwnerRes.status).toBe(403);
+    const deleteOwnerBody = await deleteOwnerRes.json();
+    expect(deleteOwnerBody.error).toContain("Server Owner");
+
+    // 5. Delete admin user
+    const deleteRes = await app.request(`/api/guilds/1001/admin_users/${adminUserId}`, {
+      method: "DELETE",
+      headers: { Cookie: validCookie },
+    });
+    expect(deleteRes.status).toBe(200);
+    const deleteBody = await deleteRes.json();
+    expect(deleteBody.success).toBe(true);
+
+    // 6. Verify removed
+    const getAfterRes = await app.request("/api/guilds/1001/admin_roles", {
+      headers: { Cookie: validCookie },
+    });
+    const getAfterData = await getAfterRes.json();
+    expect(getAfterData.userIds).not.toContain(adminUserId);
+  });
+
+  // 8b. Sticky Channel Messages API
+  it("POST & GET & DELETE /api/guilds/1001/sticky should manage sticky messages", async () => {
+    // Add sticky with camelCase channelId
+    const postRes = await app.request("/api/guilds/1001/sticky", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        channelId: "2001",
+        content: "Important channel announcement!",
+      }),
+    });
+    expect(postRes.status).toBe(200);
+
+    // Get all sticky messages for guild
+    const getRes = await app.request("/api/guilds/1001/sticky", {
+      headers: { Cookie: validCookie },
+    });
+    expect(getRes.status).toBe(200);
+    const body = await getRes.json();
+    expect(Array.isArray(body.stickyList)).toBe(true);
+    const stickyItem = body.stickyList.find((s) => s.channel_id === "2001");
+    expect(stickyItem).toBeDefined();
+    expect(stickyItem.channelName).toBe("general");
+    expect(stickyItem.last_message_id).toBe("mock_sticky_2001");
+
+    // Get specific channel sticky message
+    const getSingleRes = await app.request("/api/guilds/1001/sticky/2001", {
+      headers: { Cookie: validCookie },
+    });
+    expect(getSingleRes.status).toBe(200);
+    const single = await getSingleRes.json();
+    expect(single.sticky_content).toBe("Important channel announcement!");
+
+    // Delete sticky message
+    const delRes = await app.request("/api/guilds/1001/sticky/2001", {
+      method: "DELETE",
+      headers: { Cookie: validCookie },
+    });
+    expect(delRes.status).toBe(200);
+  });
+
+  // 8c. General Modlog & VC Role Config API
+  it("POST & GET /api/guilds/1001/config should manage modlog and vcrole settings", async () => {
+    const postRes = await app.request("/api/guilds/1001/config", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        modLogChannelId: "2001",
+        vcRoleId: "3001",
+      }),
+    });
+    expect(postRes.status).toBe(200);
+
+    const getRes = await app.request("/api/guilds/1001/config", {
+      headers: { Cookie: validCookie },
+    });
+    expect(getRes.status).toBe(200);
+    const body = await getRes.json();
+    expect(body.modLogChannelId).toBe("2001");
+    expect(body.vcRoleId).toBe("3001");
   });
 
   // 9. Analytics API & Timeline
@@ -445,10 +749,27 @@ describe("Web Dashboard & API Tests", () => {
     });
     expect(res.status).toBe(200);
     const body = await res.json();
+    expect(body.timeframe).toBe(7);
     expect(Array.isArray(body.timeline)).toBe(true);
     expect(body.timeline.length).toBe(7);
+    expect(body.summary).toBeDefined();
+    expect(body.summary.retentionRate).toBeDefined();
+    expect(body.insights).toBeDefined();
+    expect(body.insights.primeWindow).toBeDefined();
+    expect(Array.isArray(body.channelBreakdown)).toBe(true);
+    expect(Array.isArray(body.hourlyDistribution)).toBe(true);
+    expect(body.hourlyDistribution.length).toBe(24);
     expect(Array.isArray(body.topChatters)).toBe(true);
     expect(Array.isArray(body.topVoice)).toBe(true);
+
+    // Test 14-day timeframe
+    const res14 = await app.request("/api/guilds/1001/analytics?days=14", {
+      headers: { Cookie: validCookie },
+    });
+    expect(res14.status).toBe(200);
+    const body14 = await res14.json();
+    expect(body14.timeframe).toBe(14);
+    expect(body14.timeline.length).toBe(14);
   });
 
   // 10. API In-Memory Cache Unit Tests

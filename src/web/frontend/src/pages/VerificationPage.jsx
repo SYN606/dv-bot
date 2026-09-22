@@ -6,6 +6,7 @@ import {
   getVerification,
   saveVerification,
   postVerificationButton,
+  resetVerification,
   getGuildEmojis,
 } from "../api/client";
 import {
@@ -13,19 +14,16 @@ import {
   Send,
   Check,
   AlertTriangle,
-  KeyRound,
-  Clock,
   Sliders,
   Sparkles,
   Eye,
   Hash,
   UserCheck,
-  Smile,
   ChevronDown,
   Search,
-  ChevronUp,
-  RotateCcw,
   Layers,
+  RotateCcw,
+  UserMinus,
 } from "lucide-react";
 
 const QUICK_UNICODE_EMOJIS = [
@@ -33,10 +31,7 @@ const QUICK_UNICODE_EMOJIS = [
 ];
 
 const VARIABLE_TAGS = [
-  { key: "{server}", label: "Server Name" },
-  { key: "{memberCount}", label: "Member Count" },
   { key: "{verifiedRole}", label: "Verified Role" },
-  { key: "{rules}", label: "Rules Channel" },
 ];
 
 function renderEmoji(emojiString) {
@@ -66,7 +61,6 @@ export default function VerificationPage({ user, botInfo, showToast }) {
   const [roles, setRoles] = useState([]);
   const [serverEmojis, setServerEmojis] = useState([]);
   const [guildInfo, setGuildInfo] = useState(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Form Configuration
   const [config, setConfig] = useState({
@@ -85,6 +79,8 @@ export default function VerificationPage({ user, botInfo, showToast }) {
 
   const [saving, setSaving] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [staleRoleAlert, setStaleRoleAlert] = useState(false);
 
   // Emoji Dropdown Popover
   const [emojiDropdownOpen, setEmojiDropdownOpen] = useState(false);
@@ -121,16 +117,22 @@ export default function VerificationPage({ user, botInfo, showToast }) {
         setServerEmojis(customEmojis);
 
         if (verif) {
+          if (verif.roleExists === false && verif.verified_role_id) {
+            setStaleRoleAlert(true);
+          } else {
+            setStaleRoleAlert(false);
+          }
+
           setConfig({
             enabled: Boolean(verif.enabled),
             channelId: verif.channelId || verif.verify_channel_id || "",
             verifiedRoleId: verif.verifiedRoleId || verif.verified_role_id || "",
             unverifiedRoleId: verif.unverifiedRoleId || verif.unverified_role_id || "",
             logChannelId: verif.logChannelId || verif.log_channel_id || "",
-            mode: verif.mode || "button",
-            minAccountAgeHours: verif.minAccountAgeHours || verif.min_account_age_hours || 0,
-            embedTitle: verif.embedTitle || verif.embed_title || "",
-            embedDescription: verif.embedDescription || verif.embed_description || "",
+            mode: verif.mode === "captcha" ? "captcha" : "button",
+            minAccountAgeHours: Number(verif.minAccountAgeHours || verif.min_account_age_hours || 0),
+            embedTitle: verif.embedTitle || verif.embed_title || "Server Verification",
+            embedDescription: verif.embedDescription || verif.embed_description || "🛡️ Click the button below to verify and get access to the server.",
             buttonLabel: verif.buttonLabel || verif.button_label || "Verify Access",
             buttonEmoji: verif.buttonEmoji || verif.button_emoji || "✅",
           });
@@ -170,14 +172,41 @@ export default function VerificationPage({ user, botInfo, showToast }) {
   const handleApplyPreset = () => {
     setConfig((prev) => ({
       ...prev,
-      embedTitle: "{server} Verification",
-      embedDescription:
-        "🛡️ Welcome to **{server}**!\n\n" +
-        "You are member #{memberCount}. Click the button below to verify and unlock full member channels with {verifiedRole}.\n\n" +
-        "Please make sure to review our community guidelines in {rules}.",
+      embedTitle: "Server Verification",
+      embedDescription: "🛡️ Click the button below to verify and get access to the server.",
       buttonLabel: "Verify Access",
+      buttonEmoji: "✅",
     }));
-    showToast("Loaded recommended verification template!");
+    showToast("Loaded simple template!");
+  };
+
+  const handleResetConfig = async () => {
+    if (!window.confirm("Delete and completely reset all verification configuration for this server?")) {
+      return;
+    }
+    setResetting(true);
+    try {
+      await resetVerification(guildId);
+      setConfig({
+        enabled: false,
+        channelId: "",
+        verifiedRoleId: "",
+        unverifiedRoleId: "",
+        logChannelId: "",
+        mode: "button",
+        minAccountAgeHours: 0,
+        embedTitle: "Server Verification",
+        embedDescription: "🛡️ Click the button below to verify and get access to the server.",
+        buttonLabel: "Verify Access",
+        buttonEmoji: "✅",
+      });
+      setStaleRoleAlert(false);
+      showToast("Verification configuration completely deleted and reset!");
+    } catch (err) {
+      showToast(err.message || "Failed to reset config.", "error");
+    } finally {
+      setResetting(false);
+    }
   };
 
   const handleSave = async (e) => {
@@ -198,11 +227,19 @@ export default function VerificationPage({ user, botInfo, showToast }) {
       showToast("Please select a verification channel first.", "error");
       return;
     }
+    if (!config.verifiedRoleId) {
+      showToast("Please select a Role to Grant first.", "error");
+      return;
+    }
     setPosting(true);
     try {
       // Auto-save current configuration first
       await saveVerification(guildId, config);
-      const res = await postVerificationButton(guildId, { channelId: config.channelId });
+      const res = await postVerificationButton(guildId, {
+        ...config,
+        channelId: config.channelId,
+        verifiedRoleId: config.verifiedRoleId,
+      });
       showToast(res.message || "Verification prompt posted to channel!");
     } catch (err) {
       showToast(err.message || "Failed to post prompt.", "error");
@@ -221,41 +258,31 @@ export default function VerificationPage({ user, botInfo, showToast }) {
   // Live variable resolution for real-time Discord preview
   const previewData = useMemo(() => {
     const currentGuild = user?.guilds?.find((g) => g.id === guildId) || guildInfo || {};
-    const serverName = currentGuild.name || "My Discord Server";
-    const memberCount = guildInfo?.memberCount ? Number(guildInfo.memberCount).toLocaleString() : "1,420";
-    const selectedChan = channels.find((c) => c.id === config.channelId);
-    const channelName = selectedChan ? `#${selectedChan.name}` : "#verification";
+    const serverName = currentGuild.name || "Server";
     const verifiedRole = roles.find((r) => r.id === config.verifiedRoleId);
     const verifiedRoleName = verifiedRole ? `@${verifiedRole.name}` : "@Verified";
-    const unverifiedRole = roles.find((r) => r.id === config.unverifiedRoleId);
-    const unverifiedRoleName = unverifiedRole ? `@${unverifiedRole.name}` : "@Unverified";
 
     const resolveVariables = (str, fallback = "") => {
       const text = str || fallback;
       if (!text) return "";
       return text
-        .replace(/\{server\.name\}|\{guild\.name\}|\{server\}|\{guild\}/gi, serverName)
-        .replace(/\{server\.id\}|\{guild\.id\}/gi, guildId)
-        .replace(/\{memberCount\}|\{member_count\}|\{server\.memberCount\}|\{server\.members\}|\{members\}/gi, memberCount)
-        .replace(/\{channel\.name\}|\{channel\.mention\}|\{channel\}/gi, channelName)
         .replace(/\{verifiedRole\}|\{verified_role\}/gi, verifiedRoleName)
-        .replace(/\{unverifiedRole\}|\{unverified_role\}/gi, unverifiedRoleName)
-        .replace(/\{rulesChannel\}|\{rules_channel\}|\{rules\}/gi, "#rules")
-        .replace(/\{owner\}|\{server\.owner\}/gi, "@Owner")
-        .replace(/\{boosts\}|\{boost_count\}|\{server\.boosts\}/gi, "14")
-        .replace(/\{boostTier\}|\{boost_tier\}|\{server\.tier\}/gi, "Level 2");
+        // Clean out legacy unused variables
+        .replace(/\{server\.name\}|\{guild\.name\}|\{server\}|\{guild\}/gi, serverName)
+        .replace(/\{memberCount\}|\{member_count\}|\{server\.memberCount\}|\{server\.members\}|\{members\}/gi, "")
+        .replace(/\{rulesChannel\}|\{rules_channel\}|\{rules\}/gi, "");
     };
 
     return {
-      title: resolveVariables(config.embedTitle, `${serverName} Verification`),
+      title: resolveVariables(config.embedTitle, "Server Verification"),
       description: resolveVariables(
         config.embedDescription,
-        `🛡️ Welcome to **${serverName}**!\n\nTo gain access to the rest of the server channels, please click the verification button below.`
+        "🛡️ Click the button below to verify and get access to the server."
       ),
       buttonLabel: resolveVariables(config.buttonLabel, "Verify Access"),
       serverName,
     };
-  }, [config, guildInfo, channels, roles, user, guildId]);
+  }, [config, guildInfo, roles, user, guildId]);
 
   return (
     <DashboardLayout
@@ -307,6 +334,32 @@ export default function VerificationPage({ user, botInfo, showToast }) {
             </label>
           </div>
         </div>
+
+        {/* Verification Disabled Hint Banner */}
+        {!config.enabled && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-200">
+              <p className="font-bold text-amber-300">Verification Gate is Currently Turned Off</p>
+              <p className="mt-0.5">
+                Incoming members clicking the verification button in Discord will see a notice that verification is paused by administrators. Enable the gate switch above when you are ready to accept new members.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Stale / Deleted Role Warning */}
+        {staleRoleAlert && (
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div className="text-xs text-rose-200">
+              <p className="font-bold text-rose-300">Stale Config Alert: Verified Role Missing in Discord</p>
+              <p className="mt-0.5">
+                The role previously configured in the database was deleted from Discord. Please choose a valid role under <strong>Role to Grant</strong> and click <strong>Save Settings</strong>.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Role Hierarchy Warning */}
         {isHierarchyError && (
@@ -376,35 +429,107 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                 </div>
               </div>
 
-              {/* Verification Mode */}
+              {/* Challenge Mode Selection */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
+                <label className="block text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5 text-indigo-400" />
                   <span>Challenge Mode</span>
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setConfig({ ...config, mode: "button" })}
-                    className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                       config.mode === "button"
-                        ? "bg-indigo-600/30 text-indigo-200 border-indigo-500/50 shadow-sm"
-                        : "bg-slate-900 text-slate-400 border-white/5 hover:border-white/15"
+                        ? "bg-indigo-600/20 border-indigo-500/60 ring-1 ring-indigo-500/40"
+                        : "bg-slate-900/60 border-white/10 hover:border-white/20 hover:bg-slate-900"
                     }`}
                   >
-                    1-Click Button (Instant)
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span>⚡</span>
+                        <span>1-Click Button (Instant)</span>
+                      </span>
+                      {config.mode === "button" && (
+                        <Check className="w-4 h-4 text-indigo-400" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                      Instant access with zero friction. Clicking the button immediately assigns the role.
+                    </p>
                   </button>
+
                   <button
                     type="button"
                     onClick={() => setConfig({ ...config, mode: "captcha" })}
-                    className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                       config.mode === "captcha"
-                        ? "bg-purple-600/30 text-purple-200 border-purple-500/50 shadow-sm"
-                        : "bg-slate-900 text-slate-400 border-white/5 hover:border-white/15"
+                        ? "bg-indigo-600/20 border-indigo-500/60 ring-1 ring-indigo-500/40"
+                        : "bg-slate-900/60 border-white/10 hover:border-white/20 hover:bg-slate-900"
                     }`}
                   >
-                    Anti-Raid Captcha Modal
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span>🧩</span>
+                        <span>Anti-Raid Captcha Modal</span>
+                      </span>
+                      {config.mode === "captcha" && (
+                        <Check className="w-4 h-4 text-indigo-400" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                      Opens a modal popup requiring the member to type a 6-character code to defeat raid bots.
+                    </p>
                   </button>
+                </div>
+              </div>
+
+              {/* Optional Unverified Role & Audit Log Channel */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Unverified Role (Optional) */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <UserMinus className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Unverified Role (Optional)</span>
+                  </label>
+                  <select
+                    value={config.unverifiedRoleId}
+                    onChange={(e) => setConfig({ ...config, unverifiedRoleId: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="">None (Optional)</option>
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        @{r.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Removed automatically when the member verifies.
+                  </p>
+                </div>
+
+                {/* Audit Log Channel (Optional) */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Hash className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Audit Log Channel (Optional)</span>
+                  </label>
+                  <select
+                    value={config.logChannelId}
+                    onChange={(e) => setConfig({ ...config, logChannelId: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="">None (Disabled)</option>
+                    {channels.map((ch) => (
+                      <option key={ch.id} value={ch.id}>
+                        #{ch.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Sends verification confirmation logs here.
+                  </p>
                 </div>
               </div>
             </div>
@@ -430,28 +555,14 @@ export default function VerificationPage({ user, botInfo, showToast }) {
               {/* Title & Button Label */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-semibold text-slate-300">
-                      Embed Title
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          embedTitle: prev.embedTitle ? `${prev.embedTitle} {server}` : "{server} Verification",
-                        }))
-                      }
-                      className="text-[10px] font-mono text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded-lg cursor-pointer transition-all"
-                    >
-                      + {`{server}`}
-                    </button>
-                  </div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Embed Title
+                  </label>
                   <input
                     type="text"
                     value={config.embedTitle}
                     onChange={(e) => setConfig({ ...config, embedTitle: e.target.value })}
-                    placeholder="{server} Verification"
+                    placeholder="Server Verification"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -585,132 +696,43 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                 )}
               </div>
 
-              {/* Description & Easy One-Click Variables Bar */}
+              {/* Description & Verified Role Variable */}
               <div className="space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <label className="block text-xs font-semibold text-slate-300">
-                    Embed Description & Rules Markdown
+                    Embed Description & Instructions
                   </label>
                   <span className="text-[11px] text-slate-400">
-                    Click variable to insert into text:
+                    Available variable:
                   </span>
                 </div>
 
-                {/* 1-Click Essential Variable Insert Buttons */}
-                <div className="flex flex-wrap items-center gap-2 p-2 rounded-2xl bg-slate-900/90 border border-white/10">
-                  {VARIABLE_TAGS.map((v) => (
-                    <button
-                      key={v.key}
-                      type="button"
-                      onClick={() => handleInsertVariable(v.key)}
-                      title={`Insert ${v.label}`}
-                      className="px-2.5 py-1 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-500/30 text-xs font-mono font-medium transition-all hover:scale-105 cursor-pointer flex items-center gap-1.5 shadow-sm"
-                    >
-                      <span className="text-indigo-400 font-bold">+</span>
-                      <span>{v.key}</span>
-                      <span className="text-[10px] text-slate-400 font-sans">({v.label})</span>
-                    </button>
-                  ))}
+                {/* Clean 1-Click Verified Role Variable */}
+                <div className="flex items-center gap-2.5 p-2 rounded-2xl bg-slate-900/90 border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => handleInsertVariable("{verifiedRole}")}
+                    title="Insert verified role mention"
+                    className="px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 text-xs font-mono font-medium transition-all hover:scale-105 cursor-pointer flex items-center gap-2 shadow-sm"
+                  >
+                    <span className="text-indigo-400 font-bold text-sm">+</span>
+                    <span className="font-semibold">{`{verifiedRole}`}</span>
+                    <span className="text-[10px] text-slate-400 font-sans">(Verified Role Mention)</span>
+                  </button>
+                  <span className="text-xs text-slate-400 hidden sm:inline">
+                    Mentions the role given to verified members.
+                  </span>
                 </div>
 
                 <textarea
                   ref={descTextareaRef}
-                  rows="4"
+                  rows="3"
                   value={config.embedDescription}
                   onChange={(e) => setConfig({ ...config, embedDescription: e.target.value })}
-                  placeholder="Welcome to {server}! Click the button below to receive {verifiedRole} and gain access to channels."
+                  placeholder="🛡️ Click the button below to verify and receive the {verifiedRole} role to unlock access."
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-y leading-relaxed font-sans"
                 />
               </div>
-            </div>
-
-            {/* Section 3: Collapsible Advanced Security */}
-            <div className="glass-card rounded-3xl border border-white/10 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className="w-full p-5 text-left flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-300 font-mono hover:bg-white/5 transition-all cursor-pointer"
-              >
-                <span>3. Optional Security & Quarantine</span>
-                <div className="flex items-center gap-2 text-slate-400">
-                  <span className="text-xs font-sans capitalize font-normal">
-                    {showAdvanced ? "Hide" : "Show"}
-                  </span>
-                  {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </div>
-              </button>
-
-              {showAdvanced && (
-                <div className="p-5 sm:p-6 border-t border-white/10 space-y-4 animate-in fade-in">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Unverified Role */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                        Unverified Role (Optional)
-                      </label>
-                      <select
-                        value={config.unverifiedRoleId}
-                        onChange={(e) => setConfig({ ...config, unverifiedRoleId: e.target.value })}
-                        className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
-                      >
-                        <option value="">None (Optional)</option>
-                        {roles.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            @{r.name}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        Given on join, removed upon successful verification.
-                      </p>
-                    </div>
-
-                    {/* Logs Channel */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                        Audit Log Channel (Optional)
-                      </label>
-                      <select
-                        value={config.logChannelId}
-                        onChange={(e) => setConfig({ ...config, logChannelId: e.target.value })}
-                        className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
-                      >
-                        <option value="">None (Optional)</option>
-                        {channels.map((ch) => (
-                          <option key={ch.id} value={ch.id}>
-                            #{ch.name}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        Where verification audit cards will be sent.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Account Age Quarantine */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Minimum Account Age Quarantine</span>
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        min="0"
-                        max="720"
-                        value={config.minAccountAgeHours}
-                        onChange={(e) =>
-                          setConfig({ ...config, minAccountAgeHours: Number(e.target.value) })
-                        }
-                        className="w-40 px-3.5 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500"
-                        placeholder="0"
-                      />
-                      <span className="text-xs text-slate-300">hours old (0 = disabled)</span>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </form>
 
@@ -767,11 +789,16 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                 </div>
 
                 {/* Discord Interactive Button */}
-                <div className="ml-0 sm:ml-12 pt-1">
+                <div className="ml-0 sm:ml-12 pt-1 flex flex-col items-start gap-1.5">
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#248046] text-white text-xs sm:text-sm font-semibold shadow-md select-none">
                     {renderEmoji(config.buttonEmoji)}
                     <span>{previewData.buttonLabel}</span>
                   </div>
+                  <span className="text-[10px] text-[#949ba4] italic flex items-center gap-1">
+                    {config.mode === "captcha"
+                      ? "🧩 Clicking opens Anti-Raid Captcha Modal in Discord"
+                      : "⚡ Clicking grants role instantly (1-Click)"}
+                  </span>
                 </div>
               </div>
 
@@ -780,7 +807,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                 <button
                   type="button"
                   onClick={handlePostButton}
-                  disabled={posting || !config.channelId}
+                  disabled={posting || !config.channelId || !config.verifiedRoleId}
                   className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
@@ -795,6 +822,17 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                 >
                   <Check className="w-4 h-4" />
                   <span>{saving ? "Saving..." : "Save Settings"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResetConfig}
+                  disabled={resetting}
+                  title="Reset verification database configuration back to clean defaults"
+                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 text-rose-400 ${resetting ? "animate-spin" : ""}`} />
+                  <span>{resetting ? "Resetting Configuration..." : "Reset Config to Clean Defaults"}</span>
                 </button>
               </div>
             </div>

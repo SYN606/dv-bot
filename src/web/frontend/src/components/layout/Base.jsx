@@ -82,11 +82,11 @@ export default function Base({
         {!hideSidebar && (
           <div className="md:hidden flex items-center justify-between p-4 glass-panel border-b border-white/10 sticky top-0 z-40 shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-indigo-500/40">
+              <div className="w-8 h-8 rounded-full overflow-hidden ring-1 ring-indigo-500/40">
                 <img
                   src={botInfo?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"}
                   alt=""
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover rounded-full"
                 />
               </div>
               <span className="font-extrabold text-sm text-white tracking-tight">
@@ -124,7 +124,7 @@ export default function Base({
           </main>
 
           {/* Branded Footer */}
-          {!hideFooter && <Footer className="shrink-0" />}
+          {!hideFooter && <Footer className="shrink-0" botInfo={botInfo} />}
         </div>
       </div>
 

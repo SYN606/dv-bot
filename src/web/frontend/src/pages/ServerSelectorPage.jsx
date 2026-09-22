@@ -170,13 +170,13 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
                   <div>
                     {/* Top Identity Row */}
                     <div className="flex items-center gap-3.5 mb-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shrink-0">
-                        <div className="w-full h-full bg-slate-900 rounded-[11px] flex items-center justify-center overflow-hidden">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shrink-0">
+                        <div className="w-full h-full bg-zinc-900 rounded-full flex items-center justify-center overflow-hidden">
                           {guild.icon ? (
                             <img
                               src={`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`}
                               alt=""
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform"
                             />
                           ) : (
                             <span className="font-bold text-xs text-indigo-300 font-mono">
@@ -262,7 +262,7 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
         )}
       </main>
 
-      <Footer />
+      <Footer botInfo={botInfo} />
     </div>
   );
 }
