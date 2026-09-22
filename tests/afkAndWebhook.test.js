@@ -154,6 +154,97 @@ describe("AFK System & Webhook Manager 429 Resilience Tests", () => {
       await handleAfk(createMsg());
       expect(welcomeSent).toBe(1);
     });
+
+    it("should send DM to AFK user when mentioned and show jump buttons on return", async () => {
+      const targetId = "afk_dm_user";
+      await setAfkStatus(targetId, guildId, "Working on project");
+
+      let dmPayload = null;
+      const mockAfkUser = {
+        id: targetId,
+        bot: false,
+        send: async (payload) => {
+          dmPayload = payload;
+          return { id: "dm_123" };
+        },
+      };
+
+      const mentionsMap = new Map();
+      mentionsMap.set(targetId, mockAfkUser);
+
+      const msgUrl = `https://discord.com/channels/${guildId}/ch_1/msg_999`;
+      const mentionMsg = {
+        guild: { id: guildId, name: "Test Server", iconURL: () => "https://example.com/icon.png" },
+        channel: { id: "ch_1", name: "general" },
+        author: { id: "pinger_1", tag: "Pinger#0001", bot: false, displayAvatarURL: () => "https://example.com/avatar.png" },
+        mentions: { users: mentionsMap },
+        content: "Hey where is the code?",
+        url: msgUrl,
+        reply: async () => ({ delete: async () => {} }),
+      };
+
+      // 1. Target is mentioned -> receives DM with Jump button
+      await handleAfk(mentionMsg);
+
+      expect(dmPayload).not.toBeNull();
+      expect(dmPayload.embeds?.[0]?.data?.title).toContain("You were mentioned while AFK!");
+      expect(dmPayload.embeds?.[0]?.data?.description).toContain("Hey where is the code?");
+      expect(dmPayload.components?.length).toBe(1);
+      expect(dmPayload.components[0].components[0].data.url).toBe(msgUrl);
+
+      // 2. Target user returns -> sends message, receives welcome embed with mentions & jump button
+      let returnReply = null;
+      const returnMsg = {
+        guild: {
+          id: guildId,
+          name: "Test Server",
+          ownerId: "owner_99",
+          me: { permissions: { has: () => false } },
+        },
+        channel: { id: "ch_1", name: "general" },
+        author: { id: targetId, username: "TargetUser", bot: false, displayAvatarURL: () => "https://example.com/avatar.png" },
+        member: { roles: { highest: { position: 1 } }, setNickname: async () => {} },
+        mentions: { users: new Map() },
+        reply: async (payload) => {
+          returnReply = payload;
+          return { delete: async () => {} };
+        },
+      };
+
+      await handleAfk(returnMsg);
+
+      expect(returnReply).not.toBeNull();
+      expect(returnReply.embeds?.[0]?.data?.title).toContain("TargetUser is no longer AFK");
+      expect(returnReply.embeds?.[0]?.data?.description).toContain("Mentions Received (1)");
+      expect(returnReply.embeds?.[0]?.data?.description).toContain("Hey where is the code?");
+      expect(returnReply.components?.length).toBe(1);
+      expect(returnReply.components[0].components[0].data.url).toBe(msgUrl);
+
+      // Status in DB removed
+      const checkStatus = await getAfkStatus(targetId, guildId);
+      expect(checkStatus).toBeNull();
+    });
+
+    it("should strictly scope AFK to the local guild (not global)", async () => {
+      const uId = "local_afk_user";
+      const guildA = "guild_A_111";
+      const guildB = "guild_B_222";
+
+      await setAfkStatus(uId, guildA, "Only AFK in Guild A");
+
+      // In Guild A, user is AFK
+      const afkInA = await getAfkStatus(uId, guildA);
+      expect(afkInA).not.toBeNull();
+      expect(afkInA.afk_reason).toBe("Only AFK in Guild A");
+
+      // In Guild B, user is NOT AFK
+      const afkInB = await getAfkStatus(uId, guildB);
+      expect(afkInB).toBeNull();
+
+      // Clear
+      await removeAfkStatus(uId, guildA);
+      expect(await getAfkStatus(uId, guildA)).toBeNull();
+    });
   });
 
   // 3. Media Warning Throttle Tests

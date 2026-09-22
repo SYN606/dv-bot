@@ -1,5 +1,6 @@
-import { getAfkStatus, removeAfkStatus } from "../db/helpers/afk.js";
-import { makeEmbed } from "../core/embeds.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { addAfkMention, getAfkStatus, removeAfkStatus } from "../db/helpers/afk.js";
+import { makeEmbed, COLORS } from "../core/embeds.js";
 import { EMOJIS } from "../core/emojis.js";
 
 // Cache for mention notification cooldowns: `${guildId}:${targetUserId}:${channelId}` -> timestamp (ms)
@@ -27,13 +28,23 @@ export async function handleAfk(message) {
   const authorId = message.author.id;
   const now = Date.now();
 
-  // 1. Check if the message author was AFK -> welcome them back
+  // 1. Check if the message author was AFK -> welcome them back with mentions summary & jump buttons
   if (!returningUsers.has(authorId)) {
     const authorAfk = await getAfkStatus(authorId, guildId);
     if (authorAfk) {
       returningUsers.add(authorId);
       try {
         const elapsed = Math.floor(now / 1000) - Number(authorAfk.since);
+        
+        let storedMentions = [];
+        try {
+          storedMentions = typeof authorAfk.mentions === "string"
+            ? JSON.parse(authorAfk.mentions || "[]")
+            : (Array.isArray(authorAfk.mentions) ? authorAfk.mentions : []);
+        } catch (_) {
+          storedMentions = [];
+        }
+
         await removeAfkStatus(authorId, guildId);
 
         // Restore original nickname with permission & hierarchy checks
@@ -48,19 +59,76 @@ export async function handleAfk(message) {
           await message.member.setNickname(authorAfk.original_nickname).catch(() => {});
         }
 
+        const authorAvatar = typeof message.author?.displayAvatarURL === "function"
+          ? message.author.displayAvatarURL({ dynamic: true, size: 256 })
+          : undefined;
+        const guildName = message.guild?.name || "this server";
+        const authorName = message.author?.username || message.author?.tag || "User";
+
+        let description =
+          `<@${authorId}>, your AFK status in **${guildName}** has been removed.\n\n` +
+          `• **Time Away:** \`${formatDuration(elapsed)}\`\n` +
+          `• **Reason:** \`${authorAfk.afk_reason || "AFK"}\``;
+
+        const components = [];
+        if (storedMentions.length > 0) {
+          description += `\n\n**📬 Mentions Received (${storedMentions.length}):**\n`;
+          description += storedMentions
+            .slice(0, 5)
+            .map((m, idx) => {
+              const snippet = m.content ? (m.content.length > 50 ? `${m.content.slice(0, 47)}...` : m.content) : "*Attachment*";
+              const timeStr = m.timestamp ? `<t:${m.timestamp}:R>` : "";
+              return `\`${idx + 1}.\` <@${m.author_id}> in <#${m.channel_id}>: *"${snippet}"* ${timeStr}`;
+            })
+            .join("\n");
+
+          if (storedMentions.length > 5) {
+            description += `\n*...and ${storedMentions.length - 5} more mention(s)*`;
+          }
+
+          // Generate Jump Buttons (up to 5 per action row)
+          const buttons = [];
+          storedMentions.slice(0, 5).forEach((m, idx) => {
+            if (m.message_url) {
+              buttons.push(
+                new ButtonBuilder()
+                  .setLabel(`Jump: #${m.channel_name || idx + 1}`)
+                  .setStyle(ButtonStyle.Link)
+                  .setURL(m.message_url)
+              );
+            }
+          });
+
+          if (buttons.length > 0) {
+            components.push(new ActionRowBuilder().addComponents(buttons));
+          }
+        } else {
+          description += `\n\n*You received no mentions while you were away.*`;
+        }
+
         const embed = makeEmbed({
-          title: "Welcome Back!",
-          description: `${EMOJIS.get("welcome") || "👋"} <@${authorId}>, your AFK status has been removed. You were away for **${formatDuration(elapsed)}**.`,
-          level: "INFO",
+          author: {
+            name: "Welcome Back!",
+            iconURL: authorAvatar,
+          },
+          title: `${authorName} is no longer AFK`,
+          description,
+          thumbnail: authorAvatar,
+          level: "SUCCESS",
+          color: COLORS.DARK,
+          headerDivider: false,
         });
 
         const reply = await message.reply({
           embeds: [embed],
+          components,
           allowedMentions: { repliedUser: false },
         }).catch(() => {});
 
+        // If no mentions, auto-clean after 12 seconds; if mentions, keep longer (45s) so user can use jump buttons
         if (reply) {
-          setTimeout(() => reply.delete().catch(() => {}), 8000);
+          const timeout = storedMentions.length > 0 ? 45000 : 12000;
+          setTimeout(() => reply.delete().catch(() => {}), timeout);
         }
       } finally {
         setTimeout(() => returningUsers.delete(authorId), 3000);
@@ -68,7 +136,7 @@ export async function handleAfk(message) {
     }
   }
 
-  // 2. Check if author mentioned any AFK users (Aggregated & Rate-Limit Protected)
+  // 2. Check if author mentioned any AFK users -> Record mention, send DM, and send public notice
   if (message.mentions.users && message.mentions.users.size > 0) {
     const afkMentions = [];
 
@@ -88,6 +156,57 @@ export async function handleAfk(message) {
           reason: targetAfk.afk_reason || "AFK",
           duration: formatDuration(elapsed),
         });
+
+        // A. Record mention in the AFK user's record
+        const mentionObj = {
+          author_id: message.author.id,
+          author_tag: message.author.tag || message.author.username,
+          channel_id: message.channel.id,
+          channel_name: message.channel.name || "channel",
+          content: message.content || "",
+          message_url: message.url,
+          timestamp: Math.floor(now / 1000),
+        };
+        await addAfkMention(userId, guildId, mentionObj);
+
+        // B. Send DM to the AFK user
+        if (typeof user.send === "function") {
+          const currentGuildName = message.guild?.name || "Server";
+          const dmEmbed = makeEmbed({
+            author: {
+              name: `${currentGuildName} • AFK Mention Notification`,
+              iconURL: message.guild?.iconURL?.({ dynamic: true }) || undefined,
+            },
+            title: "You were mentioned while AFK!",
+            description:
+              `You were mentioned by <@${message.author.id}> in <#${message.channel.id}> on **${currentGuildName}**.\n\n` +
+              `• **Author:** <@${message.author.id}> (${message.author.tag || message.author.username || "User"})\n` +
+              `• **Channel:** <#${message.channel.id}>\n` +
+              `• **Time:** <t:${Math.floor(now / 1000)}:R>\n\n` +
+              `**Message Content:**\n> ${message.content?.slice(0, 250) || "*No text content*"}`,
+            thumbnail: message.author.displayAvatarURL?.({ dynamic: true, size: 256 }) || undefined,
+            level: "INFO",
+            color: COLORS.DARK,
+            footer: {
+              text: `AFK in ${currentGuildName}: ${targetAfk.afk_reason || "AFK"}`,
+            },
+            headerDivider: false,
+          });
+
+          const dmComponents = [];
+          if (message.url) {
+            dmComponents.push(
+              new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                  .setLabel("Jump to Message")
+                  .setStyle(ButtonStyle.Link)
+                  .setURL(message.url)
+              )
+            );
+          }
+
+          await user.send({ embeds: [dmEmbed], components: dmComponents }).catch(() => {});
+        }
       }
     }
 
@@ -113,6 +232,8 @@ export async function handleAfk(message) {
         title: afkMentions.length === 1 ? "User is AFK" : "AFK Members Mentioned",
         description,
         level: "WARNING",
+        color: COLORS.DARK,
+        headerDivider: false,
       });
 
       const reply = await message.reply({

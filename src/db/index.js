@@ -136,12 +136,12 @@ function ensureSqliteSchema(sqlite) {
 
     CREATE TABLE IF NOT EXISTS afk (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      guild_id TEXT,
+      guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
       afk_reason TEXT NOT NULL,
       since INTEGER NOT NULL,
-      is_global INTEGER DEFAULT 0,
       original_nickname TEXT,
+      mentions TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -353,6 +353,10 @@ function ensureSqliteSchema(sqlite) {
       vc_seconds INTEGER DEFAULT 0
     );
   `);
+
+  try {
+    sqlite.exec("ALTER TABLE afk ADD COLUMN mentions TEXT;");
+  } catch (_) {}
 }
 
 export async function initDb(options = {}) {

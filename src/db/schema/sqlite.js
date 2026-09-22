@@ -95,18 +95,17 @@ export const afk = sqliteTable(
   "afk",
   {
     id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
-    guild_id: text("guild_id"),
+    guild_id: text("guild_id").notNull(),
     user_id: text("user_id").notNull(),
     afk_reason: text("afk_reason").notNull(),
     since: integer("since", { mode: "number" }).notNull(),
-    is_global: integer("is_global", { mode: "boolean" }).default(false),
     original_nickname: text("original_nickname"),
+    mentions: text("mentions"),
     created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
     updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
   },
   (table) => ({
-    userGlobalIdx: index("idx_afk_user_global").on(table.user_id, table.is_global),
-    guildUserIdx: index("idx_afk_guild_user").on(table.guild_id, table.user_id),
+    guildUserIdx: uniqueIndex("idx_afk_guild_user_unique").on(table.guild_id, table.user_id),
   })
 );
 
