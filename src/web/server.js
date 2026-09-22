@@ -22,6 +22,17 @@ export function createWebApp(client = null) {
     await next();
   });
 
+  // Favicon route - Robot Emoji
+  app.get("/favicon.ico", () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🤖</text></svg>`;
+    return new Response(svg, {
+      headers: {
+        "Content-Type": "image/svg+xml",
+        "Cache-Control": "public, max-age=86400",
+      },
+    });
+  });
+
   // 1. Discord OAuth Routes
   app.get("/auth/login", (c) => {
     if (
@@ -35,6 +46,7 @@ export function createWebApp(client = null) {
         <head>
           <meta charset="UTF-8">
           <title>OAuth Configuration Error • Digital Vigital</title>
+          <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
           <script src="https://cdn.tailwindcss.com"></script>
           <script src="https://unpkg.com/lucide@latest"></script>
           <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -214,6 +226,7 @@ export function createWebApp(client = null) {
       <html lang="en" class="dark">
       <head>
         <title>404 Not Found • Digital Vigital</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://unpkg.com/lucide@latest"></script>
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
@@ -248,6 +261,7 @@ export function createWebApp(client = null) {
       <html lang="en" class="dark">
       <head>
         <title>Error • Digital Vigital</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://unpkg.com/lucide@latest"></script>
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
