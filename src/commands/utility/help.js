@@ -74,7 +74,7 @@ export default createCommand({
     }
 
     const prefix = CONFIG.PREFIX || "ts";
-    const botName = CONFIG.BOT_NAME || client.user?.username || "Ofira";
+    const botName = CONFIG.BOT_NAME || client.user?.username || "Digital Vigil";
 
     const embed = makeEmbed({
       title: `${botName} • Commands Directory`,

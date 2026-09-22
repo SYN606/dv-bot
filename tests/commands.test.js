@@ -6,6 +6,7 @@ import tempbanCommand from "../src/commands/moderation/tempban.js";
 import timeoutCommand from "../src/commands/moderation/timeout.js";
 import renameCommand from "../src/commands/admin/rename.js";
 import stealCommand from "../src/commands/utility/steal.js";
+import fuckCommand, { ROAST_DECK } from "../src/commands/utility/fuck.js";
 import { TempbanRecord, TempbanConfig, VerificationConfig } from "../src/db/models/index.js";
 import { TempbanWorker } from "../src/handlers/tempbanWorker.js";
 
@@ -456,3 +457,87 @@ describe("Ported Python Commands: fakeban, tempban, steal, rename", () => {
     expect(emptyCtx.getReply()?.embeds[0]?.data?.title).toContain("No Assets Found");
   });
 });
+
+describe("Roast / Fuck Command & Non-Repeating Deck Tests", () => {
+  it("should have a large deck and guarantee 0 duplicate roasts within a full cycle", () => {
+    const total = ROAST_DECK.totalCount;
+    expect(total).toBeGreaterThanOrEqual(60);
+
+    const drawnSet = new Set();
+    for (let i = 0; i < total; i++) {
+      const roast = ROAST_DECK.draw();
+      expect(typeof roast).toBe("string");
+      expect(roast.length).toBeGreaterThan(10);
+      drawnSet.add(roast);
+    }
+
+    // Every single draw in a cycle of length `total` must be 100% unique
+    expect(drawnSet.size).toBe(total);
+  });
+
+  it("should never draw the exact same roast consecutively across deck reshuffle", () => {
+    let lastRoast = null;
+    let consecutiveDuplicates = 0;
+
+    // Draw across 3 full deck cycles (180+ draws)
+    for (let i = 0; i < 180; i++) {
+      const current = ROAST_DECK.draw();
+      if (current === lastRoast) {
+        consecutiveDuplicates++;
+      }
+      lastRoast = current;
+    }
+
+    expect(consecutiveDuplicates).toBe(0);
+  });
+
+  it("fuck: should roast target user from slash command options", async () => {
+    const { ctx, getReply } = createMockCtx({
+      options: { user: "200000000000000002" },
+    });
+    await fuckCommand.execute(ctx);
+
+    const reply = getReply();
+    expect(reply?.embeds[0]?.data?.title).toContain("Roasted!");
+    expect(reply?.embeds[0]?.data?.description).toContain("<@200000000000000002>");
+  });
+
+  it("fuck: should roast mentioned user from prefix command", async () => {
+    const { ctx, getReply } = createMockCtx({});
+    ctx.message = {
+      mentions: {
+        users: new Map([["888888888888888888", { id: "888888888888888888", username: "MentionedVictim" }]]),
+      },
+    };
+    ctx.message.mentions.users.first = () => ({ id: "888888888888888888" });
+
+    await fuckCommand.execute(ctx);
+    const reply = getReply();
+    expect(reply?.embeds[0]?.data?.description).toContain("<@888888888888888888>");
+  });
+
+  it("fuck: should roast target by snowflake ID in primary arg", async () => {
+    const { ctx, getReply } = createMockCtx({
+      options: { primary: "777777777777777777" },
+    });
+    await fuckCommand.execute(ctx);
+    const reply = getReply();
+    expect(reply?.embeds[0]?.data?.description).toContain("<@777777777777777777>");
+  });
+
+  it("fuck: should fall back to roasting caller if no target provided", async () => {
+    const { ctx, getReply } = createMockCtx({
+      userId: "100000000000000001",
+      options: {},
+    });
+    await fuckCommand.execute(ctx);
+    const reply = getReply();
+    expect(reply?.embeds[0]?.data?.description).toContain("<@100000000000000001>");
+  });
+
+  it("fuck: should have roast and burn aliases configured", () => {
+    expect(fuckCommand.aliases).toContain("roast");
+    expect(fuckCommand.aliases).toContain("burn");
+  });
+});
+
