@@ -34,10 +34,16 @@ if (process.env.DASHBOARD_URL) {
 
 export const CONFIG = {
   TOKEN: process.env.DISCORD_TOKEN || "",
-  PREFIX: process.env.BOT_PREFIX || "!",
+  PREFIX: process.env.PREFIX || process.env.BOT_PREFIX || "ts",
+  BOT_NAME: process.env.BOT_NAME || "Ofira",
   ENV: env,
   DEV_GUILD_ID: process.env.DEV_GUILD_ID || null,
   SYNC_COMMANDS: (process.env.SYNC_COMMANDS || "true").toLowerCase() === "true",
+
+  // Bot Presence Configuration
+  BOT_STATUS: process.env.BOT_STATUS || "online",
+  BOT_ACTIVITY_TYPE: process.env.BOT_ACTIVITY_TYPE || "LISTENING",
+  BOT_ACTIVITY_TEXT: process.env.BOT_ACTIVITY_TEXT || null,
 
   // Multi-Database Configuration
   DB_TYPE: (process.env.DB_TYPE || "sqlite").toLowerCase(),

@@ -6,13 +6,15 @@ import {
   moderationEmbed,
   metricCardEmbed,
   cardEmbed,
+  trackEmbed,
+  smoothEmbed,
   DIVIDER_LINE,
   COLORS,
   md,
 } from "../src/core/embeds.js";
 
 describe("Embed System Tests", () => {
-  it("should prepend header divider line by default", () => {
+  it("should create smooth clean embeds without divider lines by default", () => {
     const embed = makeEmbed({
       title: "System Alert",
       description: "High CPU detected",
@@ -20,25 +22,27 @@ describe("Embed System Tests", () => {
     });
 
     const data = embed.toJSON();
-    expect(data.description.startsWith(DIVIDER_LINE)).toBe(true);
-    expect(data.description).toContain("High CPU detected");
+    expect(data.description.startsWith(DIVIDER_LINE)).toBe(false);
+    expect(data.description).toBe("High CPU detected");
     expect(data.color).toBe(COLORS.WARNING);
   });
 
-  it("should support disabling header divider line", () => {
+  it("should support enabling header divider line when explicitly requested", () => {
     const embed = makeEmbed({
-      title: "Raw Embed",
-      description: "No line here",
-      headerDivider: false,
+      title: "Divided Embed",
+      description: "Text below divider",
+      headerDivider: true,
     });
 
     const data = embed.toJSON();
-    expect(data.description).toBe("No line here");
+    expect(data.description.startsWith(DIVIDER_LINE)).toBe(true);
+    expect(data.description).toContain("Text below divider");
   });
 
-  it("should safely handle empty description with divider line", () => {
+  it("should safely handle empty description with divider line when requested", () => {
     const embed = makeEmbed({
       title: "Empty Description",
+      headerDivider: true,
     });
 
     const data = embed.toJSON();
@@ -136,5 +140,42 @@ describe("Embed System Tests", () => {
     expect(md.channel("123")).toBe("<#123>");
     expect(md.user("456")).toBe("<@456>");
     expect(md.role("789")).toBe("<@&789>");
+  });
+
+  it("should construct Ofira-style trackEmbed matching modern music bot UI", () => {
+    const embed = trackEmbed({
+      status: "Now Playing",
+      statusIcon: "https://example.com/sound.png",
+      title: "Hello",
+      url: "https://spotify.com/track/123",
+      source: "Spotify",
+      duration: "02:24",
+      requestedBy: "Memory Dealer",
+      volume: 100,
+      thumbnail: "https://example.com/album.jpg",
+    });
+
+    const data = embed.toJSON();
+    expect(data.author.name).toBe("Now Playing");
+    expect(data.author.icon_url).toBe("https://example.com/sound.png");
+    expect(data.description).toContain("[Hello](https://spotify.com/track/123) - Spotify");
+    expect(data.description).toContain("Duration: `02:24`");
+    expect(data.description).toContain("Requested by Memory Dealer");
+    expect(data.description).toContain("🔊 100%");
+    expect(data.thumbnail.url).toBe("https://example.com/album.jpg");
+    expect(data.color).toBe(COLORS.DARK);
+  });
+
+  it("should construct smoothEmbed for minimal card output", () => {
+    const embed = smoothEmbed({
+      title: "Player Ready",
+      description: "Connected to Voice Channel 1",
+      badge: "AUDIO",
+    });
+
+    const data = embed.toJSON();
+    expect(data.author.name).toBe("[AUDIO] Player Ready");
+    expect(data.description).toBe("Connected to Voice Channel 1");
+    expect(data.color).toBe(COLORS.DARK);
   });
 });

@@ -87,7 +87,7 @@ export function makeEmbed(options = {}) {
     color,
     footer,
     footerIcon,
-    headerDivider = true,
+    headerDivider = false,
     author,
     authorName,
     authorIcon,
@@ -312,6 +312,74 @@ export function cardEmbed({
     author: authorConfig,
     level,
     fields,
+    ...options,
+  });
+}
+
+/**
+ * Modern Ofira-style Music & Media Track Embed
+ * Modeled directly after modern Discord music bots (Now Playing, track status, etc.)
+ */
+export function trackEmbed({
+  status = "Now Playing",
+  statusIcon = null,
+  title = "Unknown Track",
+  url = null,
+  source = "Spotify",
+  duration = "00:00",
+  requestedBy = null,
+  volume = 100,
+  thumbnail = null,
+  color = COLORS.DARK,
+  fields = [],
+  ...options
+}) {
+  const trackLink = url ? `[${title}](${url})` : `**${title}**`;
+  const platform = source ? ` - ${source}` : "";
+  const requesterText = requestedBy
+    ? `\nRequested by ${typeof requestedBy === "object" ? (requestedBy.displayName || requestedBy.username || requestedBy.tag || requestedBy.id) : requestedBy}`
+    : "";
+  const volumeLine = volume !== null && volume !== undefined ? `\n\n🔊 ${volume}%` : "";
+
+  const description = `${trackLink}${platform}\nDuration: \`${duration}\`${requesterText}${volumeLine}`;
+
+  return makeEmbed({
+    author: {
+      name: status,
+      iconURL: statusIcon || undefined,
+    },
+    description,
+    color: color || COLORS.DARK,
+    thumbnail,
+    headerDivider: false,
+    fields,
+    ...options,
+  });
+}
+
+/**
+ * Ultra-smooth Minimal Card Embed (Clean Dark Ofira Style)
+ */
+export function smoothEmbed({
+  title,
+  description,
+  badge = null,
+  icon = null,
+  color = COLORS.DARK,
+  thumbnail = null,
+  fields = [],
+  footer = null,
+  ...options
+}) {
+  return makeEmbed({
+    author: title && badge ? { name: `[${badge.toUpperCase()}] ${title}`, iconURL: icon } : icon || title ? { name: title, iconURL: icon } : undefined,
+    title: badge ? undefined : title,
+    description,
+    color: color || COLORS.DARK,
+    thumbnail,
+    fields,
+    footer,
+    headerDivider: false,
     ...options,
   });
 }

@@ -1,8 +1,13 @@
-import { PermissionFlagsBits } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  PermissionFlagsBits,
+} from "discord.js";
 import { CONFIG } from "../config.js";
 import { CommandContext } from "../core/command.js";
 import { GLOBAL_COOLDOWN } from "../core/cooldown.js";
-import { makeEmbed } from "../core/embeds.js";
+import { makeEmbed, COLORS } from "../core/embeds.js";
 import { EMOJIS } from "../core/emojis.js";
 import {
   hasConfigAccess,
@@ -40,13 +45,33 @@ export default {
     // 5. Sticky Message Repin
     await handleSticky(message).catch((err) => console.error("[STICKY ERROR]:", err));
 
-    // 6. Prefix Command Execution
+    // 6. Mention & Prefix Command Execution
     if (message.author.bot) return;
 
-    const prefix = CONFIG.PREFIX;
-    if (!message.content.startsWith(prefix)) return;
+    const prefix = (CONFIG.PREFIX || "ts").toLowerCase();
+    const rawContent = message.content.trim();
 
-    const rawArgs = message.content.slice(prefix.length).trim().split(/\s+/);
+    // A. Check for direct Bot Mention (@Bot / @Ofira)
+    const mentionRegex = new RegExp(`^<@!?${client.user.id}>(?:\\s+)?`);
+    let commandString = null;
+
+    if (mentionRegex.test(rawContent)) {
+      const afterMention = rawContent.replace(mentionRegex, "").trim();
+      if (!afterMention) {
+        // Pure mention -> send quickstart mention reply
+        return await sendMentionReply(client, message, prefix);
+      }
+      commandString = afterMention;
+    } else if (rawContent.toLowerCase().startsWith(prefix)) {
+      commandString = rawContent.slice(prefix.length).trim();
+    } else if (rawContent.startsWith("!")) {
+      // Graceful fallback for traditional '!'
+      commandString = rawContent.slice(1).trim();
+    }
+
+    if (commandString === null) return;
+
+    const rawArgs = commandString.split(/\s+/);
     const commandName = rawArgs.shift()?.toLowerCase();
     if (!commandName) return;
 
@@ -189,3 +214,52 @@ export default {
     }
   },
 };
+
+/**
+ * Sends an interactive quickstart card when the bot is mentioned
+ */
+async function sendMentionReply(client, message, prefix) {
+  const botName = CONFIG.BOT_NAME || client.user?.username || "Ofira";
+  const avatar = client.user?.displayAvatarURL({ dynamic: true, size: 256 }) || null;
+  const wsPing = Math.round(client.ws?.ping || 0);
+
+  const embed = makeEmbed({
+    author: {
+      name: `${botName} • Information & Quickstart`,
+      iconURL: avatar,
+    },
+    title: `Hey, ${message.author.username}! 👋`,
+    description:
+      `My default prefix in this server is \`${prefix}\`\n\n` +
+      `• Use **\`${prefix}help\`** or **\`/help\`** to browse all available commands.\n` +
+      `• You can also use **Slash Commands** (\`/\`) directly in chat.\n` +
+      `• Setting Away-From-Keyboard status? Type **\`${prefix}afk [reason]\`**!`,
+    level: "PRIMARY",
+    color: COLORS.PRIMARY,
+    thumbnail: avatar,
+    fields: [
+      { name: "📡 Latency", value: `\`${wsPing}ms\``, inline: true },
+      { name: "⚡ Prefix", value: `\`${prefix}\``, inline: true },
+      { name: "🌐 Dashboard", value: `[Open Web UI](${CONFIG.DASHBOARD_URL})`, inline: true },
+    ],
+    footer: {
+      text: `${botName} • High Performance Discord Bot`,
+      iconURL: avatar,
+    },
+  });
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setLabel("Dashboard")
+      .setStyle(ButtonStyle.Link)
+      .setURL(CONFIG.DASHBOARD_URL),
+    new ButtonBuilder()
+      .setLabel("Invite Bot")
+      .setStyle(ButtonStyle.Link)
+      .setURL(
+        `https://discord.com/oauth2/authorize?client_id=${client.user?.id}&permissions=8&scope=bot%20applications.commands`
+      )
+  );
+
+  return await message.reply({ embeds: [embed], components: [row] }).catch(() => {});
+}

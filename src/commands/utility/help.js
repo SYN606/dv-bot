@@ -1,4 +1,5 @@
 import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { CONFIG } from "../../config.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
@@ -72,11 +73,14 @@ export default createCommand({
       categories.get(cat).push(cmd.name);
     }
 
+    const prefix = CONFIG.PREFIX || "ts";
+    const botName = CONFIG.BOT_NAME || client.user?.username || "Ofira";
+
     const embed = makeEmbed({
-      title: "Digital Vigil • Commands Directory",
+      title: `${botName} • Commands Directory`,
       description:
-        `${EMOJIS.get("announcement") || "📌"} Use \`/help [command]\` to view detailed instructions for any command.\n\n` +
-        `*Slash commands (\`/\`) and prefix commands (\`!\`) are supported.*`,
+        `${EMOJIS.get("announcement") || "📌"} Use \`${prefix}help [command]\` or \`/help [command]\` for details.\n\n` +
+        `*Slash commands (\`/\`) and prefix commands (\`${prefix}\`) are both supported.*`,
       level: "INFO",
       footer: `Total Available Commands: ${[...categories.values()].flat().length}`,
     });
