@@ -4,10 +4,14 @@
   "description": "High-performance multi-functional Discord Bot built with Bun and discord.js",
   "type": "module",
   "main": "src/bot.js",
+  "workspaces": [
+    "src/web/frontend"
+  ],
   "scripts": {
     "start": "bun run src/bot.js",
     "dev": "bun --watch src/bot.js",
-    "build:web": "cd src/web/frontend && bun run build",
+    "install:all": "bun install && cd src/web/frontend && bun install",
+    "build:web": "cd src/web/frontend && bun install && bun run build",
     "test": "bun test"
   },
   "dependencies": {

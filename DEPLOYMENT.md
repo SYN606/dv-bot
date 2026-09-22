@@ -186,10 +186,11 @@ git clone -b bun-migration https://github.com/SYN606/dv-bot.git .
 nano .env
 # (Paste the production .env configuration from Step 3, including DISCORD_TOKEN)
 
-# Install production dependencies
-bun install --frozen-lockfile || bun install
+# Install all dependencies (bot + dashboard workspace)
+bun install
 
 # Build the React web dashboard frontend assets
+# (automatically installs frontend dependencies if needed and runs vite build)
 bun run build:web
 
 # If you have an existing database to migrate, place it in /var/db/bot.db

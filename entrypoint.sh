@@ -59,8 +59,13 @@ chmod 700 "$TARGET_DB_DIR" 2>/dev/null || true
 
 # 5. Dependency Check
 if [ ! -d "node_modules" ]; then
-  echo "📦 Dependencies missing. Running 'bun install'..."
+  echo "📦 Root dependencies missing. Running 'bun install'..."
   bun install --frozen-lockfile 2>/dev/null || bun install
+fi
+
+if [ ! -d "src/web/frontend/node_modules" ]; then
+  echo "📦 Frontend dependencies missing. Installing..."
+  (cd src/web/frontend && bun install)
 fi
 
 # 6. Ensure Web Dashboard Frontend Build Exists
