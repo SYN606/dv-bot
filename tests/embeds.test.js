@@ -6,6 +6,8 @@ import {
   moderationEmbed,
   metricCardEmbed,
   cardEmbed,
+  moderationCardEmbed,
+  serverCardEmbed,
   trackEmbed,
   smoothEmbed,
   DIVIDER_LINE,
@@ -176,6 +178,41 @@ describe("Embed System Tests", () => {
     const data = embed.toJSON();
     expect(data.author.name).toBe("[AUDIO] Player Ready");
     expect(data.description).toBe("Connected to Voice Channel 1");
+    expect(data.color).toBe(COLORS.DARK);
+  });
+
+  it("should construct modern moderationCardEmbed matching top-tier moderation UI", () => {
+    const embed = moderationCardEmbed({
+      action: "TIMEOUT",
+      targetUser: { id: "123456", username: "spambot" },
+      moderator: { displayName: "AdminMod" },
+      reason: "Posting raid invites",
+      duration: "10m",
+      thumbnail: "https://example.com/spambot.png",
+    });
+
+    const data = embed.toJSON();
+    expect(data.author.name).toBe("🛡️ Moderation • TIMEOUT");
+    expect(data.description).toContain("**Target:** spambot (123456)");
+    expect(data.description).toContain("**Moderator:** AdminMod");
+    expect(data.description).toContain("**Duration:** `10m`");
+    expect(data.description).toContain("**Reason:** Posting raid invites");
+    expect(data.thumbnail.url).toBe("https://example.com/spambot.png");
+    expect(data.color).toBe(COLORS.DARK);
+  });
+
+  it("should construct serverCardEmbed for server announcements and help", () => {
+    const embed = serverCardEmbed({
+      category: "Server Protection",
+      badge: "SECURITY",
+      description: "Auto-raid filter enabled for new joins.",
+      thumbnail: "https://example.com/server.png",
+    });
+
+    const data = embed.toJSON();
+    expect(data.author.name).toBe("[SECURITY] Server Protection");
+    expect(data.description).toBe("Auto-raid filter enabled for new joins.");
+    expect(data.thumbnail.url).toBe("https://example.com/server.png");
     expect(data.color).toBe(COLORS.DARK);
   });
 });

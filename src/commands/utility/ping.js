@@ -17,9 +17,16 @@ export default createCommand({
     const wsPing = Math.round(ctx.client.ws.ping);
     const start = Date.now();
 
+    const avatar = ctx.client.user?.displayAvatarURL({ dynamic: true, size: 256 });
+
     const embed = makeEmbed({
-      title: "Pong!",
-      description: `${EMOJIS.get("animated_ping") || "🏓"} **WebSocket Latency:** \`${wsPing}ms\`\n${EMOJIS.get("loading") || "⏳"} **Roundtrip Latency:** *Measuring...*`,
+      author: {
+        name: "Gateway & Connectivity",
+        iconURL: avatar,
+      },
+      title: "🏓 Pong!",
+      description: `📡 **WebSocket Latency:** \`${wsPing}ms\`\n⏳ **Roundtrip Latency:** *Measuring...*`,
+      thumbnail: avatar,
       level: "INFO",
     });
 
@@ -34,10 +41,15 @@ export default createCommand({
         : EMOJIS.get("bad_connection") || "🔴";
 
     const updated = makeEmbed({
-      title: "Pong!",
+      author: {
+        name: "Gateway & Connectivity",
+        iconURL: avatar,
+      },
+      title: "🏓 Pong!",
       description:
         `${connectionIcon} **WebSocket Latency:** \`${wsPing}ms\`\n` +
-        `${EMOJIS.get("animated_ping") || "📡"} **Roundtrip Latency:** \`${roundtrip}ms\``,
+        `📡 **Roundtrip Latency:** \`${roundtrip}ms\``,
+      thumbnail: avatar,
       level: "INFO",
     });
 

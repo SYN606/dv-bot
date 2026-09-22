@@ -383,3 +383,92 @@ export function smoothEmbed({
     ...options,
   });
 }
+
+/**
+ * Modern Smooth Moderation Card Embed
+ * Provides the ultra-clean modern Discord card layout for moderation actions:
+ * - Subtle author header with badge
+ * - Inline target, moderator, and duration pills
+ * - Top-right user avatar thumbnail
+ * - Dark Discord canvas (#2b2d31)
+ */
+export function moderationCardEmbed({
+  action = "TIMEOUT",
+  targetUser = null,
+  moderator = null,
+  reason = "No reason provided",
+  duration = null,
+  thumbnail = null,
+  color = COLORS.DARK,
+  footer = null,
+  ...options
+}) {
+  const targetTag = targetUser
+    ? `${targetUser.username || targetUser.displayName || "User"} (${targetUser.id})`
+    : "Unknown Member";
+
+  const modTag = moderator
+    ? (moderator.displayName || moderator.username || "Moderator")
+    : "System Automation";
+
+  const resolvedThumb = thumbnail || targetUser?.displayAvatarURL?.({ dynamic: true }) || null;
+
+  const lines = [
+    `**Target:** ${targetTag}`,
+    `**Moderator:** ${modTag}`,
+  ];
+
+  if (duration) {
+    lines.push(`**Duration:** \`${duration}\``);
+  }
+
+  lines.push(`**Reason:** ${reason}`);
+
+  return makeEmbed({
+    author: {
+      name: `🛡️ Moderation • ${action.toUpperCase()}`,
+      iconURL: options.authorIcon || undefined,
+    },
+    description: lines.join("\n"),
+    thumbnail: resolvedThumb,
+    color: color || COLORS.DARK,
+    footer,
+    headerDivider: false,
+    ...options,
+  });
+}
+
+/**
+ * Modern Smooth Server Help & Information Card Embed
+ * Clean card layout for server help, rules, and general announcements:
+ * - Subtle author category with icon
+ * - Compact bold title & metadata
+ * - Top-right server or bot thumbnail
+ * - Sleek dark Discord canvas (#2b2d31)
+ */
+export function serverCardEmbed({
+  category = "Server Help & Security",
+  categoryIcon = null,
+  title = null,
+  description = "",
+  badge = null,
+  thumbnail = null,
+  color = COLORS.DARK,
+  footer = null,
+  fields = [],
+  ...options
+}) {
+  const authorName = badge ? `[${badge.toUpperCase()}] ${category || title || ""}`.trim() : category;
+
+  return makeEmbed({
+    author: authorName ? { name: authorName, iconURL: categoryIcon || undefined } : undefined,
+    title: category ? title : undefined,
+    description,
+    color: color || COLORS.DARK,
+    thumbnail,
+    fields,
+    footer,
+    headerDivider: false,
+    ...options,
+  });
+}

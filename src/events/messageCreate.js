@@ -219,31 +219,32 @@ export default {
  * Sends an interactive quickstart card when the bot is mentioned
  */
 async function sendMentionReply(client, message, prefix) {
-  const botName = CONFIG.BOT_NAME || client.user?.username || "Ofira";
+  const botName = CONFIG.BOT_NAME || client.user?.username || "Digital Vigil";
   const avatar = client.user?.displayAvatarURL({ dynamic: true, size: 256 }) || null;
   const wsPing = Math.round(client.ws?.ping || 0);
 
   const embed = makeEmbed({
     author: {
-      name: `${botName} • Information & Quickstart`,
+      name: `${botName} • Moderation & Server Security`,
       iconURL: avatar,
     },
     title: `Hey, ${message.author.username}! 👋`,
     description:
-      `My default prefix in this server is \`${prefix}\`\n\n` +
-      `• Use **\`${prefix}help\`** or **\`/help\`** to browse all available commands.\n` +
-      `• You can also use **Slash Commands** (\`/\`) directly in chat.\n` +
-      `• Setting Away-From-Keyboard status? Type **\`${prefix}afk [reason]\`**!`,
+      `I'm **${botName}**, your server's moderation, verification, and security assistant.\n\n` +
+      `• **Default Prefix:** \`${prefix}\`\n` +
+      `• **Commands Directory:** Type **\`${prefix}help\`** or **\`/help\`**\n` +
+      `• **Away-From-Keyboard:** Type **\`${prefix}afk [reason]\`**\n` +
+      `• **Web Configuration:** Manage modlogs & roles on the **[Web Dashboard](${CONFIG.DASHBOARD_URL})**`,
     level: "PRIMARY",
-    color: COLORS.PRIMARY,
+    color: COLORS.DARK,
     thumbnail: avatar,
     fields: [
+      { name: "🛡️ Protection", value: "`Active`", inline: true },
       { name: "📡 Latency", value: `\`${wsPing}ms\``, inline: true },
       { name: "⚡ Prefix", value: `\`${prefix}\``, inline: true },
-      { name: "🌐 Dashboard", value: `[Open Web UI](${CONFIG.DASHBOARD_URL})`, inline: true },
     ],
     footer: {
-      text: `${botName} • High Performance Discord Bot`,
+      text: `${botName} • Moderation, Verification & Analytics`,
       iconURL: avatar,
     },
   });

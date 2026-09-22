@@ -54,8 +54,8 @@ export function startPresence(client) {
 
       const rotation = [
         { name: `${prefix}help | /help`, type: ActivityType.Listening },
-        { name: `music on ${botName} 🎵`, type: ActivityType.Playing },
-        { name: `${guildCount} servers • ${userCount} users`, type: ActivityType.Watching },
+        { name: `🛡️ Moderation & Server Security`, type: ActivityType.Watching },
+        { name: `over ${guildCount} servers • ${userCount} users`, type: ActivityType.Watching },
         { name: `bot.digitalvigital.fun`, type: ActivityType.Listening },
       ];
 

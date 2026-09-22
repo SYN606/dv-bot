@@ -28,14 +28,20 @@ export default createCommand({
 
     await setAfkStatus(ctx.user.id, ctx.guild?.id, reason, isGlobal, originalNick);
 
+    const avatar = ctx.user.displayAvatarURL({ dynamic: true, size: 256 });
     const embed = makeEmbed({
-      title: "AFK Status Set",
+      author: {
+        name: "Away From Keyboard",
+        iconURL: avatar,
+      },
+      title: `${ctx.user.username} is now AFK`,
       description:
-        `${EMOJIS.get("success") || "✅"} <@${ctx.user.id}>, you are now marked as **AFK**.\n\n` +
-        `• **Reason:** ${reason}\n` +
-        `• **Scope:** ${isGlobal ? "Global (All Servers)" : "Server Only"}\n\n` +
-        `*Sending a message will automatically clear your AFK status.*`,
+        `• **Reason:** \`${reason}\`\n` +
+        `• **Scope:** \`${isGlobal ? "Global (All Servers)" : "Server Only"}\`\n\n` +
+        `-# Sending a message will automatically clear your AFK status.`,
+      thumbnail: avatar,
       level: "SUCCESS",
+      headerDivider: false,
     });
 
     return await ctx.reply({ embeds: [embed] });
