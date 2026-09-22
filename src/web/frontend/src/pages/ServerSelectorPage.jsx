@@ -12,12 +12,17 @@ import {
   Crown,
   Shield,
   CheckCircle2,
+  Lock,
+  X,
+  UserCheck,
 } from "lucide-react";
 
 export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState("manageable"); // "manageable" or "all"
   const [refreshing, setRefreshing] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [selectedGuild, setSelectedGuild] = useState(null);
 
   const guilds = user?.guilds || [];
   const botGuildIds = new Set((botInfo?.guildIds || []).map((id) => String(id)));
@@ -240,15 +245,18 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
                         </div>
                       )
                     ) : canManage ? (
-                      <a
-                        href={inviteUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedGuild(guild);
+                          setShowInviteModal(true);
+                        }}
                         className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 transition-all hover:scale-[1.01]"
+                        title="Private Bot - Contact SYN for Invite"
                       >
-                        <ExternalLink className="w-3.5 h-3.5" />
+                        <Lock className="w-3.5 h-3.5 text-amber-400" />
                         <span>Invite Bot</span>
-                      </a>
+                      </button>
                     ) : (
                       <div className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-medium bg-slate-900/40 text-slate-500 border border-white/5 select-none">
                         <span>No Admin Permissions</span>
@@ -261,6 +269,68 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
           </div>
         )}
       </main>
+
+      {/* Private Bot Invite Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 max-w-md w-full shadow-2xl relative space-y-5">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowInviteModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Header / Lock Badge */}
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0 shadow-lg shadow-amber-500/10">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase font-bold">
+                  Private Bot
+                </span>
+                <h2 className="text-xl font-extrabold text-white tracking-tight">
+                  Invite Authorization
+                </h2>
+              </div>
+            </div>
+
+            {/* Core Message requested by user */}
+            <div className="p-4 rounded-2xl bg-slate-900/90 border border-white/10 space-y-2.5">
+              <p className="text-sm font-bold text-white leading-relaxed flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-indigo-400 shrink-0" />
+                <span><strong className="text-indigo-400 font-extrabold">SYN</strong> is bot owner contact to him for invite</span>
+              </p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                This bot is strictly private. Public invite links are disabled. If you would like to add {botInfo?.username || "DV-BOT"} to {selectedGuild ? <strong className="text-slate-200 font-semibold">"{selectedGuild.name}"</strong> : "your server"}, please reach out to <strong className="text-slate-200">SYN</strong> directly for access.
+              </p>
+            </div>
+
+            {/* Contact / Action Links */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+              <a
+                href="https://syn606.wtf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-all hover:scale-[1.01]"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Contact SYN (syn606.wtf)</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(false)}
+                className="w-full sm:w-auto inline-flex items-center justify-center py-2.5 px-5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer botInfo={botInfo} />
     </div>

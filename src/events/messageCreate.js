@@ -273,11 +273,9 @@ async function sendMentionReply(client, message, prefix) {
       .setStyle(ButtonStyle.Link)
       .setURL(CONFIG.DASHBOARD_URL),
     new ButtonBuilder()
+      .setCustomId("btn_private_bot_invite")
       .setLabel("Invite Bot")
-      .setStyle(ButtonStyle.Link)
-      .setURL(
-        `https://discord.com/oauth2/authorize?client_id=${client.user?.id}&permissions=8&scope=bot%20applications.commands`
-      )
+      .setStyle(ButtonStyle.Secondary)
   );
 
   return await message.reply({ embeds: [embed], components: [row] }).catch(() => {});

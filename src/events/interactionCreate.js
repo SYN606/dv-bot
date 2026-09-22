@@ -1,7 +1,7 @@
 import { MessageFlags, PermissionFlagsBits } from "discord.js";
 import { CommandContext } from "../core/command.js";
 import { GLOBAL_COOLDOWN } from "../core/cooldown.js";
-import { makeEmbed } from "../core/embeds.js";
+import { makeEmbed, COLORS } from "../core/embeds.js";
 import { EMOJIS } from "../core/emojis.js";
 import {
   hasConfigAccess,
@@ -31,6 +31,26 @@ export default {
     // 2. Handle Component Interactions (Buttons, Select Menus, Modals)
     if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
       const customId = interaction.customId;
+
+      if (customId === "btn_private_bot_invite") {
+        return await interaction.reply({
+          embeds: [
+            makeEmbed({
+              title: "🔒 Private Bot",
+              description:
+                `**SYN** is the bot owner. Contact him for an invite.\n\n` +
+                `• **Status:** Private authorization required.\n` +
+                `• **Owner:** SYN (\`syn606\` • [syn606.wtf](https://syn606.wtf))\n` +
+                `• Contact SYN directly to request adding this bot to your server.`,
+              level: "INFO",
+              color: COLORS.DARK,
+              headerDivider: false,
+            }),
+          ],
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
       const handler = client.components.get(customId) || client.components.get(customId.split(":")[0]);
       if (handler) {
         try {
