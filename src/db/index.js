@@ -4,6 +4,7 @@ import { Database } from "bun:sqlite";
 import { drizzle as drizzleSqlite } from "drizzle-orm/bun-sqlite";
 import { CONFIG } from "../config.js";
 import * as schema from "./schema/index.js";
+import { logger } from "../utils/logger.js";
 
 let activeDb = null;
 let rawSqliteDb = null;
@@ -78,6 +79,8 @@ function initDbSync() {
       rawSqliteDb.exec("PRAGMA temp_store = MEMORY;");
       rawSqliteDb.exec("PRAGMA mmap_size = 268435456;");
       rawSqliteDb.exec("PRAGMA auto_vacuum = INCREMENTAL;");
+      rawSqliteDb.exec("PRAGMA threads = 4;");
+      rawSqliteDb.exec("PRAGMA wal_autocheckpoint = 1000;");
 
       ensureSqliteSchema(rawSqliteDb);
     }
@@ -364,7 +367,7 @@ export async function initDb(options = {}) {
 
   if (conf.dialect === "sqlite") {
     initDbSync();
-    console.log(`[DB] Drizzle ORM connected to SQLite (${conf.storage}) | Schema initialized.`);
+    logger.info(`[DB] Drizzle ORM connected to SQLite (${conf.storage}) | Schema initialized.`);
     return activeDb;
   }
 
@@ -376,7 +379,7 @@ export async function initDb(options = {}) {
       ssl: CONFIG.DB_SSL ? { rejectUnauthorized: false } : undefined,
     });
     activeDb = drizzle(pgPool, { schema });
-    console.log("[DB] Drizzle ORM connected to PostgreSQL.");
+    logger.info("[DB] Drizzle ORM connected to PostgreSQL.");
     return activeDb;
   }
 
@@ -385,7 +388,7 @@ export async function initDb(options = {}) {
     const { drizzle } = await import("drizzle-orm/mysql2");
     mysqlPool = mysql.createPool(conf.url);
     activeDb = drizzle(mysqlPool, { schema });
-    console.log("[DB] Drizzle ORM connected to MySQL.");
+    logger.info("[DB] Drizzle ORM connected to MySQL.");
     return activeDb;
   }
 
@@ -407,9 +410,9 @@ export async function closeDb() {
       mysqlPool = null;
     }
     activeDb = null;
-    console.log("[DB] Database connection closed cleanly.");
+    logger.info("[DB] Database connection closed cleanly.");
   } catch (error) {
-    console.error("[DB ERROR] Error closing database connection:", error);
+    logger.error("[DB ERROR] Error closing database connection:", error);
   }
 }
 

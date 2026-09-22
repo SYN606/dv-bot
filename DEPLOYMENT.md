@@ -13,7 +13,8 @@ Complete, step-by-step production deployment guide for hosting **DV-BOT** on a L
 6. [Systemd Service Management](#6-systemd-service-management)
 7. [Nginx Reverse Proxy & SSL (Strict Domain Lock)](#7-nginx-reverse-proxy--ssl-strict-domain-lock)
 8. [Safe Code-Only Updates](#8-safe-code-only-updates)
-9. [Troubleshooting & Maintenance](#9-troubleshooting--maintenance)
+9. [Deployment & Diagnostic Logs (`logs/`)](#9-deployment--diagnostic-logs-logs)
+10. [Troubleshooting & Maintenance](#10-troubleshooting--maintenance)
 
 ---
 
@@ -335,14 +336,60 @@ Your server database, analytics history, role configurations, and sticky message
 
 ---
 
-## 9. Troubleshooting & Maintenance
+## 9. Deployment & Diagnostic Logs (`logs/`)
+
+DV-BOT features an automated, non-blocking telemetry and deployment logging system designed for post-mortem analysis and performance monitoring on production VPS servers.
+
+### Log Architecture
+
+All log files are stored in the `/var/webhost/dv-bot/logs/` directory:
+
+| Log File | Source | Description | Retention / Rotation |
+| :--- | :--- | :--- | :--- |
+| `logs/deploy.log` | `entrypoint.sh` | Deployment lifecycle, Git SHA, branch, Bun version, dependency build timings, and process exit codes. | Auto-truncated at >5MB (retains last 5,000 lines). |
+| `logs/app.log` | `src/utils/logger.js` | Complete application runtime stream: database connections, command sync, web server requests. | Non-blocking async queue; auto-rotated at 10MB. |
+| `logs/error.log` | `src/utils/logger.js` | Critical diagnostic log: warnings, errors, `uncaughtException`, and `unhandledRejection` with full stack traces. | Non-blocking async queue; auto-rotated at 10MB. |
+
+### Concurrency & Threading Optimizations
+
+To ensure the bot never drops gateway heartbeats or suffers event loop stalls under high message volume:
+1. **SQLite Multi-Threading (`PRAGMA threads = 4`)**: SQLite delegates complex queries, sorting, and aggregations across 4 background worker threads.
+2. **Bounded WAL Checkpointing (`PRAGMA wal_autocheckpoint = 1000`)**: Prevents the SQLite WAL journal from unbounded growth during high-write analytics spikes.
+3. **Gateway Cache Sweepers & Limits**:
+   - Message cache bound to 100 messages per channel (`Options.cacheWithLimits`).
+   - Inactive thread and message sweepers run in the background every 5 minutes, significantly minimizing V8/JavaScriptCore garbage collection pauses.
+4. **Non-Blocking Analytics Batching**: Message activity and voice metrics are aggregated in memory and flushed concurrently (`Promise.all`) without blocking command dispatch.
+
+### Essential Diagnostic Commands
+
+```bash
+# 1. Inspect recent deployment history and build durations
+tail -n 100 /var/webhost/dv-bot/logs/deploy.log
+
+# 2. Live-stream application logs
+tail -f /var/webhost/dv-bot/logs/app.log
+
+# 3. Live-stream runtime errors and stack traces
+tail -f /var/webhost/dv-bot/logs/error.log
+
+# 4. Search for specific command or database errors
+grep -i "error" /var/webhost/dv-bot/logs/app.log | tail -n 30
+
+# 5. Monitor systemd service output in realtime
+journalctl -u dvbot -f -o cat
+```
+
+---
+
+## 10. Troubleshooting & Maintenance
 
 | Symptom | Cause | Solution |
 | :--- | :--- | :--- |
 | `Failed to open database` | Permission issue on `/var/db` | Run `chown -R syn:webhost /var/db` and `chmod 700 /var/db` |
 | `OAuth2 Invalid redirect_uri` | Mismatch in Discord Portal | Verify `https://bot.digitalvigital.fun/auth/callback` is listed in Discord App redirects |
-| `502 Bad Gateway in Nginx` | Bot service is offline or crashed | Check `systemctl status dvbot` and inspect `journalctl -u dvbot -n 50` |
+| `502 Bad Gateway in Nginx` | Bot service is offline or crashed | Check `systemctl status dvbot` and inspect `logs/error.log` |
 | `Port 3000 already in use` | Zombie node/bun process | Run `lsof -i :3000` or `fuser -k 3000/tcp` then restart `dvbot` |
+| `Gateway 429 / Disconnects` | Event loop lockup or rate-limiting | Inspect `logs/error.log` for rate-limit warnings and check `logs/deploy.log` for memory leaks |
 
 ### Database Backup Script
 You can schedule automated SQLite database backups via cron without stopping the bot:
@@ -350,3 +397,4 @@ You can schedule automated SQLite database backups via cron without stopping the
 # Add to crontab -e for user syn (runs daily at 3:00 AM):
 0 3 * * * sqlite3 /var/db/bot.db ".backup '/var/db/bot_backup_$(date +\%F).db'"
 ```
+

@@ -1,4 +1,5 @@
 import { recordMessageActivity } from "../db/helpers/analytics.js";
+import { logger } from "../utils/logger.js";
 
 export class AnalyticsBatcher {
   constructor(flushIntervalMs = 15000, maxBufferSize = 50) {
@@ -39,19 +40,22 @@ export class AnalyticsBatcher {
     const entries = Array.from(this.messageBuffer.entries());
     this.messageBuffer.clear();
 
-    for (const [key, count] of entries) {
-      const [guildId, userId, channelId] = key.split(":");
-      try {
-        await recordMessageActivity(
-          guildId,
-          userId,
-          channelId === "default" ? null : channelId,
-          count
-        );
-      } catch (err) {
-        console.error(`[ANALYTICS] Failed to flush messages for ${key}:`, err);
-      }
-    }
+    // High-concurrency non-blocking batch execution
+    await Promise.all(
+      entries.map(async ([key, count]) => {
+        const [guildId, userId, channelId] = key.split(":");
+        try {
+          await recordMessageActivity(
+            guildId,
+            userId,
+            channelId === "default" ? null : channelId,
+            count
+          );
+        } catch (err) {
+          logger.error(`[ANALYTICS] Failed to flush messages for ${key}:`, err);
+        }
+      })
+    );
   }
 }
 
