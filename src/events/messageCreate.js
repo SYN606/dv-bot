@@ -16,6 +16,7 @@ import {
 } from "../core/permissions.js";
 import { isExecutionAllowed } from "../db/helpers/acl.js";
 import { isCommandRestricted } from "../db/helpers/channelCommandRestrict.js";
+import { isCommandGloballyDisabled } from "../db/helpers/guildCommandDisable.js";
 import { handleAfk } from "../handlers/afkHandler.js";
 import { ANALYTICS_BATCHER } from "../handlers/analyticsBatcher.js";
 import { handleAutoresponder } from "../handlers/autoresponderHandler.js";
@@ -118,6 +119,23 @@ export default {
 
     const isAdmin = message.member?.permissions?.has(PermissionFlagsBits.Administrator);
     if (!isAdmin) {
+      // B1. Guild-wide command disable check (dashboard toggle)
+      const globallyDisabled = await isCommandGloballyDisabled(message.guild.id, resolvedName);
+      if (globallyDisabled) {
+        const reply = await message.reply({
+          embeds: [
+            makeEmbed({
+              title: "Command Disabled",
+              description: `${EMOJIS.get("fail") || "❌"} This command has been **disabled** in this server by an administrator.`,
+              level: "ERROR",
+            }),
+          ],
+        }).catch(() => {});
+        if (reply) setTimeout(() => reply.delete().catch(() => {}), 6000);
+        return;
+      }
+
+      // B2. Channel-specific restriction check
       const restricted = await isCommandRestricted(
         message.guild.id,
         message.channel.id,

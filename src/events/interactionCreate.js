@@ -10,6 +10,7 @@ import {
 } from "../core/permissions.js";
 import { isExecutionAllowed } from "../db/helpers/acl.js";
 import { isCommandRestricted } from "../db/helpers/channelCommandRestrict.js";
+import { isCommandGloballyDisabled } from "../db/helpers/guildCommandDisable.js";
 
 export default {
   name: "interactionCreate",
@@ -98,6 +99,22 @@ export default {
 
       const isAdmin = interaction.member?.permissions?.has(PermissionFlagsBits.Administrator);
       if (!isAdmin) {
+        // B1. Guild-wide command disable check (dashboard toggle)
+        const globallyDisabled = await isCommandGloballyDisabled(interaction.guild.id, commandName);
+        if (globallyDisabled) {
+          return await interaction.reply({
+            embeds: [
+              makeEmbed({
+                title: "Command Disabled",
+                description: `${EMOJIS.get("fail") || "❌"} This command has been **disabled** in this server by an administrator.`,
+                level: "ERROR",
+              }),
+            ],
+            flags: MessageFlags.Ephemeral,
+          });
+        }
+
+        // B2. Channel-specific restriction check
         const restricted = await isCommandRestricted(
           interaction.guild.id,
           interaction.channel.id,

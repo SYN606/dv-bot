@@ -7,6 +7,13 @@ import {
   bulkRestrictCommands,
   bulkUnrestrictCommands,
 } from "../../db/helpers/channelCommandRestrict.js";
+import {
+  disableCommandGuild,
+  enableCommandGuild,
+  getGuildDisabledCommands,
+  bulkDisableCommandsGuild,
+  bulkEnableCommandsGuild,
+} from "../../db/helpers/guildCommandDisable.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import {
@@ -73,19 +80,31 @@ commandRoutes.get("/guilds/:guildId/commands", async (c) => {
       })
     : [];
 
-  let disabled = [];
+  // Fetch guild-wide disabled commands (always)
+  const guildDisabledCacheKey = `guild:${guildId}:guild_disabled_cmds`;
+  let guildDisabled = apiCache.get(guildDisabledCacheKey);
+  if (!guildDisabled) {
+    guildDisabled = await getGuildDisabledCommands(guildId);
+    apiCache.set(guildDisabledCacheKey, guildDisabled, 15000);
+  }
+
+  let channelDisabled = [];
   if (channelId) {
     const cacheKey = `guild:${guildId}:disabled_cmds:${channelId}`;
     const cached = apiCache.get(cacheKey);
     if (cached) {
-      disabled = cached;
+      channelDisabled = cached;
     } else {
-      disabled = await getDisabledCommands(guildId, channelId);
-      apiCache.set(cacheKey, disabled, 15000);
+      channelDisabled = await getDisabledCommands(guildId, channelId);
+      apiCache.set(cacheKey, channelDisabled, 15000);
     }
   }
 
-  const disabledSet = new Set(disabled.map((d) => String(d).toLowerCase()));
+  // Merge: guild-wide + channel-specific (deduplicated)
+  const disabled = [...new Set([...guildDisabled, ...channelDisabled].map((d) => String(d).toLowerCase()))];
+
+  const disabledSet = new Set(disabled);
+  const guildDisabledSet = new Set(guildDisabled.map((d) => String(d).toLowerCase()));
 
   // Group commands into functional modules
   const categoryMap = new Map();
@@ -112,9 +131,11 @@ commandRoutes.get("/guilds/:guildId/commands", async (c) => {
     }
 
     const mod = categoryMap.get(catId);
+    const cmdNameLower = cmd.name.toLowerCase();
     mod.commands.push({
       ...cmd,
-      disabled: disabledSet.has(cmd.name.toLowerCase()),
+      disabled: disabledSet.has(cmdNameLower),
+      guildDisabled: guildDisabledSet.has(cmdNameLower),
     });
     mod.total += 1;
     if (!cmd.isProtected) {
@@ -139,6 +160,7 @@ commandRoutes.get("/guilds/:guildId/commands", async (c) => {
   return c.json({
     commands: allCommands,
     disabled,
+    guildDisabled,
     modules,
     stats: {
       total: totalCount,
@@ -156,14 +178,26 @@ commandRoutes.post("/guilds/:guildId/commands/toggle", async (c) => {
   const command_name = (body.command_name || body.commandName || "").toLowerCase().replace(/^\//, "");
   const enable = body.enable !== undefined ? !!body.enable : !body.disabled;
 
-  if (!channel_id || !command_name) {
-    return c.json({ error: "channel_id and command_name are required" }, 400);
+  if (!command_name) {
+    return c.json({ error: "command_name is required" }, 400);
   }
 
   if (PROTECTED_COMMANDS.has(command_name)) {
     return c.json({ error: "Protected commands cannot be disabled." }, 400);
   }
 
+  // Guild-wide toggle (no channel_id supplied — used by the dashboard toggle switch)
+  if (!channel_id) {
+    if (enable) {
+      await enableCommandGuild(guildId, command_name);
+    } else {
+      await disableCommandGuild(guildId, command_name);
+    }
+    apiCache.delete(`guild:${guildId}:guild_disabled_cmds`);
+    return c.json({ success: true, command: command_name, enabled: enable, scope: "guild" });
+  }
+
+  // Channel-scoped toggle (legacy — used by /command disable in-chat)
   if (enable) {
     await enableCommand(guildId, channel_id, command_name);
   } else {
@@ -171,10 +205,10 @@ commandRoutes.post("/guilds/:guildId/commands/toggle", async (c) => {
   }
 
   apiCache.delete(`guild:${guildId}:disabled_cmds:${channel_id}`);
-  return c.json({ success: true, command: command_name, enabled: enable });
+  return c.json({ success: true, command: command_name, enabled: enable, scope: "channel", channel_id });
 });
 
-// Module Bulk Toggle (Enable / Disable entire category for channel)
+// Module Bulk Toggle (Enable / Disable entire category — guild-wide or channel-scoped)
 commandRoutes.post("/guilds/:guildId/commands/module_toggle", async (c) => {
   const guildId = c.req.param("guildId");
   const body = await c.req.json().catch(() => ({}));
@@ -182,8 +216,8 @@ commandRoutes.post("/guilds/:guildId/commands/module_toggle", async (c) => {
   const category = (body.category || body.module || "").trim().toLowerCase();
   const enable = body.enable !== undefined ? !!body.enable : !body.disabled;
 
-  if (!channel_id || !category) {
-    return c.json({ error: "channel_id and category are required" }, 400);
+  if (!category) {
+    return c.json({ error: "category is required" }, 400);
   }
 
   const client = c.get("discordClient");
@@ -218,18 +252,33 @@ commandRoutes.post("/guilds/:guildId/commands/module_toggle", async (c) => {
   }
 
   let result;
-  if (enable) {
-    result = await bulkUnrestrictCommands(guildId, channel_id, targetCommands);
-  } else {
-    result = await bulkRestrictCommands(guildId, channel_id, targetCommands);
-  }
+  let scope;
 
-  apiCache.delete(`guild:${guildId}:disabled_cmds:${channel_id}`);
+  if (!channel_id) {
+    // Guild-wide module toggle (dashboard)
+    scope = "guild";
+    if (enable) {
+      result = await bulkEnableCommandsGuild(guildId, targetCommands);
+    } else {
+      result = await bulkDisableCommandsGuild(guildId, targetCommands);
+    }
+    apiCache.delete(`guild:${guildId}:guild_disabled_cmds`);
+  } else {
+    // Channel-scoped module toggle (in-chat /command)
+    scope = "channel";
+    if (enable) {
+      result = await bulkUnrestrictCommands(guildId, channel_id, targetCommands);
+    } else {
+      result = await bulkRestrictCommands(guildId, channel_id, targetCommands);
+    }
+    apiCache.delete(`guild:${guildId}:disabled_cmds:${channel_id}`);
+  }
 
   return c.json({
     success: true,
     category,
     enabled: enable,
+    scope,
     affectedCount: targetCommands.length,
     skippedProtected: protectedSkipped,
     details: result,

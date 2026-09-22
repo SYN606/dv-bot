@@ -443,6 +443,73 @@ describe("Web Dashboard & API Tests", () => {
     const checkFinalBody = await checkFinalRes.json();
     expect(checkFinalBody.disabled).not.toContain("ping");
     expect(checkFinalBody.disabled).not.toContain("avatar");
+
+    // Guild-wide toggle: disable 'ping' across the entire server (no channel_id)
+    const guildDisableRes = await app.request("/api/guilds/1001/commands/toggle", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        command_name: "ping",
+        enable: false,
+        // Note: no channel_id → guild-wide scope
+      }),
+    });
+    expect(guildDisableRes.status).toBe(200);
+    const guildDisableBody = await guildDisableRes.json();
+    expect(guildDisableBody.success).toBe(true);
+    expect(guildDisableBody.scope).toBe("guild");
+
+    // Verify guild-wide disabled appears in GET response
+    const guildCheckRes = await app.request("/api/guilds/1001/commands", {
+      headers: { Cookie: validCookie },
+    });
+    const guildCheckBody = await guildCheckRes.json();
+    expect(guildCheckBody.guildDisabled).toContain("ping");
+    // The merged disabled list should also contain it
+    expect(guildCheckBody.disabled).toContain("ping");
+    // Each command in modules should have guildDisabled flag
+    const utilMod = guildCheckBody.modules.find((m) => m.id === "utility");
+    const pingCmd = utilMod?.commands.find((cmd) => cmd.name === "ping");
+    expect(pingCmd?.guildDisabled).toBe(true);
+
+    // Protected command rejection (guild-wide)
+    const guildRejectRes = await app.request("/api/guilds/1001/commands/toggle", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        command_name: "help",
+        enable: false,
+      }),
+    });
+    expect(guildRejectRes.status).toBe(400);
+
+    // Guild-wide re-enable 'ping'
+    const guildEnableRes = await app.request("/api/guilds/1001/commands/toggle", {
+      method: "POST",
+      headers: {
+        Cookie: validCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        command_name: "ping",
+        enable: true,
+      }),
+    });
+    expect(guildEnableRes.status).toBe(200);
+    expect((await guildEnableRes.json()).scope).toBe("guild");
+
+    // Verify guild-wide re-enabled
+    const guildFinalRes = await app.request("/api/guilds/1001/commands", {
+      headers: { Cookie: validCookie },
+    });
+    const guildFinalBody = await guildFinalRes.json();
+    expect(guildFinalBody.guildDisabled).not.toContain("ping");
   });
 
   // 7. Autoresponder API
