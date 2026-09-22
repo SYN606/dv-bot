@@ -1,10 +1,11 @@
 import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
-import { makeEmbed } from "../../core/embeds.js";
+import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
+import { ChannelPermissionSnapshot, VerificationConfig } from "../../db/models/index.js";
 import { sendModLog } from "../../utils/modLog.js";
 
-const unlockTimers = new Map(); // channelId -> Timeout
+const unlockTimers = new Map(); // channelId → Timeout
 
 function parseDuration(str) {
   if (!str) return null;
@@ -22,9 +23,29 @@ function parseDuration(str) {
   }
 }
 
+/**
+ * Resolve the role to lock/unlock against:
+ * - If verification is enabled and has verified_role_id → target that role
+ * - Otherwise → fall back to @everyone
+ *
+ * Returns { role, usingVerifiedRole: boolean, verifiedRoleName: string|null }
+ */
+async function resolveTargetRole(guild) {
+  try {
+    const vConfig = await VerificationConfig.findByPk(String(guild.id));
+    if (vConfig && vConfig.enabled && vConfig.verified_role_id) {
+      const verifiedRole = guild.roles.cache.get(String(vConfig.verified_role_id));
+      if (verifiedRole) {
+        return { role: verifiedRole, usingVerifiedRole: true, verifiedRoleName: verifiedRole.name };
+      }
+    }
+  } catch (_) {}
+  return { role: guild.roles.everyone, usingVerifiedRole: false, verifiedRoleName: null };
+}
+
 const slashBuilder = new SlashCommandBuilder()
   .setName("lock")
-  .setDescription("Lock or unlock a channel for regular members")
+  .setDescription("Lock or unlock a channel — verification-aware (targets verified role if configured)")
   .addStringOption((opt) =>
     opt
       .setName("action")
@@ -42,7 +63,7 @@ const slashBuilder = new SlashCommandBuilder()
 
 export default createCommand({
   name: "lock",
-  description: "Lock or unlock a channel for regular members",
+  description: "Lock or unlock a channel — verification-aware",
   category: "Channels",
   aliases: ["unlock"],
   modOnly: true,
@@ -53,34 +74,78 @@ export default createCommand({
     const { guild, channel, user } = ctx;
     if (!guild) return;
 
+    // ── Resolve action ────────────────────────────────────────────────────
     let action = ctx.options.action || "lock";
-    if (ctx.command.name === "unlock" || ctx.options._args?.[0]?.toLowerCase() === "unlock") {
+    const invokedName = ctx.message?.content?.trim().split(/\s+/)[0]?.toLowerCase().replace(/^[^\w]*/, "");
+    if (
+      ctx.command?.name === "unlock" ||
+      invokedName === "unlock" ||
+      ctx.options._args?.[0]?.toLowerCase() === "unlock"
+    ) {
       action = "unlock";
     }
 
-    const targetChannel = ctx.options.channel ? guild.channels.cache.get(ctx.options.channel) || channel : channel;
-    const everyoneRole = guild.roles.everyone;
+    // ── Resolve target channel ────────────────────────────────────────────
+    const targetChannel =
+      ctx.options.channel ? guild.channels.cache.get(ctx.options.channel) || channel : channel;
 
+    // ── Resolve target role (verification-aware) ──────────────────────────
+    const { role: targetRole, usingVerifiedRole, verifiedRoleName } = await resolveTargetRole(guild);
+    const roleLabel = usingVerifiedRole
+      ? `\`@${verifiedRoleName}\` (verified members)`
+      : "`@everyone`";
+    const scopeNote = usingVerifiedRole
+      ? `-# 🔐 Verification mode active — targeting **@${verifiedRoleName}** instead of @everyone.`
+      : `-# 🌐 No verification role configured — targeting **@everyone**.`;
+
+    // ─────────────────────────────────────────────────────────────────────
+    // LOCK
+    // ─────────────────────────────────────────────────────────────────────
     if (action === "lock") {
-      // Check for duration arg
+      // Parse duration
       let durationStr = ctx.options.duration;
       if (!durationStr && ctx.options._args) {
         for (const arg of ctx.options._args) {
-          if (parseDuration(arg)) {
-            durationStr = arg;
-            break;
-          }
+          if (parseDuration(arg)) { durationStr = arg; break; }
         }
       }
-
       const durationSeconds = parseDuration(durationStr);
 
-      await targetChannel.permissionOverwrites.edit(everyoneRole, {
+      // Snapshot existing SendMessages perm for this role before overwriting
+      const existingOverwrite = targetChannel.permissionOverwrites.cache.get(targetRole.id);
+      const prevSendMessages =
+        existingOverwrite?.allow.has(PermissionFlagsBits.SendMessages) ? true
+        : existingOverwrite?.deny.has(PermissionFlagsBits.SendMessages) ? false
+        : null;
+      const prevAddReactions =
+        existingOverwrite?.allow.has(PermissionFlagsBits.AddReactions) ? true
+        : existingOverwrite?.deny.has(PermissionFlagsBits.AddReactions) ? false
+        : null;
+
+      // Upsert snapshot for SendMessages
+      await ChannelPermissionSnapshot.findOrCreate({
+        where: {
+          guild_id: String(guild.id),
+          channel_id: String(targetChannel.id),
+          target_id: String(targetRole.id),
+          permission_name: "SendMessages",
+        },
+        defaults: {
+          guild_id: String(guild.id),
+          channel_id: String(targetChannel.id),
+          target_id: String(targetRole.id),
+          permission_name: "SendMessages",
+          permission_value: prevSendMessages,
+        },
+      });
+
+      // Apply lock
+      await targetChannel.permissionOverwrites.edit(targetRole, {
         SendMessages: false,
         AddReactions: false,
       });
 
-      // Clear any existing timer
+      // Clear existing auto-unlock timer
       if (unlockTimers.has(targetChannel.id)) {
         clearTimeout(unlockTimers.get(targetChannel.id));
         unlockTimers.delete(targetChannel.id);
@@ -89,22 +154,34 @@ export default createCommand({
       let expiryDesc = "";
       if (durationSeconds) {
         const expiryUnix = Math.floor(Date.now() / 1000) + durationSeconds;
-        expiryDesc = `\n\n${EMOJIS.get("arrow_point") || "➡️"} **Auto-Unlocks:** <t:${expiryUnix}:R>`;
+        expiryDesc = `\n${EMOJIS.get("arrow_point") || "➡️"} **Auto-Unlocks:** <t:${expiryUnix}:R>`;
 
         const timer = setTimeout(async () => {
           unlockTimers.delete(targetChannel.id);
           try {
-            await targetChannel.permissionOverwrites.edit(everyoneRole, {
-              SendMessages: null,
+            // Restore from snapshot on auto-unlock
+            const snap = await ChannelPermissionSnapshot.findOne({
+              where: {
+                guild_id: String(guild.id),
+                channel_id: String(targetChannel.id),
+                target_id: String(targetRole.id),
+                permission_name: "SendMessages",
+              },
+            });
+            await targetChannel.permissionOverwrites.edit(targetRole, {
+              SendMessages: snap ? snap.permission_value : null,
               AddReactions: null,
             });
+            if (snap) await snap.destroy().catch(() => {});
 
             await targetChannel.send({
               embeds: [
                 makeEmbed({
                   title: "Channel Unlocked",
-                  description: `${EMOJIS.get("success") || "🔓"} Temporary lockdown expired. Normal messaging has been restored.`,
+                  description: `${EMOJIS.get("success") || "🔓"} Temporary lockdown expired. Normal messaging has been restored for ${roleLabel}.`,
                   level: "SUCCESS",
+                  color: COLORS.DARK,
+                  headerDivider: false,
                 }),
               ],
             }).catch(() => {});
@@ -120,48 +197,76 @@ export default createCommand({
         guild,
         category: "MODERATION",
         title: "Channel Locked",
-        description: `Channel ${targetChannel} was locked by <@${user.id}>.${durationSeconds ? ` (Duration: ${durationStr})` : ""}`,
+        description: `${targetChannel} locked by <@${user.id}>. Targeting: ${roleLabel}${durationSeconds ? ` | Duration: ${durationStr}` : ""}`,
         level: "WARNING",
         actor: user,
+        extraFields: { "Target Role": usingVerifiedRole ? verifiedRoleName : "@everyone", Channel: `#${targetChannel.name}` },
       });
 
       return await ctx.reply({
         embeds: [
           makeEmbed({
-            title: "Channel Locked",
-            description: `${EMOJIS.get("warning") || "🔒"} ${targetChannel} has been **locked**. Non-staff members cannot send messages.${expiryDesc}`,
+            author: { name: "Channel Lockdown", iconURL: guild.iconURL?.({ dynamic: true }) || undefined },
+            title: "🔒 Channel Locked",
+            description:
+              `${targetChannel} has been **locked** — ${roleLabel} cannot send messages.\n` +
+              (durationSeconds ? `${expiryDesc}\n` : "") +
+              `\n${scopeNote}`,
             level: "WARNING",
+            color: COLORS.DARK,
+            headerDivider: false,
           }),
         ],
       });
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // UNLOCK
+    // ─────────────────────────────────────────────────────────────────────
     if (action === "unlock") {
+      // Clear any running timer
       if (unlockTimers.has(targetChannel.id)) {
         clearTimeout(unlockTimers.get(targetChannel.id));
         unlockTimers.delete(targetChannel.id);
       }
 
-      await targetChannel.permissionOverwrites.edit(everyoneRole, {
-        SendMessages: null,
+      // Restore from snapshot if available
+      const snap = await ChannelPermissionSnapshot.findOne({
+        where: {
+          guild_id: String(guild.id),
+          channel_id: String(targetChannel.id),
+          target_id: String(targetRole.id),
+          permission_name: "SendMessages",
+        },
+      });
+
+      await targetChannel.permissionOverwrites.edit(targetRole, {
+        SendMessages: snap ? snap.permission_value : null,
         AddReactions: null,
       });
+
+      if (snap) await snap.destroy().catch(() => {});
 
       await sendModLog({
         guild,
         category: "MODERATION",
         title: "Channel Unlocked",
-        description: `Channel ${targetChannel} was unlocked by <@${user.id}>.`,
+        description: `${targetChannel} unlocked by <@${user.id}>. Targeting: ${roleLabel}`,
         level: "INFO",
         actor: user,
+        extraFields: { "Target Role": usingVerifiedRole ? verifiedRoleName : "@everyone", Channel: `#${targetChannel.name}` },
       });
 
       return await ctx.reply({
         embeds: [
           makeEmbed({
-            title: "Channel Unlocked",
-            description: `${EMOJIS.get("success") || "🔓"} ${targetChannel} has been **unlocked**. Normal messaging has been restored.`,
+            author: { name: "Channel Lockdown", iconURL: guild.iconURL?.({ dynamic: true }) || undefined },
+            title: "🔓 Channel Unlocked",
+            description:
+              `${targetChannel} has been **unlocked** — ${roleLabel} can send messages again.\n\n${scopeNote}`,
             level: "SUCCESS",
+            color: COLORS.DARK,
+            headerDivider: false,
           }),
         ],
       });
