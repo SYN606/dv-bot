@@ -99,6 +99,11 @@ export default function Navbar({ user, botInfo, currentGuild, breadcrumbs = [] }
                 className="w-6 h-6 rounded-full ring-2 ring-indigo-400/50 object-cover"
               />
               <span>{user.username}</span>
+              {user.isSuperuser && (
+                <span className="px-1.5 py-0.5 ml-0.5 text-[9px] uppercase tracking-wider bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded shadow-sm shadow-orange-500/20">
+                  Superuser
+                </span>
+              )}
             </Link>
             <a
               href="/auth/logout"

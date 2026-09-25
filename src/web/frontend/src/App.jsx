@@ -41,6 +41,7 @@ export default function App() {
           setUser({
             ...sessionData.user,
             guilds: sessionData.guilds || [],
+            isSuperuser: sessionData.isSuperuser || false,
           });
         }
         if (botData) {
@@ -74,6 +75,7 @@ export default function App() {
                     setUser({
                       ...data.user,
                       guilds: data.guilds || [],
+                      isSuperuser: data.isSuperuser || false,
                     });
                   }
                   getBotInfo().then((b) => b && setBotInfo(b)).catch(() => {});

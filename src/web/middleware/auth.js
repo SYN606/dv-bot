@@ -48,31 +48,50 @@ export async function requireAuth(c, next) {
 
 export async function requireGuildAdmin(c, next) {
   const guildId = c.req.param("guildId");
+  const user = c.get("user");
   const userGuilds = c.get("guilds") || [];
   const client = c.get("discordClient");
+  
+  const { CONFIG } = await import("../../config.js");
+  const isSuperuser = CONFIG.SUPERUSERS.includes(user.id);
 
-  const targetGuild = userGuilds.find((g) => g.id === guildId);
-  if (!targetGuild) {
-    if (c.req.path.startsWith("/api/")) {
-      return c.json({ error: "Guild not found or access denied." }, 403);
+  let targetGuild = userGuilds.find((g) => g.id === guildId);
+  
+  // Superusers bypass standard membership/permission checks
+  if (!isSuperuser) {
+    if (!targetGuild) {
+      if (c.req.path.startsWith("/api/")) {
+        return c.json({ error: "Guild not found or access denied." }, 403);
+      }
+      return c.redirect("/dashboard");
     }
-    return c.redirect("/dashboard");
-  }
 
-  const permissions = BigInt(targetGuild.permissions || 0);
-  const isAdmin = targetGuild.owner || (permissions & BigInt(ADMINISTRATOR)) === BigInt(ADMINISTRATOR);
-  const hasManageGuild = (permissions & BigInt(MANAGE_GUILD)) === BigInt(MANAGE_GUILD);
+    const permissions = BigInt(targetGuild.permissions || 0);
+    const isAdmin = targetGuild.owner || (permissions & BigInt(ADMINISTRATOR)) === BigInt(ADMINISTRATOR);
+    const hasManageGuild = (permissions & BigInt(MANAGE_GUILD)) === BigInt(MANAGE_GUILD);
 
-  if (!isAdmin && !hasManageGuild) {
-    if (c.req.path.startsWith("/api/")) {
-      return c.json({ error: "You lack Administrator or Manage Server permissions in this guild." }, 403);
+    if (!isAdmin && !hasManageGuild) {
+      if (c.req.path.startsWith("/api/")) {
+        return c.json({ error: "You lack Administrator or Manage Server permissions in this guild." }, 403);
+      }
+      return c.redirect("/dashboard");
     }
-    return c.redirect("/dashboard");
   }
 
   let botGuild = client?.guilds.cache.get(guildId) || null;
   if (!botGuild && client?.guilds) {
     botGuild = await client.guilds.fetch(guildId).catch(() => null);
+  }
+  
+  // If superuser and they aren't in the guild naturally, mock targetGuild using bot's info
+  if (isSuperuser && !targetGuild && botGuild) {
+    targetGuild = {
+      id: botGuild.id,
+      name: botGuild.name,
+      icon: botGuild.icon,
+      permissions: "8", // Mock admin
+      owner: false,
+    };
   }
 
   c.set("currentGuild", targetGuild);

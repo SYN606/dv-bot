@@ -66,5 +66,12 @@ export const CONFIG = {
   DASHBOARD_URL_PROD: dashboardUrlProd,
   SESSION_SECRET: process.env.SESSION_SECRET || "dv-bot-super-secure-secret-key-2026",
 
+  // Superusers (comma-separated list of up to 3 Discord User IDs)
+  SUPERUSERS: (process.env.SUPERUSER_IDS || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean)
+    .slice(0, 3),
+
   ROOT_DIR,
 };
