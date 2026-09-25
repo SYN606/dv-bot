@@ -125,6 +125,15 @@ export function createWebApp(client = null) {
       return c.redirect("/dashboard");
     } catch (err) {
       console.error("[OAUTH CALLBACK ERROR]:", err);
+      
+      // Some browsers (like Safari/Brave) aggressively pre-fetch links, meaning the code gets
+      // consumed on the invisible pre-fetch request, and the visible navigation fails with invalid_grant.
+      // If the pre-fetch succeeded, the cookie is already set. We can safely rescue the user by checking.
+      const existingCookie = getCookie(c, "dv_session");
+      if (existingCookie && verifySessionToken(existingCookie)) {
+        return c.redirect("/dashboard");
+      }
+
       return c.html(
         `<div style="font-family:sans-serif;padding:40px;text-align:center;"><h2>Authentication Failed</h2><p>${err.message}</p><a href="/">Back</a></div>`,
         500
