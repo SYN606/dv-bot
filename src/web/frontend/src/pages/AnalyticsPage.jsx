@@ -74,10 +74,11 @@ export default function AnalyticsPage({ user, botInfo }) {
     const chatters = data.topChatters || [];
     const voice = data.topVoice || [];
     const timeline = data.timeline || [];
+    const channels = data.channelBreakdown || [];
     const summary = data.summary || {};
     const insights = data.insights || {};
 
-    let csv = "=== SERVER ANALYTICS REPORT ===\n\n";
+    let csv = "=== FULL SERVER ANALYTICS REPORT ===\n\n";
     
     csv += "--- SUMMARY ---\n";
     csv += `Total Messages,${summary.totalMessages}\n`;
@@ -92,20 +93,25 @@ export default function AnalyticsPage({ user, botInfo }) {
     csv += `Most Active Channel,${(insights.topChannel || "").replace(/,/g, " ")}\n`;
     csv += `Growth Momentum,${(insights.growthSummary || "").replace(/,/g, " ")}\n\n`;
 
-    csv += `--- LEADERBOARD (${leaderboardTab.toUpperCase()}) ---\n`;
-    if (leaderboardTab === "chat") {
-      csv += "Rank,Username,User ID,Total Messages,Weekly Messages\n";
-      chatters.forEach((u, i) => {
-        csv += `${i + 1},"${u.username}",${u.userId},${u.totalMessages},${u.weeklyMessages}\n`;
-      });
-    } else {
-      csv += "Rank,Username,User ID,Total Voice (Mins),Weekly Voice (Mins)\n";
-      voice.forEach((u, i) => {
-        csv += `${i + 1},"${u.username}",${u.userId},${u.totalMinutes},${u.weeklyMinutes}\n`;
-      });
-    }
+    csv += "--- CHAT LEADERBOARD (TOP 10) ---\n";
+    csv += "Rank,Username,User ID,Total Messages,Weekly Messages\n";
+    chatters.forEach((u, i) => {
+      csv += `${i + 1},"${u.username}",${u.userId},${u.totalMessages},${u.weeklyMessages}\n`;
+    });
 
-    csv += "\n--- TIMELINE ---\n";
+    csv += "\n--- VOICE LEADERBOARD (TOP 10) ---\n";
+    csv += "Rank,Username,User ID,Total Voice (Mins),Weekly Voice (Mins)\n";
+    voice.forEach((u, i) => {
+      csv += `${i + 1},"${u.username}",${u.userId},${u.totalMinutes},${u.weeklyMinutes}\n`;
+    });
+
+    csv += "\n--- TOP CHANNELS BREAKDOWN ---\n";
+    csv += "Rank,Channel Name,Channel ID,Messages,Voice Mins,Activity Share\n";
+    channels.forEach((c, i) => {
+      csv += `${i + 1},"${c.name}",${c.channelId},${c.messages},${c.voiceMinutes},${c.percentage}%\n`;
+    });
+
+    csv += "\n--- DAILY TIMELINE ---\n";
     csv += "Date,Messages,Voice Minutes,Joins,Leaves,Net Growth\n";
     timeline.forEach((t) => {
       csv += `${t.date},${t.messages},${t.voiceMinutes ?? t.vc_minutes ?? 0},${t.joins},${t.leaves},${t.netGrowth}\n`;
@@ -115,7 +121,7 @@ export default function AnalyticsPage({ user, botInfo }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `guild_${guildId}_analytics_${leaderboardTab}_${timeframe}d.csv`);
+    link.setAttribute("download", `guild_${guildId}_full_analytics_${timeframe}d.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
