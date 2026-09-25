@@ -3,10 +3,16 @@ import { CONFIG } from "../config.js";
 
 const DISCORD_API = "https://discord.com/api/v10";
 
+// Ensure no trailing slashes disrupt Discord's strict redirect_uri matching
+function getCallbackUrl() {
+  const base = (CONFIG.DASHBOARD_URL || "").replace(/\/+$/, "");
+  return `${base}/auth/callback`;
+}
+
 export function getOAuthUrl() {
   const params = new URLSearchParams({
     client_id: CONFIG.CLIENT_ID,
-    redirect_uri: `${CONFIG.DASHBOARD_URL}/auth/callback`,
+    redirect_uri: getCallbackUrl(),
     response_type: "code",
     scope: "identify guilds",
   });
@@ -19,7 +25,7 @@ export async function exchangeCode(code) {
     client_secret: CONFIG.CLIENT_SECRET,
     grant_type: "authorization_code",
     code,
-    redirect_uri: `${CONFIG.DASHBOARD_URL}/auth/callback`,
+    redirect_uri: getCallbackUrl(),
   });
 
   const res = await fetch(`${DISCORD_API}/oauth2/token`, {

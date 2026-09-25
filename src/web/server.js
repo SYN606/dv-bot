@@ -135,7 +135,13 @@ export function createWebApp(client = null) {
       }
 
       return c.html(
-        `<div style="font-family:sans-serif;padding:40px;text-align:center;"><h2>Authentication Failed</h2><p>${err.message}</p><a href="/">Back</a></div>`,
+        `<div style="font-family:sans-serif;padding:40px;text-align:center;">
+          <h2>Authentication Failed</h2>
+          <p>${err.message}</p>
+          <br/>
+          <p>This usually happens if the authorization code expired or your browser refreshed.</p>
+          <a href="/auth/login" style="display:inline-block;padding:10px 20px;background:#5865F2;color:#fff;text-decoration:none;border-radius:5px;margin-top:15px;font-weight:bold;">Try Again</a>
+        </div>`,
         500
       );
     }
