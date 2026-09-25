@@ -244,49 +244,12 @@ server {
 ```
 
 ### B. Dedicated Virtual Host for `bot.digitalvigital.fun`
-Create `/etc/nginx/sites-available/bot.digitalvigital.fun`:
-```nginx
-server {
-    listen 80;
-    listen [::]:80;
-    server_name bot.digitalvigital.fun;
+Create `/etc/nginx/sites-available/bot.digitalvigital.fun` using the highly-optimized production configuration provided in [`nginx.md`](nginx.md).
 
-    # Strictly reject any request whose Host header does not match the domain
-    if ($host != "bot.digitalvigital.fun") {
-        return 403;
-    }
-
-    # Security Headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-
-    # Upload size limit
-    client_max_body_size 15M;
-
-    # Forward to Bun Web Server
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-
-        # WebSocket support
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-
-        # Forwarded Identity Headers
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Timeouts
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-}
+```bash
+nano /etc/nginx/sites-available/bot.digitalvigital.fun
 ```
+*(Paste the full configuration from `nginx.md` into this file and save).*
 
 ### C. Enable Site & Obtain Free SSL with Certbot:
 ```bash
