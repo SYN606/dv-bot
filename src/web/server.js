@@ -104,6 +104,10 @@ export function createWebApp(client = null) {
         owner: g.owner,
       }));
 
+      // Immediately cache it so the next request is fast
+      const { apiCache } = await import("./routes/cache.js");
+      apiCache.set(`user_guilds:${user.id}`, guilds, 1000 * 60 * 60); // 1 hour cache
+
       const sessionToken = createSessionToken({
         user: {
           id: user.id,
@@ -111,7 +115,6 @@ export function createWebApp(client = null) {
           discriminator: user.discriminator,
           avatar: user.avatar,
         },
-        guilds,
         accessToken: tokenData.access_token,
       });
 
@@ -142,7 +145,7 @@ export function createWebApp(client = null) {
           <p>This usually happens if the authorization code expired or your browser refreshed.</p>
           <a href="/auth/login" style="display:inline-block;padding:10px 20px;background:#5865F2;color:#fff;text-decoration:none;border-radius:5px;margin-top:15px;font-weight:bold;">Try Again</a>
         </div>`,
-        500
+        400
       );
     }
   });

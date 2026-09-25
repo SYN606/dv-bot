@@ -27,10 +27,29 @@ authRoutes.get("/me", async (c) => {
     return c.json({ user: null, guilds: [] });
   }
 
+  const { apiCache } = await import("./cache.js");
+  let userGuilds = apiCache.get(`user_guilds:${session.user.id}`);
+  
+  if (!userGuilds && session.accessToken) {
+    try {
+      const rawGuilds = await fetchDiscordGuilds(session.accessToken);
+      userGuilds = rawGuilds.map((g) => ({
+        id: g.id,
+        name: g.name,
+        icon: g.icon,
+        permissions: g.permissions,
+        owner: g.owner,
+      }));
+      apiCache.set(`user_guilds:${session.user.id}`, userGuilds, 1000 * 60 * 60);
+    } catch (e) {
+      userGuilds = [];
+    }
+  }
+
   const client = c.get("discordClient");
   const botGuildIds = await getLiveBotGuildIds(client);
 
-  const guilds = (session.guilds || []).map((g) => {
+  const guilds = (userGuilds || []).map((g) => {
     const isBotInGuild =
       botGuildIds.includes(String(g.id)) ||
       Boolean(client?.guilds?.cache?.has(String(g.id)));
@@ -66,7 +85,9 @@ authRoutes.post("/me/sync", async (c) => {
   const client = c.get("discordClient");
   const botGuildIds = await getLiveBotGuildIds(client);
 
-  let updatedGuilds = session.guilds || [];
+  const { apiCache } = await import("./cache.js");
+  let updatedGuilds = apiCache.get(`user_guilds:${session.user.id}`) || [];
+  
   if (session.accessToken) {
     try {
       const rawGuilds = await fetchDiscordGuilds(session.accessToken);
@@ -78,18 +99,8 @@ authRoutes.post("/me/sync", async (c) => {
         owner: g.owner,
       }));
 
-      // Update session cookie with fresh Discord data
-      const newSessionToken = createSessionToken({
-        ...session,
-        guilds: updatedGuilds,
-      });
-
-      setCookie(c, "dv_session", newSessionToken, {
-        path: "/",
-        httpOnly: true,
-        sameSite: "Lax",
-        maxAge: 60 * 60 * 24 * 7,
-      });
+      // Update in-memory cache directly instead of rewriting the cookie
+      apiCache.set(`user_guilds:${session.user.id}`, updatedGuilds, 1000 * 60 * 60);
     } catch (err) {
       console.error("[SYNC SERVERS ERROR]:", err);
     }

@@ -120,17 +120,19 @@ describe("Web Dashboard & API Tests", () => {
 
     const token = createSessionToken({
       user: { id: "9001", username: "DashboardAdmin", discriminator: "0001" },
-      guilds: [
-        {
-          id: testGuildId,
-          name: "Test Server",
-          permissions: "8", // Administrator
-          owner: true,
-        },
-      ],
     });
 
     validCookie = `dv_session=${token}`;
+    
+    const { apiCache } = await import("../src/web/routes/cache.js");
+    apiCache.set("user_guilds:9001", [
+      {
+        id: testGuildId,
+        name: "Test Server",
+        permissions: "8", // Administrator
+        owner: true,
+      },
+    ]);
   });
 
   // 1. Session Token Unit Tests

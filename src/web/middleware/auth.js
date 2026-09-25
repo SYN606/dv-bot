@@ -1,5 +1,6 @@
 import { getCookie } from "hono/cookie";
-import { verifySessionToken } from "../auth.js";
+import { verifySessionToken, fetchDiscordGuilds } from "../auth.js";
+import { apiCache } from "../routes/cache.js";
 
 // Permission bitmasks
 const ADMINISTRATOR = 0x8;
@@ -16,8 +17,32 @@ export async function requireAuth(c, next) {
     return c.redirect("/auth/login");
   }
 
+  // Restore guilds dynamically instead of packing them in the cookie
+  let userGuilds = apiCache.get(`user_guilds:${session.user.id}`);
+  
+  if (!userGuilds) {
+    try {
+      const rawGuilds = await fetchDiscordGuilds(session.accessToken);
+      userGuilds = rawGuilds.map((g) => ({
+        id: g.id,
+        name: g.name,
+        icon: g.icon,
+        permissions: g.permissions,
+        owner: g.owner,
+      }));
+      apiCache.set(`user_guilds:${session.user.id}`, userGuilds, 1000 * 60 * 60);
+    } catch (err) {
+      console.error("[AUTH MIDDLEWARE] Failed to fetch user guilds:", err);
+      if (c.req.path.startsWith("/api/")) {
+        return c.json({ error: "Failed to restore server list from Discord." }, 500);
+      }
+      return c.redirect("/auth/login");
+    }
+  }
+
   c.set("user", session.user);
-  c.set("guilds", session.guilds);
+  c.set("sessionToken", session); // Provide full session context including token
+  c.set("guilds", userGuilds);
   await next();
 }
 
