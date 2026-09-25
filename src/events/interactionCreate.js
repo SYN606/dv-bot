@@ -117,41 +117,38 @@ export default {
         });
       }
 
-      const isAdmin = interaction.member?.permissions?.has(PermissionFlagsBits.Administrator);
-      if (!isAdmin) {
-        // B1. Guild-wide command disable check (dashboard toggle)
-        const globallyDisabled = await isCommandGloballyDisabled(interaction.guild.id, commandName);
-        if (globallyDisabled) {
-          return await interaction.reply({
-            embeds: [
-              makeEmbed({
-                title: "Command Disabled",
-                description: `${EMOJIS.get("fail") || "❌"} This command has been **disabled** in this server by an administrator.`,
-                level: "ERROR",
-              }),
-            ],
-            flags: MessageFlags.Ephemeral,
-          });
-        }
+      // B1. Guild-wide command disable check (dashboard toggle)
+      const globallyDisabled = await isCommandGloballyDisabled(interaction.guild.id, commandName);
+      if (globallyDisabled) {
+        return await interaction.reply({
+          embeds: [
+            makeEmbed({
+              title: "Command Disabled",
+              description: `${EMOJIS.get("fail") || "❌"} This command has been **disabled** in this server by an administrator.`,
+              level: "ERROR",
+            }),
+          ],
+          flags: MessageFlags.Ephemeral,
+        });
+      }
 
-        // B2. Channel-specific restriction check
-        const restricted = await isCommandRestricted(
-          interaction.guild.id,
-          interaction.channel.id,
-          commandName
-        );
-        if (restricted) {
-          return await interaction.reply({
-            embeds: [
-              makeEmbed({
-                title: "Command Restricted",
-                description: `${EMOJIS.get("warning") || "⚠️"} This command is **not allowed in this channel**.\n\n${EMOJIS.get("arrow_point") || "👉"} Try another channel or contact staff.`,
-                level: "WARNING",
-              }),
-            ],
-            flags: MessageFlags.Ephemeral,
-          });
-        }
+      // B2. Channel-specific restriction check
+      const restricted = await isCommandRestricted(
+        interaction.guild.id,
+        interaction.channel.id,
+        commandName
+      );
+      if (restricted) {
+        return await interaction.reply({
+          embeds: [
+            makeEmbed({
+              title: "Command Restricted",
+              description: `${EMOJIS.get("warning") || "⚠️"} This command is **not allowed in this channel**.\n\n${EMOJIS.get("arrow_point") || "👉"} Try another channel or contact staff.`,
+              level: "WARNING",
+            }),
+          ],
+          flags: MessageFlags.Ephemeral,
+        });
       }
     }
 

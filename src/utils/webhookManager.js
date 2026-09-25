@@ -122,13 +122,6 @@ export async function dispatchStickyNotice({
   if (!channel || !channel.guild) return null;
   const channelId = String(channel.id);
 
-  // Cooldown check (unless forced)
-  const now = Date.now();
-  const lastExec = channelCooldowns.get(channelId) || 0;
-  if (!force && now - lastExec < minCooldownMs) {
-    return lastMessageId;
-  }
-
   // Per-channel mutex lock to prevent concurrent race conditions
   let releaseLock;
   const lockPromise = new Promise((resolve) => {
@@ -145,6 +138,13 @@ export async function dispatchStickyNotice({
   }
 
   try {
+    // Cooldown check (unless forced)
+    const now = Date.now();
+    const lastExec = channelCooldowns.get(channelId) || 0;
+    if (!force && now - lastExec < minCooldownMs) {
+      return lastMessageId;
+    }
+
     channelCooldowns.set(channelId, Date.now());
 
     // Check if the last message in the channel is ALREADY the sticky message

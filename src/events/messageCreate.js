@@ -117,43 +117,40 @@ export default {
       return;
     }
 
-    const isAdmin = message.member?.permissions?.has(PermissionFlagsBits.Administrator);
-    if (!isAdmin) {
-      // B1. Guild-wide command disable check (dashboard toggle)
-      const globallyDisabled = await isCommandGloballyDisabled(message.guild.id, resolvedName);
-      if (globallyDisabled) {
-        const reply = await message.reply({
-          embeds: [
-            makeEmbed({
-              title: "Command Disabled",
-              description: `${EMOJIS.get("fail") || "❌"} This command has been **disabled** in this server by an administrator.`,
-              level: "ERROR",
-            }),
-          ],
-        }).catch(() => {});
-        if (reply) setTimeout(() => reply.delete().catch(() => {}), 6000);
-        return;
-      }
+    // B1. Guild-wide command disable check (dashboard toggle)
+    const globallyDisabled = await isCommandGloballyDisabled(message.guild.id, resolvedName);
+    if (globallyDisabled) {
+      const reply = await message.reply({
+        embeds: [
+          makeEmbed({
+            title: "Command Disabled",
+            description: `${EMOJIS.get("fail") || "❌"} This command has been **disabled** in this server by an administrator.`,
+            level: "ERROR",
+          }),
+        ],
+      }).catch(() => {});
+      if (reply) setTimeout(() => reply.delete().catch(() => {}), 6000);
+      return;
+    }
 
-      // B2. Channel-specific restriction check
-      const restricted = await isCommandRestricted(
-        message.guild.id,
-        message.channel.id,
-        resolvedName
-      );
-      if (restricted) {
-        const reply = await message.reply({
-          embeds: [
-            makeEmbed({
-              title: "Command Restricted",
-              description: `${EMOJIS.get("fail") || "❌"} This command cannot be used in this channel.\n\n${EMOJIS.get("arrow_point") || "👉"} Please try using it in another channel.`,
-              level: "ERROR",
-            }),
-          ],
-        }).catch(() => {});
-        if (reply) setTimeout(() => reply.delete().catch(() => {}), 6000);
-        return;
-      }
+    // B2. Channel-specific restriction check
+    const restricted = await isCommandRestricted(
+      message.guild.id,
+      message.channel.id,
+      resolvedName
+    );
+    if (restricted) {
+      const reply = await message.reply({
+        embeds: [
+          makeEmbed({
+            title: "Command Restricted",
+            description: `${EMOJIS.get("fail") || "❌"} This command cannot be used in this channel.\n\n${EMOJIS.get("arrow_point") || "👉"} Please try using it in another channel.`,
+            level: "ERROR",
+          }),
+        ],
+      }).catch(() => {});
+      if (reply) setTimeout(() => reply.delete().catch(() => {}), 6000);
+      return;
     }
 
     // C. Permission Checks

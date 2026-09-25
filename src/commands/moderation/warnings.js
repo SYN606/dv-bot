@@ -53,12 +53,18 @@ export default createCommand({
     if (!guild) return;
 
     let sub = ctx.subcommand || "list";
-    if (ctx.command.name === "warnings" && ctx.options._args) {
-      const alias = ctx.interaction ? null : ctx.options._args[0]?.toLowerCase();
-      // Handle prefix aliases like !warn, !delwarn, !clearwarnings
-      if (alias === "warn" || alias === "add") sub = "add";
-      else if (alias === "delwarn" || alias === "delete") sub = "delete";
-      else if (alias === "clearwarnings" || alias === "clear") sub = "clear";
+    if (ctx.options._args && !ctx.interaction) {
+      const firstArg = ctx.options._args[0]?.toLowerCase();
+      if (firstArg === "add" || firstArg === "warn") {
+        sub = "add";
+        ctx.options._args.shift();
+      } else if (firstArg === "delete" || firstArg === "delwarn") {
+        sub = "delete";
+        ctx.options._args.shift();
+      } else if (firstArg === "clear" || firstArg === "clearwarnings") {
+        sub = "clear";
+        ctx.options._args.shift();
+      }
     }
 
     // --- SUBCOMMAND: ADD / WARN ---

@@ -119,34 +119,44 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
     getLeaderboard(guildId, "vc", numDays <= 7 ? "weekly" : "total", 10),
   ]);
 
-  const topChatters = topChattersRaw.map((m) => {
-    const member = botGuild?.members?.cache?.get(String(m.user_id));
+  const client = c.get("discordClient");
+
+  const resolveUser = async (userId) => {
+    let u = botGuild?.members?.cache?.get(String(userId))?.user || client?.users?.cache?.get(String(userId));
+    if (!u && client?.users?.fetch) {
+      u = await client.users.fetch(String(userId)).catch(() => null);
+    }
+    return u;
+  };
+
+  const topChatters = await Promise.all(topChattersRaw.map(async (m) => {
+    const userObj = await resolveUser(m.user_id);
     return {
       userId: String(m.user_id),
-      username: member?.user?.username || `User ${m.user_id}`,
-      avatar: member?.user?.displayAvatarURL?.() || null,
+      username: userObj?.username || `User ${m.user_id}`,
+      avatar: userObj?.displayAvatarURL?.() || null,
       messages: Number(m.total_messages || 0),
       weeklyMessages: Number(m.weekly_messages || 0),
       totalMessages: Number(m.total_messages || 0),
       count: Number(m.total_messages || 0),
     };
-  });
+  }));
 
-  const topVoice = topVoiceRaw.map((m) => {
-    const member = botGuild?.members?.cache?.get(String(m.user_id));
+  const topVoice = await Promise.all(topVoiceRaw.map(async (m) => {
+    const userObj = await resolveUser(m.user_id);
     const totalMinutes = Math.round(Number(m.total_vc_seconds || 0) / 60);
     const weeklyMinutes = Math.round(Number(m.weekly_vc_seconds || 0) / 60);
 
     return {
       userId: String(m.user_id),
-      username: member?.user?.username || `User ${m.user_id}`,
-      avatar: member?.user?.displayAvatarURL?.() || null,
+      username: userObj?.username || `User ${m.user_id}`,
+      avatar: userObj?.displayAvatarURL?.() || null,
       vcMinutes: totalMinutes,
       totalMinutes,
       weeklyMinutes,
       minutes: totalMinutes,
     };
-  });
+  }));
 
   const payload = {
     timeframe: numDays,

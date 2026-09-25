@@ -2,6 +2,7 @@ import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
+import { sendModLog } from "../../utils/modLog.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("purge")
@@ -43,6 +44,18 @@ export default createCommand({
 
     const deleted = await channel.bulkDelete(messages, true).catch(() => null);
     const count = deleted ? deleted.size : 0;
+
+    if (count > 0) {
+      await sendModLog({
+        guild: ctx.guild,
+        category: "MODERATION",
+        title: "Messages Purged",
+        description: `**${count}** messages were purged in <#${channel.id}> by <@${ctx.user.id}>.`,
+        level: "INFO",
+        actor: ctx.user,
+        extraFields: targetUser ? { Filter: `Targeted User: <@${targetUser.id}>` } : null,
+      });
+    }
 
     return await ctx.reply({
       embeds: [

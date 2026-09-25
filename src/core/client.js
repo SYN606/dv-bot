@@ -152,7 +152,7 @@ export class DVClient extends Client {
     try {
       logger.info(`[SYNC] Registering ${slashPayloads.length} application commands...`);
 
-      if (CONFIG.ENV === "test" && CONFIG.DEV_GUILD_ID && this.user) {
+      if (["dev", "development", "test"].includes(CONFIG.ENV) && CONFIG.DEV_GUILD_ID && this.user) {
         await rest.put(
           Routes.applicationGuildCommands(this.user.id, CONFIG.DEV_GUILD_ID),
           { body: slashPayloads }

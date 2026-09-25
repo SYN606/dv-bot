@@ -34,8 +34,8 @@ if (process.env.DASHBOARD_URL) {
 
 export const CONFIG = {
   TOKEN: process.env.DISCORD_TOKEN || "",
-  PREFIX: process.env.PREFIX || process.env.BOT_PREFIX || "ts",
-  BOT_NAME: process.env.BOT_NAME || "Digital Vigil",
+  PREFIX: process.env.PREFIX || process.env.BOT_PREFIX || "dv",
+  BOT_NAME: process.env.BOT_NAME || "Digital Vigital",
   ENV: env,
   DEV_GUILD_ID: process.env.DEV_GUILD_ID || null,
   SYNC_COMMANDS: (process.env.SYNC_COMMANDS || "true").toLowerCase() === "true",

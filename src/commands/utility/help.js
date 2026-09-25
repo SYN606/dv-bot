@@ -73,8 +73,8 @@ export default createCommand({
       categories.get(cat).push(cmd.name);
     }
 
-    const prefix = CONFIG.PREFIX || "ts";
-    const botName = CONFIG.BOT_NAME || client.user?.username || "Digital Vigil";
+    const prefix = CONFIG.PREFIX || "dv";
+    const botName = CONFIG.BOT_NAME || client.user?.username || "Digital Vigital";
 
     const embed = makeEmbed({
       title: `${botName} • Commands Directory`,

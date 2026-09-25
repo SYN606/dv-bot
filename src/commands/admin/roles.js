@@ -26,7 +26,7 @@ export default createCommand({
   name: "role",
   description: "Assign or remove a role from a member",
   category: "Admin",
-  aliases: ["giverole", "removerole"],
+  aliases: ["roles", "giverole", "removerole"],
   modOnly: true,
   requiredPermission: PermissionFlagsBits.ManageRoles,
   slashBuilder,

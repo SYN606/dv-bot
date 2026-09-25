@@ -140,7 +140,8 @@ describe("Web Dashboard & API Tests", () => {
     expect(token).toContain(".");
 
     const verified = verifySessionToken(token);
-    expect(verified).toEqual(payload);
+    expect(verified).toMatchObject(payload);
+    expect(verified.exp).toBeGreaterThan(Date.now());
 
     // Tampered signature
     const tampered = token.slice(0, -4) + "abcd";

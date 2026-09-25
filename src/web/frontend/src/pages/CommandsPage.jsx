@@ -115,7 +115,7 @@ export default function CommandsPage({ user, botInfo, showToast }) {
 
     try {
       await toggleCommand(guildId, {
-        channelId: selectedChannel,
+        channelId: selectedChannel === "global" ? null : selectedChannel,
         commandName,
         enable: nextEnable,
       });
@@ -176,7 +176,7 @@ export default function CommandsPage({ user, botInfo, showToast }) {
 
     try {
       const res = await toggleCommandModule(guildId, {
-        channelId: selectedChannel,
+        channelId: selectedChannel === "global" ? null : selectedChannel,
         category: moduleId,
         enable: shouldEnableAll,
       });
@@ -341,6 +341,9 @@ export default function CommandsPage({ user, botInfo, showToast }) {
                   #{ch.name}
                 </option>
               ))}
+              <option value="global" className="bg-slate-900 text-white font-bold">
+                🌐 Server-Wide (Global)
+              </option>
             </select>
           </div>
         </div>

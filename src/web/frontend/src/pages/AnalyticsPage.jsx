@@ -19,6 +19,7 @@ import {
   Search,
   RefreshCw,
   Award,
+  Download,
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -66,6 +67,59 @@ export default function AnalyticsPage({ user, botInfo }) {
   useEffect(() => {
     loadAnalytics(timeframe);
   }, [guildId, timeframe]);
+
+  const handleExportCSV = () => {
+    if (!data) return;
+
+    const chatters = data.topChatters || [];
+    const voice = data.topVoice || [];
+    const timeline = data.timeline || [];
+    const summary = data.summary || {};
+    const insights = data.insights || {};
+
+    let csv = "=== SERVER ANALYTICS REPORT ===\n\n";
+    
+    csv += "--- SUMMARY ---\n";
+    csv += `Total Messages,${summary.totalMessages}\n`;
+    csv += `Total Voice Hours,${summary.totalVoiceHours}\n`;
+    csv += `Net Growth,${summary.netGrowth >= 0 ? "+" : ""}${summary.netGrowth}\n`;
+    csv += `Retention Rate,${summary.retentionRate}%\n`;
+    csv += `Active Members Tracked,${summary.activeTracked}\n\n`;
+
+    csv += "--- INSIGHTS ---\n";
+    csv += `Prime Activity Window,${insights.primeWindow}\n`;
+    csv += `Peak Traffic Day,${insights.busiestDay}\n`;
+    csv += `Most Active Channel,${(insights.topChannel || "").replace(/,/g, " ")}\n`;
+    csv += `Growth Momentum,${(insights.growthSummary || "").replace(/,/g, " ")}\n\n`;
+
+    csv += `--- LEADERBOARD (${leaderboardTab.toUpperCase()}) ---\n`;
+    if (leaderboardTab === "chat") {
+      csv += "Rank,Username,User ID,Total Messages,Weekly Messages\n";
+      chatters.forEach((u, i) => {
+        csv += `${i + 1},"${u.username}",${u.userId},${u.totalMessages},${u.weeklyMessages}\n`;
+      });
+    } else {
+      csv += "Rank,Username,User ID,Total Voice (Mins),Weekly Voice (Mins)\n";
+      voice.forEach((u, i) => {
+        csv += `${i + 1},"${u.username}",${u.userId},${u.totalMinutes},${u.weeklyMinutes}\n`;
+      });
+    }
+
+    csv += "\n--- TIMELINE ---\n";
+    csv += "Date,Messages,Voice Minutes,Joins,Leaves,Net Growth\n";
+    timeline.forEach((t) => {
+      csv += `${t.date},${t.messages},${t.voiceMinutes ?? t.vc_minutes ?? 0},${t.joins},${t.leaves},${t.netGrowth}\n`;
+    });
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `guild_${guildId}_analytics_${leaderboardTab}_${timeframe}d.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const summary = data?.summary || {
     totalMessages: 0,
@@ -261,6 +315,16 @@ export default function AnalyticsPage({ user, botInfo }) {
                 {t.label}
               </button>
             ))}
+
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              disabled={loading || !data}
+              className="p-2 rounded-xl text-slate-400 hover:text-indigo-400 hover:bg-white/5 transition-colors cursor-pointer"
+              title="Export Analytics Data to CSV"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
 
             <button
               type="button"
@@ -592,16 +656,28 @@ export default function AnalyticsPage({ user, botInfo }) {
                 </button>
               </div>
 
-              {/* Search Member */}
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
-                <input
-                  type="text"
-                  placeholder="Search user..."
-                  value={leaderboardSearch}
-                  onChange={(e) => setLeaderboardSearch(e.target.value)}
-                  className="pl-9 pr-3 py-1.5 rounded-xl bg-slate-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-36 sm:w-44"
-                />
+              {/* Search Member & Export */}
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search user..."
+                    value={leaderboardSearch}
+                    onChange={(e) => setLeaderboardSearch(e.target.value)}
+                    className="pl-9 pr-3 py-1.5 rounded-xl bg-slate-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-36 sm:w-44"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExportCSV}
+                  disabled={loading || !data}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/50 text-xs font-semibold shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  title="Export Data to CSV"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export CSV</span>
+                </button>
               </div>
             </div>
           </div>

@@ -54,7 +54,9 @@ export async function fetchDiscordGuilds(accessToken) {
 
 // Session Token Helper (HMAC Signed payload)
 export function createSessionToken(data) {
-  const payload = Buffer.from(JSON.stringify(data)).toString("base64url");
+  // Add 7-day expiration timestamp
+  const payloadData = { ...data, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 };
+  const payload = Buffer.from(JSON.stringify(payloadData)).toString("base64url");
   const signature = crypto
     .createHmac("sha256", CONFIG.SESSION_SECRET)
     .update(payload)
@@ -74,7 +76,14 @@ export function verifySessionToken(token) {
 
   try {
     const decoded = Buffer.from(payload, "base64url").toString("utf-8");
-    return JSON.parse(decoded);
+    const data = JSON.parse(decoded);
+    
+    // Check expiration if it exists
+    if (data.exp && Date.now() > data.exp) {
+      return null;
+    }
+    
+    return data;
   } catch {
     return null;
   }

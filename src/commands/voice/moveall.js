@@ -33,8 +33,8 @@ export default createCommand({
     const { guild, member } = ctx;
     if (!guild) return;
 
-    const sourceChannelId = ctx.options.source;
-    const targetChannelId = ctx.options.target || member?.voice.channelId;
+    const sourceChannelId = (ctx.options.source || ctx.options._args?.[0])?.replace(/[<#>]/g, "");
+    const targetChannelId = (ctx.options.target || ctx.options._args?.[1])?.replace(/[<#>]/g, "") || member?.voice.channelId;
 
     if (!targetChannelId) {
       return await ctx.reply({
