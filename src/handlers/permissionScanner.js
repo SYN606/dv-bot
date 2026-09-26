@@ -1,6 +1,5 @@
 import { PermissionFlagsBits } from "discord.js";
-import { getModLogChannel, sendModLog } from "../logging/mod_log.js";
-import { makeEmbed } from "../core/embeds.js";
+import { sendModLog } from "../utils/modLog.js";
 
 const DANGEROUS_PERMISSIONS = [
   { name: "Administrator", flag: PermissionFlagsBits.Administrator },
@@ -50,14 +49,6 @@ export class PermissionScanner {
   }
 
   async scanGuild(guild) {
-    // Only scan if there's a mod log channel to report to, 
-    // otherwise there's nowhere to send the alert!
-    const modLogId = await getModLogChannel(guild.id);
-    if (!modLogId) return;
-
-    const modLogChannel = guild.channels.cache.get(modLogId);
-    if (!modLogChannel) return;
-
     try {
       await guild.members.fetch(); // Ensure all members are cached
     } catch (e) {}
@@ -98,15 +89,12 @@ export class PermissionScanner {
 
       description += `\n\n*Tip: Regularly review roles to ensure no user has unauthorized access. Consider stripping these permissions if they were not explicitly granted.*`;
 
-      await sendModLog(guild, {
-        embeds: [
-          makeEmbed({
-            title: "🛡️ Security Alert: Dangerous Permissions Detected",
-            description,
-            level: "WARNING",
-            color: 0xffaa00, // Amber/Orange
-          })
-        ]
+      await sendModLog({
+        guild,
+        category: "SECURITY",
+        title: "Dangerous Permissions Detected",
+        description,
+        level: "WARNING"
       });
     }
   }
