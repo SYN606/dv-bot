@@ -12,6 +12,7 @@ import CommandsPage from "./pages/CommandsPage";
 import StickyPage from "./pages/StickyPage";
 import AutoresponderPage from "./pages/AutoresponderPage";
 import ConfigPage from "./pages/ConfigPage";
+import PermissionsAuditPage from "./pages/PermissionsAuditPage";
 import DocumentationPage from "./pages/DocumentationPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
@@ -121,6 +122,16 @@ export default function App() {
           path="/dashboard/:guildId/admin-roles"
           element={
             <AdminRolesPage
+              user={user}
+              botInfo={botInfo}
+              showToast={showToast}
+            />
+          }
+        />
+        <Route
+          path="/dashboard/:guildId/permissions"
+          element={
+            <PermissionsAuditPage
               user={user}
               botInfo={botInfo}
               showToast={showToast}

@@ -9,3 +9,4 @@ export { moderationRoutes } from "./moderationRoutes.js";
 export { commandRoutes } from "./commandRoutes.js";
 export { aclRoutes } from "./aclRoutes.js";
 export { analyticsRoutes } from "./analyticsRoutes.js";
+export { permissionsRoutes } from "./permissionsRoutes.js";
