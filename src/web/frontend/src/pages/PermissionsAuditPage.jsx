@@ -96,21 +96,53 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                 </div>
               </div>
               <div className="flex-1 space-y-4">
+                {/* Dangerous Permissions */}
                 <div>
                   <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                    {memberPerms.permissions.dangerous.length > 0 ? (
-                      <><AlertTriangle className="w-4 h-4 text-amber-500" /> Dangerous Perms</>
+                    {memberPerms.permissions?.dangerous?.length > 0 ? (
+                      <><AlertTriangle className="w-4 h-4 text-amber-500" /> Dangerous Perms ({memberPerms.permissions.dangerous.length})</>
                     ) : (
-                      <><ShieldCheck className="w-4 h-4 text-emerald-500" /> Safe</>
+                      <><ShieldCheck className="w-4 h-4 text-emerald-500" /> Safe (No Dangerous Perms)</>
                     )}
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {memberPerms.permissions.dangerous.length > 0 ? memberPerms.permissions.dangerous.map(p => (
+                    {memberPerms.permissions?.dangerous?.length > 0 ? memberPerms.permissions.dangerous.map(p => (
                       <span key={p} className="px-2 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-md text-xs font-medium">
                         {p}
                       </span>
+                    )) : null}
+                  </div>
+                </div>
+
+                {/* Roles */}
+                <div className="pt-2 border-t border-white/5">
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    Roles ({memberPerms.user?.roles?.length || 0})
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {memberPerms.user?.roles?.length > 0 ? memberPerms.user.roles.map(r => (
+                      <span key={r.id} className="text-xs px-2 py-1 rounded bg-slate-800/50 text-slate-300 border border-white/5 flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: r.hexColor !== "#000000" ? r.hexColor : "#99aab5" }} />
+                        {r.name}
+                      </span>
                     )) : (
-                      <span className="text-sm text-slate-400">No dangerous permissions found.</span>
+                      <span className="text-xs text-slate-500">No roles</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* All Permissions */}
+                <div className="pt-2 border-t border-white/5">
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    All Active Permissions ({memberPerms.permissions?.all?.length || 0})
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto custom-scrollbar pr-2">
+                    {memberPerms.permissions?.all?.length > 0 ? memberPerms.permissions.all.map(p => (
+                      <span key={p} className="text-[10px] bg-slate-800/80 text-slate-400 px-1.5 py-0.5 rounded font-mono">
+                        {p}
+                      </span>
+                    )) : (
+                      <span className="text-xs text-slate-500">No permissions</span>
                     )}
                   </div>
                 </div>
@@ -120,8 +152,38 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
         </div>
 
         {/* Server Audit */}
+        <div className="flex items-center justify-between mt-8 mb-4">
+          <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5 text-indigo-400" />
+            Full Server Permissions Audit
+          </h2>
+          <button
+            onClick={() => {
+              setLoading(true);
+              fetchApi(`/guilds/${guildId}/permissions/audit`)
+                .then((data) => {
+                  if (data && data.roles && data.members) {
+                    setAuditData(data);
+                  } else {
+                    setAuditData({ roles: [], members: [] });
+                    if (data && data.error) showToast(data.error, "error");
+                  }
+                })
+                .catch((err) => {
+                  setAuditData({ roles: [], members: [] });
+                  showToast("Failed to refresh permissions audit.", "error");
+                })
+                .finally(() => setLoading(false));
+            }}
+            disabled={loading}
+            className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl transition-all disabled:opacity-50 flex items-center gap-2"
+          >
+            {loading ? "Scanning..." : "Refresh Scan"}
+          </button>
+        </div>
+
         {loading ? (
-          <div className="flex items-center justify-center h-40">
+          <div className="flex items-center justify-center h-40 bg-slate-900/50 border border-white/5 rounded-2xl">
             <div className="w-8 h-8 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
           </div>
         ) : (
