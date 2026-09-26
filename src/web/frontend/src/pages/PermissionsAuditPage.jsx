@@ -15,9 +15,15 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
   useEffect(() => {
     fetchApi(`/guilds/${guildId}/permissions/audit`)
       .then((data) => {
-        setAuditData(data || { roles: [], members: [] });
+        if (data && data.roles && data.members) {
+          setAuditData(data);
+        } else {
+          setAuditData({ roles: [], members: [] });
+          if (data && data.error) showToast(data.error, "error");
+        }
       })
       .catch((err) => {
+        setAuditData({ roles: [], members: [] });
         showToast("Failed to fetch permissions audit.", "error");
       })
       .finally(() => setLoading(false));
@@ -125,10 +131,10 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
             <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6">
               <h2 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
                 <Key className="w-5 h-5 text-amber-400" />
-                Dangerous Roles ({auditData.roles.length})
+                Dangerous Roles ({auditData?.roles?.length || 0})
               </h2>
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                {auditData.roles.map(role => (
+                {auditData?.roles?.map(role => (
                   <div key={role.id} className="bg-slate-950/50 border border-white/5 rounded-xl p-4 flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -138,7 +144,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                       {role.isManaged && <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full uppercase font-bold">Bot/Integration</span>}
                     </div>
                     <div className="flex flex-wrap gap-1.5 mt-1">
-                      {role.permissions.map(p => (
+                      {role.permissions?.map(p => (
                         <span key={p} className="text-[10px] bg-rose-500/10 text-rose-300 px-1.5 py-0.5 rounded uppercase font-semibold">
                           {p}
                         </span>
@@ -146,7 +152,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     </div>
                   </div>
                 ))}
-                {auditData.roles.length === 0 && (
+                {(!auditData?.roles || auditData.roles.length === 0) && (
                   <div className="text-slate-400 text-sm text-center py-6">No roles have dangerous permissions!</div>
                 )}
               </div>
@@ -156,10 +162,10 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
             <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6">
               <h2 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
                 <UserIcon className="w-5 h-5 text-rose-400" />
-                Privileged Members ({auditData.members.length})
+                Privileged Members ({auditData?.members?.length || 0})
               </h2>
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                {auditData.members.map(member => (
+                {auditData?.members?.map(member => (
                   <div key={member.id} className="bg-slate-950/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3">
                     <div className="flex items-center gap-3">
                       <img src={member.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"} className="w-8 h-8 rounded-full" alt="av" />
@@ -171,7 +177,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {member.permissions.map(p => (
+                      {member.permissions?.map(p => (
                         <span key={p} className="text-[10px] bg-rose-500/10 text-rose-300 px-1.5 py-0.5 rounded uppercase font-semibold">
                           {p}
                         </span>
@@ -179,7 +185,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     </div>
                   </div>
                 ))}
-                {auditData.members.length === 0 && (
+                {(!auditData?.members || auditData.members.length === 0) && (
                   <div className="text-slate-400 text-sm text-center py-6">No members have dangerous permissions!</div>
                 )}
               </div>
