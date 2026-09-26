@@ -202,12 +202,14 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
     >
       <div className="space-y-6">
         {/* Page Header */}
-        <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
-            <Shield className="w-6 h-6 text-indigo-400" />
+        <div className="mb-8">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-amber-500/30 to-orange-600/30 border border-amber-500/20 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+              <Shield className="w-6 h-6" />
+            </div>
             <span>Staff & Admin Access</span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
             Authorize custom Discord roles or individual members with full bot administrative privileges without requiring the Discord Administrator permission bit.
           </p>
         </div>

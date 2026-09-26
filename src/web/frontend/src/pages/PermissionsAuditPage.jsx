@@ -121,13 +121,15 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Header & Heatmap Summary */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-              <ShieldAlert className="w-7 h-7 text-rose-500" />
-              Permissions Audit
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-rose-600/30 to-red-600/30 border border-rose-500/20 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.2)]">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <span>Permissions Audit</span>
             </h1>
-            <p className="text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
               Detect and manage members holding dangerous permissions.
             </p>
           </div>
