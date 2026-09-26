@@ -80,23 +80,7 @@ export default {
     const command = client.commands.get(resolvedName);
     if (!command || command.slashOnly) return;
 
-    // A. Global Cooldown Check
-    if (!(await GLOBAL_COOLDOWN.checkMessage(message))) {
-      const retry = GLOBAL_COOLDOWN.retryAfter(message.author.id, message.guild.id);
-      const reply = await message.reply({
-        embeds: [
-          makeEmbed({
-            title: "Rate Limited",
-            description: `${EMOJIS.get("warning") || "⚠️"} You are on cooldown. Please wait **${retry.toFixed(1)}s**.`,
-            level: "WARNING",
-          }),
-        ],
-      }).catch(() => {});
-      if (reply) setTimeout(() => reply.delete().catch(() => {}), 5000);
-      return;
-    }
-
-    // B. ACL Policy & Channel Restriction Check (Admins bypass)
+    // A. ACL Policy & Channel Restriction Check (Admins bypass)
     const aclCheck = await isExecutionAllowed(
       message.guild.id,
       message.channel.id,
@@ -119,7 +103,7 @@ export default {
 
     // B1. Guild-wide command disable check (dashboard toggle)
     const globallyDisabled = await isCommandGloballyDisabled(message.guild.id, resolvedName);
-    if (globallyDisabled) {
+    if (globallyDisabled && !(await isBotAdmin(message))) {
       const reply = await message.reply({
         embeds: [
           makeEmbed({
@@ -193,6 +177,22 @@ export default {
         ],
       }).catch(() => {});
       if (reply) setTimeout(() => reply.delete().catch(() => {}), 6000);
+      return;
+    }
+
+    // C. Global Cooldown Check
+    if (!(await GLOBAL_COOLDOWN.checkMessage(message))) {
+      const retry = GLOBAL_COOLDOWN.retryAfter(message.author.id, message.guild.id);
+      const reply = await message.reply({
+        embeds: [
+          makeEmbed({
+            title: "Rate Limited",
+            description: `${EMOJIS.get("warning") || "⚠️"} You are on cooldown. Please wait **${retry.toFixed(1)}s**.`,
+            level: "WARNING",
+          }),
+        ],
+      }).catch(() => {});
+      if (reply) setTimeout(() => reply.delete().catch(() => {}), 5000);
       return;
     }
 

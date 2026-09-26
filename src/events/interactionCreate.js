@@ -81,22 +81,7 @@ export default {
       });
     }
 
-    // A. Global Cooldown Check
-    if (!(await GLOBAL_COOLDOWN.checkInteraction(interaction))) {
-      const retry = GLOBAL_COOLDOWN.retryAfter(interaction.user.id, interaction.guildId);
-      return await interaction.reply({
-        embeds: [
-          makeEmbed({
-            title: "Rate Limited",
-            description: `${EMOJIS.get("warning") || "⚠️"} You are on cooldown. Please wait **${retry.toFixed(1)}s**.`,
-            level: "WARNING",
-          }),
-        ],
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-
-    // B. ACL Policy & Channel Restriction Check (Admins bypass)
+    // A. ACL Policy & Channel Restriction Check (Admins bypass)
     if (interaction.guild && interaction.channel) {
       const aclCheck = await isExecutionAllowed(
         interaction.guild.id,
@@ -119,7 +104,7 @@ export default {
 
       // B1. Guild-wide command disable check (dashboard toggle)
       const globallyDisabled = await isCommandGloballyDisabled(interaction.guild.id, commandName);
-      if (globallyDisabled) {
+      if (globallyDisabled && !(await isBotAdmin(interaction))) {
         return await interaction.reply({
           embeds: [
             makeEmbed({
@@ -186,6 +171,21 @@ export default {
             title: "Permission Denied",
             description: `${EMOJIS.get("fail") || "❌"} You lack the required moderation permissions to run this command.`,
             level: "ERROR",
+          }),
+        ],
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    // C. Global Cooldown Check
+    if (!(await GLOBAL_COOLDOWN.checkInteraction(interaction))) {
+      const retry = GLOBAL_COOLDOWN.retryAfter(interaction.user.id, interaction.guildId);
+      return await interaction.reply({
+        embeds: [
+          makeEmbed({
+            title: "Rate Limited",
+            description: `${EMOJIS.get("warning") || "⚠️"} You are on cooldown. Please wait **${retry.toFixed(1)}s**.`,
+            level: "WARNING",
           }),
         ],
         flags: MessageFlags.Ephemeral,
