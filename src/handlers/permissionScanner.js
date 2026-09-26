@@ -1,5 +1,6 @@
 import { PermissionFlagsBits } from "discord.js";
 import { sendModLog } from "../utils/modLog.js";
+import { ModerationLogConfig } from "../db/models/index.js";
 
 const DANGEROUS_PERMISSIONS = [
   { name: "Administrator", flag: PermissionFlagsBits.Administrator },
@@ -41,6 +42,12 @@ export class PermissionScanner {
     console.log("[PermissionScanner] Running hourly server permission audit...");
     for (const guild of this.client.guilds.cache.values()) {
       try {
+        // Skip entirely if ModLog isn't configured, saves massive API calls
+        const config = await ModerationLogConfig.findByPk(String(guild.id));
+        if (!config || !config.enabled || !config.channel_id) {
+          continue;
+        }
+
         await this.scanGuild(guild);
       } catch (err) {
         console.error(`[PermissionScanner] Failed to scan guild ${guild.id}:`, err);

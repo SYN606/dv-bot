@@ -65,7 +65,8 @@ export default createCommand({
       });
     }
 
-    const roles = member.roles.cache.filter(r => r.id !== guild.id).map(r => r.toString()).join(", ") || "None";
+    const rawRoles = member.roles.cache.filter(r => r.id !== guild.id).map(r => r.toString()).join(", ");
+    const roles = rawRoles.length > 1024 ? rawRoles.substring(0, 1020) + "..." : rawRoles || "None";
 
     return await ctx.reply({
       embeds: [
