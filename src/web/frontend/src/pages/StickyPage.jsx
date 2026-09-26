@@ -214,7 +214,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
             <div className="px-4 py-2 rounded-2xl bg-slate-900/80 border border-white/5 flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
               <div>
-                <p className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Active Notices</p>
+                <p className="text-xs font-mono uppercase tracking-wider text-slate-400">Active Notices</p>
                 <p className="text-sm font-bold text-white">{stickyList.length} Channels</p>
               </div>
             </div>
@@ -222,7 +222,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
             <div className="px-4 py-2 rounded-2xl bg-slate-900/80 border border-white/5 flex items-center gap-3">
               <RefreshCw className="w-4 h-4 text-indigo-400" />
               <div>
-                <p className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Total Repins</p>
+                <p className="text-xs font-mono uppercase tracking-wider text-slate-400">Total Repins</p>
                 <p className="text-sm font-bold text-white">{totalRepins.toLocaleString()}</p>
               </div>
             </div>
@@ -295,7 +295,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
                 {/* Custom Server Emojis Quick Picker */}
                 {showEmojiPicker && serverEmojis.length > 0 && (
                   <div className="mb-3 p-3 rounded-xl bg-slate-900/90 border border-white/10 max-h-36 overflow-y-auto">
-                    <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-2">
+                    <p className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
                       Click to insert custom server emoji
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -327,7 +327,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
                   className="w-full p-4 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-sans leading-relaxed"
                 />
 
-                <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500 font-mono">
+                <div className="flex items-center justify-between mt-1 text-xs text-slate-500 font-mono">
                   <span>
                     Tip: Paste an image link (e.g. <code>https://.../banner.png</code>) to auto-render an embed banner.
                   </span>
@@ -346,7 +346,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
                 />
                 <label htmlFor="postNowCheckbox" className="text-xs text-slate-300 cursor-pointer select-none">
                   <span className="font-semibold text-white">Deploy notice immediately</span>
-                  <span className="block text-[11px] text-slate-400">
+                  <span className="block text-xs text-slate-400">
                     Sends or refreshes the notice in the channel immediately upon saving.
                   </span>
                 </label>
@@ -387,7 +387,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
                   <Eye className="w-4 h-4 text-cyan-400" />
                   <span>Discord Notice Live Preview</span>
                 </div>
-                <span className="text-[10px] font-mono text-slate-500 uppercase">
+                <span className="text-xs font-mono text-slate-500 uppercase">
                   #{channelMap.get(selectedChannel) || "channel"}
                 </span>
               </div>
@@ -427,7 +427,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
                   </div>
                 )}
 
-                <div className="pt-2 flex items-center justify-between text-[10px] text-[#949ba4] font-mono">
+                <div className="pt-2 flex items-center justify-between text-xs text-[#949ba4] font-mono">
                   <span>{botInfo?.username || "Digital Vigital"}</span>
                   <span>Auto-Repinning Notice</span>
                 </div>
@@ -439,10 +439,10 @@ export default function StickyPage({ user, botInfo, showToast }) {
                   <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
                   <span>How Sticky Notices Work</span>
                 </div>
-                <p className="text-[11px] leading-relaxed">
+                <p className="text-xs leading-relaxed">
                   Whenever conversation occurs in the target channel, the bot automatically deletes the previous notice and posts a fresh copy at the very bottom.
                 </p>
-                <p className="text-[11px] leading-relaxed">
+                <p className="text-xs leading-relaxed">
                   Chat bursts are automatically debounced (3-second cooldown) to prevent spam loops or Discord API rate limits.
                 </p>
               </div>
@@ -504,7 +504,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
                         <span className="font-bold text-xs text-cyan-300 truncate">
                           #{channelName}
                         </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
                           {item.counter || 0} repins
                         </span>
                       </div>
@@ -515,7 +515,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                      <span className="text-[10px] font-mono text-slate-500 truncate max-w-[140px]">
+                      <span className="text-xs font-mono text-slate-500 truncate max-w-[140px]">
                         ID: {item.channel_id}
                       </span>
 
@@ -526,7 +526,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
                           title="Edit in form"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
-                          <span className="text-[11px]">Edit</span>
+                          <span className="text-xs">Edit</span>
                         </button>
                         <button
                           onClick={() => handleDelete(item.channel_id)}

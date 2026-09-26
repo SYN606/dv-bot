@@ -76,7 +76,7 @@ export function EmojiBadge({ emoji, onRemove = null, size = "md" }) {
         <span className={fontSize}>{emoji}</span>
       )}
       {parsed?.isCustom && (
-        <span className="text-[10px] text-slate-400 font-mono">:{parsed.name}:</span>
+        <span className="text-xs text-slate-400 font-mono">:{parsed.name}:</span>
       )}
       {onRemove && (
         <button
@@ -379,11 +379,11 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-xs text-white">Editing Rule #{editingId}</span>
-                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono font-semibold">
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-mono font-semibold">
                       ACTIVE EDIT
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-300 mt-0.5">
+                  <p className="text-xs text-slate-300 mt-0.5">
                     Modifying trigger <span className="font-mono text-amber-300 font-semibold">"{trigger || "..."}"</span>. Saving will update this rule directly.
                   </p>
                 </div>
@@ -407,7 +407,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                 <h3 className="font-bold text-sm text-white">
                   {editingId ? `Edit Autoresponder Rule #${editingId}` : "Create New Autoresponder Rule"}
                 </h3>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-xs text-slate-400">
                   {editingId ? "Customize triggers, actions, cooldowns, or emoji reactions" : "Configure triggers, match conditions, reactions, and responses"}
                 </p>
               </div>
@@ -446,7 +446,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                   />
                 </div>
                 {regexStatus && (
-                  <p className={`text-[11px] flex items-center gap-1.5 ${regexStatus.valid ? "text-emerald-400" : "text-rose-400"}`}>
+                  <p className={`text-xs flex items-center gap-1.5 ${regexStatus.valid ? "text-emerald-400" : "text-rose-400"}`}>
                     {regexStatus.valid ? (
                       <>
                         <CheckCircle2 className="w-3.5 h-3.5" /> Valid Regular Expression
@@ -485,7 +485,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                   <Smile className="w-3.5 h-3.5 text-indigo-400" />
                   <span>Emoji Reactions (Selected: {selectedEmojis.length})</span>
                 </label>
-                <span className="text-[10px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   The bot will automatically react to the user message with these emojis
                 </span>
               </div>
@@ -533,7 +533,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
 
                   {/* Section 1: Server Custom Emojis */}
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                    <div className="flex items-center justify-between text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">
                       <span>Server Custom Emojis ({serverEmojis.length})</span>
                       {serverEmojis.length === 0 && (
                         <span className="text-slate-500 lowercase">no custom emojis uploaded to guild</span>
@@ -580,7 +580,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
 
                   {/* Section 2: Quick Unicode Emojis */}
                   <div className="space-y-2 border-t border-white/5 pt-3">
-                    <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                    <div className="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">
                       Standard Unicode Emojis
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -679,7 +679,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                     {selectedEmojis.length === 0 && <span className="text-rose-400">*</span>}
                   </label>
                   {selectedEmojis.length > 0 && !reply.trim() && (
-                    <span className="text-[10px] text-amber-300 font-mono">
+                    <span className="text-xs text-amber-300 font-mono">
                       (Optional: Reactions-only mode active)
                     </span>
                   )}
@@ -698,7 +698,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
 
                 {/* Variable Quick-Insert Chips */}
                 <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                  <span className="text-[10px] text-slate-400 font-mono">Variables:</span>
+                  <span className="text-xs text-slate-400 font-mono">Variables:</span>
                   {[
                     { tag: "{user}", label: "@{user}" },
                     { tag: "{username}", label: "{username}" },
@@ -712,7 +712,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                       key={v.tag}
                       type="button"
                       onClick={() => setReply((prev) => (prev ? `${prev} ${v.tag}` : v.tag))}
-                      className="px-2 py-0.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-[10px] font-mono border border-indigo-500/20 transition-colors cursor-pointer"
+                      className="px-2 py-0.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-xs font-mono border border-indigo-500/20 transition-colors cursor-pointer"
                       title={`Insert ${v.tag}`}
                     >
                       {v.label}
@@ -746,7 +746,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
               <div className="flex items-center justify-between sm:justify-center gap-3 p-3 rounded-xl bg-slate-900/40 border border-white/5">
                 <div className="space-y-0.5">
                   <p className="text-xs font-semibold text-slate-200">Delete Trigger Message</p>
-                  <p className="text-[10px] text-slate-400">Deletes user's chat message</p>
+                  <p className="text-xs text-slate-400">Deletes user's chat message</p>
                 </div>
                 <input
                   type="checkbox"
@@ -759,7 +759,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
               <div className="flex items-center justify-between sm:justify-center gap-3 p-3 rounded-xl bg-slate-900/40 border border-white/5">
                 <div className="space-y-0.5">
                   <p className="text-xs font-semibold text-slate-200">Ignore Bots</p>
-                  <p className="text-[10px] text-slate-400">Prevents bot message loops</p>
+                  <p className="text-xs text-slate-400">Prevents bot message loops</p>
                 </div>
                 <input
                   type="checkbox"
@@ -773,7 +773,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
             {/* Live Discord Chat Simulation Preview */}
             {(trigger.trim() || reply.trim() || selectedEmojis.length > 0) && (
               <div className="p-4 rounded-2xl bg-slate-950/70 border border-white/10 space-y-3">
-                <div className="flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                <div className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">
                   <Eye className="w-3.5 h-3.5 text-indigo-400" />
                   <span>Live Discord Chat Simulation</span>
                 </div>
@@ -786,7 +786,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                   <div className="space-y-1">
                     <div className="flex items-baseline gap-2">
                       <span className="font-semibold text-xs text-slate-200">Member</span>
-                      <span className="text-[10px] text-slate-500">Today at 12:00 PM</span>
+                      <span className="text-xs text-slate-500">Today at 12:00 PM</span>
                     </div>
                     <p className="text-xs text-slate-300">
                       {trigger.trim() || "trigger message"}
@@ -807,7 +807,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                               ) : (
                                 <span>{em}</span>
                               )}
-                              <span className="text-[10px] text-indigo-300 font-semibold font-mono">1</span>
+                              <span className="text-xs text-indigo-300 font-semibold font-mono">1</span>
                             </span>
                           );
                         })}
@@ -832,7 +832,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                         <span className="px-1 py-0.2 rounded bg-[#5865F2] text-[9px] font-bold text-white uppercase">
                           BOT
                         </span>
-                        <span className="text-[10px] text-slate-500">Today at 12:00 PM</span>
+                        <span className="text-xs text-slate-500">Today at 12:00 PM</span>
                       </div>
 
                       {isEmbed ? (
@@ -965,7 +965,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                           <button
                             type="button"
                             onClick={() => handleToggle(ruleId)}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                               isRuleActive
                                 ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
                                 : "bg-slate-800 text-slate-400 border border-white/10"
@@ -977,33 +977,33 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
 
                           {/* Currently editing badge */}
                           {editingId === ruleId && (
-                            <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold flex items-center gap-1">
                               <Edit2 className="w-2.5 h-2.5" /> Editing
                             </span>
                           )}
 
                           {/* Match mode badge */}
-                          <span className="px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[10px] font-mono uppercase">
+                          <span className="px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-xs font-mono uppercase">
                             {rule.match_mode || rule.match_type || "contains"}
                           </span>
 
                           {/* Cooldown badge */}
                           {rule.cooldown > 0 && (
-                            <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px] font-mono flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-mono flex items-center gap-1">
                               <Clock className="w-2.5 h-2.5" /> {rule.cooldown}s
                             </span>
                           )}
 
                           {/* Delete Trigger badge */}
                           {rule.delete_trigger && (
-                            <span className="px-2 py-0.5 rounded-lg bg-rose-500/10 text-rose-300 border border-rose-500/20 text-[10px] font-mono">
+                            <span className="px-2 py-0.5 rounded-lg bg-rose-500/10 text-rose-300 border border-rose-500/20 text-xs font-mono">
                               delete-trigger
                             </span>
                           )}
 
                           {/* Embed badge */}
                           {rule.is_embed && (
-                            <span className="px-2 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-[10px] font-mono">
+                            <span className="px-2 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-xs font-mono">
                               embed
                             </span>
                           )}
@@ -1011,7 +1011,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
 
                         {/* Trigger Phrase */}
                         <div className="flex items-center gap-2">
-                          <span className="text-[11px] text-slate-400 font-mono">Trigger:</span>
+                          <span className="text-xs text-slate-400 font-mono">Trigger:</span>
                           <span className="font-bold text-sm text-white">
                             "{rule.trigger || rule.trigger_phrase}"
                           </span>
@@ -1020,7 +1020,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
                         {/* Emoji Reactions Bar */}
                         {reactions.length > 0 && (
                           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                            <span className="text-[10px] text-slate-400 font-mono">Reactions:</span>
+                            <span className="text-xs text-slate-400 font-mono">Reactions:</span>
                             {reactions.map((em, idx) => (
                               <EmojiBadge key={idx} emoji={em} size="sm" />
                             ))}

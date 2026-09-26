@@ -153,7 +153,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                     </option>
                   ))}
                 </select>
-                <p className="text-[11px] text-slate-500 mt-1.5">Channel where non-media text messages will be removed.</p>
+                <p className="text-xs text-slate-500 mt-1.5">Channel where non-media text messages will be removed.</p>
               </div>
 
               {/* Whitelist / Bypass Role */}
@@ -175,7 +175,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                     </option>
                   ))}
                 </select>
-                <p className="text-[11px] text-slate-500 mt-1.5">Members with this role can chat freely without media restrictions.</p>
+                <p className="text-xs text-slate-500 mt-1.5">Members with this role can chat freely without media restrictions.</p>
               </div>
             </div>
 
@@ -198,7 +198,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                     <Film className="w-4 h-4 text-indigo-400" />
                     <span>All Media Mode (Default)</span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1.5">
+                  <p className="text-xs text-slate-400 mt-1.5">
                     Permits photos, videos (MP4/MOV/WebM), GIFs, Tenor/Giphy/Imgur links, and attached files.
                   </p>
                 </button>
@@ -216,7 +216,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                     <ImageIcon className="w-4 h-4 text-pink-400" />
                     <span>Images Only Mode</span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1.5">
+                  <p className="text-xs text-slate-400 mt-1.5">
                     Strictly limits channel to images (PNG, JPG, JPEG, GIF, WebP). Videos and other files are purged.
                   </p>
                 </button>
@@ -243,7 +243,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                 </div>
                 <div>
                   <span className="text-xs font-bold text-white block tracking-tight">Auto-Mute on 3 Strikes</span>
-                  <span className="text-[10px] text-slate-400 block mt-1 leading-relaxed">
+                  <span className="text-xs text-slate-400 block mt-1 leading-relaxed">
                     Times out user for 60s upon 3 repeat violations within 5 mins.
                   </span>
                 </div>
@@ -267,7 +267,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                 </div>
                 <div>
                   <span className="text-xs font-bold text-white block tracking-tight">Allow NSFW Bypass</span>
-                  <span className="text-[10px] text-slate-400 block mt-1 leading-relaxed">
+                  <span className="text-xs text-slate-400 block mt-1 leading-relaxed">
                     Exempt age-restricted/NSFW channels from media enforcement.
                   </span>
                 </div>
@@ -291,7 +291,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                 </div>
                 <div>
                   <span className="text-xs font-bold text-white block tracking-tight">Post Sticky Notice</span>
-                  <span className="text-[10px] text-slate-400 block mt-1 leading-relaxed">
+                  <span className="text-xs text-slate-400 block mt-1 leading-relaxed">
                     Pins and maintains an informational embed notice at the bottom.
                   </span>
                 </div>
@@ -353,7 +353,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                         <span className="font-bold text-sm text-white">
                           #{channelMap.get(item.channel_id) || item.channel_id}
                         </span>
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg border ${
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg border ${
                           item.image_only
                             ? "bg-pink-500/10 text-pink-300 border-pink-500/20"
                             : "bg-indigo-500/10 text-indigo-300 border-indigo-500/20"
@@ -362,7 +362,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                         </span>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mt-1.5">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-1.5">
                         {item.whitelist_role_id && (
                           <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
                             <ShieldCheck className="w-3 h-3" />

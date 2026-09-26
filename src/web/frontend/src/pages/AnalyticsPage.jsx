@@ -403,7 +403,7 @@ export default function AnalyticsPage({ user, botInfo }) {
               <p className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
                 {summary.totalMessages.toLocaleString()}
               </p>
-              <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-400">
+              <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-400">
                 <span className="text-indigo-300 font-semibold font-mono">
                   ~{summary.dailyAvgMessages.toLocaleString()}
                 </span>
@@ -424,7 +424,7 @@ export default function AnalyticsPage({ user, botInfo }) {
               <p className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
                 {summary.totalVoiceHours} <span className="text-sm font-normal text-slate-400">hrs</span>
               </p>
-              <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-400">
+              <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-400">
                 <span className="text-purple-300 font-semibold font-mono">
                   {summary.totalVoiceMinutes.toLocaleString()} min
                 </span>
@@ -445,7 +445,7 @@ export default function AnalyticsPage({ user, botInfo }) {
               <p className={`text-2xl sm:text-3xl font-black font-mono tracking-tight ${summary.netGrowth >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                 {summary.netGrowth >= 0 ? `+${summary.netGrowth}` : summary.netGrowth}
               </p>
-              <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400 font-mono">
+              <div className="flex items-center gap-2 mt-1 text-xs text-slate-400 font-mono">
                 <span className="text-emerald-300">+{summary.totalJoins} joins</span>
                 <span>•</span>
                 <span className="text-rose-300">-{summary.totalLeaves} leaves</span>
@@ -466,7 +466,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                 <p className="text-2xl sm:text-3xl font-black text-amber-300 font-mono tracking-tight">
                   {summary.retentionRate}%
                 </p>
-                <span className="text-[10px] font-mono text-slate-400">
+                <span className="text-xs font-mono text-slate-400">
                   {summary.activeTracked} active members
                 </span>
               </div>
@@ -489,39 +489,39 @@ export default function AnalyticsPage({ user, botInfo }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1">
-              <span className="text-[10px] text-slate-400 font-mono uppercase">Prime Activity Window</span>
+              <span className="text-xs text-slate-400 font-mono uppercase">Prime Activity Window</span>
               <p className="text-xs font-bold text-white flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-indigo-400" />
                 <span>{insights.primeWindow}</span>
               </p>
-              <span className="text-[10px] text-slate-500 block">Ideal time for events and announcements</span>
+              <span className="text-xs text-slate-500 block">Ideal time for events and announcements</span>
             </div>
 
             <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1">
-              <span className="text-[10px] text-slate-400 font-mono uppercase">Peak Traffic Day</span>
+              <span className="text-xs text-slate-400 font-mono uppercase">Peak Traffic Day</span>
               <p className="text-xs font-bold text-white flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-purple-400" />
                 <span>{insights.busiestDay}</span>
               </p>
-              <span className="text-[10px] text-slate-500 block">Highest conversation volume day</span>
+              <span className="text-xs text-slate-500 block">Highest conversation volume day</span>
             </div>
 
             <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1">
-              <span className="text-[10px] text-slate-400 font-mono uppercase">Most Active Channel</span>
+              <span className="text-xs text-slate-400 font-mono uppercase">Most Active Channel</span>
               <p className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
                 <Hash className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span className="truncate">{insights.topChannel}</span>
               </p>
-              <span className="text-[10px] text-slate-500 block">Primary community discussion hub</span>
+              <span className="text-xs text-slate-500 block">Primary community discussion hub</span>
             </div>
 
             <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1">
-              <span className="text-[10px] text-slate-400 font-mono uppercase">Growth Momentum</span>
+              <span className="text-xs text-slate-400 font-mono uppercase">Growth Momentum</span>
               <p className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span className="truncate">{insights.growthSummary}</span>
               </p>
-              <span className="text-[10px] text-slate-500 block">Rolling timeframe trend</span>
+              <span className="text-xs text-slate-500 block">Rolling timeframe trend</span>
             </div>
           </div>
         </div>
@@ -537,10 +537,10 @@ export default function AnalyticsPage({ user, botInfo }) {
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-white">Daily Message Volume</h3>
-                  <span className="text-[10px] text-slate-400">Total conversation messages per day</span>
+                  <span className="text-xs text-slate-400">Total conversation messages per day</span>
                 </div>
               </div>
-              <span className="text-[10px] font-mono text-indigo-300 bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20">
+              <span className="text-xs font-mono text-indigo-300 bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20">
                 {timeframe} Days Rolling
               </span>
             </div>
@@ -558,10 +558,10 @@ export default function AnalyticsPage({ user, botInfo }) {
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-white">Voice Engagement & Joins</h3>
-                  <span className="text-[10px] text-slate-400">Voice minutes (bars) vs new members (line)</span>
+                  <span className="text-xs text-slate-400">Voice minutes (bars) vs new members (line)</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-[10px] font-mono">
+              <div className="flex items-center gap-2 text-xs font-mono">
                 <span className="text-purple-400">■ Voice Mins</span>
                 <span className="text-emerald-400">● Joins</span>
               </div>
@@ -583,10 +583,10 @@ export default function AnalyticsPage({ user, botInfo }) {
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-white">24-Hour Peak Activity Matrix</h3>
-                  <span className="text-[10px] text-slate-400">Aggregated message density by UTC hour (00:00–23:00)</span>
+                  <span className="text-xs text-slate-400">Aggregated message density by UTC hour (00:00–23:00)</span>
                 </div>
               </div>
-              <span className="text-[10px] font-mono text-rose-300 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
+              <span className="text-xs font-mono text-rose-300 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
                 Peak: {String(data?.hourlyDistribution?.find((_, i) => i === data?.hourlyDistribution?.length)?.hour || "Evening")}
               </span>
             </div>
@@ -604,10 +604,10 @@ export default function AnalyticsPage({ user, botInfo }) {
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-white">Channel Activity Share</h3>
-                  <span className="text-[10px] text-slate-400">Top active discussion channels</span>
+                  <span className="text-xs text-slate-400">Top active discussion channels</span>
                 </div>
               </div>
-              <span className="text-[10px] font-mono text-slate-400">Share of Chat</span>
+              <span className="text-xs font-mono text-slate-400">Share of Chat</span>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-6 mt-4 flex-1 items-center">
@@ -618,7 +618,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                     {/* Inner Label */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                       <span className="text-2xl font-black text-white font-mono">{data.channelBreakdown.length}</span>
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Active</span>
+                      <span className="text-xs text-slate-400 uppercase tracking-wider">Active</span>
                     </div>
                   </div>
                   <div className="w-full sm:w-1/2 space-y-3 flex-1 flex flex-col justify-center">
@@ -630,7 +630,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                             <Hash className="w-3.5 h-3.5 text-indigo-400" />
                             <span className="truncate">{ch.name}</span>
                           </span>
-                          <div className="flex items-center gap-2 font-mono text-[11px]">
+                          <div className="flex items-center gap-2 font-mono text-xs">
                             <span className="text-slate-400">{ch.messages.toLocaleString()} msg</span>
                             <span className="text-indigo-300 font-bold w-9 text-right">{ch.percentage}%</span>
                           </div>
@@ -790,7 +790,7 @@ export default function AnalyticsPage({ user, botInfo }) {
 
                         <div>
                           <p className="text-xs font-bold text-white">{u.username || `User ${u.userId}`}</p>
-                          <span className="text-[10px] text-slate-500 font-mono">ID: {u.userId}</span>
+                          <span className="text-xs text-slate-500 font-mono">ID: {u.userId}</span>
                         </div>
                       </div>
 
@@ -798,7 +798,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                         <span className="text-sm font-black text-indigo-400 font-mono">
                           {countValue.toLocaleString()}
                         </span>
-                        <span className="text-[10px] text-slate-500 block font-mono">
+                        <span className="text-xs text-slate-500 block font-mono">
                           {leaderboardScope === "weekly" ? "weekly msgs" : "total msgs"}
                         </span>
                       </div>
@@ -856,7 +856,7 @@ export default function AnalyticsPage({ user, botInfo }) {
 
                         <div>
                           <p className="text-xs font-bold text-white">{u.username || `User ${u.userId}`}</p>
-                          <span className="text-[10px] text-slate-500 font-mono">ID: {u.userId}</span>
+                          <span className="text-xs text-slate-500 font-mono">ID: {u.userId}</span>
                         </div>
                       </div>
 
@@ -864,7 +864,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                         <span className="text-sm font-black text-purple-400 font-mono">
                           {hoursValue > 0 ? `${hoursValue}h ${remMins}m` : `${remMins}m`}
                         </span>
-                        <span className="text-[10px] text-slate-500 block font-mono">
+                        <span className="text-xs text-slate-500 block font-mono">
                           {leaderboardScope === "weekly" ? "weekly voice" : "total voice"}
                         </span>
                       </div>

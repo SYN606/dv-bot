@@ -209,7 +209,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
             </div>
             <span>Staff & Admin Access</span>
           </h1>
-          <p className="text-sm sm:text-base text-slate-400 mt-2 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
             Authorize custom Discord roles or individual members with full bot administrative privileges without requiring the Discord Administrator permission bit.
           </p>
         </div>
@@ -227,7 +227,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
                       className="w-11 h-11 rounded-2xl object-cover ring-2 ring-amber-500/50"
                     />
                   ) : (
-                    <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-base ring-2 ring-amber-500/40">
+                    <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-sm ring-2 ring-amber-500/40">
                       👑
                     </div>
                   )}
@@ -240,7 +240,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-base text-white truncate">
+                    <span className="font-bold text-sm text-white truncate">
                       {ownerUser?.displayName || ownerUser?.username || `Owner (${ownerId})`}
                     </span>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -253,7 +253,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
                 </div>
               </div>
               <div className="flex items-center gap-2 text-right">
-                <span className="text-sm text-amber-200/80 font-medium bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/20">
+                <span className="text-xs text-amber-200/80 font-medium bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/20">
                   Permanent Supreme Authority
                 </span>
               </div>
@@ -268,13 +268,13 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <UserCheck className="w-5 h-5 text-indigo-400" />
-                  <h3 className="font-bold text-base text-white">Authorized Admin Users</h3>
+                  <h3 className="font-bold text-sm text-white">Authorized Admin Users</h3>
                 </div>
-                <span className="text-sm text-slate-400 font-mono">
+                <span className="text-xs text-slate-400 font-mono">
                   {adminUserIds.length} {adminUserIds.length === 1 ? "User" : "Users"}
                 </span>
               </div>
-              <p className="text-sm text-slate-400">
+              <p className="text-xs text-slate-400">
                 Grant individual server members full bot administrative authority directly, even without a specific staff role.
               </p>
 
@@ -282,7 +282,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
               <form onSubmit={handleAddUser} className="space-y-3">
                 <div ref={searchContainerRef} className="relative">
                   {selectedMember ? (
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border border-indigo-500/40 text-sm text-white">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border border-indigo-500/40 text-xs text-white">
                       <div className="flex items-center gap-2.5 min-w-0">
                         {selectedMember.avatar ? (
                           <img
@@ -329,7 +329,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
                           if (searchResults.length > 0) setShowDropdown(true);
                         }}
                         placeholder="Search member name or paste Discord User ID..."
-                        className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                       />
                       {isSearching && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -373,7 +373,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
                                   </div>
                                 )}
                                 <div className="truncate">
-                                  <p className="text-sm font-semibold text-white truncate">
+                                  <p className="text-xs font-semibold text-white truncate">
                                     {m.displayName || m.username}
                                   </p>
                                   <p className="text-xs font-mono text-slate-500">
@@ -394,7 +394,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
                           );
                         })
                       ) : userQuery && !isSearching ? (
-                        <div className="p-3 text-center text-sm text-slate-400">
+                        <div className="p-3 text-center text-xs text-slate-400">
                           {/^\d{17,20}$/.test(userQuery.trim()) ? (
                             <div className="flex items-center justify-between">
                               <span className="font-mono text-indigo-300">ID: {userQuery.trim()}</span>
@@ -412,7 +412,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
                 <button
                   type="submit"
                   disabled={isAddingUser || (!selectedMember && !/^\d{17,20}$/.test(userQuery.trim()))}
-                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50"
+                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50"
                 >
                   <UserPlus className="w-4 h-4" />
                   <span>{isAddingUser ? "Adding..." : "Add Admin User"}</span>
@@ -422,7 +422,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
               {/* Users List */}
               <div className="pt-2">
                 {adminUsers.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-slate-500">
+                  <div className="text-center py-8 text-xs text-slate-500">
                     <ShieldAlert className="w-8 h-8 mx-auto text-slate-600 mb-2" />
                     No individual admin users designated yet.
                   </div>
@@ -443,13 +443,13 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
                                 className="w-8 h-8 rounded-full object-cover ring-1 ring-white/10"
                               />
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center font-bold text-sm">
+                              <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center font-bold text-xs">
                                 {adminUser.username?.slice(0, 1) || "U"}
                               </div>
                             )}
                             <div className="truncate">
                               <div className="flex items-center gap-1.5 truncate">
-                                <span className="font-semibold text-sm text-white truncate">
+                                <span className="font-semibold text-xs text-white truncate">
                                   {adminUser.username}
                                 </span>
                                 {isOwner && (
@@ -495,13 +495,13 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-purple-400" />
-                  <h3 className="font-bold text-base text-white">Authorized Staff Roles</h3>
+                  <h3 className="font-bold text-sm text-white">Authorized Staff Roles</h3>
                 </div>
-                <span className="text-sm text-slate-400 font-mono">
+                <span className="text-xs text-slate-400 font-mono">
                   {adminRoleIds.length} {adminRoleIds.length === 1 ? "Role" : "Roles"}
                 </span>
               </div>
-              <p className="text-sm text-slate-400">
+              <p className="text-xs text-slate-400">
                 Designate custom server roles. Any member holding one of these roles will receive full bot configuration privileges.
               </p>
 
@@ -510,7 +510,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
                 <select
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border border-white/10 text-sm text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500"
                 >
                   <option value="">Select a role to authorize...</option>
                   {roles
@@ -525,7 +525,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
                 <button
                   type="submit"
                   disabled={isAddingRole || !selectedRole}
-                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50"
+                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50"
                 >
                   <Plus className="w-4 h-4" />
                   <span>{isAddingRole ? "Adding..." : "Add Staff Role"}</span>
@@ -535,7 +535,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
               {/* Roles List */}
               <div className="pt-2">
                 {adminRoleIds.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-slate-500">
+                  <div className="text-center py-8 text-xs text-slate-500">
                     <ShieldAlert className="w-8 h-8 mx-auto text-slate-600 mb-2" />
                     No custom admin roles added yet.
                   </div>
@@ -559,7 +559,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
                               }}
                             />
                             <div className="truncate">
-                              <p className="font-semibold text-sm text-white truncate">
+                              <p className="font-semibold text-xs text-white truncate">
                                 @{role ? role.name : roleId}
                               </p>
                               <p className="text-xs font-mono text-slate-500">
