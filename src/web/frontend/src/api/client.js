@@ -229,3 +229,16 @@ export async function getPublicCommands() {
   return fetchApi("/api/commands");
 }
 
+
+// Supporter Rewards
+export async function getSupporterConfig(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/supporter`);
+}
+
+export async function setSupporterConfig(guildId, data) {
+  return fetchApi(`/api/guilds/${guildId}/supporter`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+

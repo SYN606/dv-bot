@@ -13,6 +13,7 @@ import {
   Sliders,
   ArrowLeftRight,
   X,
+  Trophy,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -42,6 +43,17 @@ export default function Sidebar({
           label: "Analytics & Trends",
           icon: TrendingUp,
           path: `/dashboard/${currentGuild.id}/analytics`,
+        },
+      ],
+    },
+    {
+      group: "GROWTH",
+      items: [
+        {
+          id: "supporter",
+          label: "Supporter Rewards",
+          icon: Trophy,
+          path: `/dashboard/${currentGuild.id}/supporter`,
         },
       ],
     },

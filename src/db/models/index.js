@@ -18,6 +18,7 @@ import {
   TagConfig,
   VCRoleConfig,
   VerificationConfig,
+  SupporterConfig,
 } from "./featureModels.js";
 import {
   AutoResponder,
@@ -62,6 +63,7 @@ export {
   ChannelPermissionSnapshot,
   TagConfig,
   AutoRoleRewardConfig,
+  SupporterConfig,
   TempbanConfig,
   TempbanRecord,
   WarningRecord,

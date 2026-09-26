@@ -10,6 +10,7 @@ import { commandRoutes } from "./commandRoutes.js";
 import { aclRoutes } from "./aclRoutes.js";
 import { analyticsRoutes } from "./analyticsRoutes.js";
 import { permissionsRoutes } from "./permissionsRoutes.js";
+import { supporterRoutes } from "./supporterRoutes.js";
 import { apiCache } from "./cache.js";
 
 /**
@@ -34,6 +35,7 @@ apiRouter.route("/", commandRoutes);
 apiRouter.route("/", aclRoutes);
 apiRouter.route("/", analyticsRoutes);
 apiRouter.route("/", permissionsRoutes);
+apiRouter.route("/", supporterRoutes);
 
 // Re-export cache utility for direct usage if needed
 export { apiCache };

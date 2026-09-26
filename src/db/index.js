@@ -237,6 +237,18 @@ function ensureSqliteSchema(sqlite) {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS supporter_config (
+      guild_id TEXT PRIMARY KEY,
+      enabled INTEGER DEFAULT 0,
+      vanity_text TEXT,
+      vanity_role_id TEXT,
+      vanity_channel_id TEXT,
+      vanity_message TEXT,
+      clan_role_id TEXT,
+      clan_channel_id TEXT,
+      clan_message TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS channel_permission_snapshots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       guild_id TEXT NOT NULL,

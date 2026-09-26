@@ -11,6 +11,7 @@ import {
   tagConfig,
   vcRoleConfig,
   verificationConfig,
+  supporterConfig,
 } from "../schema/sqlite.js";
 
 export const AFK = createModel("AFK", afk, "id");
@@ -23,6 +24,7 @@ export const VerificationConfig = createModel("VerificationConfig", verification
 export const ModerationLogConfig = createModel("ModerationLogConfig", moderationLogConfig, "guild_id");
 export const TagConfig = createModel("TagConfig", tagConfig, "guild_id");
 export const AutoRoleRewardConfig = createModel("AutoRoleRewardConfig", autoRoleRewardConfig, "guild_id");
+export const SupporterConfig = createModel("SupporterConfig", supporterConfig, "guild_id");
 export const ChannelPermissionSnapshot = createModel(
   "ChannelPermissionSnapshot",
   channelPermissionSnapshots,

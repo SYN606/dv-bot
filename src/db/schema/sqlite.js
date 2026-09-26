@@ -434,3 +434,15 @@ export const hourlyActivities = sqliteTable(
     ),
   })
 );
+
+export const supporterConfig = sqliteTable("supporter_config", {
+  guild_id: text("guild_id").primaryKey(),
+  enabled: integer("enabled", { mode: "boolean" }).default(false),
+  vanity_text: text("vanity_text"),
+  vanity_role_id: text("vanity_role_id"),
+  vanity_channel_id: text("vanity_channel_id"),
+  vanity_message: text("vanity_message"),
+  clan_role_id: text("clan_role_id"),
+  clan_channel_id: text("clan_channel_id"),
+  clan_message: text("clan_message"),
+});
