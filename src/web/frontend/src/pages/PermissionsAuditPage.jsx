@@ -105,17 +105,34 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     </h4>
                     
                     {memberPerms.permissions?.length > 0 && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {memberPerms.permissions.map((p, i) => (
-                          <div key={i} className={`p-3 border rounded-xl flex flex-col gap-1.5 ${getRiskColor(p.level)}`}>
-                            <div className="font-bold text-sm flex items-center gap-2">
-                              {p.level === "red" ? "🔴" : p.level === "yellow" ? "🟡" : "🟢"} {p.permission}
+                      <div className="flex flex-col gap-4">
+                        {["red", "yellow", "green"].map(level => {
+                          const levelPerms = memberPerms.permissions.filter(p => p.level === level);
+                          if (levelPerms.length === 0) return null;
+                          
+                          const emoji = level === "red" ? "🔴" : level === "yellow" ? "🟡" : "🟢";
+                          const title = level === "red" ? "RED RISK" : level === "yellow" ? "YELLOW RISK" : "GREEN RISK";
+                          
+                          return (
+                            <div key={level} className="flex flex-col gap-2">
+                              <h5 className={`text-sm font-bold flex items-center gap-2 ${getRiskColor(level).split(' ')[0]}`}>
+                                {emoji} {title}
+                              </h5>
+                              <div className="space-y-2">
+                                {levelPerms.map((p, i) => (
+                                  <div key={i} className="pl-6 border-l-2 border-white/10 ml-2">
+                                    <div className="font-semibold text-slate-200 text-sm flex items-center gap-2">
+                                      {emoji} {p.permission}
+                                    </div>
+                                    <div className="text-xs text-slate-400 font-mono mt-0.5">
+                                      └ Sources: <span className="text-slate-300">{p.roles.join(" • ")}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                            <div className="text-[11px] opacity-80 font-medium">
-                              Sources: {p.roles.join(", ")}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -183,14 +200,24 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                           Audit
                         </button>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {member.permissions.slice(0, 8).map((p, i) => (
-                          <span key={i} className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getRiskColor(p.level)}`}>
-                            {p.level === "red" ? "🔴" : p.level === "yellow" ? "🟡" : "🟢"} {p.permission}
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {member.redCount > 0 && (
+                          <span className="text-xs font-bold text-rose-400">
+                            🔴 {member.redCount} High Risk
                           </span>
-                        ))}
-                        {member.permissions.length > 8 && (
-                          <span className="px-2 py-0.5 bg-slate-800 text-slate-400 rounded text-[10px] font-bold">+{member.permissions.length - 8} more</span>
+                        )}
+                        {member.redCount > 0 && member.yellowCount > 0 && (
+                          <span className="text-xs text-slate-600">|</span>
+                        )}
+                        {member.yellowCount > 0 && (
+                          <span className="text-xs font-bold text-amber-400">
+                            🟡 {member.yellowCount} Medium Risk
+                          </span>
+                        )}
+                        {member.redCount === 0 && member.yellowCount === 0 && (
+                          <span className="text-xs font-bold text-emerald-400">
+                            🟢 Safe (Low Risk Only)
+                          </span>
                         )}
                       </div>
                     </div>
