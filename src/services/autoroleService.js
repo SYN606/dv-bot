@@ -2,7 +2,6 @@ import { AutoRoleRewardConfig, MemberAnalytics, RoleRestriction } from "../db/mo
 import { Op } from "../db/models/drizzleAdapter.js";
 import { makeEmbed } from "../core/embeds.js";
 import { logger } from "../utils/logger.js";
-import { checkDangerousPermissions } from "../handlers/supporterHandler.js"; // Needs to be exported or redefined
 
 async function getBlacklistedUsers(guild, blacklistRoleIds) {
   const blacklistedUsers = new Set();
