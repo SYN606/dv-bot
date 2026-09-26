@@ -25,13 +25,14 @@ export default createCommand({
   description: "Scan and audit a member's dangerous permissions",
   category: "Admin",
   modOnly: true,
+  slashOnly: true,
   slashBuilder,
 
   async execute(ctx) {
     const { guild, client } = ctx;
     if (!guild) return;
 
-    const targetUserId = ctx.options.user?.id || ctx.options.user || (ctx.args ? ctx.args[0]?.replace(/[<@!>]/g, "") : null);
+    const targetUserId = ctx.options.user?.id || ctx.options.user;
     if (!targetUserId) {
       return await ctx.reply("Please specify a user to audit.");
     }
