@@ -53,6 +53,21 @@ export class DVClient extends Client {
       },
     });
 
+    // Suppress AsyncEventEmitter memory leak warnings for high-listener bots
+    this.setMaxListeners(50);
+    if (this.rest) this.rest.setMaxListeners(50);
+    if (this.ws && typeof this.ws.setMaxListeners === "function") {
+      this.ws.setMaxListeners(50);
+    }
+    
+    // In discord.js v14, shards are managed internally, but we can hook into shard creation
+    // if the warning specifically comes from WebSocketShard.
+    this.ws.on("shardCreate", (shard) => {
+      if (typeof shard.setMaxListeners === "function") {
+        shard.setMaxListeners(50);
+      }
+    });
+
     this.commands = new Collection();
     this.aliases = new Collection();
     this.components = new Collection();
