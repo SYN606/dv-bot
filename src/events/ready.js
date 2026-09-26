@@ -2,6 +2,7 @@ import { Events } from "discord.js";
 import { CONFIG } from "../config.js";
 import { ANALYTICS_BATCHER } from "../handlers/analyticsBatcher.js";
 import { TempbanWorker } from "../handlers/tempbanWorker.js";
+import { PermissionScanner } from "../handlers/permissionScanner.js";
 import { initAfkCache } from "../db/helpers/afk.js";
 import { initStickyCache } from "../db/helpers/sticky.js";
 
@@ -29,6 +30,9 @@ export default {
     ANALYTICS_BATCHER.start();
     const tempbanWorker = new TempbanWorker(client);
     tempbanWorker.start();
+    
+    const permissionScanner = new PermissionScanner(client);
+    permissionScanner.start();
 
     console.log("[STARTUP] All background workers and services active.");
   },
