@@ -197,13 +197,15 @@ export default function StickyPage({ user, botInfo, showToast }) {
     >
       <div className="space-y-6">
         {/* Header & Metrics Banner */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
           <div>
-            <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
-              <Pin className="w-6 h-6 text-cyan-400" />
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-cyan-600/30 to-blue-600/30 border border-cyan-500/20 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+                <Pin className="w-6 h-6" />
+              </div>
               <span>Sticky Channel Notice</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
               Set persistent channel announcements directly from the dashboard that automatically delete and re-pin to the bottom of the conversation when members chat.
             </p>
           </div>
