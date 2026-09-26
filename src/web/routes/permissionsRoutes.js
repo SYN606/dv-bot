@@ -1,22 +1,11 @@
 import { Hono } from "hono";
 import { PermissionFlagsBits } from "discord.js";
+import { PERMISSION_RISKS, analyzeMemberPermissions } from "../../utils/permissionsData.js";
 
 export const permissionsRoutes = new Hono();
 
-const DANGEROUS_PERMISSIONS = [
-  { name: "Administrator", flag: PermissionFlagsBits.Administrator },
-  { name: "Manage Server", flag: PermissionFlagsBits.ManageGuild },
-  { name: "Manage Roles", flag: PermissionFlagsBits.ManageRoles },
-  { name: "Manage Channels", flag: PermissionFlagsBits.ManageChannels },
-  { name: "Manage Webhooks", flag: PermissionFlagsBits.ManageWebhooks },
-  { name: "Ban Members", flag: PermissionFlagsBits.BanMembers },
-  { name: "Kick Members", flag: PermissionFlagsBits.KickMembers },
-  { name: "Mention Everyone", flag: PermissionFlagsBits.MentionEveryone },
-  { name: "Manage Messages", flag: PermissionFlagsBits.ManageMessages },
-];
-
 /**
- * Audit server permissions (returns members and roles with dangerous perms)
+ * Server-wide permissions audit
  */
 permissionsRoutes.get("/guilds/:guildId/permissions/audit", async (c) => {
   const guild = c.get("botGuild");
@@ -27,61 +16,72 @@ permissionsRoutes.get("/guilds/:guildId/permissions/audit", async (c) => {
   // Ensure members are cached
   try {
     await guild.members.fetch();
-  } catch (e) {
-    // Fallback to cache if fetch fails
-  }
+  } catch (e) {}
 
   const auditResult = {
     roles: [],
-    members: [],
+    members: []
   };
 
-  // 1. Audit Roles
+  const memberCache = new Map();
+
+  // Audit Roles
   for (const role of guild.roles.cache.values()) {
     const dangerous = [];
-    for (const perm of DANGEROUS_PERMISSIONS) {
-      if (role.permissions.has(perm.flag)) {
-        dangerous.push(perm.name);
+    for (const key of Object.keys(PERMISSION_RISKS)) {
+      const permData = PERMISSION_RISKS[key];
+      if (role.permissions.has(permData.flag)) {
+        dangerous.push({ name: permData.name, level: permData.level });
       }
     }
-    
+
     if (dangerous.length > 0) {
       auditResult.roles.push({
         id: role.id,
         name: role.name,
-        color: role.hexColor,
-        isManaged: role.managed,
+        hexColor: role.hexColor,
         position: role.position,
         permissions: dangerous,
+        memberCount: role.members.size,
       });
+
+      // Keep track of members who have this role
+      for (const member of role.members.values()) {
+        if (member.user.bot) continue;
+        memberCache.set(member.id, member);
+      }
     }
   }
 
-  // 2. Audit Members
-  for (const member of guild.members.cache.values()) {
-    if (member.user.bot) continue; // Usually bots have high perms, filter them out to keep it clean (or we could include them)
-    
-    const dangerous = [];
-    for (const perm of DANGEROUS_PERMISSIONS) {
-      if (member.permissions.has(perm.flag)) {
-        dangerous.push(perm.name);
-      }
-    }
+  // Add Owner if not already included
+  const owner = await guild.members.fetch(guild.ownerId).catch(() => null);
+  if (owner) {
+    memberCache.set(owner.id, owner);
+  }
 
-    if (dangerous.length > 0) {
+  // Audit Members
+  for (const member of memberCache.values()) {
+    const data = analyzeMemberPermissions(member);
+    if (data.length > 0) {
       auditResult.members.push({
         id: member.id,
         username: member.user.username,
         avatar: member.user.displayAvatarURL(),
         bot: member.user.bot,
-        permissions: dangerous,
+        permissions: data,
+        isOwner: member.id === guild.ownerId,
+        redCount: data.filter(d => d.level === "red").length,
+        yellowCount: data.filter(d => d.level === "yellow").length,
       });
     }
   }
 
   // Sort
   auditResult.roles.sort((a, b) => b.position - a.position);
-  auditResult.members.sort((a, b) => b.permissions.length - a.permissions.length);
+  auditResult.members.sort((a, b) => {
+    if (a.redCount !== b.redCount) return b.redCount - a.redCount;
+    return b.yellowCount - a.yellowCount;
+  });
 
   return c.json(auditResult);
 });
@@ -102,24 +102,8 @@ permissionsRoutes.get("/guilds/:guildId/permissions/member/:userId", async (c) =
     return c.json({ error: "Member not found" }, 404);
   }
 
-  const permissions = {
-    dangerous: [],
-    all: []
-  };
-
-  const allKeys = Object.keys(PermissionFlagsBits);
-  for (const key of allKeys) {
-    if (member.permissions.has(PermissionFlagsBits[key])) {
-      permissions.all.push(key);
-    }
-  }
-
-  for (const perm of DANGEROUS_PERMISSIONS) {
-    if (member.permissions.has(perm.flag)) {
-      permissions.dangerous.push(perm.name);
-    }
-  }
-
+  const data = analyzeMemberPermissions(member);
+  
   return c.json({
     user: {
       id: member.id,
@@ -128,6 +112,6 @@ permissionsRoutes.get("/guilds/:guildId/permissions/member/:userId", async (c) =
       bot: member.user.bot,
       roles: member.roles.cache.map(r => ({ id: r.id, name: r.name, hexColor: r.hexColor })).filter(r => r.name !== "@everyone")
     },
-    permissions
+    permissions: data
   });
 });

@@ -1,27 +1,16 @@
-import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
-
-const DANGEROUS_PERMISSIONS = [
-  { name: "Administrator", flag: PermissionFlagsBits.Administrator },
-  { name: "Manage Server", flag: PermissionFlagsBits.ManageGuild },
-  { name: "Manage Roles", flag: PermissionFlagsBits.ManageRoles },
-  { name: "Manage Channels", flag: PermissionFlagsBits.ManageChannels },
-  { name: "Manage Webhooks", flag: PermissionFlagsBits.ManageWebhooks },
-  { name: "Ban Members", flag: PermissionFlagsBits.BanMembers },
-  { name: "Kick Members", flag: PermissionFlagsBits.KickMembers },
-  { name: "Mention Everyone", flag: PermissionFlagsBits.MentionEveryone },
-  { name: "Manage Messages", flag: PermissionFlagsBits.ManageMessages },
-];
+import { analyzeMemberPermissions } from "../../utils/permissionsData.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("permscan")
-  .setDescription("Scan the entire server for members with dangerous administrative permissions");
+  .setDescription("Scan server members for elevated permissions.");
 
 export default createCommand({
   name: "permscan",
-  description: "Scan the entire server for members with dangerous administrative permissions",
+  description: "Scan server members for elevated permissions.",
   category: "Admin",
   modOnly: true,
   slashOnly: true,
@@ -33,73 +22,98 @@ export default createCommand({
 
     await ctx.defer({ ephemeral: true });
 
-    try {
-      await guild.members.fetch();
-    } catch (e) {
-      // Ignored
-    }
+    await guild.members.fetch();
 
-    const dangerousMembers = [];
+    const results = [];
     
     for (const member of guild.members.cache.values()) {
-      if (member.user.bot) continue; // Skip bots to keep it clean
-
-      const dangerous = [];
-      for (const perm of DANGEROUS_PERMISSIONS) {
-        if (member.permissions.has(perm.flag)) {
-          dangerous.push(perm.name);
-        }
-      }
-
-      if (dangerous.length > 0) {
-        dangerousMembers.push({
-          user: member.user,
-          perms: dangerous,
-          isOwner: member.id === guild.ownerId
+      if (member.user.bot) continue;
+      
+      const data = analyzeMemberPermissions(member);
+      if (data.length > 0) {
+        const redCount = data.filter(d => d.level === "red").length;
+        const yellowCount = data.filter(d => d.level === "yellow").length;
+        
+        results.push({
+          red: redCount,
+          yellow: yellowCount,
+          name: member.displayName,
+          id: member.id,
+          tag: member.user.tag,
         });
       }
     }
 
-    dangerousMembers.sort((a, b) => b.perms.length - a.perms.length);
+    results.sort((a, b) => {
+      if (a.red !== b.red) return b.red - a.red;
+      return b.yellow - a.yellow;
+    });
 
-    const modEmoji = EMOJIS.get("moderation") || "🛡️";
-    const warningEmoji = EMOJIS.get("warning") || "⚠️";
-    const successEmoji = EMOJIS.get("success") || "✅";
-
-    if (dangerousMembers.length === 0) {
+    if (results.length === 0) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
-            title: "Permissions Server Scan",
-            description: `${successEmoji} The server is completely clean. No members hold dangerous permissions.`,
+            title: "Server Scan",
+            description: "No members found with elevated permissions.",
             level: "SUCCESS"
           })
         ]
       });
     }
 
-    let description = `${warningEmoji} Found **${dangerousMembers.length}** members with potentially dangerous permissions.\n\n`;
+    const maxPerPage = 15;
+    const totalPages = Math.ceil(results.length / maxPerPage);
+    let currentPage = 0;
 
-    const MAX_DISPLAY = 15;
-    for (let i = 0; i < Math.min(dangerousMembers.length, MAX_DISPLAY); i++) {
-      const entry = dangerousMembers[i];
-      const flags = entry.isOwner ? " *(Server Owner)*" : "";
-      description += `**${entry.user.tag}** (\`${entry.user.id}\`)${flags}\n`;
-      description += `└ ${entry.perms.join(", ")}\n\n`;
+    const generateEmbed = (page) => {
+      const start = page * maxPerPage;
+      const end = start + maxPerPage;
+      const sliced = results.slice(start, end);
+      
+      let description = "";
+      for (const res of sliced) {
+        description += `**${res.name}** (\`${res.id}\`)\n`;
+        description += `└ 🔴 ${res.red} High Risk | 🟡 ${res.yellow} Medium Risk\n\n`;
+      }
+
+      return makeEmbed({
+        title: "🛡️ Server Permissions Scan",
+        description,
+        level: "INFO",
+        footer: `Page ${page + 1} of ${totalPages} • ${results.length} total users flagged`
+      });
+    };
+
+    if (totalPages === 1) {
+      return await ctx.reply({ embeds: [generateEmbed(0)] });
     }
 
-    if (dangerousMembers.length > MAX_DISPLAY) {
-      description += `\n*...and ${dangerousMembers.length - MAX_DISPLAY} more members. See the dashboard for the full list.*`;
-    }
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("prev_page").setLabel("Previous").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("next_page").setLabel("Next").setStyle(ButtonStyle.Primary)
+    );
 
-    return await ctx.reply({
-      embeds: [
-        makeEmbed({
-          title: `${modEmoji} Full Server Permissions Scan`,
-          description: description,
-          level: "WARNING",
-        })
-      ]
+    const message = await ctx.reply({ embeds: [generateEmbed(0)], components: [row], fetchReply: true });
+
+    const collector = message.createMessageComponentCollector({ time: 60000 });
+    
+    collector.on("collect", async (i) => {
+      if (i.user.id !== ctx.user.id) {
+        return i.reply({ content: "You cannot use these buttons.", ephemeral: true });
+      }
+      
+      if (i.customId === "prev_page") {
+        currentPage = Math.max(0, currentPage - 1);
+      } else if (i.customId === "next_page") {
+        currentPage = Math.min(totalPages - 1, currentPage + 1);
+      }
+      
+      await i.update({ embeds: [generateEmbed(currentPage)], components: [row] });
+    });
+    
+    collector.on("end", () => {
+      row.components.forEach(c => c.setDisabled(true));
+      ctx.editReply({ components: [row] }).catch(() => {});
     });
   }
 });
