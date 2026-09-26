@@ -139,7 +139,7 @@ export default {
       message.channel.id,
       resolvedName
     );
-    if (restricted) {
+    if (restricted && !(await isBotAdmin(message))) {
       const reply = await message.reply({
         embeds: [
           makeEmbed({

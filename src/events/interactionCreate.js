@@ -138,7 +138,7 @@ export default {
         interaction.channel.id,
         commandName
       );
-      if (restricted) {
+      if (restricted && !(await isBotAdmin(interaction))) {
         return await interaction.reply({
           embeds: [
             makeEmbed({

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import BaseLayout from "../components/layout/Base";
 import { fetchApi } from "../api/client";
-import { ShieldAlert, Key, Search, User as UserIcon, AlertTriangle, ShieldCheck } from "lucide-react";
+import { ShieldAlert, Key, Search, User as UserIcon, AlertTriangle, ShieldCheck, RefreshCw, Activity } from "lucide-react";
 
 export default function PermissionsAuditPage({ user, botInfo, showToast }) {
   const [loading, setLoading] = useState(true);
@@ -12,28 +12,45 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
 
   const guildId = window.location.pathname.split("/")[2];
 
+  const loadAuditData = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchApi(`/api/guilds/${guildId}/permissions/audit`);
+      if (data.error) {
+        showToast(data.error, "error");
+      } else {
+        setAuditData(data || { roles: [], members: [] });
+      }
+    } catch (err) {
+      showToast(err.message || "Failed to load audit data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchApi(`/guilds/${guildId}/permissions/audit`)
-      .then(data => setAuditData(data))
-      .catch(err => showToast(err.message, "error"))
-      .finally(() => setLoading(false));
+    loadAuditData();
   }, [guildId]);
 
   const handleSearchMember = async (e) => {
     e.preventDefault();
-    if (!search) return;
+    const target = search.trim();
+    if (!target) return;
     
     setSearchingMember(true);
-    setMemberPerms(null);
+    setMemberPerms(null); // Clear previous results
+    
     try {
-      const data = await fetchApi(`/guilds/${guildId}/permissions/member/${search}`);
+      const data = await fetchApi(`/api/guilds/${guildId}/permissions/member/${target}`);
       if (data.error) {
         showToast(data.error, "error");
+      } else if (!data.user) {
+        showToast("Received malformed data from server.", "error");
       } else {
         setMemberPerms(data);
       }
     } catch (err) {
-      showToast("Could not find member or fetch permissions.", "error");
+      showToast(err.message || "Could not find member or fetch permissions.", "error");
     } finally {
       setSearchingMember(false);
     }
@@ -85,20 +102,57 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
             </form>
 
             {memberPerms && (
-              <div className="bg-slate-950/50 border border-white/5 rounded-xl p-5 flex flex-col md:flex-row gap-6 items-start">
-                <div className="flex items-center gap-4 min-w-[200px]">
-                  <img src={memberPerms.user?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"} alt="avatar" className="w-14 h-14 rounded-full ring-2 ring-indigo-500/30" />
-                  <div>
-                    <h3 className="text-slate-200 font-bold">{memberPerms.user?.username || "Unknown"}</h3>
-                    <p className="text-xs text-slate-500">{memberPerms.user?.id || search}</p>
+              <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row gap-8 items-start relative overflow-hidden">
+                {/* Background glow based on threat level */}
+                <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-10 pointer-events-none translate-x-1/2 -translate-y-1/2 ${
+                   memberPerms.threatLevel === 'Critical' ? 'bg-rose-500' :
+                   memberPerms.threatLevel === 'High' ? 'bg-amber-500' :
+                   memberPerms.threatLevel === 'Moderate' ? 'bg-yellow-500' :
+                   'bg-emerald-500'
+                }`}></div>
+                
+                <div className="flex flex-col items-center gap-4 min-w-[200px] relative z-10">
+                  <div className="relative">
+                    <img src={memberPerms.user?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"} alt="avatar" className="w-20 h-20 rounded-full ring-4 ring-slate-800 shadow-xl" />
+                    {memberPerms.user?.bot && (
+                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-slate-900">
+                        BOT
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-center">
+                    <h3 className="text-slate-100 font-bold text-lg">{memberPerms.user?.username || "Unknown"}</h3>
+                    <p className="text-xs text-slate-500 font-mono mt-1">{memberPerms.user?.id || search}</p>
+                  </div>
+                  
+                  <div className="w-full flex flex-col gap-2 mt-2">
+                    <div className={`w-full py-2 px-3 rounded-xl border flex flex-col items-center justify-center gap-1 ${
+                      memberPerms.threatLevel === 'Critical' ? 'bg-rose-500/10 border-rose-500/30' :
+                      memberPerms.threatLevel === 'High' ? 'bg-amber-500/10 border-amber-500/30' :
+                      memberPerms.threatLevel === 'Moderate' ? 'bg-yellow-500/10 border-yellow-500/30' :
+                      'bg-emerald-500/10 border-emerald-500/30'
+                    }`}>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Threat Level</span>
+                      <span className={`text-base font-black uppercase ${
+                        memberPerms.threatLevel === 'Critical' ? 'text-rose-400' :
+                        memberPerms.threatLevel === 'High' ? 'text-amber-400' :
+                        memberPerms.threatLevel === 'Moderate' ? 'text-yellow-400' :
+                        'text-emerald-400'
+                      }`}>{memberPerms.threatLevel}</span>
+                    </div>
+                    <div className="w-full py-1.5 px-3 rounded-lg bg-slate-950 border border-white/5 flex justify-between items-center">
+                      <span className="text-xs text-slate-400 font-semibold">Total Score</span>
+                      <span className="text-sm font-mono font-bold text-slate-200">{memberPerms.threatScore}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="flex-1 space-y-4 w-full">
+                
+                <div className="flex-1 space-y-5 w-full relative z-10">
                   {/* Categorized Permissions */}
                   <div>
-                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1">
+                    <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2 pb-3 border-b border-white/5">
                       {memberPerms.permissions?.length > 0 ? (
-                        <><AlertTriangle className="w-4 h-4 text-amber-500" /> Detected Elevated Permissions</>
+                        <><AlertTriangle className="w-4 h-4 text-amber-500" /> Dangerous Permissions Detected</>
                       ) : (
                         <><ShieldCheck className="w-4 h-4 text-emerald-500" /> Safe (No Dangerous Perms)</>
                       )}
@@ -136,6 +190,48 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Punishment History */}
+                  <div className="pt-5 border-t border-white/5 mt-5">
+                    <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-rose-500" /> Punishment History
+                    </h4>
+                    
+                    {!memberPerms.history || memberPerms.history.length === 0 ? (
+                      <div className="bg-slate-900/50 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl text-sm font-medium flex items-center gap-2">
+                        <ShieldCheck className="w-5 h-5" /> This user has a clean record.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="text-xs text-slate-400 mb-2 font-semibold">Total Infractions: {memberPerms.history.length}</div>
+                        {memberPerms.history.map((record, idx) => (
+                          <div key={idx} className="bg-slate-900 border border-white/5 p-4 rounded-xl flex flex-col gap-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                                  record.type === 'BAN' ? 'bg-rose-500/20 text-rose-400' :
+                                  record.type === 'KICK' ? 'bg-orange-500/20 text-orange-400' :
+                                  record.type === 'TEMPBAN' ? 'bg-amber-500/20 text-amber-400' :
+                                  record.type === 'TIMEOUT' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  'bg-blue-500/20 text-blue-400'
+                                }`}>
+                                  {record.type === 'BAN' ? '🔨 ' : record.type === 'KICK' ? '👢 ' : record.type === 'TEMPBAN' ? '⏲️ ' : record.type === 'TIMEOUT' ? '⏳ ' : '⚠️ '}{record.type}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                {new Date(record.date).toLocaleDateString()} {new Date(record.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-300 mt-1">{record.reason}</p>
+                            <div className="text-[10px] text-slate-500 mt-1 font-mono">
+                              Moderator ID: {record.moderator_id}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                 </div>
               </div>
             )}
@@ -150,12 +246,10 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
               Server-Wide Audit
             </h2>
             <button
-              onClick={() => {
-                setLoading(true);
-                fetchApi(`/guilds/${guildId}/permissions/audit`).then(setAuditData).finally(() => setLoading(false));
-              }}
-              className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition-colors"
+              onClick={loadAuditData}
+              className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"
             >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               Refresh Scan
             </button>
           </div>
@@ -168,22 +262,33 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               
               {/* Members with dangerous perms */}
-              <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6">
-                <h2 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
-                  <UserIcon className="w-5 h-5 text-rose-400" />
-                  Privileged Members ({auditData?.members?.length || 0})
-                </h2>
-                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                  {auditData?.members?.map(member => (
-                    <div key={member.id} className="bg-slate-950/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3">
+              <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 flex flex-col h-full">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                    <UserIcon className="w-5 h-5 text-rose-400" />
+                    Privileged Members ({auditData?.members?.length || 0})
+                  </h2>
+                </div>
+                <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                  {auditData?.members?.length === 0 ? (
+                    <div className="text-slate-400 text-sm text-center py-8">
+                      No highly privileged members found.
+                    </div>
+                  ) : auditData?.members?.map(member => (
+                    <div key={member.id} className={`bg-slate-950/50 border rounded-xl p-4 flex flex-col gap-3 transition-colors hover:bg-slate-900/50 ${
+                      member.threatLevel === 'Critical' ? 'border-rose-500/20' : 
+                      member.threatLevel === 'High' ? 'border-amber-500/20' : 
+                      member.threatLevel === 'Moderate' ? 'border-yellow-500/20' :
+                      'border-emerald-500/20'
+                    }`}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <img src={member.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"} className="w-8 h-8 rounded-full" alt="av" />
+                          <img src={member.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"} className="w-9 h-9 rounded-full ring-2 ring-white/10" alt="av" />
                           <div className="flex-1 flex flex-col">
-                            <span className="font-semibold text-slate-200 flex items-center gap-2">
+                            <span className="font-semibold text-slate-200 flex items-center gap-2 text-sm">
                               {member.username}
-                              {member.bot && <span className="text-[10px] bg-indigo-500 text-white px-1.5 py-0.5 rounded uppercase font-bold">BOT</span>}
-                              {member.isOwner && <span className="text-[10px] bg-amber-500 text-black px-1.5 py-0.5 rounded uppercase font-bold">OWNER</span>}
+                              {member.bot && <span className="text-[9px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded uppercase font-bold">BOT</span>}
+                              {member.isOwner && <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded uppercase font-bold">OWNER</span>}
                             </span>
                             <span className="text-[10px] text-slate-500 font-mono">{member.id}</span>
                           </div>
@@ -191,6 +296,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                         <button
                           onClick={() => {
                             setSearch(member.id);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
                             setTimeout(() => {
                               document.querySelector("form").dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
                             }, 50);
@@ -200,66 +306,71 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                           Audit
                         </button>
                       </div>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {member.redCount > 0 && (
-                          <span className="text-xs font-bold text-rose-400">
-                            🔴 {member.redCount} High Risk
+                      
+                      <div className="flex items-center justify-between mt-1 pt-3 border-t border-white/5">
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-3.5 h-3.5 text-slate-400" />
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-900 ${
+                            member.threatLevel === 'Critical' ? 'text-rose-400' :
+                            member.threatLevel === 'High' ? 'text-amber-400' :
+                            member.threatLevel === 'Moderate' ? 'text-yellow-400' :
+                            'text-emerald-400'
+                          }`}>
+                            {member.threatLevel} Risk
                           </span>
-                        )}
-                        {member.redCount > 0 && member.yellowCount > 0 && (
-                          <span className="text-xs text-slate-600">|</span>
-                        )}
-                        {member.yellowCount > 0 && (
-                          <span className="text-xs font-bold text-amber-400">
-                            🟡 {member.yellowCount} Medium Risk
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold">
+                            {member.redCount > 0 && <span className="text-rose-400">🔴 {member.redCount}</span>}
+                            {member.yellowCount > 0 && <span className="text-amber-400">🟡 {member.yellowCount}</span>}
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-mono font-bold bg-slate-900 px-1.5 py-0.5 rounded-md ml-1 border border-white/5">
+                            Score: {member.threatScore}
                           </span>
-                        )}
-                        {member.redCount === 0 && member.yellowCount === 0 && (
-                          <span className="text-xs font-bold text-emerald-400">
-                            🟢 Safe (Low Risk Only)
-                          </span>
-                        )}
+                        </div>
                       </div>
                     </div>
                   ))}
-                  {auditData?.members?.length === 0 && (
-                    <div className="text-center py-8 text-slate-500 text-sm">
-                      No members found with elevated permissions.
-                    </div>
-                  )}
                 </div>
               </div>
 
               {/* Roles with dangerous perms */}
-              <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6">
-                <h2 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
-                  <Key className="w-5 h-5 text-amber-400" />
-                  Elevated Roles ({auditData?.roles?.length || 0})
-                </h2>
-                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                  {auditData?.roles?.map(role => (
-                    <div key={role.id} className="bg-slate-950/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3">
+              <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 flex flex-col h-full">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                    <Key className="w-5 h-5 text-amber-400" />
+                    Elevated Roles ({auditData?.roles?.length || 0})
+                  </h2>
+                </div>
+                <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                  {auditData?.roles?.length === 0 ? (
+                    <div className="text-slate-400 text-sm text-center py-8">
+                      No roles found with elevated permissions.
+                    </div>
+                  ) : auditData?.roles?.map(role => (
+                    <div key={role.id} className="bg-slate-950/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3 transition-colors hover:bg-slate-900/50">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: role.hexColor !== '#000000' ? role.hexColor : '#99aab5' }} />
-                          <span className="font-semibold text-slate-200">{role.name}</span>
+                        <div className="flex items-center gap-3">
+                          <div className="w-3 h-3 rounded-full ring-2 ring-white/10" style={{ backgroundColor: role.hexColor !== '#000000' ? role.hexColor : '#99aab5' }} />
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-slate-200 text-sm">{role.name}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">{role.id}</span>
+                          </div>
                         </div>
-                        <span className="text-xs text-slate-500">{role.memberCount} members</span>
+                        <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded-md border border-white/5 flex items-center gap-1.5">
+                          <UserIcon className="w-3 h-3" />
+                          {role.memberCount}
+                        </span>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-white/5">
                         {role.permissions.map((p, i) => (
-                          <span key={i} className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getRiskColor(p.level)}`}>
+                          <span key={i} className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getRiskColor(p.level)} flex items-center gap-1`}>
                             {p.level === "red" ? "🔴" : p.level === "yellow" ? "🟡" : "🟢"} {p.name}
                           </span>
                         ))}
                       </div>
                     </div>
                   ))}
-                  {auditData?.roles?.length === 0 && (
-                    <div className="text-center py-8 text-slate-500 text-sm">
-                      No roles found with elevated permissions.
-                    </div>
-                  )}
                 </div>
               </div>
 

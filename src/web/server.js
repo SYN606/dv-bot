@@ -12,6 +12,7 @@ import {
   verifySessionToken,
 } from "./auth.js";
 import { apiRouter } from "./routes/api.js";
+import { logger } from "../utils/logger.js";
 
 export function createWebApp(client = null) {
   const app = new Hono();
@@ -161,6 +162,20 @@ export function createWebApp(client = null) {
   // 3. Static Asset Serving & SPA Routing for React Vite Frontend
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const distDir = path.resolve(__dirname, "dist");
+
+  if (CONFIG.ENV === "dev") {
+    const devProxy = (c) => c.redirect("http://localhost:5173" + c.req.path);
+    app.get("/dashboard", devProxy);
+    app.get("/dashboard/*", devProxy);
+    app.get("/", devProxy);
+    app.get("/docs", devProxy);
+    app.get("/documentation", devProxy);
+    app.get("/terms", devProxy);
+    app.get("/terms-of-service", devProxy);
+    app.get("/privacy", devProxy);
+    app.get("/privacy-policy", devProxy);
+    app.get("/error", devProxy);
+  }
 
   // Assets bundle loader
   app.get("/assets/:file", async (c) => {
@@ -315,6 +330,6 @@ export function startWebServer(client = null, port = CONFIG.DASHBOARD_PORT) {
     port: serverPort,
   });
 
-  console.log(`[WEB DASHBOARD] Listening on http://localhost:${server.port}`);
+  logger.info(`[WEB DASHBOARD] Listening on http://localhost:${server.port}`);
   return server;
 }

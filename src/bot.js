@@ -33,6 +33,38 @@ async function main() {
   // Start Hono Web Dashboard
   webServer = startWebServer(client, CONFIG.DASHBOARD_PORT);
 
+  if (CONFIG.ENV === "dev") {
+    logger.info("[DEV MODE] Automatically starting Vite Frontend Dev Server...");
+    
+    // Check if we have child_process imported, if not, dynamic import
+    const { spawn } = await import("child_process");
+    global.viteServerProcess = spawn(
+      typeof Bun !== "undefined" ? "bun" : "npm",
+      ["run", "dev"],
+      {
+        cwd: "src/web/frontend",
+        stdio: "pipe",
+        shell: true,
+      }
+    );
+
+    global.viteServerProcess.stdout.on("data", (data) => {
+      const output = data.toString().trim();
+      if (output) {
+        if (output.includes("VITE")) {
+          logger.info(`[VITE DEV] ${output.replace(/\n+/g, " | ")}`);
+        }
+      }
+    });
+
+    global.viteServerProcess.stderr.on("data", (data) => {
+      const output = data.toString().trim();
+      if (output) {
+        logger.warn(`[VITE WARN] ${output}`);
+      }
+    });
+  }
+
   await client.start();
 }
 
@@ -43,6 +75,10 @@ async function handleShutdown(signal) {
     if (webServer?.stop) {
       webServer.stop();
       logger.info("[SHUTDOWN] Web server stopped.");
+    }
+    if (global.viteServerProcess) {
+      global.viteServerProcess.kill();
+      logger.info("[SHUTDOWN] Vite Dev Server stopped.");
     }
     await ANALYTICS_BATCHER.stop();
     await closeDb();

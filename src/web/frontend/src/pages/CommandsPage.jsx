@@ -569,20 +569,22 @@ export default function CommandsPage({ user, botInfo, showToast }) {
                             ) : (
                               <button
                                 onClick={() => handleToggle(cmd.name, isDisabled)}
-                                disabled={isPending || isModuleBusy}
-                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer ${
-                                  isDisabled
-                                    ? "bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30"
-                                    : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30"
+                                disabled={isPending || isModuleBusy || (selectedChannel !== "global" && cmd.guildDisabled)}
+                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+                                  (selectedChannel !== "global" && cmd.guildDisabled)
+                                    ? "bg-rose-500/10 text-rose-500/50 border-rose-500/20 cursor-not-allowed"
+                                    : isDisabled
+                                      ? "bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30 cursor-pointer"
+                                      : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30 cursor-pointer"
                                 } ${isPending ? "opacity-50 cursor-not-allowed" : ""}`}
-                                title={isDisabled ? `Click to enable /${cmd.name}` : `Click to disable /${cmd.name}`}
+                                title={(selectedChannel !== "global" && cmd.guildDisabled) ? "Cannot enable: Command is globally disabled across the entire server." : isDisabled ? `Click to enable /${cmd.name}` : `Click to disable /${cmd.name}`}
                               >
                                 <span
                                   className={`w-1.5 h-1.5 rounded-full ${
-                                    isDisabled ? "bg-rose-400" : "bg-emerald-400 animate-pulse"
+                                    (selectedChannel !== "global" && cmd.guildDisabled) ? "bg-rose-500/50" : isDisabled ? "bg-rose-400" : "bg-emerald-400 animate-pulse"
                                   }`}
                                 />
-                                <span>{isPending ? "Saving..." : isDisabled ? "Disabled" : "Active"}</span>
+                                <span>{(selectedChannel !== "global" && cmd.guildDisabled) ? "Globally Disabled" : isPending ? "Saving..." : isDisabled ? "Disabled" : "Active"}</span>
                               </button>
                             )}
                           </div>
