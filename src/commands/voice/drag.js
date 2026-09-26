@@ -19,6 +19,7 @@ export default createCommand({
   description: "Move a member to a specified voice channel or your current channel",
   category: "Voice",
   modOnly: true,
+  slashOnly: true,
   requiredPermission: PermissionFlagsBits.MoveMembers,
   slashBuilder,
 
@@ -27,7 +28,7 @@ export default createCommand({
     if (!guild || !member) return;
 
     // Resolve target user
-    const targetUserId = ctx.options.user || ctx.options._args?.[0]?.replace(/[<@!>]/g, "");
+    const targetUserId = ctx.options.user?.id || ctx.options.user;
     if (!targetUserId) {
       return await ctx.reply("Please specify a user to drag.");
     }
@@ -47,14 +48,9 @@ export default createCommand({
     }
 
     // Resolve target channel
-    const rawChannelInput = ctx.options.channel || ctx.options._args?.[1]?.replace(/[<#>]/g, "");
-    let targetChannel = null;
-
-    if (rawChannelInput) {
-      targetChannel = guild.channels.cache.get(rawChannelInput);
-    } else {
-      targetChannel = member.voice.channel;
-    }
+    const targetChannel = ctx.options.channel 
+      ? guild.channels.cache.get(ctx.options.channel.id || ctx.options.channel) 
+      : member.voice.channel;
 
     if (!targetChannel || (targetChannel.type !== ChannelType.GuildVoice && targetChannel.type !== ChannelType.GuildStageVoice)) {
       return await ctx.reply({
