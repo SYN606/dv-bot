@@ -56,6 +56,9 @@ metaRoutes.get("/guilds/:guildId/meta", async (c) => {
       })).sort((a, b) => a.name.localeCompare(b.name))
     : [];
 
+  const botsCount = botGuild.members?.cache ? botGuild.members.cache.filter((m) => m.user?.bot).size : 0;
+  const createdTimestamp = botGuild.createdTimestamp || 0;
+
   const payload = {
     channels,
     roles,
@@ -64,9 +67,13 @@ metaRoutes.get("/guilds/:guildId/meta", async (c) => {
       id: botGuild.id,
       name: botGuild.name,
       memberCount: botGuild.memberCount || 0,
+      botCount: botsCount,
+      humanCount: Math.max(0, (botGuild.memberCount || 0) - botsCount),
       ownerId: botGuild.ownerId || "",
       rulesChannelId: botGuild.rulesChannelId || null,
       premiumSubscriptionCount: botGuild.premiumSubscriptionCount || 0,
+      createdAt: createdTimestamp,
+      icon: typeof botGuild.iconURL === "function" ? botGuild.iconURL({ size: 128, extension: "png" }) : null,
     },
   };
 

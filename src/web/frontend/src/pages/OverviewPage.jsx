@@ -116,9 +116,45 @@ export default function OverviewPage({ user, botInfo, showToast }) {
         </div>
 
         {/* Server Metrics Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="glass-card p-5 rounded-2xl border border-white/5 flex items-center gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="glass-card p-5 rounded-2xl border border-white/5 flex items-center gap-4 relative overflow-hidden">
             <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-medium">Total Members</p>
+              <p className="text-xl font-bold text-white font-mono">
+                {loading ? "..." : (meta?.guild?.memberCount || 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          <div className="glass-card p-5 rounded-2xl border border-white/5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-medium">Human Members</p>
+              <p className="text-xl font-bold text-white font-mono">
+                {loading ? "..." : (meta?.guild?.humanCount || 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          <div className="glass-card p-5 rounded-2xl border border-white/5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center shrink-0">
+              <Bot className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-medium">Bot Accounts</p>
+              <p className="text-xl font-bold text-white font-mono">
+                {loading ? "..." : (meta?.guild?.botCount || 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          <div className="glass-card p-5 rounded-2xl border border-white/5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
               <Hash className="w-6 h-6" />
             </div>
             <div>
@@ -128,28 +164,42 @@ export default function OverviewPage({ user, botInfo, showToast }) {
               </p>
             </div>
           </div>
+        </div>
 
-          <div className="glass-card p-5 rounded-2xl border border-white/5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0">
-              <Users className="w-6 h-6" />
-            </div>
+        {/* Server Basic Details & Analytics Prompt */}
+        <div className="glass-card p-5 sm:p-6 rounded-2xl border border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            {meta?.guild?.icon ? (
+              <img src={meta.guild.icon} alt="Server Icon" className="w-14 h-14 rounded-xl border border-white/10" />
+            ) : (
+              <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                <span className="text-lg font-bold text-white/50">{meta?.guild?.name?.charAt(0) || "?"}</span>
+              </div>
+            )}
             <div>
-              <p className="text-xs text-slate-400 font-medium">Server Roles</p>
-              <p className="text-xl font-bold text-white font-mono">
-                {loading ? "..." : meta?.roles?.length || 0}
-              </p>
+              <h3 className="text-lg font-bold text-white">{meta?.guild?.name || "Server Details"}</h3>
+              <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">
+                <span className="font-mono bg-white/5 px-2 py-0.5 rounded">ID: {meta?.guild?.id || "..."}</span>
+                {meta?.guild?.createdAt && (
+                  <span>Created: {new Date(meta.guild.createdAt).toLocaleDateString()}</span>
+                )}
+                {meta?.guild?.premiumSubscriptionCount > 0 && (
+                  <span className="text-pink-400 flex items-center gap-1">
+                    <Activity className="w-3 h-3" /> {meta.guild.premiumSubscriptionCount} Boosts
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-
-          <div className="glass-card p-5 rounded-2xl border border-white/5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-              <Activity className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 font-medium">Engine Runtime</p>
-              <p className="text-xl font-bold text-white font-mono">Bun JS</p>
-            </div>
-          </div>
+          
+          <Link 
+            to={`/dashboard/${guildId}/analytics`}
+            className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 font-medium transition-all text-sm shrink-0 whitespace-nowrap"
+          >
+            <TrendingUp className="w-4 h-4" />
+            <span>View Full Analytics</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
         </div>
 
         {/* Quick Module Navigation Grid */}
