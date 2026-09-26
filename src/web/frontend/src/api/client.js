@@ -242,3 +242,16 @@ export async function setSupporterConfig(guildId, data) {
   });
 }
 
+
+// AutoRole Rewards
+export async function getAutoRoleConfig(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/autorole`);
+}
+
+export async function setAutoRoleConfig(guildId, payload) {
+  return fetchApi(`/api/guilds/${guildId}/autorole`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+

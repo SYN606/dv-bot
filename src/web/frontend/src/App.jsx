@@ -14,6 +14,7 @@ import AutoresponderPage from "./pages/AutoresponderPage";
 import ConfigPage from "./pages/ConfigPage";
 import PermissionsAuditPage from "./pages/PermissionsAuditPage";
 import SupporterRewardsPage from "./pages/SupporterRewardsPage";
+import AutoRoleRewardsPage from "./pages/AutoRoleRewardsPage";
 import DocumentationPage from "./pages/DocumentationPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
@@ -188,6 +189,16 @@ export default function App() {
           path="/dashboard/:guildId/supporter"
           element={
             <SupporterRewardsPage
+              user={user}
+              botInfo={botInfo}
+              showToast={showToast}
+            />
+          }
+        />
+        <Route
+          path="/dashboard/:guildId/autorole"
+          element={
+            <AutoRoleRewardsPage
               user={user}
               botInfo={botInfo}
               showToast={showToast}

@@ -2,6 +2,7 @@ import { Events } from "discord.js";
 import { CONFIG } from "../config.js";
 import { ANALYTICS_BATCHER } from "../handlers/analyticsBatcher.js";
 import { TempbanWorker } from "../handlers/tempbanWorker.js";
+import { AutoRoleWorker } from "../handlers/autoroleWorker.js";
 import { initAfkCache } from "../db/helpers/afk.js";
 import { initStickyCache } from "../db/helpers/sticky.js";
 import { logger } from "../utils/logger.js";
@@ -30,6 +31,9 @@ export default {
     ANALYTICS_BATCHER.start();
     const tempbanWorker = new TempbanWorker(client);
     tempbanWorker.start();
+    
+    const autoroleWorker = new AutoRoleWorker(client);
+    autoroleWorker.start();
 
     logger.info("[STARTUP] All background workers and services active. Bot is fully online.");
   },

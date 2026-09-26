@@ -14,6 +14,7 @@ import {
   ArrowLeftRight,
   X,
   Trophy,
+  Award,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -54,6 +55,12 @@ export default function Sidebar({
           label: "Supporter Rewards",
           icon: Trophy,
           path: `/dashboard/${currentGuild.id}/supporter`,
+        },
+        {
+          id: "autorole",
+          label: "Leaderboard Auto-Roles",
+          icon: Award,
+          path: `/dashboard/${currentGuild.id}/autorole`,
         },
       ],
     },
