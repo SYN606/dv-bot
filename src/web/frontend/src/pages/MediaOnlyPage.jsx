@@ -136,7 +136,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Channel Selector */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
                   Select Channel <span className="text-pink-400">*</span>
                 </label>
                 <select
@@ -144,7 +144,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                   onChange={(e) =>
                     setFormData({ ...formData, channelId: e.target.value })
                   }
-                  className="w-full px-4 py-3 rounded-2xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
                 >
                   <option value="">Select target text channel...</option>
                   {channels.map((ch) => (
@@ -158,7 +158,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
 
               {/* Whitelist / Bypass Role */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
                   Whitelist / Bypass Role (Optional)
                 </label>
                 <select
@@ -181,7 +181,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
 
             {/* Enforcement Mode Cards */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2 mt-2">
                 Allowed Content Mode
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -224,57 +224,78 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
             </div>
 
             {/* Feature Checkbox Toggles */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-              <label className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex items-start gap-3 cursor-pointer hover:bg-slate-900/70 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={formData.autoMute}
-                  onChange={(e) =>
-                    setFormData({ ...formData, autoMute: e.target.checked })
-                  }
-                  className="mt-1 rounded bg-slate-800 border-white/10 text-indigo-600 focus:ring-indigo-500"
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-white/5">
+              <div 
+                onClick={() => setFormData({ ...formData, autoMute: !formData.autoMute })}
+                className={`p-4 rounded-2xl border flex flex-col gap-3 cursor-pointer transition-all duration-300 ${
+                  formData.autoMute 
+                    ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]" 
+                    : "bg-slate-900/50 border-white/5 hover:border-white/10"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className={`p-2 rounded-xl transition-colors ${formData.autoMute ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-500'}`}>
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div className={`w-9 h-5 rounded-full flex items-center p-0.5 transition-colors duration-300 ${formData.autoMute ? 'bg-indigo-500' : 'bg-slate-700'}`}>
+                    <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-300 ${formData.autoMute ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </div>
                 <div>
-                  <span className="text-xs font-semibold text-white block">Auto-Mute on 3 Strikes</span>
-                  <span className="text-[11px] text-slate-400 block mt-0.5">
+                  <span className="text-xs font-bold text-white block tracking-tight">Auto-Mute on 3 Strikes</span>
+                  <span className="text-[10px] text-slate-400 block mt-1 leading-relaxed">
                     Times out user for 60s upon 3 repeat violations within 5 mins.
                   </span>
                 </div>
-              </label>
+              </div>
 
-              <label className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex items-start gap-3 cursor-pointer hover:bg-slate-900/70 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={formData.allowNsfw}
-                  onChange={(e) =>
-                    setFormData({ ...formData, allowNsfw: e.target.checked })
-                  }
-                  className="mt-1 rounded bg-slate-800 border-white/10 text-indigo-600 focus:ring-indigo-500"
-                />
+              <div 
+                onClick={() => setFormData({ ...formData, allowNsfw: !formData.allowNsfw })}
+                className={`p-4 rounded-2xl border flex flex-col gap-3 cursor-pointer transition-all duration-300 ${
+                  formData.allowNsfw 
+                    ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]" 
+                    : "bg-slate-900/50 border-white/5 hover:border-white/10"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className={`p-2 rounded-xl transition-colors ${formData.allowNsfw ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-500'}`}>
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <div className={`w-9 h-5 rounded-full flex items-center p-0.5 transition-colors duration-300 ${formData.allowNsfw ? 'bg-indigo-500' : 'bg-slate-700'}`}>
+                    <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-300 ${formData.allowNsfw ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </div>
                 <div>
-                  <span className="text-xs font-semibold text-white block">Allow NSFW Bypass</span>
-                  <span className="text-[11px] text-slate-400 block mt-0.5">
+                  <span className="text-xs font-bold text-white block tracking-tight">Allow NSFW Bypass</span>
+                  <span className="text-[10px] text-slate-400 block mt-1 leading-relaxed">
                     Exempt age-restricted/NSFW channels from media enforcement.
                   </span>
                 </div>
-              </label>
+              </div>
 
-              <label className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex items-start gap-3 cursor-pointer hover:bg-slate-900/70 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={formData.postStickyNotice}
-                  onChange={(e) =>
-                    setFormData({ ...formData, postStickyNotice: e.target.checked })
-                  }
-                  className="mt-1 rounded bg-slate-800 border-white/10 text-indigo-600 focus:ring-indigo-500"
-                />
+              <div 
+                onClick={() => setFormData({ ...formData, postStickyNotice: !formData.postStickyNotice })}
+                className={`p-4 rounded-2xl border flex flex-col gap-3 cursor-pointer transition-all duration-300 ${
+                  formData.postStickyNotice 
+                    ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]" 
+                    : "bg-slate-900/50 border-white/5 hover:border-white/10"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className={`p-2 rounded-xl transition-colors ${formData.postStickyNotice ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-500'}`}>
+                    <Pin className="w-4 h-4" />
+                  </div>
+                  <div className={`w-9 h-5 rounded-full flex items-center p-0.5 transition-colors duration-300 ${formData.postStickyNotice ? 'bg-indigo-500' : 'bg-slate-700'}`}>
+                    <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-300 ${formData.postStickyNotice ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </div>
                 <div>
-                  <span className="text-xs font-semibold text-white block">Post Sticky Notice</span>
-                  <span className="text-[11px] text-slate-400 block mt-0.5">
-                    Pins and maintains an informational embed notice at bottom.
+                  <span className="text-xs font-bold text-white block tracking-tight">Post Sticky Notice</span>
+                  <span className="text-[10px] text-slate-400 block mt-1 leading-relaxed">
+                    Pins and maintains an informational embed notice at the bottom.
                   </span>
                 </div>
-              </label>
+              </div>
             </div>
 
             {/* Submit Action */}
