@@ -139,7 +139,10 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: role.color !== "#000000" ? role.color : "#99aab5" }} />
-                        <span className="font-semibold text-slate-200">{role.name}</span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-200">{role.name}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">{role.id}</span>
+                        </div>
                       </div>
                       {role.isManaged && <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full uppercase font-bold">Bot/Integration</span>}
                     </div>
@@ -169,11 +172,12 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                   <div key={member.id} className="bg-slate-950/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3">
                     <div className="flex items-center gap-3">
                       <img src={member.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"} className="w-8 h-8 rounded-full" alt="av" />
-                      <div className="flex-1">
+                      <div className="flex-1 flex flex-col">
                         <span className="font-semibold text-slate-200 flex items-center gap-2">
                           {member.username}
                           {member.bot && <span className="text-[10px] bg-indigo-500 text-white px-1.5 py-0.5 rounded uppercase font-bold">BOT</span>}
                         </span>
+                        <span className="text-[10px] text-slate-500 font-mono">{member.id}</span>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
