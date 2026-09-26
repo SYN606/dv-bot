@@ -17,7 +17,8 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
   const [rolePage, setRolePage] = useState(1);
   const [memberSort, setMemberSort] = useState("threatDesc");
   const [roleSort, setRoleSort] = useState("posDesc");
-  const itemsPerPage = 5;
+  const [memberItemsPerPage, setMemberItemsPerPage] = useState(5);
+  const [roleItemsPerPage, setRoleItemsPerPage] = useState(5);
 
   const guildId = window.location.pathname.split("/")[2];
 
@@ -109,11 +110,11 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
   });
 
   // Pagination
-  const memberTotalPages = Math.ceil(sortedMembers.length / itemsPerPage) || 1;
-  const roleTotalPages = Math.ceil(sortedRoles.length / itemsPerPage) || 1;
+  const memberTotalPages = Math.ceil(sortedMembers.length / memberItemsPerPage) || 1;
+  const roleTotalPages = Math.ceil(sortedRoles.length / roleItemsPerPage) || 1;
   
-  const currentMembers = sortedMembers.slice((memberPage - 1) * itemsPerPage, memberPage * itemsPerPage);
-  const currentRoles = sortedRoles.slice((rolePage - 1) * itemsPerPage, rolePage * itemsPerPage);
+  const currentMembers = sortedMembers.slice((memberPage - 1) * memberItemsPerPage, memberPage * memberItemsPerPage);
+  const currentRoles = sortedRoles.slice((rolePage - 1) * roleItemsPerPage, rolePage * roleItemsPerPage);
 
   return (
     <BaseLayout user={user} botInfo={botInfo}>
@@ -384,14 +385,26 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     <UserIcon className="w-5 h-5 text-rose-400" />
                     Privileged Members ({auditData?.members?.length || 0})
                   </h2>
-                  <select 
-                    value={memberSort}
-                    onChange={(e) => { setMemberSort(e.target.value); setMemberPage(1); }}
-                    className="bg-slate-900 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1 focus:outline-none"
-                  >
-                    <option value="threatDesc">Highest Threat</option>
-                    <option value="threatAsc">Lowest Threat</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <select 
+                      value={memberItemsPerPage}
+                      onChange={(e) => { setMemberItemsPerPage(Number(e.target.value)); setMemberPage(1); }}
+                      className="bg-slate-900 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1 focus:outline-none"
+                    >
+                      <option value={5}>5 per page</option>
+                      <option value={10}>10 per page</option>
+                      <option value={20}>20 per page</option>
+                      <option value={50}>50 per page</option>
+                    </select>
+                    <select 
+                      value={memberSort}
+                      onChange={(e) => { setMemberSort(e.target.value); setMemberPage(1); }}
+                      className="bg-slate-900 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1 focus:outline-none"
+                    >
+                      <option value="threatDesc">Highest Threat</option>
+                      <option value="threatAsc">Lowest Threat</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {currentMembers.length === 0 ? (
@@ -487,14 +500,26 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     <Key className="w-5 h-5 text-amber-400" />
                     Elevated Roles ({auditData?.roles?.length || 0})
                   </h2>
-                  <select 
-                    value={roleSort}
-                    onChange={(e) => { setRoleSort(e.target.value); setRolePage(1); }}
-                    className="bg-slate-900 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1 focus:outline-none"
-                  >
-                    <option value="posDesc">Highest Hierarchy</option>
-                    <option value="memDesc">Most Members</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <select 
+                      value={roleItemsPerPage}
+                      onChange={(e) => { setRoleItemsPerPage(Number(e.target.value)); setRolePage(1); }}
+                      className="bg-slate-900 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1 focus:outline-none"
+                    >
+                      <option value={5}>5 per page</option>
+                      <option value={10}>10 per page</option>
+                      <option value={20}>20 per page</option>
+                      <option value={50}>50 per page</option>
+                    </select>
+                    <select 
+                      value={roleSort}
+                      onChange={(e) => { setRoleSort(e.target.value); setRolePage(1); }}
+                      className="bg-slate-900 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1 focus:outline-none"
+                    >
+                      <option value="posDesc">Highest Hierarchy</option>
+                      <option value="memDesc">Most Members</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {currentRoles.length === 0 ? (
