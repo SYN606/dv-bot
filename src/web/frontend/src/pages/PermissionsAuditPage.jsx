@@ -7,6 +7,8 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
   const [loading, setLoading] = useState(true);
   const [auditData, setAuditData] = useState({ roles: [], members: [] });
   const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [memberPerms, setMemberPerms] = useState(null);
   const [searchingMember, setSearchingMember] = useState(false);
 
@@ -32,12 +34,30 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
     loadAuditData();
   }, [guildId]);
 
-  const handleSearchMember = async (e) => {
-    e.preventDefault();
-    const target = search.trim();
+  useEffect(() => {
+    if (!search || search.trim().length < 2) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const data = await fetchApi(`/api/guilds/${guildId}/members?q=${search}&limit=5`);
+        if (Array.isArray(data)) {
+          setSearchResults(data);
+          setShowDropdown(true);
+        }
+      } catch (e) {}
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, guildId]);
+
+  const handleSearchMember = async (targetId) => {
+    const target = (typeof targetId === "string" ? targetId : search).trim();
     if (!target) return;
     
     setSearchingMember(true);
+    setShowDropdown(false);
     setMemberPerms(null); // Clear previous results
     
     try {
@@ -62,19 +82,38 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
     return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
   };
 
+  // Calculate Heatmap percentages
+  const totalAudited = auditData?.members?.length || 0;
+  const criticalCount = auditData?.members?.filter(m => m.threatLevel === 'Critical').length || 0;
+  const highCount = auditData?.members?.filter(m => m.threatLevel === 'High').length || 0;
+  const safePercent = totalAudited > 0 ? Math.max(0, 100 - ((criticalCount + highCount) / totalAudited * 100)) : 100;
+  
   return (
     <BaseLayout user={user} botInfo={botInfo}>
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-            <ShieldAlert className="w-7 h-7 text-rose-500" />
-            Permissions Audit
-          </h1>
-          <p className="text-slate-400 mt-1">
-            Detect and manage members holding dangerous permissions.
-          </p>
+        {/* Header & Heatmap Summary */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
+              <ShieldAlert className="w-7 h-7 text-rose-500" />
+              Permissions Audit
+            </h1>
+            <p className="text-slate-400 mt-1">
+              Detect and manage members holding dangerous permissions.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/80 border border-white/5 rounded-2xl p-4 min-w-[250px]">
+            <div className="flex items-center justify-between text-xs mb-2">
+              <span className="text-slate-400 font-semibold uppercase tracking-wider">Server Health</span>
+              <span className="text-white font-bold">{Math.round(safePercent)}% Safe</span>
+            </div>
+            <div className="w-full bg-rose-500 h-2 rounded-full overflow-hidden flex">
+              <div className="bg-emerald-500 h-full transition-all" style={{ width: `${safePercent}%` }}></div>
+              <div className="bg-amber-500 h-full transition-all" style={{ width: `${totalAudited ? (highCount/totalAudited)*100 : 0}%` }}></div>
+            </div>
+          </div>
         </div>
 
         {/* Member Search */}
@@ -84,21 +123,49 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
               <Search className="w-5 h-5 text-indigo-400" />
               Individual Member Scan
             </h2>
-            <form onSubmit={handleSearchMember} className="flex items-center gap-3 mb-6">
-              <input
-                type="text"
-                placeholder="Enter Discord User ID..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              />
-              <button
-                type="submit"
-                disabled={searchingMember || !search}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
-              >
-                {searchingMember ? "Scanning..." : "Audit User"}
-              </button>
+            <form onSubmit={(e) => { e.preventDefault(); handleSearchMember(); }} className="relative mb-6">
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  placeholder="Enter Username or Discord User ID..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onFocus={() => { if(searchResults.length > 0) setShowDropdown(true); }}
+                  className="flex-1 bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                />
+                <button
+                  type="submit"
+                  disabled={searchingMember || !search}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+                >
+                  {searchingMember ? "Scanning..." : "Audit User"}
+                </button>
+              </div>
+
+              {/* Autocomplete Dropdown */}
+              {showDropdown && searchResults.length > 0 && (
+                <div className="absolute top-full left-0 mt-2 w-full max-w-md bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                  {searchResults.map((res) => (
+                    <div 
+                      key={res.id} 
+                      onClick={() => {
+                        setSearch(res.id);
+                        handleSearchMember(res.id);
+                      }}
+                      className="flex items-center gap-3 p-3 hover:bg-slate-800 cursor-pointer border-b border-white/5 last:border-0 transition-colors"
+                    >
+                      <img src={res.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"} className="w-8 h-8 rounded-full" alt="av" />
+                      <div>
+                        <p className="text-sm font-bold text-white flex items-center gap-1">
+                          {res.displayName} 
+                          {res.isBot && <span className="text-[9px] bg-indigo-500/20 text-indigo-400 px-1 py-0.5 rounded uppercase">BOT</span>}
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-mono">{res.id}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </form>
 
             {memberPerms && (
@@ -245,13 +312,35 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
               <Key className="w-5 h-5 text-amber-500" />
               Server-Wide Audit
             </h2>
-            <button
-              onClick={loadAuditData}
-              className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Refresh Scan
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const csvContent = "data:text/csv;charset=utf-8," 
+                    + "Role ID,Role Name,Dangerous Perms\n"
+                    + auditData.roles.map(r => `${r.id},"${r.name}","${r.permissions.map(p => p.name).join('; ')}"`).join("\n")
+                    + "\n\nMember ID,Username,Threat Score,Threat Level\n"
+                    + auditData.members.map(m => `${m.id},"${m.username}",${m.threatScore},${m.threatLevel}`).join("\n");
+                  const encodedUri = encodeURI(csvContent);
+                  const link = document.createElement("a");
+                  link.setAttribute("href", encodedUri);
+                  link.setAttribute("download", `security_audit_${guildId}.csv`);
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"
+                title="Export to CSV"
+              >
+                Export Report
+              </button>
+              <button
+                onClick={loadAuditData}
+                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 shadow-md"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                Refresh Scan
+              </button>
+            </div>
           </div>
 
           {loading ? (
