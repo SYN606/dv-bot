@@ -28,12 +28,13 @@ import {
   PointElement,
   LineElement,
   BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend,
   Filler,
 } from "chart.js";
-import { Line, Bar } from "react-chartjs-2";
+import { Line, Bar, Doughnut } from "react-chartjs-2";
 
 ChartJS.register(
   CategoryScale,
@@ -41,6 +42,7 @@ ChartJS.register(
   PointElement,
   LineElement,
   BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend,
@@ -219,6 +221,49 @@ export default function AnalyticsPage({ user, botInfo }) {
         borderRadius: 4,
       },
     ],
+  };
+
+  const channelLabels = (data?.channelBreakdown || []).map(c => c.name);
+  const channelShares = (data?.channelBreakdown || []).map(c => c.percentage);
+  const channelDoughnutData = {
+    labels: channelLabels.length ? channelLabels : ["No Data"],
+    datasets: [
+      {
+        data: channelShares.length ? channelShares : [100],
+        backgroundColor: [
+          "rgba(99, 102, 241, 0.8)",
+          "rgba(168, 85, 247, 0.8)",
+          "rgba(236, 72, 153, 0.8)",
+          "rgba(16, 185, 129, 0.8)",
+          "rgba(245, 158, 11, 0.8)",
+          "rgba(56, 189, 248, 0.8)",
+          "rgba(244, 63, 94, 0.8)",
+          "rgba(148, 163, 184, 0.8)",
+        ],
+        borderColor: "rgba(15, 23, 42, 1)",
+        borderWidth: 2,
+        hoverOffset: 4,
+      },
+    ],
+  };
+
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '70%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.raw}%` },
+        backgroundColor: "rgba(15, 23, 42, 0.95)",
+        titleColor: "#fff",
+        bodyColor: "#cbd5e1",
+        borderColor: "rgba(255, 255, 255, 0.1)",
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 8,
+      }
+    }
   };
 
   const chartOptions = {
@@ -565,31 +610,43 @@ export default function AnalyticsPage({ user, botInfo }) {
               <span className="text-[10px] font-mono text-slate-400">Share of Chat</span>
             </div>
 
-            <div className="space-y-3 flex-1 flex flex-col justify-center">
+            <div className="flex flex-col sm:flex-row gap-6 mt-4 flex-1 items-center">
               {data?.channelBreakdown && data.channelBreakdown.length > 0 ? (
-                data.channelBreakdown.map((ch, idx) => (
-                  <div key={ch.channelId} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-slate-200 flex items-center gap-1.5 truncate max-w-[200px]">
-                        <span className="text-slate-500 font-mono">#{idx + 1}</span>
-                        <Hash className="w-3.5 h-3.5 text-indigo-400" />
-                        <span className="truncate">{ch.name}</span>
-                      </span>
-                      <div className="flex items-center gap-3 font-mono text-[11px]">
-                        <span className="text-slate-400">{ch.messages.toLocaleString()} msgs</span>
-                        <span className="text-indigo-300 font-bold w-10 text-right">{ch.percentage}%</span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-indigo-500 h-full rounded-full transition-all duration-300"
-                        style={{ width: `${Math.max(ch.percentage, 4)}%` }}
-                      />
+                <>
+                  <div className="w-full sm:w-1/2 h-48 sm:h-64 relative flex justify-center items-center">
+                    <Doughnut data={channelDoughnutData} options={doughnutOptions} />
+                    {/* Inner Label */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-2xl font-black text-white font-mono">{data.channelBreakdown.length}</span>
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Active</span>
                     </div>
                   </div>
-                ))
+                  <div className="w-full sm:w-1/2 space-y-3 flex-1 flex flex-col justify-center">
+                    {data.channelBreakdown.slice(0, 5).map((ch, idx) => (
+                      <div key={ch.channelId} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-slate-200 flex items-center gap-1.5 truncate max-w-[150px]">
+                            <span className="text-slate-500 font-mono">#{idx + 1}</span>
+                            <Hash className="w-3.5 h-3.5 text-indigo-400" />
+                            <span className="truncate">{ch.name}</span>
+                          </span>
+                          <div className="flex items-center gap-2 font-mono text-[11px]">
+                            <span className="text-slate-400">{ch.messages.toLocaleString()} msg</span>
+                            <span className="text-indigo-300 font-bold w-9 text-right">{ch.percentage}%</span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-indigo-500 h-full rounded-full transition-all duration-300"
+                            style={{ width: `${Math.max(ch.percentage, 4)}%`, backgroundColor: channelDoughnutData.datasets[0].backgroundColor[idx % 8] }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
-                <div className="text-center py-12 text-xs text-slate-500 border border-dashed border-white/5 rounded-2xl">
+                <div className="w-full text-center py-12 text-xs text-slate-500 border border-dashed border-white/5 rounded-2xl">
                   No channel chat records accumulated yet in this timeframe.
                 </div>
               )}
