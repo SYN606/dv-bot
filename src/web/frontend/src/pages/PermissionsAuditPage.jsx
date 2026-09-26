@@ -89,10 +89,10 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
           {memberPerms && (
             <div className="bg-slate-950/50 border border-white/5 rounded-xl p-5 flex flex-col md:flex-row gap-6 items-start">
               <div className="flex items-center gap-4 min-w-[200px]">
-                <img src={memberPerms.user.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"} alt="avatar" className="w-14 h-14 rounded-full ring-2 ring-indigo-500/30" />
+                <img src={memberPerms.user?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"} alt="avatar" className="w-14 h-14 rounded-full ring-2 ring-indigo-500/30" />
                 <div>
-                  <h3 className="text-slate-200 font-bold">{memberPerms.user.username}</h3>
-                  <p className="text-xs text-slate-500">{memberPerms.user.id}</p>
+                  <h3 className="text-slate-200 font-bold">{memberPerms.user?.username || "Unknown"}</h3>
+                  <p className="text-xs text-slate-500">{memberPerms.user?.id || search}</p>
                 </div>
               </div>
               <div className="flex-1 space-y-4">
