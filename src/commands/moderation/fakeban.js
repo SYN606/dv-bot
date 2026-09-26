@@ -3,11 +3,12 @@ import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import { sendModLog } from "../../utils/modLog.js";
+import { isBotAdmin } from "../../core/permissions.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("fakeban")
   .setDescription("Simulate a user ban completely (Sends DM and custom channel warnings)")
-  .addUserOption((opt) => opt.setName("user").setDescription("The target member to fake ban").setRequired(true))
+  .addUserOption((opt) => opt.setName("user").setDescription("The target member to fake ban (Mention or ID)").setRequired(true))
   .addStringOption((opt) => opt.setName("reason").setDescription("The mock reason for the ban logs").setRequired(false));
 
 export default createCommand({
@@ -16,19 +17,18 @@ export default createCommand({
   category: "Moderation",
   aliases: ["fban", "fb"],
   modOnly: true,
-  requiredPermission: PermissionFlagsBits.BanMembers,
   slashBuilder,
 
   async execute(ctx) {
-    const { guild, user, member } = ctx;
+    const { guild, user, member, message, interaction } = ctx;
     if (!guild) return;
 
     let targetUserId = ctx.options.user || ctx.options._args?.[0]?.replace(/[<@!>]/g, "");
     let reason = ctx.options.reason;
 
-    // Check if target is in a referenced message reply
-    if (!targetUserId && ctx.message?.reference?.messageId) {
-      const referenced = await ctx.channel.messages.fetch(ctx.message.reference.messageId).catch(() => null);
+    // Resolve Target (Mention, ID, or Reply)
+    if (!targetUserId && message?.reference?.messageId) {
+      const referenced = await ctx.channel.messages.fetch(message.reference.messageId).catch(() => null);
       if (referenced?.author) {
         targetUserId = referenced.author.id;
         if (!reason && ctx.options._args?.length > 0) {
@@ -48,6 +48,26 @@ export default createCommand({
           makeEmbed({
             title: "User Not Found",
             description: `${EMOJIS.get("fail") || "❌"} Provide a valid user.\nUsage: \`${prefix}fakeban <user | id | reply> [reason]\``,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    // Permission Verification (Mimicking Python exactly)
+    const hasPerms = 
+        member.id === guild.ownerId || 
+        member.permissions.has(PermissionFlagsBits.Administrator) ||
+        member.permissions.has(PermissionFlagsBits.BanMembers) ||
+        member.permissions.has(PermissionFlagsBits.ManageMessages);
+
+    if (!hasPerms && !(await isBotAdmin(ctx))) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Permission Denied",
+            description: `${EMOJIS.get("fail") || "❌"} You do not have permission to use mock operations.`,
             level: "ERROR",
           }),
         ],
@@ -87,7 +107,7 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "User Not Found",
-            description: `${EMOJIS.get("fail") || "❌"} Could not find a Discord user with ID \`${targetUserId}\`.`,
+            description: `${EMOJIS.get("fail") || "❌"} Invalid target user.`,
             level: "ERROR",
           }),
         ],
@@ -130,11 +150,21 @@ export default createCommand({
     }
 
     // Send mock direct message notice
+    let dmDescription = "";
+    if (reason !== "No reason provided") {
+      dmDescription = 
+        `${EMOJIS.get("ban") || "🔨"} You were banned from **${guild.name}**\n\n` +
+        `${EMOJIS.get("arrow_point") || "➡️"} **Moderator:** ${user.tag || user.username}\n` +
+        `${EMOJIS.get("arrow_point") || "➡️"} **Reason:** ${reason}`;
+    } else {
+      dmDescription = `${EMOJIS.get("ban") || "🔨"} You were banned from **${guild.name}**.`;
+    }
+
     await targetUser.send({
       embeds: [
         makeEmbed({
           title: "You Were Banned",
-          description: `${EMOJIS.get("ban") || "🔨"} You were banned from **${guild.name}**\n\n${EMOJIS.get("arrow_point") || "➡️"} **Moderator:** ${user.tag || user.username}\n${EMOJIS.get("arrow_point") || "➡️"} **Reason:** ${reason}`,
+          description: dmDescription,
           level: "ERROR",
         }),
       ],
@@ -145,7 +175,9 @@ export default createCommand({
       embeds: [
         makeEmbed({
           title: "User Banned",
-          description: `${EMOJIS.get("ban") || "🔨"} **${targetUser.tag || targetUser.username}** has been banned.\n\n${EMOJIS.get("arrow_point") || "➡️"} **Reason:** ${reason}`,
+          description: 
+            `${EMOJIS.get("ban") || "🔨"} **${targetUser.tag || targetUser.username}** has been banned.\n\n` +
+            `${EMOJIS.get("arrow_point") || "➡️"} **Reason:** ${reason}`,
           level: "ERROR",
           footer: `Action by : ${user.tag || user.username}`,
           footerIcon: user.displayAvatarURL ? user.displayAvatarURL() : null,
@@ -154,8 +186,8 @@ export default createCommand({
     });
 
     // Cleanup prefix invocation message for authenticity
-    if (ctx.message) {
-      await ctx.message.delete().catch(() => {});
+    if (message) {
+      await message.delete().catch(() => {});
     }
 
     // Log mock moderation action
@@ -171,6 +203,8 @@ export default createCommand({
         Reason: reason,
         Type: "Simulated Action",
       },
-    }).catch(() => {});
+    }).catch((exc) => {
+      console.error("Failed sending mod log for fakeban:", exc);
+    });
   },
 });
