@@ -219,6 +219,7 @@ export const tagConfig = sqliteTable("tag_configs", {
 
 export const autoRoleRewardConfig = sqliteTable("auto_role_reward_config", {
   guild_id: text("guild_id").primaryKey(),
+  enabled: integer("enabled").default(0),
   announcement_channel_id: text("announcement_channel_id"),
   top_chat_role_1: text("top_chat_role_1"),
   top_chat_role_2: text("top_chat_role_2"),

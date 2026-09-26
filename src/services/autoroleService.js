@@ -21,7 +21,7 @@ export async function processWeeklyAutoRoles(client) {
   const configs = await AutoRoleRewardConfig.findAll();
 
   for (const config of configs) {
-    if (!config.announcement_channel_id) continue;
+    if (!config.enabled || !config.announcement_channel_id) continue;
     
     const guild = client.guilds.cache.get(config.guild_id);
     if (!guild) continue;

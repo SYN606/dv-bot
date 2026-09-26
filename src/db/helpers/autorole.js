@@ -28,6 +28,7 @@ export async function setAutoRoleConfig(guildId, data) {
   await ensureGuild(gId);
 
   const defaults = {
+    enabled: data.enabled === 1 || data.enabled === true ? 1 : 0,
     announcement_channel_id: data.announcement_channel_id || null,
     top_chat_role_1: data.top_chat_role_1 || null,
     top_chat_role_2: data.top_chat_role_2 || null,

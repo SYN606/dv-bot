@@ -12,6 +12,7 @@ export const autoroleRoutes = new Hono();
 autoroleRoutes.get("/guilds/:guildId/autorole", async (c) => {
   const guildId = c.req.param("guildId");
   const config = await getAutoRoleConfig(guildId) || {
+    enabled: 0,
     announcement_channel_id: "",
     top_chat_role_1: "",
     top_chat_role_2: "",

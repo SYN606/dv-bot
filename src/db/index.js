@@ -229,6 +229,7 @@ function ensureSqliteSchema(sqlite) {
 
     CREATE TABLE IF NOT EXISTS auto_role_reward_config (
       guild_id TEXT PRIMARY KEY,
+      enabled INTEGER DEFAULT 0,
       announcement_channel_id TEXT,
       top_chat_role_1 TEXT,
       top_chat_role_2 TEXT,
