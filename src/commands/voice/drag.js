@@ -5,12 +5,18 @@ import { EMOJIS } from "../../core/emojis.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("drag")
-  .setDescription("Move a member to your voice channel")
-  .addUserOption((opt) => opt.setName("user").setDescription("The member to move").setRequired(true));
+  .setDescription("Move a member to a specified voice channel or your current channel")
+  .addUserOption((opt) => opt.setName("user").setDescription("The member to move").setRequired(true))
+  .addChannelOption((opt) => 
+    opt.setName("channel")
+       .setDescription("The voice channel to move them to (defaults to your channel)")
+       .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
+       .setRequired(false)
+  );
 
 export default createCommand({
   name: "drag",
-  description: "Move a member to your voice channel",
+  description: "Move a member to a specified voice channel or your current channel",
   category: "Voice",
   modOnly: true,
   requiredPermission: PermissionFlagsBits.MoveMembers,
@@ -20,22 +26,11 @@ export default createCommand({
     const { guild, member } = ctx;
     if (!guild || !member) return;
 
-    const myVoice = member.voice.channel;
-    if (!myVoice) {
-      return await ctx.reply({
-        embeds: [
-          makeEmbed({
-            title: "Voice Required",
-            description: `${EMOJIS.get("fail") || "❌"} You must be in a voice channel to use this command.`,
-            level: "ERROR",
-          }),
-        ],
-        ephemeral: true,
-      });
-    }
-
+    // Resolve target user
     const targetUserId = ctx.options.user || ctx.options._args?.[0]?.replace(/[<@!>]/g, "");
-    if (!targetUserId) return await ctx.reply("Please specify a user to drag.");
+    if (!targetUserId) {
+      return await ctx.reply("Please specify a user to drag.");
+    }
 
     const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
     if (!targetMember || !targetMember.voice.channel) {
@@ -51,13 +46,36 @@ export default createCommand({
       });
     }
 
-    await targetMember.voice.setChannel(myVoice).catch(() => {});
+    // Resolve target channel
+    const rawChannelInput = ctx.options.channel || ctx.options._args?.[1]?.replace(/[<#>]/g, "");
+    let targetChannel = null;
+
+    if (rawChannelInput) {
+      targetChannel = guild.channels.cache.get(rawChannelInput);
+    } else {
+      targetChannel = member.voice.channel;
+    }
+
+    if (!targetChannel || (targetChannel.type !== ChannelType.GuildVoice && targetChannel.type !== ChannelType.GuildStageVoice)) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Invalid Channel",
+            description: `${EMOJIS.get("fail") || "❌"} You must specify a valid voice channel or be in one yourself.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    await targetMember.voice.setChannel(targetChannel).catch(() => {});
 
     return await ctx.reply({
       embeds: [
         makeEmbed({
           title: "Member Moved",
-          description: `${EMOJIS.get("success") || "✅"} Moved <@${targetUserId}> to **${myVoice.name}**.`,
+          description: `${EMOJIS.get("success") || "✅"} Moved <@${targetUserId}> to **${targetChannel.name}**.`,
           level: "SUCCESS",
         }),
       ],
