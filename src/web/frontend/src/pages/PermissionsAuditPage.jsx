@@ -12,6 +12,13 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
   const [memberPerms, setMemberPerms] = useState(null);
   const [searchingMember, setSearchingMember] = useState(false);
 
+  // Pagination & Sorting States
+  const [memberPage, setMemberPage] = useState(1);
+  const [rolePage, setRolePage] = useState(1);
+  const [memberSort, setMemberSort] = useState("threatDesc");
+  const [roleSort, setRoleSort] = useState("posDesc");
+  const itemsPerPage = 5;
+
   const guildId = window.location.pathname.split("/")[2];
 
   const loadAuditData = async () => {
@@ -88,6 +95,26 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
   const highCount = auditData?.members?.filter(m => m.threatLevel === 'High').length || 0;
   const safePercent = totalAudited > 0 ? Math.max(0, 100 - ((criticalCount + highCount) / totalAudited * 100)) : 100;
   
+  // Sorting
+  const sortedMembers = [...(auditData?.members || [])].sort((a, b) => {
+    if (memberSort === "threatDesc") return b.threatScore - a.threatScore;
+    if (memberSort === "threatAsc") return a.threatScore - b.threatScore;
+    return 0;
+  });
+
+  const sortedRoles = [...(auditData?.roles || [])].sort((a, b) => {
+    if (roleSort === "posDesc") return b.position - a.position;
+    if (roleSort === "memDesc") return b.memberCount - a.memberCount;
+    return 0;
+  });
+
+  // Pagination
+  const memberTotalPages = Math.ceil(sortedMembers.length / itemsPerPage) || 1;
+  const roleTotalPages = Math.ceil(sortedRoles.length / itemsPerPage) || 1;
+  
+  const currentMembers = sortedMembers.slice((memberPage - 1) * itemsPerPage, memberPage * itemsPerPage);
+  const currentRoles = sortedRoles.slice((rolePage - 1) * itemsPerPage, rolePage * itemsPerPage);
+
   return (
     <BaseLayout user={user} botInfo={botInfo}>
       <div className="max-w-6xl mx-auto space-y-6">
@@ -352,18 +379,26 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
               
               {/* Members with dangerous perms */}
               <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 flex flex-col h-full">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
                   <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
                     <UserIcon className="w-5 h-5 text-rose-400" />
                     Privileged Members ({auditData?.members?.length || 0})
                   </h2>
+                  <select 
+                    value={memberSort}
+                    onChange={(e) => { setMemberSort(e.target.value); setMemberPage(1); }}
+                    className="bg-slate-900 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1 focus:outline-none"
+                  >
+                    <option value="threatDesc">Highest Threat</option>
+                    <option value="threatAsc">Lowest Threat</option>
+                  </select>
                 </div>
                 <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                  {auditData?.members?.length === 0 ? (
+                  {currentMembers.length === 0 ? (
                     <div className="text-slate-400 text-sm text-center py-8">
                       No highly privileged members found.
                     </div>
-                  ) : auditData?.members?.map(member => (
+                  ) : currentMembers.map(member => (
                     <div key={member.id} className={`bg-slate-950/50 border rounded-xl p-4 flex flex-col gap-3 transition-colors hover:bg-slate-900/50 ${
                       member.threatLevel === 'Critical' ? 'border-rose-500/20' : 
                       member.threatLevel === 'High' ? 'border-amber-500/20' : 
@@ -421,22 +456,52 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     </div>
                   ))}
                 </div>
+                {/* Pagination Controls */}
+                {memberTotalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+                    <button
+                      onClick={() => setMemberPage(Math.max(1, memberPage - 1))}
+                      disabled={memberPage === 1}
+                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs font-semibold text-slate-300"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-xs text-slate-400 font-mono">
+                      Page {memberPage} of {memberTotalPages}
+                    </span>
+                    <button
+                      onClick={() => setMemberPage(Math.min(memberTotalPages, memberPage + 1))}
+                      disabled={memberPage === memberTotalPages}
+                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs font-semibold text-slate-300"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Roles with dangerous perms */}
               <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 flex flex-col h-full">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
                   <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
                     <Key className="w-5 h-5 text-amber-400" />
                     Elevated Roles ({auditData?.roles?.length || 0})
                   </h2>
+                  <select 
+                    value={roleSort}
+                    onChange={(e) => { setRoleSort(e.target.value); setRolePage(1); }}
+                    className="bg-slate-900 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1 focus:outline-none"
+                  >
+                    <option value="posDesc">Highest Hierarchy</option>
+                    <option value="memDesc">Most Members</option>
+                  </select>
                 </div>
                 <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                  {auditData?.roles?.length === 0 ? (
+                  {currentRoles.length === 0 ? (
                     <div className="text-slate-400 text-sm text-center py-8">
                       No roles found with elevated permissions.
                     </div>
-                  ) : auditData?.roles?.map(role => (
+                  ) : currentRoles.map(role => (
                     <div key={role.id} className="bg-slate-950/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3 transition-colors hover:bg-slate-900/50">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -461,6 +526,28 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     </div>
                   ))}
                 </div>
+                {/* Pagination Controls */}
+                {roleTotalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+                    <button
+                      onClick={() => setRolePage(Math.max(1, rolePage - 1))}
+                      disabled={rolePage === 1}
+                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs font-semibold text-slate-300"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-xs text-slate-400 font-mono">
+                      Page {rolePage} of {roleTotalPages}
+                    </span>
+                    <button
+                      onClick={() => setRolePage(Math.min(roleTotalPages, rolePage + 1))}
+                      disabled={rolePage === roleTotalPages}
+                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs font-semibold text-slate-300"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
 
             </div>
