@@ -43,7 +43,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
   };
 
   return (
-    <BaseLayout user={user} botInfo={botInfo} currentGuild={{ id: guildId }}>
+    <BaseLayout user={user} botInfo={botInfo}>
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Header */}
