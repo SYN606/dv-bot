@@ -399,10 +399,20 @@ export default function StickyPage({ user, botInfo, showToast }) {
                   </span>
                 </div>
 
-                <p className="text-xs text-[#dbdee1] whitespace-pre-wrap leading-relaxed">
-                  {previewText ||
-                    "📌 Welcome! Please read the guidelines and keep discussions on topic."}
-                </p>
+                <div className="text-xs text-[#dbdee1] whitespace-pre-wrap leading-relaxed">
+                  {previewText ? (
+                    previewText.split(/(<a?:[^:]+:\d+>)/g).map((part, i) => {
+                      const match = part.match(/<(a?):([^:]+):(\d+)>/);
+                      if (match) {
+                        const ext = match[1] === "a" ? "gif" : "png";
+                        return <img key={i} src={`https://cdn.discordapp.com/emojis/${match[3]}.${ext}`} alt={match[2]} className="w-4 h-4 inline-block align-middle mx-0.5" />;
+                      }
+                      return <span key={i}>{part}</span>;
+                    })
+                  ) : (
+                    "📌 Welcome! Please read the guidelines and keep discussions on topic."
+                  )}
+                </div>
 
                 {previewImage && (
                   <div className="pt-1.5 rounded-xl overflow-hidden max-h-48">
