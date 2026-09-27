@@ -39,6 +39,8 @@ botRoutes.get("/bot", async (c) => {
     avatar: botAvatar,
     banner: botBanner,
     guildIds,
+    ping: client?.ws?.ping || 0,
+    status: "Online",
   };
 
   // Cache for 30 seconds
@@ -75,7 +77,8 @@ botRoutes.get("/commands", async (c) => {
       const optionsUsage = options
         .map((o) => (o.required ? `<${o.name}>` : `[${o.name}]`))
         .join(" ");
-      const prefixSyntax = `!${cmd.name}${optionsUsage ? ` ${optionsUsage}` : ""}`;
+      const prefix = process.env.PREFIX || "dv";
+      const prefixSyntax = `${prefix}${cmd.name}${optionsUsage ? ` ${optionsUsage}` : ""}`;
       const slashSyntax = `/${cmd.name}${optionsUsage ? ` ${optionsUsage}` : ""}`;
 
       let permissionLevel = "Everyone";

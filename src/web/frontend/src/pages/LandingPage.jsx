@@ -29,33 +29,33 @@ export default function LandingPage({ user, botInfo }) {
   const botName = botInfo?.username || "Digital Vigital";
 
   const metrics = [
-    { label: "Response Latency", value: "< 25ms", desc: "Ultra-fast Bun runtime", icon: Zap, color: "text-amber-400" },
+    { label: "Response Latency", value: `${botInfo?.ping || 25}ms`, desc: "Live Gateway Ping", icon: Zap, color: "text-amber-400" },
     { label: "Uptime SLA", value: "99.9%", desc: "Continuous 24/7 gateway", icon: Activity, color: "text-emerald-400" },
     { label: "Dashboard Driven", value: "100%", desc: "Zero command setup required", icon: Sliders, color: "text-indigo-400" },
-    { label: "Security Encryption", value: "HMAC", desc: "Signed session cookies", icon: Lock, color: "text-purple-400" },
+    { label: "System Status", value: botInfo?.status || "Online", desc: "Core services operational", icon: CheckCircle2, color: "text-purple-400" },
   ];
 
   const features = [
+    {
+      icon: Sparkles,
+      title: "Supporter Rewards (Vanity)",
+      desc: "Automatically grant roles to users who put your server's vanity URL or Clan Tag in their Discord Custom Status.",
+      color: "text-fuchsia-400",
+      bg: "bg-fuchsia-500/10",
+    },
+    {
+      icon: TrendingUp,
+      title: "Leaderboard Auto-Roles",
+      desc: "Background workers run weekly to calculate the top Text and Voice chatters, automatically assigning exclusive medals and roles.",
+      color: "text-indigo-400",
+      bg: "bg-indigo-500/10",
+    },
     {
       icon: ShieldCheck,
       title: "Automated Verification Gate",
       desc: "Instant 1-click button verification with automatic role assignment, minimum account age security, and audit logging.",
       color: "text-emerald-400",
       bg: "bg-emerald-500/10",
-    },
-    {
-      icon: TrendingUp,
-      title: "Real-Time Activity Analytics",
-      desc: "Interactive 7-day and 14-day charts for message volume, voice minutes, hourly heatmaps, and member leaderboards.",
-      color: "text-indigo-400",
-      bg: "bg-indigo-500/10",
-    },
-    {
-      icon: ImageIcon,
-      title: "Media-Only Channel Policies",
-      desc: "Auto-purge non-media chat messages to maintain pristine showcase channels with automated 3-strike timeout escalation.",
-      color: "text-purple-400",
-      bg: "bg-purple-500/10",
     },
     {
       icon: Pin,

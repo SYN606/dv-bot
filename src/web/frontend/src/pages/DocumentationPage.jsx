@@ -172,11 +172,11 @@ export default function DocumentationPage({ user, botInfo }) {
                           /{cmd.name}
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col gap-1">
                             <span className="font-bold text-sm text-white">/{cmd.name}</span>
-                            <span className="text-xs text-slate-400 font-mono">!{cmd.name}</span>
+                            <span className="text-[11px] text-slate-400 font-mono bg-slate-900/50 px-2 py-0.5 rounded border border-white/5 inline-flex w-fit">{cmd.prefixUsage.split(' ')[0]}</span>
                           </div>
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider font-mono">
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider font-mono mt-1 block">
                             {cmd.category}
                           </span>
                         </div>
@@ -208,7 +208,7 @@ export default function DocumentationPage({ user, botInfo }) {
                             key={alias}
                             className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[10px] font-mono text-slate-300"
                           >
-                            !{alias}
+                            {cmd.prefixUsage.substring(0, cmd.prefixUsage.indexOf(cmd.name))}{alias}
                           </span>
                         ))}
                       </div>
