@@ -58,7 +58,7 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-indigo-500/30 selection:text-indigo-200 relative overflow-x-hidden">
+    <div className="min-h-screen bg-black text-neutral-200 flex flex-col antialiased selection:bg-indigo-500/30 selection:text-white relative overflow-x-hidden">
       {/* Glows */}
       <div className="fixed top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-indigo-600/15 blur-[140px] pointer-events-none -z-10" />
       <div className="fixed bottom-[-100px] right-[-100px] w-[550px] h-[550px] rounded-full bg-purple-600/15 blur-[150px] pointer-events-none -z-10" />
@@ -73,7 +73,7 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Select a Server
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-neutral-400 mt-1">
               Choose a Discord server to configure settings, automations, and view analytics.
             </p>
           </div>
@@ -82,21 +82,21 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-xs font-semibold text-slate-300 hover:text-white transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-900/80 hover:bg-neutral-800 border border-white/10 text-xs font-semibold text-neutral-400 hover:text-white transition-all disabled:opacity-50"
               title="Sync latest servers and permissions from Discord"
             >
-              <RotateCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-indigo-400" : ""}`} />
+              <RotateCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-white" : ""}`} />
               <span>{refreshing ? "Syncing..." : "Sync Servers"}</span>
             </button>
 
             <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search servers..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full pl-10 pr-4 py-2 rounded-xl bg-neutral-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
               />
             </div>
           </div>
@@ -108,8 +108,8 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
             onClick={() => setFilterMode("manageable")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               filterMode === "manageable"
-                ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
-                : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                ? "bg-indigo-600/20 text-white border border-white/10"
+                : "text-neutral-400 hover:text-neutral-300 hover:bg-white/5"
             }`}
           >
             Admin Servers
@@ -118,8 +118,8 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
             onClick={() => setFilterMode("all")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               filterMode === "all"
-                ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
-                : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                ? "bg-indigo-600/20 text-white border border-white/10"
+                : "text-neutral-400 hover:text-neutral-300 hover:bg-white/5"
             }`}
           >
             All Servers ({guilds.length})
@@ -132,7 +132,7 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
             <ShieldAlert className="w-12 h-12 text-slate-600 mx-auto" />
             <div>
               <h3 className="text-base font-bold text-white mb-1">No Matching Servers</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-xs text-neutral-400 leading-relaxed">
                 {search
                   ? "No matching servers found for your search query."
                   : filterMode === "manageable"
@@ -143,7 +143,7 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
             {filterMode === "manageable" && (
               <button
                 onClick={() => setFilterMode("all")}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-indigo-300 transition-all border border-white/5"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-white transition-all border border-white/5"
               >
                 <span>View All Servers</span>
               </button>
@@ -170,7 +170,7 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
               return (
                 <div
                   key={guild.id}
-                  className="glass-card p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-all flex flex-col justify-between group"
+                  className="glass-card p-5 rounded-2xl border border-white/5 hover:border-white/30/30 transition-all flex flex-col justify-between group"
                 >
                   <div>
                     {/* Top Identity Row */}
@@ -184,7 +184,7 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
                               className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform"
                             />
                           ) : (
-                            <span className="font-bold text-xs text-indigo-300 font-mono">
+                            <span className="font-bold text-xs text-white font-mono">
                               {guild.name.slice(0, 2).toUpperCase()}
                             </span>
                           )}
@@ -194,33 +194,33 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
                         <h3 className="font-bold text-sm text-white truncate">{guild.name}</h3>
                         <div className="flex items-center gap-2 mt-1">
                           {isOwner ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                              <Crown className="w-2.5 h-2.5 text-amber-400" />
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-white border border-white/10">
+                              <Crown className="w-2.5 h-2.5 text-white" />
                               <span>Owner</span>
                             </span>
                           ) : hasAdmin ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
-                              <Shield className="w-2.5 h-2.5 text-indigo-400" />
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-white border border-white/10">
+                              <Shield className="w-2.5 h-2.5 text-white" />
                               <span>Admin</span>
                             </span>
                           ) : hasManage ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-white border border-white/10">
                               <span>Manager</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-white/10">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-400 border border-white/10">
                               <span>Member</span>
                             </span>
                           )}
 
-                          <span className="text-[10px] font-mono text-slate-500">
+                          <span className="text-[10px] font-mono text-neutral-500">
                             {isBotPresent ? (
-                              <span className="inline-flex items-center gap-1 text-emerald-400">
+                              <span className="inline-flex items-center gap-1 text-white">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                 Active
                               </span>
                             ) : (
-                              <span className="text-slate-400">Not Added</span>
+                              <span className="text-neutral-400">Not Added</span>
                             )}
                           </span>
                         </div>
@@ -240,7 +240,7 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
                           <span>Manage Server</span>
                         </Link>
                       ) : (
-                        <div className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-semibold bg-white/5 text-slate-400 border border-white/10 select-none cursor-not-allowed">
+                        <div className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-semibold bg-white/5 text-neutral-400 border border-white/10 select-none cursor-not-allowed">
                           <span>Active • Admin Required</span>
                         </div>
                       )
@@ -251,14 +251,14 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
                           setSelectedGuild(guild);
                           setShowInviteModal(true);
                         }}
-                        className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 transition-all hover:scale-[1.01]"
+                        className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold bg-indigo-600/20 hover:bg-indigo-600/30 text-white border border-white/10 transition-all hover:scale-[1.01]"
                         title="Private Bot - Contact SYN for Invite"
                       >
-                        <Lock className="w-3.5 h-3.5 text-amber-400" />
+                        <Lock className="w-3.5 h-3.5 text-white" />
                         <span>Invite Bot</span>
                       </button>
                     ) : (
-                      <div className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-medium bg-slate-900/40 text-slate-500 border border-white/5 select-none">
+                      <div className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-medium bg-neutral-900/40 text-neutral-500 border border-white/5 select-none">
                         <span>No Admin Permissions</span>
                       </div>
                     )}
@@ -277,7 +277,7 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
             {/* Close Button */}
             <button
               onClick={() => setShowInviteModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"
+              className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-all"
               title="Close"
             >
               <X className="w-4 h-4" />
@@ -285,11 +285,11 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
 
             {/* Header / Lock Badge */}
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0 shadow-lg shadow-amber-500/10">
+              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 shadow-lg shadow-amber-500/10">
                 <Lock className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase font-bold">
+                <span className="text-[10px] font-mono tracking-widest text-white uppercase font-bold">
                   Private Bot
                 </span>
                 <h2 className="text-xl font-extrabold text-white tracking-tight">
@@ -299,13 +299,13 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
             </div>
 
             {/* Core Message requested by user */}
-            <div className="p-4 rounded-2xl bg-slate-900/90 border border-white/10 space-y-2.5">
+            <div className="p-4 rounded-2xl bg-neutral-900/90 border border-white/10 space-y-2.5">
               <p className="text-sm font-bold text-white leading-relaxed flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-indigo-400 shrink-0" />
-                <span><strong className="text-indigo-400 font-extrabold">SYN</strong> is bot owner contact to him for invite</span>
+                <UserCheck className="w-4 h-4 text-white shrink-0" />
+                <span><strong className="text-white font-extrabold">SYN</strong> is bot owner contact to him for invite</span>
               </p>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                This bot is strictly private. Public invite links are disabled. If you would like to add {botInfo?.username || "DV-BOT"} to {selectedGuild ? <strong className="text-slate-200 font-semibold">"{selectedGuild.name}"</strong> : "your server"}, please reach out to <strong className="text-slate-200">SYN</strong> directly for access.
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                This bot is strictly private. Public invite links are disabled. If you would like to add {botInfo?.username || "DV-BOT"} to {selectedGuild ? <strong className="text-neutral-300 font-semibold">"{selectedGuild.name}"</strong> : "your server"}, please reach out to <strong className="text-neutral-300">SYN</strong> directly for access.
               </p>
             </div>
 
@@ -323,7 +323,7 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate }) {
               <button
                 type="button"
                 onClick={() => setShowInviteModal(false)}
-                className="w-full sm:w-auto inline-flex items-center justify-center py-2.5 px-5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition-all"
+                className="w-full sm:w-auto inline-flex items-center justify-center py-2.5 px-5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white border border-white/10 transition-all"
               >
                 Close
               </button>

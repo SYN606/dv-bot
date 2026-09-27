@@ -294,7 +294,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
         {/* Simple Header & Global Status */}
         <div className="glass-card p-5 sm:p-6 rounded-3xl border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
+            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white shrink-0">
               <ShieldCheck className="w-7 h-7" />
             </div>
             <div>
@@ -305,22 +305,22 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                     config.enabled
-                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                      : "bg-slate-800 text-slate-400 border-white/5"
+                      ? "bg-white/5 text-white border-white/10"
+                      : "bg-neutral-800 text-neutral-400 border-white/5"
                   }`}
                 >
                   {config.enabled ? "Active" : "Disabled"}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+              <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">
                 Automatically verify incoming members and assign access roles.
               </p>
             </div>
           </div>
 
           {/* Quick Toggle Switch */}
-          <div className="flex items-center gap-3 bg-slate-900/80 px-4 py-2.5 rounded-2xl border border-white/10 self-start sm:self-auto">
-            <span className="text-xs font-semibold text-slate-300">
+          <div className="flex items-center gap-3 bg-neutral-900/80 px-4 py-2.5 rounded-2xl border border-white/10 self-start sm:self-auto">
+            <span className="text-xs font-semibold text-neutral-400">
               {config.enabled ? "Gate Enabled" : "Gate Disabled"}
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -330,17 +330,17 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                 onChange={(e) => setConfig({ ...config, enabled: e.target.checked })}
                 className="sr-only peer"
               />
-              <div className="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+              <div className="w-10 h-5 bg-neutral-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
             </label>
           </div>
         </div>
 
         {/* Verification Disabled Hint Banner */}
         {!config.enabled && (
-          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-            <div className="text-xs text-amber-200">
-              <p className="font-bold text-amber-300">Verification Gate is Currently Turned Off</p>
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-white shrink-0 mt-0.5" />
+            <div className="text-xs text-white">
+              <p className="font-bold text-white">Verification Gate is Currently Turned Off</p>
               <p className="mt-0.5">
                 Incoming members clicking the verification button in Discord will see a notice that verification is paused by administrators. Enable the gate switch above when you are ready to accept new members.
               </p>
@@ -350,10 +350,10 @@ export default function VerificationPage({ user, botInfo, showToast }) {
 
         {/* Stale / Deleted Role Warning */}
         {staleRoleAlert && (
-          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-            <div className="text-xs text-rose-200">
-              <p className="font-bold text-rose-300">Stale Config Alert: Verified Role Missing in Discord</p>
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-white shrink-0 mt-0.5" />
+            <div className="text-xs text-white">
+              <p className="font-bold text-white">Stale Config Alert: Verified Role Missing in Discord</p>
               <p className="mt-0.5">
                 The role previously configured in the database was deleted from Discord. Please choose a valid role under <strong>Role to Grant</strong> and click <strong>Save Settings</strong>.
               </p>
@@ -363,10 +363,10 @@ export default function VerificationPage({ user, botInfo, showToast }) {
 
         {/* Role Hierarchy Warning */}
         {isHierarchyError && (
-          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-            <div className="text-xs text-amber-200">
-              <p className="font-bold text-amber-300">Bot Role Hierarchy Alert</p>
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-white shrink-0 mt-0.5" />
+            <div className="text-xs text-white">
+              <p className="font-bold text-white">Bot Role Hierarchy Alert</p>
               <p className="mt-0.5">
                 The role <strong>@{selectedRole?.name}</strong> is higher than or equal to the bot's highest role. Discord will reject assigning it. Open <strong>Discord Server Settings &gt; Roles</strong> and drag the bot's role above @{selectedRole?.name}.
               </p>
@@ -380,22 +380,22 @@ export default function VerificationPage({ user, botInfo, showToast }) {
           <form onSubmit={handleSave} className="lg:col-span-7 space-y-6">
             {/* Section 1: Essentials */}
             <div className="glass-card p-5 sm:p-6 rounded-3xl border border-white/10 space-y-5">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300 font-mono flex items-center gap-2">
-                <Layers className="w-4 h-4 text-indigo-400" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-400 font-mono flex items-center gap-2">
+                <Layers className="w-4 h-4 text-white" />
                 <span>1. Core Setup</span>
               </h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Verification Channel */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                    <Hash className="w-3.5 h-3.5 text-emerald-400" />
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1.5 flex items-center gap-1.5">
+                    <Hash className="w-3.5 h-3.5 text-white" />
                     <span>Verification Channel *</span>
                   </label>
                   <select
                     value={config.channelId}
                     onChange={(e) => setConfig({ ...config, channelId: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
                   >
                     <option value="">Select a channel...</option>
                     {channels.map((ch) => (
@@ -408,15 +408,15 @@ export default function VerificationPage({ user, botInfo, showToast }) {
 
                 {/* Verified Role */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                    <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1.5 flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-white" />
                     <span>Role to Grant *</span>
                   </label>
                   <select
                     value={config.verifiedRoleId}
                     onChange={(e) => setConfig({ ...config, verifiedRoleId: e.target.value })}
-                    className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border text-xs sm:text-sm text-white focus:outline-none cursor-pointer ${
-                      isHierarchyError ? "border-amber-500/50 text-amber-200" : "border-white/10 focus:border-indigo-500"
+                    className={`w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border text-xs sm:text-sm text-white focus:outline-none cursor-pointer ${
+                      isHierarchyError ? "border-white/10 text-white" : "border-white/10 focus:border-indigo-500"
                     }`}
                   >
                     <option value="">Select role to give...</option>
@@ -431,8 +431,8 @@ export default function VerificationPage({ user, botInfo, showToast }) {
 
               {/* Challenge Mode Selection */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
-                  <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                <label className="block text-xs font-semibold text-neutral-400 mb-2 flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5 text-white" />
                   <span>Challenge Mode</span>
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -442,7 +442,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                     className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                       config.mode === "button"
                         ? "bg-indigo-600/20 border-indigo-500/60 ring-1 ring-indigo-500/40"
-                        : "bg-slate-900/60 border-white/10 hover:border-white/20 hover:bg-slate-900"
+                        : "bg-neutral-900/60 border-white/10 hover:border-white/20 hover:bg-neutral-900"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -451,10 +451,10 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                         <span>1-Click Button (Instant)</span>
                       </span>
                       {config.mode === "button" && (
-                        <Check className="w-4 h-4 text-indigo-400" />
+                        <Check className="w-4 h-4 text-white" />
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                    <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
                       Instant access with zero friction. Clicking the button immediately assigns the role.
                     </p>
                   </button>
@@ -465,7 +465,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                     className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                       config.mode === "captcha"
                         ? "bg-indigo-600/20 border-indigo-500/60 ring-1 ring-indigo-500/40"
-                        : "bg-slate-900/60 border-white/10 hover:border-white/20 hover:bg-slate-900"
+                        : "bg-neutral-900/60 border-white/10 hover:border-white/20 hover:bg-neutral-900"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -474,10 +474,10 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                         <span>Anti-Raid Captcha Modal</span>
                       </span>
                       {config.mode === "captcha" && (
-                        <Check className="w-4 h-4 text-indigo-400" />
+                        <Check className="w-4 h-4 text-white" />
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                    <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
                       Opens a modal popup requiring the member to type a 6-character code to defeat raid bots.
                     </p>
                   </button>
@@ -488,14 +488,14 @@ export default function VerificationPage({ user, botInfo, showToast }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Unverified Role (Optional) */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                    <UserMinus className="w-3.5 h-3.5 text-slate-400" />
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1.5 flex items-center gap-1.5">
+                    <UserMinus className="w-3.5 h-3.5 text-neutral-400" />
                     <span>Unverified Role (Optional)</span>
                   </label>
                   <select
                     value={config.unverifiedRoleId}
                     onChange={(e) => setConfig({ ...config, unverifiedRoleId: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
                   >
                     <option value="">None (Optional)</option>
                     {roles.map((r) => (
@@ -504,21 +504,21 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                       </option>
                     ))}
                   </select>
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-[11px] text-neutral-500 mt-1">
                     Removed automatically when the member verifies.
                   </p>
                 </div>
 
                 {/* Audit Log Channel (Optional) */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                    <Hash className="w-3.5 h-3.5 text-slate-400" />
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1.5 flex items-center gap-1.5">
+                    <Hash className="w-3.5 h-3.5 text-neutral-400" />
                     <span>Audit Log Channel (Optional)</span>
                   </label>
                   <select
                     value={config.logChannelId}
                     onChange={(e) => setConfig({ ...config, logChannelId: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
                   >
                     <option value="">None (Disabled)</option>
                     {channels.map((ch) => (
@@ -527,7 +527,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                       </option>
                     ))}
                   </select>
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-[11px] text-neutral-500 mt-1">
                     Sends verification confirmation logs here.
                   </p>
                 </div>
@@ -537,17 +537,17 @@ export default function VerificationPage({ user, botInfo, showToast }) {
             {/* Section 2: Embed Message & Button Styling */}
             <div className="glass-card p-5 sm:p-6 rounded-3xl border border-white/10 space-y-5">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300 font-mono flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-indigo-400" />
+                <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-400 font-mono flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-white" />
                   <span>2. Message & Button</span>
                 </h2>
 
                 <button
                   type="button"
                   onClick={handleApplyPreset}
-                  className="text-xs text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 px-3 py-1 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="text-xs text-white hover:text-white bg-white/5 hover:bg-white/5 border border-white/10 px-3 py-1 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  <Sparkles className="w-3.5 h-3.5 text-white" />
                   <span>Use Recommended Template</span>
                 </button>
               </div>
@@ -555,7 +555,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
               {/* Title & Button Label */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1.5">
                     Embed Title
                   </label>
                   <input
@@ -563,12 +563,12 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                     value={config.embedTitle}
                     onChange={(e) => setConfig({ ...config, embedTitle: e.target.value })}
                     placeholder="Server Verification"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1.5">
                     Button Label
                   </label>
                   <input
@@ -576,30 +576,30 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                     value={config.buttonLabel}
                     onChange={(e) => setConfig({ ...config, buttonLabel: e.target.value })}
                     placeholder="Verify Access"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
               </div>
 
               {/* Button Emoji Dropdown / Option Menu */}
               <div className="relative" ref={emojiPopoverRef}>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-neutral-400 mb-1.5">
                   Button Emoji (Animated & Custom Supported)
                 </label>
 
                 <button
                   type="button"
                   onClick={() => setEmojiDropdownOpen(!emojiDropdownOpen)}
-                  className="w-full sm:w-auto min-w-[200px] px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-white/10 hover:border-indigo-500/40 text-xs sm:text-sm text-white flex items-center justify-between gap-3 transition-all cursor-pointer shadow-sm"
+                  className="w-full sm:w-auto min-w-[200px] px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-slate-850 border border-white/10 hover:border-white/30/40 text-xs sm:text-sm text-white flex items-center justify-between gap-3 transition-all cursor-pointer shadow-sm"
                 >
                   <div className="flex items-center gap-2.5">
                     {renderEmoji(config.buttonEmoji)}
-                    <span className="font-mono text-xs text-slate-300">
+                    <span className="font-mono text-xs text-neutral-400">
                       {config.buttonEmoji || "✅"}
                     </span>
                   </div>
                   <ChevronDown
-                    className={`w-4 h-4 text-slate-400 transition-transform ${
+                    className={`w-4 h-4 text-neutral-400 transition-transform ${
                       emojiDropdownOpen ? "rotate-180" : ""
                     }`}
                   />
@@ -610,25 +610,25 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                   <div className="absolute left-0 top-full mt-2 w-full sm:w-96 rounded-2xl glass-panel border border-white/15 shadow-2xl p-4 space-y-3 z-50 animate-in fade-in zoom-in-95">
                     {/* Search inside emojis */}
                     <div className="relative">
-                      <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-500" />
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-neutral-500" />
                       <input
                         type="text"
                         placeholder="Search custom or animated emojis..."
                         value={emojiSearch}
                         onChange={(e) => setEmojiSearch(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-neutral-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                       />
                     </div>
 
                     {/* Server Custom & Animated Emojis */}
                     <div className="space-y-1.5">
-                      <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold flex items-center justify-between">
+                      <div className="text-[11px] font-mono uppercase tracking-wider text-neutral-400 font-semibold flex items-center justify-between">
                         <span>Server Emojis ({serverEmojis.length})</span>
-                        <span className="text-[10px] text-slate-500 lowercase">animated GIFs enabled</span>
+                        <span className="text-[10px] text-neutral-500 lowercase">animated GIFs enabled</span>
                       </div>
 
                       {filteredServerEmojis.length === 0 ? (
-                        <div className="text-center py-3 text-xs text-slate-400">
+                        <div className="text-center py-3 text-xs text-neutral-400">
                           {serverEmojis.length === 0
                             ? "No custom server emojis found."
                             : "No emojis match your search."}
@@ -651,7 +651,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                                 className={`p-2 rounded-xl flex flex-col items-center justify-center border transition-all cursor-pointer ${
                                   isSelected
                                     ? "bg-indigo-600/30 border-indigo-400 ring-2 ring-indigo-400/40"
-                                    : "bg-slate-900/80 border-white/5 hover:border-indigo-500/40 hover:bg-slate-800"
+                                    : "bg-neutral-900/80 border-white/5 hover:border-white/30/40 hover:bg-neutral-800"
                                 }`}
                               >
                                 <img
@@ -669,7 +669,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
 
                     {/* Quick Standard Unicode */}
                     <div className="space-y-1.5 border-t border-white/10 pt-2.5">
-                      <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                      <div className="text-[11px] font-mono uppercase tracking-wider text-neutral-400 font-semibold">
                         Standard Icons
                       </div>
                       <div className="flex flex-wrap gap-1.5">
@@ -684,7 +684,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                             className={`w-8 h-8 rounded-xl flex items-center justify-center text-base transition-all cursor-pointer ${
                               config.buttonEmoji === em
                                 ? "bg-indigo-600/30 border border-indigo-400"
-                                : "bg-slate-900 border border-white/5 hover:bg-slate-800 hover:border-white/20"
+                                : "bg-neutral-900 border border-white/5 hover:bg-neutral-800 hover:border-white/20"
                             }`}
                           >
                             {em}
@@ -699,27 +699,27 @@ export default function VerificationPage({ user, botInfo, showToast }) {
               {/* Description & Verified Role Variable */}
               <div className="space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <label className="block text-xs font-semibold text-slate-300">
+                  <label className="block text-xs font-semibold text-neutral-400">
                     Embed Description & Instructions
                   </label>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[11px] text-neutral-400">
                     Available variable:
                   </span>
                 </div>
 
                 {/* Clean 1-Click Verified Role Variable */}
-                <div className="flex items-center gap-2.5 p-2 rounded-2xl bg-slate-900/90 border border-white/10">
+                <div className="flex items-center gap-2.5 p-2 rounded-2xl bg-neutral-900/90 border border-white/10">
                   <button
                     type="button"
                     onClick={() => handleInsertVariable("{verifiedRole}")}
                     title="Insert verified role mention"
-                    className="px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 text-xs font-mono font-medium transition-all hover:scale-105 cursor-pointer flex items-center gap-2 shadow-sm"
+                    className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-indigo-500/30 text-white border border-indigo-500/40 text-xs font-mono font-medium transition-all hover:scale-105 cursor-pointer flex items-center gap-2 shadow-sm"
                   >
-                    <span className="text-indigo-400 font-bold text-sm">+</span>
+                    <span className="text-white font-bold text-sm">+</span>
                     <span className="font-semibold">{`{verifiedRole}`}</span>
-                    <span className="text-[10px] text-slate-400 font-sans">(Verified Role Mention)</span>
+                    <span className="text-[10px] text-neutral-400 font-sans">(Verified Role Mention)</span>
                   </button>
-                  <span className="text-xs text-slate-400 hidden sm:inline">
+                  <span className="text-xs text-neutral-400 hidden sm:inline">
                     Mentions the role given to verified members.
                   </span>
                 </div>
@@ -730,7 +730,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                   value={config.embedDescription}
                   onChange={(e) => setConfig({ ...config, embedDescription: e.target.value })}
                   placeholder="🛡️ Click the button below to verify and receive the {verifiedRole} role to unlock access."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-y leading-relaxed font-sans"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-y leading-relaxed font-sans"
                 />
               </div>
             </div>
@@ -740,11 +740,11 @@ export default function VerificationPage({ user, botInfo, showToast }) {
           <div className="lg:col-span-5 space-y-5 lg:sticky lg:top-6">
             <div className="glass-card p-5 sm:p-6 rounded-3xl border border-white/10 space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300 font-mono">
-                  <Eye className="w-4 h-4 text-cyan-400" />
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-400 font-mono">
+                  <Eye className="w-4 h-4 text-white" />
                   <span>Live Discord Preview</span>
                 </div>
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                <span className="text-[10px] font-mono text-white bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
                   Real-time
                 </span>
               </div>
@@ -829,9 +829,9 @@ export default function VerificationPage({ user, botInfo, showToast }) {
                   onClick={handleResetConfig}
                   disabled={resetting}
                   title="Reset verification database configuration back to clean defaults"
-                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/5 text-white border border-white/10 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  <RotateCcw className={`w-3.5 h-3.5 text-rose-400 ${resetting ? "animate-spin" : ""}`} />
+                  <RotateCcw className={`w-3.5 h-3.5 text-white ${resetting ? "animate-spin" : ""}`} />
                   <span>{resetting ? "Resetting Configuration..." : "Reset Config to Clean Defaults"}</span>
                 </button>
               </div>

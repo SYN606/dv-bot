@@ -339,15 +339,15 @@ export default function AnalyticsPage({ user, botInfo }) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
-              <TrendingUp className="w-6 h-6 text-indigo-400" />
+              <TrendingUp className="w-6 h-6 text-white" />
               <span>Server Insights & Analytics</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-neutral-400 mt-1">
               Multi-dimensional community telemetry, retention rates, channel traffic, and prime engagement hours.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-900/90 p-1 rounded-2xl border border-white/10 self-start sm:self-auto shadow-lg">
+          <div className="flex items-center gap-2 bg-neutral-900/90 p-1 rounded-2xl border border-white/10 self-start sm:self-auto shadow-lg">
             {[
               { label: "7 Days", val: 7 },
               { label: "14 Days", val: 14 },
@@ -360,7 +360,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   timeframe === t.val
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                    : "text-neutral-400 hover:text-white hover:bg-white/5"
                 }`}
               >
                 {t.label}
@@ -371,7 +371,7 @@ export default function AnalyticsPage({ user, botInfo }) {
               type="button"
               onClick={handleExportCSV}
               disabled={loading || !data}
-              className="p-2 rounded-xl text-slate-400 hover:text-indigo-400 hover:bg-white/5 transition-colors cursor-pointer"
+              className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
               title="Export Analytics Data to CSV"
             >
               <Download className="w-3.5 h-3.5" />
@@ -381,10 +381,10 @@ export default function AnalyticsPage({ user, botInfo }) {
               type="button"
               onClick={() => loadAnalytics(timeframe)}
               disabled={loading}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
               title="Refresh Analytics Data"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-indigo-400" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-white" : ""}`} />
             </button>
           </div>
         </div>
@@ -394,8 +394,8 @@ export default function AnalyticsPage({ user, botInfo }) {
           {/* 1. Total Messages */}
           <div className="glass-card p-5 rounded-3xl border border-white/5 shadow-xl space-y-3 relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400">Total Messages</span>
-              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              <span className="text-xs font-semibold text-neutral-400">Total Messages</span>
+              <div className="p-2 rounded-xl bg-white/5 text-white border border-white/10">
                 <MessageSquare className="w-4 h-4" />
               </div>
             </div>
@@ -403,8 +403,8 @@ export default function AnalyticsPage({ user, botInfo }) {
               <p className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
                 {summary.totalMessages.toLocaleString()}
               </p>
-              <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-400">
-                <span className="text-indigo-300 font-semibold font-mono">
+              <div className="flex items-center gap-1.5 mt-1 text-xs text-neutral-400">
+                <span className="text-white font-semibold font-mono">
                   ~{summary.dailyAvgMessages.toLocaleString()}
                 </span>
                 <span>msgs/day avg</span>
@@ -415,17 +415,17 @@ export default function AnalyticsPage({ user, botInfo }) {
           {/* 2. Total Voice Hours */}
           <div className="glass-card p-5 rounded-3xl border border-white/5 shadow-xl space-y-3 relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400">Voice Activity</span>
-              <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              <span className="text-xs font-semibold text-neutral-400">Voice Activity</span>
+              <div className="p-2 rounded-xl bg-white/5 text-white border border-white/10">
                 <Mic className="w-4 h-4" />
               </div>
             </div>
             <div>
               <p className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
-                {summary.totalVoiceHours} <span className="text-sm font-normal text-slate-400">hrs</span>
+                {summary.totalVoiceHours} <span className="text-sm font-normal text-neutral-400">hrs</span>
               </p>
-              <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-400">
-                <span className="text-purple-300 font-semibold font-mono">
+              <div className="flex items-center gap-1.5 mt-1 text-xs text-neutral-400">
+                <span className="text-white font-semibold font-mono">
                   {summary.totalVoiceMinutes.toLocaleString()} min
                 </span>
                 <span>logged</span>
@@ -436,19 +436,19 @@ export default function AnalyticsPage({ user, botInfo }) {
           {/* 3. Server Net Growth */}
           <div className="glass-card p-5 rounded-3xl border border-white/5 shadow-xl space-y-3 relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400">Net Member Growth</span>
-              <div className={`p-2 rounded-xl border ${summary.netGrowth >= 0 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border-rose-500/20"}`}>
+              <span className="text-xs font-semibold text-neutral-400">Net Member Growth</span>
+              <div className={`p-2 rounded-xl border ${summary.netGrowth >= 0 ? "bg-white/5 text-white border-white/10" : "bg-white/5 text-white border-white/10"}`}>
                 {summary.netGrowth >= 0 ? <UserPlus className="w-4 h-4" /> : <UserMinus className="w-4 h-4" />}
               </div>
             </div>
             <div>
-              <p className={`text-2xl sm:text-3xl font-black font-mono tracking-tight ${summary.netGrowth >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+              <p className={`text-2xl sm:text-3xl font-black font-mono tracking-tight ${summary.netGrowth >= 0 ? "text-white" : "text-white"}`}>
                 {summary.netGrowth >= 0 ? `+${summary.netGrowth}` : summary.netGrowth}
               </p>
-              <div className="flex items-center gap-2 mt-1 text-xs text-slate-400 font-mono">
-                <span className="text-emerald-300">+{summary.totalJoins} joins</span>
+              <div className="flex items-center gap-2 mt-1 text-xs text-neutral-400 font-mono">
+                <span className="text-white">+{summary.totalJoins} joins</span>
                 <span>•</span>
-                <span className="text-rose-300">-{summary.totalLeaves} leaves</span>
+                <span className="text-white">-{summary.totalLeaves} leaves</span>
               </div>
             </div>
           </div>
@@ -456,21 +456,21 @@ export default function AnalyticsPage({ user, botInfo }) {
           {/* 4. Retention Rate */}
           <div className="glass-card p-5 rounded-3xl border border-white/5 shadow-xl space-y-3 relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400">Retention Rate</span>
-              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <span className="text-xs font-semibold text-neutral-400">Retention Rate</span>
+              <div className="p-2 rounded-xl bg-white/5 text-white border border-white/10">
                 <ShieldCheck className="w-4 h-4" />
               </div>
             </div>
             <div>
               <div className="flex items-baseline justify-between">
-                <p className="text-2xl sm:text-3xl font-black text-amber-300 font-mono tracking-tight">
+                <p className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
                   {summary.retentionRate}%
                 </p>
-                <span className="text-xs font-mono text-slate-400">
+                <span className="text-xs font-mono text-neutral-400">
                   {summary.activeTracked} active members
                 </span>
               </div>
-              <div className="w-full bg-slate-800 h-2 rounded-full mt-2 overflow-hidden">
+              <div className="w-full bg-neutral-800 h-2 rounded-full mt-2 overflow-hidden">
                 <div
                   className="bg-gradient-to-r from-amber-500 to-emerald-400 h-full rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, summary.retentionRate))}%` }}
@@ -481,47 +481,47 @@ export default function AnalyticsPage({ user, botInfo }) {
         </div>
 
         {/* Algorithmic Server Insights Banner */}
-        <div className="glass-card p-5 sm:p-6 rounded-3xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/30 via-slate-900/60 to-purple-950/30 shadow-2xl relative overflow-hidden">
-          <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-3">
+        <div className="glass-card p-5 sm:p-6 rounded-3xl border border-white/10 bg-gradient-to-r from-indigo-950/30 via-slate-900/60 to-purple-950/30 shadow-2xl relative overflow-hidden">
+          <div className="flex items-center gap-2 text-white text-xs font-bold uppercase tracking-wider mb-3">
             <Zap className="w-4 h-4" />
             <span>Community Intelligence & Prime Hours</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1">
-              <span className="text-xs text-slate-400 font-mono uppercase">Prime Activity Window</span>
+            <div className="bg-neutral-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1">
+              <span className="text-xs text-neutral-400 font-mono uppercase">Prime Activity Window</span>
               <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                <Clock className="w-3.5 h-3.5 text-white" />
                 <span>{insights.primeWindow}</span>
               </p>
-              <span className="text-xs text-slate-500 block">Ideal time for events and announcements</span>
+              <span className="text-xs text-neutral-500 block">Ideal time for events and announcements</span>
             </div>
 
-            <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1">
-              <span className="text-xs text-slate-400 font-mono uppercase">Peak Traffic Day</span>
+            <div className="bg-neutral-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1">
+              <span className="text-xs text-neutral-400 font-mono uppercase">Peak Traffic Day</span>
               <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-purple-400" />
+                <Calendar className="w-3.5 h-3.5 text-white" />
                 <span>{insights.busiestDay}</span>
               </p>
-              <span className="text-xs text-slate-500 block">Highest conversation volume day</span>
+              <span className="text-xs text-neutral-500 block">Highest conversation volume day</span>
             </div>
 
-            <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1">
-              <span className="text-xs text-slate-400 font-mono uppercase">Most Active Channel</span>
+            <div className="bg-neutral-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1">
+              <span className="text-xs text-neutral-400 font-mono uppercase">Most Active Channel</span>
               <p className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
-                <Hash className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <Hash className="w-3.5 h-3.5 text-white shrink-0" />
                 <span className="truncate">{insights.topChannel}</span>
               </p>
-              <span className="text-xs text-slate-500 block">Primary community discussion hub</span>
+              <span className="text-xs text-neutral-500 block">Primary community discussion hub</span>
             </div>
 
-            <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1">
-              <span className="text-xs text-slate-400 font-mono uppercase">Growth Momentum</span>
+            <div className="bg-neutral-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1">
+              <span className="text-xs text-neutral-400 font-mono uppercase">Growth Momentum</span>
               <p className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <Sparkles className="w-3.5 h-3.5 text-white shrink-0" />
                 <span className="truncate">{insights.growthSummary}</span>
               </p>
-              <span className="text-xs text-slate-500 block">Rolling timeframe trend</span>
+              <span className="text-xs text-neutral-500 block">Rolling timeframe trend</span>
             </div>
           </div>
         </div>
@@ -532,15 +532,15 @@ export default function AnalyticsPage({ user, botInfo }) {
           <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <div className="p-2 rounded-xl bg-white/5 text-white border border-white/10">
                   <MessageSquare className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-white">Daily Message Volume</h3>
-                  <span className="text-xs text-slate-400">Total conversation messages per day</span>
+                  <span className="text-xs text-neutral-400">Total conversation messages per day</span>
                 </div>
               </div>
-              <span className="text-xs font-mono text-indigo-300 bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20">
+              <span className="text-xs font-mono text-white bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
                 {timeframe} Days Rolling
               </span>
             </div>
@@ -553,17 +553,17 @@ export default function AnalyticsPage({ user, botInfo }) {
           <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                <div className="p-2 rounded-xl bg-white/5 text-white border border-white/10">
                   <Mic className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-white">Voice Engagement & Joins</h3>
-                  <span className="text-xs text-slate-400">Voice minutes (bars) vs new members (line)</span>
+                  <span className="text-xs text-neutral-400">Voice minutes (bars) vs new members (line)</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs font-mono">
-                <span className="text-purple-400">■ Voice Mins</span>
-                <span className="text-emerald-400">● Joins</span>
+                <span className="text-white">■ Voice Mins</span>
+                <span className="text-white">● Joins</span>
               </div>
             </div>
             <div className="h-64">
@@ -578,15 +578,15 @@ export default function AnalyticsPage({ user, botInfo }) {
           <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                <div className="p-2 rounded-xl bg-white/5 text-white border border-white/10">
                   <Clock className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-white">24-Hour Peak Activity Matrix</h3>
-                  <span className="text-xs text-slate-400">Aggregated message density by UTC hour (00:00–23:00)</span>
+                  <span className="text-xs text-neutral-400">Aggregated message density by UTC hour (00:00–23:00)</span>
                 </div>
               </div>
-              <span className="text-xs font-mono text-rose-300 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
+              <span className="text-xs font-mono text-white bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
                 Peak: {String(data?.hourlyDistribution?.find((_, i) => i === data?.hourlyDistribution?.length)?.hour || "Evening")}
               </span>
             </div>
@@ -599,15 +599,15 @@ export default function AnalyticsPage({ user, botInfo }) {
           <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-4 flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <div className="p-2 rounded-xl bg-white/5 text-white border border-white/10">
                   <Hash className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-white">Channel Activity Share</h3>
-                  <span className="text-xs text-slate-400">Top active discussion channels</span>
+                  <span className="text-xs text-neutral-400">Top active discussion channels</span>
                 </div>
               </div>
-              <span className="text-xs font-mono text-slate-400">Share of Chat</span>
+              <span className="text-xs font-mono text-neutral-400">Share of Chat</span>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-6 mt-4 flex-1 items-center">
@@ -618,24 +618,24 @@ export default function AnalyticsPage({ user, botInfo }) {
                     {/* Inner Label */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                       <span className="text-2xl font-black text-white font-mono">{data.channelBreakdown.length}</span>
-                      <span className="text-xs text-slate-400 uppercase tracking-wider">Active</span>
+                      <span className="text-xs text-neutral-400 uppercase tracking-wider">Active</span>
                     </div>
                   </div>
                   <div className="w-full sm:w-1/2 space-y-3 flex-1 flex flex-col justify-center">
                     {data.channelBreakdown.slice(0, 5).map((ch, idx) => (
                       <div key={ch.channelId} className="space-y-1">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold text-slate-200 flex items-center gap-1.5 truncate max-w-[150px]">
-                            <span className="text-slate-500 font-mono">#{idx + 1}</span>
-                            <Hash className="w-3.5 h-3.5 text-indigo-400" />
+                          <span className="font-semibold text-neutral-300 flex items-center gap-1.5 truncate max-w-[150px]">
+                            <span className="text-neutral-500 font-mono">#{idx + 1}</span>
+                            <Hash className="w-3.5 h-3.5 text-white" />
                             <span className="truncate">{ch.name}</span>
                           </span>
                           <div className="flex items-center gap-2 font-mono text-xs">
-                            <span className="text-slate-400">{ch.messages.toLocaleString()} msg</span>
-                            <span className="text-indigo-300 font-bold w-9 text-right">{ch.percentage}%</span>
+                            <span className="text-neutral-400">{ch.messages.toLocaleString()} msg</span>
+                            <span className="text-white font-bold w-9 text-right">{ch.percentage}%</span>
                           </div>
                         </div>
-                        <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                        <div className="w-full bg-neutral-900 h-1.5 rounded-full overflow-hidden">
                           <div
                             className="bg-indigo-500 h-full rounded-full transition-all duration-300"
                             style={{ width: `${Math.max(ch.percentage, 4)}%`, backgroundColor: channelDoughnutData.datasets[0].backgroundColor[idx % 8] }}
@@ -646,7 +646,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                   </div>
                 </>
               ) : (
-                <div className="w-full text-center py-12 text-xs text-slate-500 border border-dashed border-white/5 rounded-2xl">
+                <div className="w-full text-center py-12 text-xs text-neutral-500 border border-dashed border-white/5 rounded-2xl">
                   No channel chat records accumulated yet in this timeframe.
                 </div>
               )}
@@ -658,26 +658,26 @@ export default function AnalyticsPage({ user, botInfo }) {
         <div className="glass-card p-6 sm:p-8 rounded-3xl border border-white/5 space-y-6 shadow-2xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <div className="p-2.5 rounded-2xl bg-white/5 text-white border border-white/10">
                 <Trophy className="w-5 h-5" />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white tracking-tight">Community Leaderboards</h2>
-                <p className="text-xs text-slate-400">Top contributors ranked by engagement metrics.</p>
+                <p className="text-xs text-neutral-400">Top contributors ranked by engagement metrics.</p>
               </div>
             </div>
 
             {/* Sub-Filters: Chat vs Voice & Search */}
             <div className="flex flex-wrap items-center gap-3">
               {/* Chat vs Voice Tab */}
-              <div className="flex items-center bg-slate-900/80 p-1 rounded-xl border border-white/10 text-xs font-semibold">
+              <div className="flex items-center bg-neutral-900/80 p-1 rounded-xl border border-white/10 text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setLeaderboardTab("chat")}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                     leaderboardTab === "chat"
                       ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                      : "text-slate-400 hover:text-white"
+                      : "text-neutral-400 hover:text-white"
                   }`}
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -689,7 +689,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                     leaderboardTab === "voice"
                       ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
-                      : "text-slate-400 hover:text-white"
+                      : "text-neutral-400 hover:text-white"
                   }`}
                 >
                   <Mic className="w-3.5 h-3.5" />
@@ -698,12 +698,12 @@ export default function AnalyticsPage({ user, botInfo }) {
               </div>
 
               {/* Weekly vs All-Time Toggle */}
-              <div className="flex items-center bg-slate-900/80 p-1 rounded-xl border border-white/10 text-xs font-semibold">
+              <div className="flex items-center bg-neutral-900/80 p-1 rounded-xl border border-white/10 text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setLeaderboardScope("weekly")}
                   className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    leaderboardScope === "weekly" ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"
+                    leaderboardScope === "weekly" ? "bg-white/10 text-white" : "text-neutral-400 hover:text-white"
                   }`}
                 >
                   Weekly
@@ -712,7 +712,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                   type="button"
                   onClick={() => setLeaderboardScope("total")}
                   className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    leaderboardScope === "total" ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"
+                    leaderboardScope === "total" ? "bg-white/10 text-white" : "text-neutral-400 hover:text-white"
                   }`}
                 >
                   All-Time
@@ -722,20 +722,20 @@ export default function AnalyticsPage({ user, botInfo }) {
               {/* Search Member & Export */}
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-neutral-500" />
                   <input
                     type="text"
                     placeholder="Search user..."
                     value={leaderboardSearch}
                     onChange={(e) => setLeaderboardSearch(e.target.value)}
-                    className="pl-9 pr-3 py-1.5 rounded-xl bg-slate-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-36 sm:w-44"
+                    className="pl-9 pr-3 py-1.5 rounded-xl bg-neutral-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-36 sm:w-44"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={handleExportCSV}
                   disabled={loading || !data}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/50 text-xs font-semibold shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white border border-white/10 text-xs font-semibold shadow-md transition-all cursor-pointer disabled:opacity-50"
                   title="Export Data to CSV"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -752,12 +752,12 @@ export default function AnalyticsPage({ user, botInfo }) {
                 filteredChatters.map((u, idx) => {
                   const medalColor =
                     idx === 0
-                      ? "text-amber-400 bg-amber-500/10 border-amber-500/30"
+                      ? "text-white bg-white/5 border-white/10"
                       : idx === 1
-                      ? "text-slate-300 bg-slate-400/10 border-slate-400/30"
+                      ? "text-neutral-400 bg-slate-400/10 border-slate-400/30"
                       : idx === 2
-                      ? "text-amber-600 bg-amber-700/10 border-amber-700/30"
-                      : "text-slate-500 bg-slate-800/40 border-white/5";
+                      ? "text-white bg-amber-700/10 border-amber-700/30"
+                      : "text-neutral-500 bg-neutral-800/40 border-white/5";
 
                   const countValue =
                     leaderboardScope === "weekly"
@@ -767,7 +767,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                   return (
                     <div
                       key={u.userId || idx}
-                      className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/60 hover:bg-slate-900 border border-white/5 transition-all"
+                      className="flex items-center justify-between p-3.5 rounded-2xl bg-neutral-900/60 hover:bg-neutral-900 border border-white/5 transition-all"
                     >
                       <div className="flex items-center gap-3.5">
                         <span
@@ -785,20 +785,20 @@ export default function AnalyticsPage({ user, botInfo }) {
                               : "https://cdn.discordapp.com/embed/avatars/0.png"
                           }
                           alt=""
-                          className="w-9 h-9 rounded-full ring-2 ring-indigo-500/30 object-cover"
+                          className="w-9 h-9 rounded-full ring-2 ring-white/10 object-cover"
                         />
 
                         <div>
                           <p className="text-xs font-bold text-white">{u.username || `User ${u.userId}`}</p>
-                          <span className="text-xs text-slate-500 font-mono">ID: {u.userId}</span>
+                          <span className="text-xs text-neutral-500 font-mono">ID: {u.userId}</span>
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <span className="text-sm font-black text-indigo-400 font-mono">
+                        <span className="text-sm font-black text-white font-mono">
                           {countValue.toLocaleString()}
                         </span>
-                        <span className="text-xs text-slate-500 block font-mono">
+                        <span className="text-xs text-neutral-500 block font-mono">
                           {leaderboardScope === "weekly" ? "weekly msgs" : "total msgs"}
                         </span>
                       </div>
@@ -806,7 +806,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                   );
                 })
               ) : (
-                <div className="text-center py-12 text-xs text-slate-500 border border-dashed border-white/5 rounded-2xl">
+                <div className="text-center py-12 text-xs text-neutral-500 border border-dashed border-white/5 rounded-2xl">
                   No active chat members found matching your search.
                 </div>
               )
@@ -815,12 +815,12 @@ export default function AnalyticsPage({ user, botInfo }) {
                 filteredVoice.map((u, idx) => {
                   const medalColor =
                     idx === 0
-                      ? "text-amber-400 bg-amber-500/10 border-amber-500/30"
+                      ? "text-white bg-white/5 border-white/10"
                       : idx === 1
-                      ? "text-slate-300 bg-slate-400/10 border-slate-400/30"
+                      ? "text-neutral-400 bg-slate-400/10 border-slate-400/30"
                       : idx === 2
-                      ? "text-amber-600 bg-amber-700/10 border-amber-700/30"
-                      : "text-slate-500 bg-slate-800/40 border-white/5";
+                      ? "text-white bg-amber-700/10 border-amber-700/30"
+                      : "text-neutral-500 bg-neutral-800/40 border-white/5";
 
                   const minutesValue =
                     leaderboardScope === "weekly"
@@ -833,7 +833,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                   return (
                     <div
                       key={u.userId || idx}
-                      className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/60 hover:bg-slate-900 border border-white/5 transition-all"
+                      className="flex items-center justify-between p-3.5 rounded-2xl bg-neutral-900/60 hover:bg-neutral-900 border border-white/5 transition-all"
                     >
                       <div className="flex items-center gap-3.5">
                         <span
@@ -856,15 +856,15 @@ export default function AnalyticsPage({ user, botInfo }) {
 
                         <div>
                           <p className="text-xs font-bold text-white">{u.username || `User ${u.userId}`}</p>
-                          <span className="text-xs text-slate-500 font-mono">ID: {u.userId}</span>
+                          <span className="text-xs text-neutral-500 font-mono">ID: {u.userId}</span>
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <span className="text-sm font-black text-purple-400 font-mono">
+                        <span className="text-sm font-black text-white font-mono">
                           {hoursValue > 0 ? `${hoursValue}h ${remMins}m` : `${remMins}m`}
                         </span>
-                        <span className="text-xs text-slate-500 block font-mono">
+                        <span className="text-xs text-neutral-500 block font-mono">
                           {leaderboardScope === "weekly" ? "weekly voice" : "total voice"}
                         </span>
                       </div>
@@ -872,7 +872,7 @@ export default function AnalyticsPage({ user, botInfo }) {
                   );
                 })
               ) : (
-                <div className="text-center py-12 text-xs text-slate-500 border border-dashed border-white/5 rounded-2xl">
+                <div className="text-center py-12 text-xs text-neutral-500 border border-dashed border-white/5 rounded-2xl">
                   No active voice members found matching your search.
                 </div>
               )

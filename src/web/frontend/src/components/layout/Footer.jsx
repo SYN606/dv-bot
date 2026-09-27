@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Command, ExternalLink } from "lucide-react";
 
 export default function Footer({ className = "", botInfo }) {
   const currentYear = new Date().getFullYear();
@@ -7,101 +8,92 @@ export default function Footer({ className = "", botInfo }) {
 
   return (
     <footer
-      className={`border-t border-white/[0.06] bg-[#0b0c10]/90 backdrop-blur-md text-zinc-400 font-sans mt-auto relative z-20 ${className}`}
+      className={`border-t border-white/[0.08] bg-black/40 backdrop-blur-3xl text-neutral-400 font-sans mt-auto relative z-20 ${className}`}
     >
-      {/* Subtle top hairline accent */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent" />
-
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 py-10 sm:py-12 space-y-8">
-        {/* Top Row: Brand & Status on Left, Navigation on Right */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
-          {/* Brand & Status */}
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3.5">
+      <div className="max-w-7xl mx-auto px-6 py-12 space-y-8">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
+          
+          <div className="flex flex-col md:flex-row items-center gap-6">
             <Link
               to="/"
-              className="flex items-center gap-2.5 text-zinc-200 hover:text-white transition-colors group"
+              className="flex items-center gap-3 text-white transition-opacity hover:opacity-80 group"
             >
               {botAvatar ? (
                 <img
                   src={botAvatar}
                   alt="Logo"
-                  className="w-7 h-7 rounded-full object-cover ring-1 ring-indigo-500/40 group-hover:scale-105 transition-transform"
+                  className="w-8 h-8 rounded-xl object-cover ring-1 ring-white/10"
                 />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-[10px] font-bold text-white shadow-sm font-mono">
-                  DV
+                <div className="w-8 h-8 rounded-xl bg-neutral-900 border border-white/10 flex items-center justify-center text-white">
+                  <Command className="w-4 h-4" />
                 </div>
               )}
-              <span className="font-bold text-sm sm:text-base tracking-tight text-zinc-100">
+              <span className="font-semibold text-base tracking-tight text-white">
                 Digital Vigital
               </span>
             </Link>
 
-            <span className="text-zinc-700 hidden sm:inline">•</span>
+            <div className="hidden md:block w-px h-6 bg-white/10" />
 
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium border border-emerald-500/20 shadow-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-xs font-medium text-neutral-300">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-40"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
               </span>
               <span>All Systems Operational</span>
             </div>
           </div>
 
-          {/* Navigation Links with Generous Spacing */}
-          <nav className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-xs sm:text-sm font-medium">
+          <nav className="flex flex-wrap items-center justify-center gap-8 text-xs font-medium uppercase tracking-widest text-neutral-500">
             <Link
               to="/docs"
-              className="text-zinc-400 hover:text-zinc-100 transition-colors"
+              className="hover:text-white transition-colors"
             >
               Documentation
             </Link>
             <Link
               to="/terms"
-              className="text-zinc-400 hover:text-zinc-100 transition-colors"
+              className="hover:text-white transition-colors"
             >
-              Terms of Service
+              Terms
             </Link>
             <Link
               to="/privacy"
-              className="text-zinc-400 hover:text-zinc-100 transition-colors"
+              className="hover:text-white transition-colors"
             >
-              Privacy Policy
+              Privacy
             </Link>
           </nav>
         </div>
 
-        {/* Roomy Divider */}
-        <div className="border-t border-white/[0.05]" />
+        <div className="border-t border-white/[0.06]" />
 
-        {/* Bottom Row: Attribution & Copyright */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500 text-center sm:text-left">
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-neutral-600">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <span>Powered by</span>
             <a
               href="https://digitalvigital.fun"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+              className="font-medium text-neutral-300 hover:text-white transition-colors flex items-center gap-1"
             >
-              Digital vigital Network
+              Digital Vigital <ExternalLink className="w-3 h-3" />
             </a>
-            <span className="text-zinc-700 mx-1">•</span>
+            <span className="text-neutral-800">|</span>
             <span>Developed by</span>
             <a
               href="https://syn606.wtf"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-zinc-300 hover:text-indigo-300 transition-colors"
+              className="font-medium text-neutral-300 hover:text-white transition-colors"
             >
-              SYN 606 | cybermind Networks
+              SYN 606
             </a>
           </div>
 
-          <div className="flex items-center gap-3 text-zinc-500 font-mono text-[11px]">
-            <span>Bun Runtime</span>
-            <span className="text-zinc-700">•</span>
-            <span>© {currentYear} DV-BOT. All rights reserved.</span>
+          <div className="flex items-center gap-3 font-mono text-[10px]">
+            <span> {currentYear} DV-BOT. All rights reserved.</span>
           </div>
         </div>
       </div>

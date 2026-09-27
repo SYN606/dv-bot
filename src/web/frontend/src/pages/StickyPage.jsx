@@ -200,29 +200,29 @@ export default function StickyPage({ user, botInfo, showToast }) {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-cyan-600/30 to-blue-600/30 border border-cyan-500/20 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-cyan-600/30 to-blue-600/30 border border-white/10 text-white shadow-[0_0_15px_rgba(34,211,238,0.2)]">
                 <Pin className="w-6 h-6" />
               </div>
               <span>Sticky Channel Notice</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-neutral-400 mt-2 max-w-2xl leading-relaxed">
               Set persistent channel announcements directly from the dashboard that automatically delete and re-pin to the bottom of the conversation when members chat.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="px-4 py-2 rounded-2xl bg-slate-900/80 border border-white/5 flex items-center gap-3">
+            <div className="px-4 py-2 rounded-2xl bg-neutral-900/80 border border-white/5 flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
               <div>
-                <p className="text-xs font-mono uppercase tracking-wider text-slate-400">Active Notices</p>
+                <p className="text-xs font-mono uppercase tracking-wider text-neutral-400">Active Notices</p>
                 <p className="text-sm font-bold text-white">{stickyList.length} Channels</p>
               </div>
             </div>
 
-            <div className="px-4 py-2 rounded-2xl bg-slate-900/80 border border-white/5 flex items-center gap-3">
-              <RefreshCw className="w-4 h-4 text-indigo-400" />
+            <div className="px-4 py-2 rounded-2xl bg-neutral-900/80 border border-white/5 flex items-center gap-3">
+              <RefreshCw className="w-4 h-4 text-white" />
               <div>
-                <p className="text-xs font-mono uppercase tracking-wider text-slate-400">Total Repins</p>
+                <p className="text-xs font-mono uppercase tracking-wider text-neutral-400">Total Repins</p>
                 <p className="text-sm font-bold text-white">{totalRepins.toLocaleString()}</p>
               </div>
             </div>
@@ -236,7 +236,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
             <form onSubmit={handleSave} className="glass-card p-6 rounded-3xl border border-white/5 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Edit3 className="w-4 h-4 text-cyan-400" />
+                  <Edit3 className="w-4 h-4 text-white" />
                   <h3 className="font-bold text-sm text-white">
                     {editingId ? "Edit Sticky Notice" : "Configure Sticky Notice"}
                   </h3>
@@ -245,7 +245,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
                   <button
                     type="button"
                     onClick={handleResetForm}
-                    className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors inline-flex items-center gap-1 font-medium"
+                    className="text-xs text-white hover:text-white transition-colors inline-flex items-center gap-1 font-medium"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>New Sticky</span>
@@ -255,13 +255,13 @@ export default function StickyPage({ user, botInfo, showToast }) {
 
               {/* Target Channel */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-neutral-400 mb-1.5">
                   Target Text Channel
                 </label>
                 <select
                   value={selectedChannel}
                   onChange={(e) => setSelectedChannel(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  className="w-full px-4 py-2.5 rounded-xl bg-neutral-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500"
                 >
                   {channels.map((ch) => {
                     const hasSticky = stickyList.some((s) => s.channel_id === ch.id);
@@ -277,14 +277,14 @@ export default function StickyPage({ user, botInfo, showToast }) {
               {/* Notice Content */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-300">
+                  <label className="block text-xs font-semibold text-neutral-400">
                     Sticky Notice Content (Markdown & Media Supported)
                   </label>
                   {serverEmojis.length > 0 && (
                     <button
                       type="button"
                       onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1"
+                      className="text-xs text-white hover:text-white transition-colors inline-flex items-center gap-1"
                     >
                       <Smile className="w-3.5 h-3.5" />
                       <span>{showEmojiPicker ? "Hide Emojis" : "Insert Emoji"}</span>
@@ -294,8 +294,8 @@ export default function StickyPage({ user, botInfo, showToast }) {
 
                 {/* Custom Server Emojis Quick Picker */}
                 {showEmojiPicker && serverEmojis.length > 0 && (
-                  <div className="mb-3 p-3 rounded-xl bg-slate-900/90 border border-white/10 max-h-36 overflow-y-auto">
-                    <p className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
+                  <div className="mb-3 p-3 rounded-xl bg-neutral-900/90 border border-white/10 max-h-36 overflow-y-auto">
+                    <p className="text-xs font-mono text-neutral-400 uppercase tracking-wider mb-2">
                       Click to insert custom server emoji
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -324,10 +324,10 @@ export default function StickyPage({ user, botInfo, showToast }) {
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="e.g. 📌 Welcome to the server! Please review #rules before participating. Keep discussions respectful and relevant."
-                  className="w-full p-4 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-sans leading-relaxed"
+                  className="w-full p-4 rounded-xl bg-neutral-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-sans leading-relaxed"
                 />
 
-                <div className="flex items-center justify-between mt-1 text-xs text-slate-500 font-mono">
+                <div className="flex items-center justify-between mt-1 text-xs text-neutral-500 font-mono">
                   <span>
                     Tip: Paste an image link (e.g. <code>https://.../banner.png</code>) to auto-render an embed banner.
                   </span>
@@ -336,17 +336,17 @@ export default function StickyPage({ user, botInfo, showToast }) {
               </div>
 
               {/* Immediate Deploy Option */}
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/60 border border-white/5">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-900/60 border border-white/5">
                 <input
                   type="checkbox"
                   id="postNowCheckbox"
                   checked={postNow}
                   onChange={(e) => setPostNow(e.target.checked)}
-                  className="w-4 h-4 rounded text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900 bg-slate-800 border-white/20"
+                  className="w-4 h-4 rounded text-white focus:ring-cyan-500 focus:ring-offset-slate-900 bg-neutral-800 border-white/20"
                 />
-                <label htmlFor="postNowCheckbox" className="text-xs text-slate-300 cursor-pointer select-none">
+                <label htmlFor="postNowCheckbox" className="text-xs text-neutral-400 cursor-pointer select-none">
                   <span className="font-semibold text-white">Deploy notice immediately</span>
-                  <span className="block text-xs text-slate-400">
+                  <span className="block text-xs text-neutral-400">
                     Sends or refreshes the notice in the channel immediately upon saving.
                   </span>
                 </label>
@@ -358,7 +358,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
                   <button
                     type="button"
                     onClick={() => handleDelete(selectedChannel)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 transition-all"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/5 text-white border border-white/10 transition-all"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Delete Sticky</span>
@@ -383,11 +383,11 @@ export default function StickyPage({ user, botInfo, showToast }) {
           <div className="lg:col-span-5 space-y-4">
             <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-                  <Eye className="w-4 h-4 text-cyan-400" />
+                <div className="flex items-center gap-2 text-xs font-semibold text-neutral-400">
+                  <Eye className="w-4 h-4 text-white" />
                   <span>Discord Notice Live Preview</span>
                 </div>
-                <span className="text-xs font-mono text-slate-500 uppercase">
+                <span className="text-xs font-mono text-neutral-500 uppercase">
                   #{channelMap.get(selectedChannel) || "channel"}
                 </span>
               </div>
@@ -434,9 +434,9 @@ export default function StickyPage({ user, botInfo, showToast }) {
               </div>
 
               {/* Mechanism Explanation */}
-              <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 space-y-2 text-xs text-slate-400">
-                <div className="flex items-center gap-1.5 font-semibold text-slate-300">
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <div className="p-4 rounded-2xl bg-neutral-900/60 border border-white/5 space-y-2 text-xs text-neutral-400">
+                <div className="flex items-center gap-1.5 font-semibold text-neutral-400">
+                  <Sparkles className="w-3.5 h-3.5 text-white" />
                   <span>How Sticky Notices Work</span>
                 </div>
                 <p className="text-xs leading-relaxed">
@@ -455,28 +455,28 @@ export default function StickyPage({ user, botInfo, showToast }) {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                <Pin className="w-4 h-4 text-cyan-400" />
+                <Pin className="w-4 h-4 text-white" />
                 <span>Active Sticky Notices in Server</span>
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-neutral-400 mt-0.5">
                 Overview of all channels with persistent sticky announcements configured.
               </p>
             </div>
 
             <div className="relative w-full sm:w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filter by channel or text..."
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-neutral-900/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
               />
             </div>
           </div>
 
           {filteredStickyList.length === 0 ? (
-            <div className="text-center py-10 text-xs text-slate-500 space-y-2">
+            <div className="text-center py-10 text-xs text-neutral-500 space-y-2">
               <AlertCircle className="w-8 h-8 mx-auto text-slate-600" />
               <p>
                 {searchQuery
@@ -493,7 +493,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
                 return (
                   <div
                     key={item.id || item.channel_id}
-                    className={`p-4 rounded-2xl bg-slate-900/70 border transition-all flex flex-col justify-between gap-3 ${
+                    className={`p-4 rounded-2xl bg-neutral-900/70 border transition-all flex flex-col justify-between gap-3 ${
                       isCurrent
                         ? "border-cyan-500/40 ring-1 ring-cyan-500/20"
                         : "border-white/5 hover:border-white/10"
@@ -501,28 +501,28 @@ export default function StickyPage({ user, botInfo, showToast }) {
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-xs text-cyan-300 truncate">
+                        <span className="font-bold text-xs text-white truncate">
                           #{channelName}
                         </span>
-                        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/5 text-white border border-white/10 shrink-0">
                           {item.counter || 0} repins
                         </span>
                       </div>
 
-                      <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed font-sans">
+                      <p className="text-xs text-neutral-400 line-clamp-3 leading-relaxed font-sans">
                         {item.content || item.sticky_content}
                       </p>
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                      <span className="text-xs font-mono text-slate-500 truncate max-w-[140px]">
+                      <span className="text-xs font-mono text-neutral-500 truncate max-w-[140px]">
                         ID: {item.channel_id}
                       </span>
 
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleSelectChannelToEdit(item)}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors text-xs inline-flex items-center gap-1"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors text-xs inline-flex items-center gap-1"
                           title="Edit in form"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
@@ -530,7 +530,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
                         </button>
                         <button
                           onClick={() => handleDelete(item.channel_id)}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/5 text-neutral-400 hover:text-white transition-colors"
                           title="Delete Sticky"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

@@ -94,12 +94,12 @@ export default function AutoRoleRewardsPage({ user, botInfo, showToast }) {
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-fuchsia-600/30 to-purple-600/30 border border-fuchsia-500/20 text-fuchsia-400 shadow-[0_0_15px_rgba(217,70,239,0.2)]">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-fuchsia-600/30 to-purple-600/30 border border-white/10 text-white shadow-[0_0_15px_rgba(217,70,239,0.2)]">
                 <Award className="w-6 h-6" />
               </div>
               <span>Leaderboard Auto-Roles</span>
             </h1>
-            <p className="text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
+            <p className="text-sm text-neutral-400 mt-2 max-w-2xl leading-relaxed">
               Automatically assign reward roles to the top 3 weekly active members in text chat and voice channels.
             </p>
           </div>
@@ -108,14 +108,14 @@ export default function AutoRoleRewardsPage({ user, botInfo, showToast }) {
         <div className="space-y-6">
           
           {/* Global Announcement Config */}
-          <div className={`border rounded-3xl p-6 transition-colors ${config.enabled ? 'bg-slate-900/50 border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.05)]' : 'bg-slate-900/30 border-white/10 opacity-75'}`}>
+          <div className={`border rounded-3xl p-6 transition-colors ${config.enabled ? 'bg-neutral-900/50 border-white/10 shadow-[0_0_20px_rgba(99,102,241,0.05)]' : 'bg-neutral-900/30 border-white/10 opacity-75'}`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-indigo-400" />
+                <MessageSquare className="w-5 h-5 text-white" />
                 Module Configuration
               </h2>
               <div className="flex items-center gap-3">
-                <span className={`text-sm font-semibold ${config.enabled ? 'text-indigo-400' : 'text-slate-500'}`}>
+                <span className={`text-sm font-semibold ${config.enabled ? 'text-white' : 'text-neutral-500'}`}>
                   {config.enabled ? 'Module Active' : 'Module Disabled'}
                 </span>
                 <button
@@ -134,14 +134,14 @@ export default function AutoRoleRewardsPage({ user, botInfo, showToast }) {
             </div>
             
             <div className="space-y-1.5 max-w-md">
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                <Hash className="w-3.5 h-3.5 text-slate-400" />
+              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-2">
+                <Hash className="w-3.5 h-3.5 text-neutral-400" />
                 Announcement Channel
               </label>
               <select
                 value={config.announcement_channel_id}
                 onChange={(e) => handleChange("announcement_channel_id", e.target.value)}
-                className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-black border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
               >
                 <option value="">-- Do not announce --</option>
                 {channels.map((c) => (
@@ -153,23 +153,23 @@ export default function AutoRoleRewardsPage({ user, botInfo, showToast }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Text Chat Rewards */}
-            <div className="bg-slate-900/50 border border-white/10 rounded-3xl p-6">
+            <div className="bg-neutral-900/50 border border-white/10 rounded-3xl p-6">
               <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-6">
-                <MessageCircle className="w-5 h-5 text-emerald-400" />
+                <MessageCircle className="w-5 h-5 text-white" />
                 Text Chat Rewards
               </h2>
               
               <div className="space-y-4">
                 {[1, 2, 3].map((rank) => (
-                  <div key={`chat-${rank}`} className="space-y-1.5 bg-slate-950/30 p-3 rounded-2xl border border-white/5">
-                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <div key={`chat-${rank}`} className="space-y-1.5 bg-black/30 p-3 rounded-2xl border border-white/5">
+                    <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-2">
                       <span className="text-lg">{rankMedals[rank]}</span>
                       {rankLabels[rank]} (Text)
                     </label>
                     <select
                       value={config[`top_chat_role_${rank}`]}
                       onChange={(e) => handleChange(`top_chat_role_${rank}`, e.target.value)}
-                      className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors hover:border-white/20"
+                      className="w-full bg-neutral-900 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors hover:border-white/20"
                     >
                       <option value="">-- No Role Assigned --</option>
                       {roles.map((r) => (
@@ -182,23 +182,23 @@ export default function AutoRoleRewardsPage({ user, botInfo, showToast }) {
             </div>
 
             {/* VC Rewards */}
-            <div className="bg-slate-900/50 border border-white/10 rounded-3xl p-6">
+            <div className="bg-neutral-900/50 border border-white/10 rounded-3xl p-6">
               <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-6">
-                <Mic className="w-5 h-5 text-amber-400" />
+                <Mic className="w-5 h-5 text-white" />
                 Voice Chat Rewards
               </h2>
               
               <div className="space-y-4">
                 {[1, 2, 3].map((rank) => (
-                  <div key={`vc-${rank}`} className="space-y-1.5 bg-slate-950/30 p-3 rounded-2xl border border-white/5">
-                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <div key={`vc-${rank}`} className="space-y-1.5 bg-black/30 p-3 rounded-2xl border border-white/5">
+                    <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-2">
                       <span className="text-lg">{rankMedals[rank]}</span>
                       {rankLabels[rank]} (Voice)
                     </label>
                     <select
                       value={config[`top_vc_role_${rank}`]}
                       onChange={(e) => handleChange(`top_vc_role_${rank}`, e.target.value)}
-                      className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors hover:border-white/20"
+                      className="w-full bg-neutral-900 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors hover:border-white/20"
                     >
                       <option value="">-- No Role Assigned --</option>
                       {roles.map((r) => (
@@ -212,25 +212,25 @@ export default function AutoRoleRewardsPage({ user, botInfo, showToast }) {
           </div>
 
           {/* Blacklist Configuration */}
-          <div className="bg-slate-900/50 border border-white/10 rounded-3xl p-6">
+          <div className="bg-neutral-900/50 border border-white/10 rounded-3xl p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
-                  <ShieldOff className="w-5 h-5 text-rose-400" />
+                  <ShieldOff className="w-5 h-5 text-white" />
                   Exclusion Blacklist
                 </h2>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-neutral-400">
                   Members with these roles will be excluded from winning rewards (e.g. staff, bots).
                 </p>
               </div>
               <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search roles..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-slate-950 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-rose-500 w-full sm:w-64"
+                  className="bg-black border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-rose-500 w-full sm:w-64"
                 />
               </div>
             </div>
@@ -242,8 +242,8 @@ export default function AutoRoleRewardsPage({ user, botInfo, showToast }) {
                   onClick={() => toggleBlacklist(role.id)}
                   className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all group ${
                     blacklist.includes(role.id)
-                      ? "bg-rose-500/10 border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.1)]"
-                      : "bg-slate-950/50 border-white/5 hover:border-white/20 hover:bg-slate-800"
+                      ? "bg-white/5 border-white/10 shadow-[0_0_10px_rgba(244,63,94,0.1)]"
+                      : "bg-black/50 border-white/5 hover:border-white/20 hover:bg-neutral-800"
                   }`}
                 >
                   <div className="flex items-center justify-between w-full mb-2">
@@ -252,19 +252,19 @@ export default function AutoRoleRewardsPage({ user, botInfo, showToast }) {
                       style={{ backgroundColor: role.color ? `#${role.color.toString(16).padStart(6, '0')}` : '#94a3b8' }}
                     />
                     {blacklist.includes(role.id) && (
-                      <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wider bg-rose-500/20 px-1.5 py-0.5 rounded shadow-sm">
+                      <span className="text-[10px] font-bold text-white uppercase tracking-wider bg-white/5 px-1.5 py-0.5 rounded shadow-sm">
                         Excluded
                       </span>
                     )}
                   </div>
-                  <span className={`text-sm font-semibold truncate w-full ${blacklist.includes(role.id) ? "text-rose-200" : "text-slate-300 group-hover:text-white"}`}>
+                  <span className={`text-sm font-semibold truncate w-full ${blacklist.includes(role.id) ? "text-white" : "text-neutral-400 group-hover:text-white"}`}>
                     {role.name}
                   </span>
                 </button>
               ))}
               
               {filteredRoles.length === 0 && (
-                <div className="col-span-full py-8 text-center text-slate-400 text-sm">
+                <div className="col-span-full py-8 text-center text-neutral-400 text-sm">
                   No roles match your search.
                 </div>
               )}

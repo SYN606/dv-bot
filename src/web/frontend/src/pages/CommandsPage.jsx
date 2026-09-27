@@ -23,19 +23,19 @@ import {
 function getCategoryIcon(catId) {
   switch (catId?.toLowerCase()) {
     case "moderation":
-      return <ShieldAlert className="w-5 h-5 text-rose-400" />;
+      return <ShieldAlert className="w-5 h-5 text-white" />;
     case "admin":
-      return <ShieldCheck className="w-5 h-5 text-indigo-400" />;
+      return <ShieldCheck className="w-5 h-5 text-white" />;
     case "analytics":
-      return <BarChart3 className="w-5 h-5 text-cyan-400" />;
+      return <BarChart3 className="w-5 h-5 text-white" />;
     case "channels":
-      return <Hash className="w-5 h-5 text-emerald-400" />;
+      return <Hash className="w-5 h-5 text-white" />;
     case "utility":
-      return <Wrench className="w-5 h-5 text-amber-400" />;
+      return <Wrench className="w-5 h-5 text-white" />;
     case "voice":
-      return <Volume2 className="w-5 h-5 text-purple-400" />;
+      return <Volume2 className="w-5 h-5 text-white" />;
     default:
-      return <Terminal className="w-5 h-5 text-slate-400" />;
+      return <Terminal className="w-5 h-5 text-neutral-400" />;
   }
 }
 
@@ -237,12 +237,12 @@ export default function CommandsPage({ user, botInfo, showToast }) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+              <div className="p-2.5 rounded-2xl bg-white/5 border border-white/10 text-white">
                 <Terminal className="w-7 h-7" />
               </div>
               <span>Command Restrictions & Modules</span>
             </h1>
-            <p className="text-sm text-slate-300 mt-1.5">
+            <p className="text-sm text-neutral-400 mt-1.5">
               Control command accessibility per channel. Toggle individual commands or bulk manage entire functional modules.
             </p>
           </div>
@@ -251,9 +251,9 @@ export default function CommandsPage({ user, botInfo, showToast }) {
           <button
             onClick={() => loadChannelCommands(selectedChannel)}
             disabled={loading || !selectedChannel}
-            className="self-start sm:self-auto px-4 py-2.5 rounded-xl glass-card text-xs font-semibold text-slate-200 hover:text-white flex items-center gap-2 hover:border-indigo-500/40 transition-all cursor-pointer"
+            className="self-start sm:self-auto px-4 py-2.5 rounded-xl glass-card text-xs font-semibold text-neutral-300 hover:text-white flex items-center gap-2 hover:border-white/30/40 transition-all cursor-pointer"
           >
-            <RotateCw className={`w-4 h-4 ${loading ? "animate-spin text-indigo-400" : ""}`} />
+            <RotateCw className={`w-4 h-4 ${loading ? "animate-spin text-white" : ""}`} />
             <span>Refresh State</span>
           </button>
         </div>
@@ -262,68 +262,68 @@ export default function CommandsPage({ user, botInfo, showToast }) {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="glass-card p-4 sm:p-5 rounded-2xl border border-white/10 relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300">Total Commands</span>
-              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+              <span className="text-xs font-semibold text-neutral-400">Total Commands</span>
+              <div className="p-2 rounded-xl bg-white/5 text-white">
                 <Layers className="w-4 h-4" />
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-white mt-2 font-mono">
               {commandsData.stats.total}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Across 6 functional suites</p>
+            <p className="text-[11px] text-neutral-400 mt-1">Across 6 functional suites</p>
           </div>
 
-          <div className="glass-card p-4 sm:p-5 rounded-2xl border border-emerald-500/20 relative overflow-hidden">
+          <div className="glass-card p-4 sm:p-5 rounded-2xl border border-white/10 relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-emerald-300">Active in Channel</span>
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+              <span className="text-xs font-semibold text-white">Active in Channel</span>
+              <div className="p-2 rounded-xl bg-white/5 text-white">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 mt-2 font-mono">
+            <div className="text-2xl sm:text-3xl font-extrabold text-white mt-2 font-mono">
               {commandsData.stats.active}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Ready for execution</p>
+            <p className="text-[11px] text-neutral-400 mt-1">Ready for execution</p>
           </div>
 
-          <div className="glass-card p-4 sm:p-5 rounded-2xl border border-rose-500/20 relative overflow-hidden">
+          <div className="glass-card p-4 sm:p-5 rounded-2xl border border-white/10 relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-rose-300">Disabled in Channel</span>
-              <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400">
+              <span className="text-xs font-semibold text-white">Disabled in Channel</span>
+              <div className="p-2 rounded-xl bg-white/5 text-white">
                 <ShieldAlert className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-rose-400 mt-2 font-mono">
+            <div className="text-2xl sm:text-3xl font-extrabold text-white mt-2 font-mono">
               {commandsData.stats.disabled}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Blocked from standard users</p>
+            <p className="text-[11px] text-neutral-400 mt-1">Blocked from standard users</p>
           </div>
 
-          <div className="glass-card p-4 sm:p-5 rounded-2xl border border-amber-500/20 relative overflow-hidden">
+          <div className="glass-card p-4 sm:p-5 rounded-2xl border border-white/10 relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-amber-300">Protected Core</span>
-              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+              <span className="text-xs font-semibold text-white">Protected Core</span>
+              <div className="p-2 rounded-xl bg-white/5 text-white">
                 <Lock className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-amber-400 mt-2 font-mono">
+            <div className="text-2xl sm:text-3xl font-extrabold text-white mt-2 font-mono">
               {commandsData.stats.protected}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Safe guard core commands</p>
+            <p className="text-[11px] text-neutral-400 mt-1">Safe guard core commands</p>
           </div>
         </div>
 
         {/* Channel Selector Bar */}
         <div className="glass-card p-5 sm:p-6 rounded-3xl border border-white/10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white">
               <Hash className="w-5 h-5" />
             </div>
             <div>
-              <label htmlFor="channel-select" className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              <label htmlFor="channel-select" className="text-xs font-bold uppercase tracking-wider text-neutral-400">
                 Active Target Channel
               </label>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-neutral-400">
                 Restrictions are applied specifically to the selected channel.
               </p>
             </div>
@@ -334,14 +334,14 @@ export default function CommandsPage({ user, botInfo, showToast }) {
               id="channel-select"
               value={selectedChannel}
               onChange={(e) => setSelectedChannel(e.target.value)}
-              className="w-full md:w-80 px-4 py-3 rounded-xl bg-slate-900 border border-white/15 text-sm font-medium text-white focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
+              className="w-full md:w-80 px-4 py-3 rounded-xl bg-neutral-900 border border-white/15 text-sm font-medium text-white focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
             >
               {channels.map((ch) => (
-                <option key={ch.id} value={ch.id} className="bg-slate-900 text-white">
+                <option key={ch.id} value={ch.id} className="bg-neutral-900 text-white">
                   #{ch.name}
                 </option>
               ))}
-              <option value="global" className="bg-slate-900 text-white font-bold">
+              <option value="global" className="bg-neutral-900 text-white font-bold">
                 🌐 Server-Wide (Global)
               </option>
             </select>
@@ -353,13 +353,13 @@ export default function CommandsPage({ user, botInfo, showToast }) {
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Search Input */}
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search commands by name or description (e.g., ping, timeout, purge)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
               />
             </div>
 
@@ -367,7 +367,7 @@ export default function CommandsPage({ user, botInfo, showToast }) {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="px-3 py-2 rounded-xl bg-slate-800 text-xs text-slate-300 hover:text-white"
+                className="px-3 py-2 rounded-xl bg-neutral-800 text-xs text-neutral-400 hover:text-white"
               >
                 Clear
               </button>
@@ -381,7 +381,7 @@ export default function CommandsPage({ user, botInfo, showToast }) {
               className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                 selectedCategory === "all"
                   ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                  : "bg-slate-900/80 text-slate-300 hover:bg-slate-800 border border-white/5"
+                  : "bg-neutral-900/80 text-neutral-400 hover:bg-neutral-800 border border-white/5"
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
@@ -400,7 +400,7 @@ export default function CommandsPage({ user, botInfo, showToast }) {
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                     isSelected
                       ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                      : "bg-slate-900/80 text-slate-300 hover:bg-slate-800 border border-white/5"
+                      : "bg-neutral-900/80 text-neutral-400 hover:bg-neutral-800 border border-white/5"
                   }`}
                 >
                   <span>{mod.name}</span>
@@ -408,7 +408,7 @@ export default function CommandsPage({ user, botInfo, showToast }) {
                     {mod.total}
                   </span>
                   {mod.disabledCount > 0 && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-white font-mono">
                       {mod.disabledCount} blocked
                     </span>
                   )}
@@ -421,14 +421,14 @@ export default function CommandsPage({ user, botInfo, showToast }) {
         {/* Modules List with Commands Grid */}
         {loading ? (
           <div className="glass-card p-12 rounded-3xl border border-white/10 text-center space-y-3">
-            <RotateCw className="w-8 h-8 text-indigo-400 animate-spin mx-auto" />
-            <p className="text-sm font-semibold text-slate-200">Loading command permissions...</p>
+            <RotateCw className="w-8 h-8 text-white animate-spin mx-auto" />
+            <p className="text-sm font-semibold text-neutral-300">Loading command permissions...</p>
           </div>
         ) : filteredModules.length === 0 ? (
           <div className="glass-card p-12 rounded-3xl border border-white/10 text-center space-y-3">
-            <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
+            <AlertCircle className="w-8 h-8 text-white mx-auto" />
             <h3 className="text-base font-bold text-white">No commands match your filter</h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               Try adjusting your search keywords or switching module tabs.
             </p>
             <button
@@ -454,7 +454,7 @@ export default function CommandsPage({ user, botInfo, showToast }) {
                   className="glass-card rounded-3xl border border-white/10 overflow-hidden shadow-xl"
                 >
                   {/* Module Header & Bulk Actions */}
-                  <div className="p-5 sm:p-6 bg-slate-900/90 border-b border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="p-5 sm:p-6 bg-neutral-900/90 border-b border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-start sm:items-center gap-3.5">
                       <div className="p-3 rounded-2xl bg-white/5 border border-white/10 shrink-0">
                         {getCategoryIcon(mod.id)}
@@ -464,20 +464,20 @@ export default function CommandsPage({ user, botInfo, showToast }) {
                           <h2 className="text-lg font-extrabold text-white tracking-tight">
                             {mod.name} Module
                           </h2>
-                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/10 text-slate-300 font-mono">
+                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/10 text-neutral-400 font-mono">
                             {mod.matchingCommands.length} command{mod.matchingCommands.length === 1 ? "" : "s"}
                           </span>
                           {hasDisabledInModule ? (
-                            <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-medium">
+                            <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/5 text-white border border-white/10 font-medium">
                               {mod.disabledCount} Disabled
                             </span>
                           ) : (
-                            <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
+                            <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/5 text-white border border-white/10 font-medium">
                               All Active
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-300 mt-1">
+                        <p className="text-xs text-neutral-400 mt-1">
                           {mod.description}
                         </p>
                       </div>
@@ -491,8 +491,8 @@ export default function CommandsPage({ user, botInfo, showToast }) {
                           disabled={isModuleBusy}
                           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border ${
                             isAllModuleDisabled
-                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30"
-                              : "bg-rose-500/20 text-rose-300 border-rose-500/30 hover:bg-rose-500/30"
+                              ? "bg-white/5 text-white border-white/10 hover:bg-emerald-500/30"
+                              : "bg-white/5 text-white border-white/10 hover:bg-rose-500/30"
                           } ${isModuleBusy ? "opacity-50 cursor-not-allowed" : ""}`}
                           title={
                             isAllModuleDisabled
@@ -510,8 +510,8 @@ export default function CommandsPage({ user, botInfo, showToast }) {
                           </span>
                         </button>
                       ) : (
-                        <span className="text-xs text-slate-400 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
-                          <Lock className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-xs text-neutral-400 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                          <Lock className="w-3.5 h-3.5 text-white" />
                           <span>Safeguarded Module</span>
                         </span>
                       )}
@@ -530,15 +530,15 @@ export default function CommandsPage({ user, botInfo, showToast }) {
                           key={cmd.name}
                           className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
                             isDisabled
-                              ? "bg-rose-950/20 border-rose-500/30 shadow-inner"
-                              : "bg-slate-900/60 border-white/10 hover:border-white/20"
+                              ? "bg-rose-950/20 border-white/10 shadow-inner"
+                              : "bg-neutral-900/60 border-white/10 hover:border-white/20"
                           }`}
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span
                                 className={`font-mono font-bold text-sm tracking-wide ${
-                                  isDisabled ? "text-rose-200 line-through decoration-rose-500/50" : "text-white"
+                                  isDisabled ? "text-white line-through decoration-rose-500/50" : "text-white"
                                 }`}
                               >
                                 /{cmd.name}
@@ -546,7 +546,7 @@ export default function CommandsPage({ user, botInfo, showToast }) {
 
                               {isProtected && (
                                 <span
-                                  className="p-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                  className="p-1 rounded-md bg-white/5 text-white border border-white/10"
                                   title="Protected Core Safeguard Command (Cannot be disabled)"
                                 >
                                   <Lock className="w-3 h-3" />
@@ -554,7 +554,7 @@ export default function CommandsPage({ user, botInfo, showToast }) {
                               )}
                             </div>
 
-                            <p className="text-xs text-slate-300 mt-1 line-clamp-2 leading-relaxed">
+                            <p className="text-xs text-neutral-400 mt-1 line-clamp-2 leading-relaxed">
                               {cmd.description || "No description provided."}
                             </p>
                           </div>
@@ -562,8 +562,8 @@ export default function CommandsPage({ user, botInfo, showToast }) {
                           {/* Individual Toggle Control */}
                           <div className="shrink-0">
                             {isProtected ? (
-                              <span className="text-[11px] font-semibold text-slate-400 bg-white/5 border border-white/10 px-2.5 py-1.5 rounded-xl flex items-center gap-1">
-                                <Lock className="w-3 h-3 text-amber-400" />
+                              <span className="text-[11px] font-semibold text-neutral-400 bg-white/5 border border-white/10 px-2.5 py-1.5 rounded-xl flex items-center gap-1">
+                                <Lock className="w-3 h-3 text-white" />
                                 <span>Locked</span>
                               </span>
                             ) : (
@@ -572,10 +572,10 @@ export default function CommandsPage({ user, botInfo, showToast }) {
                                 disabled={isPending || isModuleBusy || (selectedChannel !== "global" && cmd.guildDisabled)}
                                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
                                   (selectedChannel !== "global" && cmd.guildDisabled)
-                                    ? "bg-rose-500/10 text-rose-500/50 border-rose-500/20 cursor-not-allowed"
+                                    ? "bg-white/5 text-white/50 border-white/10 cursor-not-allowed"
                                     : isDisabled
-                                      ? "bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30 cursor-pointer"
-                                      : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30 cursor-pointer"
+                                      ? "bg-white/5 text-white border-rose-500/40 hover:bg-rose-500/30 cursor-pointer"
+                                      : "bg-white/5 text-white border-emerald-500/40 hover:bg-emerald-500/30 cursor-pointer"
                                 } ${isPending ? "opacity-50 cursor-not-allowed" : ""}`}
                                 title={(selectedChannel !== "global" && cmd.guildDisabled) ? "Cannot enable: Command is globally disabled across the entire server." : isDisabled ? `Click to enable /${cmd.name}` : `Click to disable /${cmd.name}`}
                               >

@@ -115,7 +115,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
             </div>
             <span>Media-Only Channels</span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-neutral-400 mt-2 max-w-2xl leading-relaxed">
             Automatically purge non-media messages to keep art, photography, meme, and video channels pristine. Features 3-strike escalation, whitelist bypass, and automated sticky notices.
           </p>
         </div>
@@ -123,12 +123,12 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
         {/* Add Channel Configuration Card */}
         <div className="glass-card p-6 sm:p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
           <div className="flex items-center gap-3 pb-6 border-b border-white/5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+            <div className="p-2 rounded-xl bg-white/5 text-white">
               <Sliders className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-base text-white">Configure Media Channel</h3>
-              <p className="text-xs text-slate-400">Setup channel boundaries, bypass roles, and violation actions</p>
+              <p className="text-xs text-neutral-400">Setup channel boundaries, bypass roles, and violation actions</p>
             </div>
           </div>
 
@@ -136,7 +136,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Channel Selector */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2">
                   Select Channel <span className="text-pink-400">*</span>
                 </label>
                 <select
@@ -144,7 +144,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                   onChange={(e) =>
                     setFormData({ ...formData, channelId: e.target.value })
                   }
-                  className="w-full px-4 py-3 rounded-2xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
+                  className="w-full px-4 py-3 rounded-2xl bg-neutral-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
                 >
                   <option value="">Select target text channel...</option>
                   {channels.map((ch) => (
@@ -153,12 +153,12 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-slate-500 mt-1.5">Channel where non-media text messages will be removed.</p>
+                <p className="text-xs text-neutral-500 mt-1.5">Channel where non-media text messages will be removed.</p>
               </div>
 
               {/* Whitelist / Bypass Role */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2">
                   Whitelist / Bypass Role (Optional)
                 </label>
                 <select
@@ -166,7 +166,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                   onChange={(e) =>
                     setFormData({ ...formData, whitelistRoleId: e.target.value })
                   }
-                  className="w-full px-4 py-3 rounded-2xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full px-4 py-3 rounded-2xl bg-neutral-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
                 >
                   <option value="">None (Everyone must adhere)</option>
                   {roles.map((r) => (
@@ -175,13 +175,13 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-slate-500 mt-1.5">Members with this role can chat freely without media restrictions.</p>
+                <p className="text-xs text-neutral-500 mt-1.5">Members with this role can chat freely without media restrictions.</p>
               </div>
             </div>
 
             {/* Enforcement Mode Cards */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2 mt-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2 mt-2">
                 Allowed Content Mode
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -190,15 +190,15 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                   onClick={() => setFormData({ ...formData, imageOnly: false })}
                   className={`p-4 rounded-2xl border text-left transition-all ${
                     !formData.imageOnly
-                      ? "bg-indigo-600/15 border-indigo-500/50 shadow-lg shadow-indigo-500/5"
-                      : "bg-slate-900/40 border-white/5 hover:border-white/10"
+                      ? "bg-indigo-600/15 border-white/10 shadow-lg shadow-indigo-500/5"
+                      : "bg-neutral-900/40 border-white/5 hover:border-white/10"
                   }`}
                 >
                   <div className="flex items-center gap-2.5 font-semibold text-xs text-white">
-                    <Film className="w-4 h-4 text-indigo-400" />
+                    <Film className="w-4 h-4 text-white" />
                     <span>All Media Mode (Default)</span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1.5">
+                  <p className="text-xs text-neutral-400 mt-1.5">
                     Permits photos, videos (MP4/MOV/WebM), GIFs, Tenor/Giphy/Imgur links, and attached files.
                   </p>
                 </button>
@@ -209,14 +209,14 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                   className={`p-4 rounded-2xl border text-left transition-all ${
                     formData.imageOnly
                       ? "bg-pink-600/15 border-pink-500/50 shadow-lg shadow-pink-500/5"
-                      : "bg-slate-900/40 border-white/5 hover:border-white/10"
+                      : "bg-neutral-900/40 border-white/5 hover:border-white/10"
                   }`}
                 >
                   <div className="flex items-center gap-2.5 font-semibold text-xs text-white">
                     <ImageIcon className="w-4 h-4 text-pink-400" />
                     <span>Images Only Mode</span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1.5">
+                  <p className="text-xs text-neutral-400 mt-1.5">
                     Strictly limits channel to images (PNG, JPG, JPEG, GIF, WebP). Videos and other files are purged.
                   </p>
                 </button>
@@ -229,12 +229,12 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                 onClick={() => setFormData({ ...formData, autoMute: !formData.autoMute })}
                 className={`p-4 rounded-2xl border flex flex-col gap-3 cursor-pointer transition-all duration-300 ${
                   formData.autoMute 
-                    ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]" 
-                    : "bg-slate-900/50 border-white/5 hover:border-white/10"
+                    ? "bg-white/5 border-white/10 shadow-[0_0_15px_rgba(99,102,241,0.1)]" 
+                    : "bg-neutral-900/50 border-white/5 hover:border-white/10"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className={`p-2 rounded-xl transition-colors ${formData.autoMute ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-500'}`}>
+                  <div className={`p-2 rounded-xl transition-colors ${formData.autoMute ? 'bg-white/5 text-white' : 'bg-neutral-800 text-neutral-500'}`}>
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div className={`w-9 h-5 rounded-full flex items-center p-0.5 transition-colors duration-300 ${formData.autoMute ? 'bg-indigo-500' : 'bg-slate-700'}`}>
@@ -243,7 +243,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                 </div>
                 <div>
                   <span className="text-xs font-bold text-white block tracking-tight">Auto-Mute on 3 Strikes</span>
-                  <span className="text-xs text-slate-400 block mt-1 leading-relaxed">
+                  <span className="text-xs text-neutral-400 block mt-1 leading-relaxed">
                     Times out user for 60s upon 3 repeat violations within 5 mins.
                   </span>
                 </div>
@@ -253,12 +253,12 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                 onClick={() => setFormData({ ...formData, allowNsfw: !formData.allowNsfw })}
                 className={`p-4 rounded-2xl border flex flex-col gap-3 cursor-pointer transition-all duration-300 ${
                   formData.allowNsfw 
-                    ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]" 
-                    : "bg-slate-900/50 border-white/5 hover:border-white/10"
+                    ? "bg-white/5 border-white/10 shadow-[0_0_15px_rgba(99,102,241,0.1)]" 
+                    : "bg-neutral-900/50 border-white/5 hover:border-white/10"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className={`p-2 rounded-xl transition-colors ${formData.allowNsfw ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-500'}`}>
+                  <div className={`p-2 rounded-xl transition-colors ${formData.allowNsfw ? 'bg-white/5 text-white' : 'bg-neutral-800 text-neutral-500'}`}>
                     <AlertTriangle className="w-4 h-4" />
                   </div>
                   <div className={`w-9 h-5 rounded-full flex items-center p-0.5 transition-colors duration-300 ${formData.allowNsfw ? 'bg-indigo-500' : 'bg-slate-700'}`}>
@@ -267,7 +267,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                 </div>
                 <div>
                   <span className="text-xs font-bold text-white block tracking-tight">Allow NSFW Bypass</span>
-                  <span className="text-xs text-slate-400 block mt-1 leading-relaxed">
+                  <span className="text-xs text-neutral-400 block mt-1 leading-relaxed">
                     Exempt age-restricted/NSFW channels from media enforcement.
                   </span>
                 </div>
@@ -277,12 +277,12 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                 onClick={() => setFormData({ ...formData, postStickyNotice: !formData.postStickyNotice })}
                 className={`p-4 rounded-2xl border flex flex-col gap-3 cursor-pointer transition-all duration-300 ${
                   formData.postStickyNotice 
-                    ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]" 
-                    : "bg-slate-900/50 border-white/5 hover:border-white/10"
+                    ? "bg-white/5 border-white/10 shadow-[0_0_15px_rgba(99,102,241,0.1)]" 
+                    : "bg-neutral-900/50 border-white/5 hover:border-white/10"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className={`p-2 rounded-xl transition-colors ${formData.postStickyNotice ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-500'}`}>
+                  <div className={`p-2 rounded-xl transition-colors ${formData.postStickyNotice ? 'bg-white/5 text-white' : 'bg-neutral-800 text-neutral-500'}`}>
                     <Pin className="w-4 h-4" />
                   </div>
                   <div className={`w-9 h-5 rounded-full flex items-center p-0.5 transition-colors duration-300 ${formData.postStickyNotice ? 'bg-indigo-500' : 'bg-slate-700'}`}>
@@ -291,7 +291,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                 </div>
                 <div>
                   <span className="text-xs font-bold text-white block tracking-tight">Post Sticky Notice</span>
-                  <span className="text-xs text-slate-400 block mt-1 leading-relaxed">
+                  <span className="text-xs text-neutral-400 block mt-1 leading-relaxed">
                     Pins and maintains an informational embed notice at the bottom.
                   </span>
                 </div>
@@ -321,19 +321,19 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
               </div>
               <div>
                 <h3 className="font-bold text-base text-white">Active Media Channels</h3>
-                <p className="text-xs text-slate-400">Currently monitored and protected channels</p>
+                <p className="text-xs text-neutral-400">Currently monitored and protected channels</p>
               </div>
             </div>
-            <span className="text-xs font-semibold px-3 py-1 rounded-xl bg-white/5 text-slate-300 font-mono">
+            <span className="text-xs font-semibold px-3 py-1 rounded-xl bg-white/5 text-neutral-400 font-mono">
               {activeChannels.length} Enforced
             </span>
           </div>
 
           {activeChannels.length === 0 ? (
-            <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-slate-900/30">
+            <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-neutral-900/30">
               <ImageIcon className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-slate-400">No media-only channels configured</p>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+              <p className="text-sm font-semibold text-neutral-400">No media-only channels configured</p>
+              <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">
                 Select a channel above to keep art, photography, or clips channels free of chat clutter.
               </p>
             </div>
@@ -342,7 +342,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
               {activeChannels.map((item) => (
                 <div
                   key={item.channel_id}
-                  className="p-5 rounded-2xl bg-slate-900/60 border border-white/5 hover:border-white/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  className="p-5 rounded-2xl bg-neutral-900/60 border border-white/5 hover:border-white/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
                   <div className="flex items-start sm:items-center gap-3.5">
                     <div className="p-2.5 rounded-xl bg-pink-500/10 text-pink-400 mt-0.5 sm:mt-0">
@@ -356,21 +356,21 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg border ${
                           item.image_only
                             ? "bg-pink-500/10 text-pink-300 border-pink-500/20"
-                            : "bg-indigo-500/10 text-indigo-300 border-indigo-500/20"
+                            : "bg-white/5 text-white border-white/10"
                         }`}>
                           {item.image_only ? "Images Only" : "All Media"}
                         </span>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-1.5">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400 mt-1.5">
                         {item.whitelist_role_id && (
-                          <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                          <span className="inline-flex items-center gap-1 text-white bg-white/5 px-2 py-0.5 rounded-md">
                             <ShieldCheck className="w-3 h-3" />
                             Bypass: @{roleMap.get(item.whitelist_role_id) || item.whitelist_role_id}
                           </span>
                         )}
                         <span className="inline-flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3 text-amber-400" />
+                          <AlertTriangle className="w-3 h-3 text-white" />
                           Auto-Mute: {item.auto_mute ? "3-Strikes (60s)" : "Disabled"}
                         </span>
                         <span>•</span>
@@ -378,7 +378,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
                         {item.sticky_message_id && (
                           <>
                             <span>•</span>
-                            <span className="inline-flex items-center gap-1 text-purple-400">
+                            <span className="inline-flex items-center gap-1 text-white">
                               <Pin className="w-3 h-3" />
                               Sticky Notice Pinned
                             </span>
@@ -390,7 +390,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
 
                   <button
                     onClick={() => handleDelete(item.channel_id)}
-                    className="self-end sm:self-center inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 text-xs font-semibold transition-colors cursor-pointer"
+                    className="self-end sm:self-center inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/5 text-white hover:text-white text-xs font-semibold transition-colors cursor-pointer"
                     title="Remove restriction"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

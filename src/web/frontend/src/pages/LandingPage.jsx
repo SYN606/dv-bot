@@ -29,10 +29,10 @@ export default function LandingPage({ user, botInfo }) {
   const botName = botInfo?.username || "Digital Vigital";
 
   const metrics = [
-    { label: "Response Latency", value: `${botInfo?.ping || 25}ms`, desc: "Live Gateway Ping", icon: Zap, color: "text-amber-400" },
-    { label: "Uptime SLA", value: "99.9%", desc: "Continuous 24/7 gateway", icon: Activity, color: "text-emerald-400" },
-    { label: "Dashboard Driven", value: "100%", desc: "Zero command setup required", icon: Sliders, color: "text-indigo-400" },
-    { label: "System Status", value: botInfo?.status || "Online", desc: "Core services operational", icon: CheckCircle2, color: "text-purple-400" },
+    { label: "Response Latency", value: `${botInfo?.ping || 25}ms`, desc: "Live Gateway Ping", icon: Zap, color: "text-white" },
+    { label: "Uptime SLA", value: "99.9%", desc: "Continuous 24/7 gateway", icon: Activity, color: "text-white" },
+    { label: "Dashboard Driven", value: "100%", desc: "Zero command setup required", icon: Sliders, color: "text-white" },
+    { label: "System Status", value: botInfo?.status || "Online", desc: "Core services operational", icon: CheckCircle2, color: "text-white" },
   ];
 
   const features = [
@@ -40,43 +40,43 @@ export default function LandingPage({ user, botInfo }) {
       icon: Sparkles,
       title: "Supporter Rewards (Vanity)",
       desc: "Automatically grant roles to users who put your server's vanity URL or Clan Tag in their Discord Custom Status.",
-      color: "text-fuchsia-400",
-      bg: "bg-fuchsia-500/10",
+      color: "text-white",
+      bg: "bg-white/5",
     },
     {
       icon: TrendingUp,
       title: "Leaderboard Auto-Roles",
       desc: "Background workers run weekly to calculate the top Text and Voice chatters, automatically assigning exclusive medals and roles.",
-      color: "text-indigo-400",
-      bg: "bg-indigo-500/10",
+      color: "text-white",
+      bg: "bg-white/5",
     },
     {
       icon: ShieldCheck,
       title: "Automated Verification Gate",
       desc: "Instant 1-click button verification with automatic role assignment, minimum account age security, and audit logging.",
-      color: "text-emerald-400",
-      bg: "bg-emerald-500/10",
+      color: "text-white",
+      bg: "bg-white/5",
     },
     {
       icon: Pin,
       title: "Self-Repinning Sticky Notices",
       desc: "Keep guidelines, schedules, or announcements perpetually pinned at the bottom of channel history with debounce protection.",
-      color: "text-amber-400",
-      bg: "bg-amber-500/10",
+      color: "text-white",
+      bg: "bg-white/5",
     },
     {
       icon: Bot,
       title: "Dynamic Autoresponder",
       desc: "Trigger rich replies and auto-reactions on exact keywords, phrases, or regex patterns with channel burst rate-limiting.",
-      color: "text-cyan-400",
-      bg: "bg-cyan-500/10",
+      color: "text-white",
+      bg: "bg-white/5",
     },
     {
       icon: Sliders,
       title: "Granular Command Matrix",
       desc: "Restrict sensitive slash commands per-channel while safeguarding essential moderation tools with admin overrides.",
-      color: "text-rose-400",
-      bg: "bg-rose-500/10",
+      color: "text-white",
+      bg: "bg-white/5",
     },
   ];
 
@@ -123,10 +123,10 @@ export default function LandingPage({ user, botInfo }) {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-indigo-500/30 selection:text-indigo-200 relative overflow-x-hidden">
+    <div className="min-h-screen bg-black text-neutral-200 flex flex-col antialiased selection:bg-indigo-500/30 selection:text-white relative overflow-x-hidden">
       {/* Gentle ambient lighting orbs */}
-      <div className="fixed top-[-120px] left-[-100px] w-[500px] h-[500px] rounded-full bg-indigo-500/10 blur-[140px] pointer-events-none -z-10" />
-      <div className="fixed bottom-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full bg-purple-500/10 blur-[140px] pointer-events-none -z-10" />
+      <div className="fixed top-[-120px] left-[-100px] w-[500px] h-[500px] rounded-full bg-white/5 blur-[140px] pointer-events-none -z-10" />
+      <div className="fixed bottom-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full bg-white/5 blur-[140px] pointer-events-none -z-10" />
 
       {/* Global Top Navbar */}
       <Navbar user={user} botInfo={botInfo} />
@@ -137,27 +137,27 @@ export default function LandingPage({ user, botInfo }) {
         {botBanner && (
           <div className="w-full h-44 sm:h-64 rounded-3xl overflow-hidden mb-8 shadow-2xl border border-white/10 relative">
             <img src={botBanner} alt="Banner" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
           </div>
         )}
 
         <div className="text-center max-w-3xl mx-auto space-y-6">
           {/* Bot Avatar Badge - Gracefully Rounded */}
-          <div className="inline-flex p-1 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-xl shadow-indigo-500/20">
+          <div className="inline-flex p-1 rounded-full bg-white/10 p-1 shadow-xl shadow-[0_0_20px_rgba(255,255,255,0.05)]">
             <div className="w-20 h-20 rounded-full overflow-hidden bg-zinc-900 ring-2 ring-white/10">
               <img src={botAvatar} alt={botName} className="w-full h-full object-cover rounded-full" />
             </div>
           </div>
 
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
               Next-Gen Discord Bot Engine
             </div>
-            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-200 bg-clip-text text-transparent leading-[1.1]">
+            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white bg-clip-text text-transparent leading-[1.1]">
               The Modern Discord Bot Dashboard
             </h1>
-            <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
+            <p className="text-sm sm:text-base text-neutral-400 max-w-xl mx-auto leading-relaxed">
               Empower your community with enterprise-grade moderation, automated verification gates, real-time analytics, and modular server automation.
             </p>
           </div>
@@ -183,9 +183,9 @@ export default function LandingPage({ user, botInfo }) {
             )}
             <Link
               to="/docs"
-              className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl font-semibold text-sm bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 hover:border-white/20 transition-all shadow-md"
+              className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl font-semibold text-sm bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/10 hover:border-white/20 transition-all shadow-md"
             >
-              <BookOpen className="w-4 h-4 text-indigo-400" />
+              <BookOpen className="w-4 h-4 text-white" />
               <span>Explore Commands</span>
             </Link>
           </div>
@@ -201,7 +201,7 @@ export default function LandingPage({ user, botInfo }) {
                 className="glass-card p-4 sm:p-5 rounded-2xl border border-white/5 flex flex-col justify-between"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-mono font-medium text-slate-400 uppercase tracking-wider">
+                  <span className="text-[11px] font-mono font-medium text-neutral-400 uppercase tracking-wider">
                     {m.label}
                   </span>
                   <Icon className={`w-4 h-4 ${m.color}`} />
@@ -210,7 +210,7 @@ export default function LandingPage({ user, botInfo }) {
                   <span className="text-xl sm:text-2xl font-extrabold text-white font-mono tracking-tight">
                     {m.value}
                   </span>
-                  <p className="text-[11px] text-slate-500 mt-0.5 truncate">{m.desc}</p>
+                  <p className="text-[11px] text-neutral-500 mt-0.5 truncate">{m.desc}</p>
                 </div>
               </div>
             );
@@ -220,13 +220,13 @@ export default function LandingPage({ user, botInfo }) {
         {/* Core Features Grid */}
         <div className="mt-16 sm:mt-24 space-y-4">
           <div className="text-center max-w-xl mx-auto space-y-2">
-            <h2 className="text-xs font-bold text-indigo-400 uppercase tracking-widest font-mono">
+            <h2 className="text-xs font-bold text-white uppercase tracking-widest font-mono">
               Core Modules
             </h2>
             <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Everything Your Community Needs
             </p>
-            <p className="text-xs sm:text-sm text-slate-400">
+            <p className="text-xs sm:text-sm text-neutral-400">
               Powerful automation tools designed to safeguard chat quality, verify authentic members, and deliver deep insights.
             </p>
           </div>
@@ -237,7 +237,7 @@ export default function LandingPage({ user, botInfo }) {
               return (
                 <div
                   key={i}
-                  className="glass-card p-6 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-all group"
+                  className="glass-card p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all group"
                 >
                   <div
                     className={`w-10 h-10 rounded-xl ${feat.bg} flex items-center justify-center mb-4 ${feat.color} group-hover:scale-110 transition-transform`}
@@ -245,7 +245,7 @@ export default function LandingPage({ user, botInfo }) {
                     <Icon className="w-5 h-5" />
                   </div>
                   <h3 className="font-bold text-base text-white mb-1.5">{feat.title}</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">{feat.desc}</p>
+                  <p className="text-xs text-neutral-400 leading-relaxed">{feat.desc}</p>
                 </div>
               );
             })}
@@ -255,13 +255,13 @@ export default function LandingPage({ user, botInfo }) {
         {/* Architectural Pillars / Why Digital Vigital */}
         <div className="mt-20 sm:mt-28 space-y-6">
           <div className="text-center max-w-xl mx-auto space-y-2">
-            <h2 className="text-xs font-bold text-indigo-400 uppercase tracking-widest font-mono">
+            <h2 className="text-xs font-bold text-white uppercase tracking-widest font-mono">
               High Performance
             </h2>
             <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Engineered for High-Traffic Servers
             </p>
-            <p className="text-xs sm:text-sm text-slate-400">
+            <p className="text-xs sm:text-sm text-neutral-400">
               Built on the ultra-fast Bun JavaScript runtime with native concurrency controls and rate-limit safeguards.
             </p>
           </div>
@@ -276,15 +276,15 @@ export default function LandingPage({ user, botInfo }) {
                 >
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="w-10 h-10 rounded-xl bg-white/5 text-indigo-400 flex items-center justify-center border border-white/10">
+                      <div className="w-10 h-10 rounded-xl bg-white/5 text-white flex items-center justify-center border border-white/10">
                         <Icon className="w-5 h-5" />
                       </div>
-                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-white/5 text-white border border-white/10">
                         {p.highlight}
                       </span>
                     </div>
                     <h3 className="text-base font-bold text-white tracking-tight">{p.title}</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">{p.desc}</p>
+                    <p className="text-xs text-neutral-400 leading-relaxed">{p.desc}</p>
                   </div>
                 </div>
               );
@@ -295,13 +295,13 @@ export default function LandingPage({ user, botInfo }) {
         {/* How It Works (3 Steps) */}
         <div className="mt-20 sm:mt-28 space-y-6">
           <div className="text-center max-w-xl mx-auto space-y-2">
-            <h2 className="text-xs font-bold text-indigo-400 uppercase tracking-widest font-mono">
+            <h2 className="text-xs font-bold text-white uppercase tracking-widest font-mono">
               Seamless Workflow
             </h2>
             <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Up and Running in 3 Steps
             </p>
-            <p className="text-xs sm:text-sm text-slate-400">
+            <p className="text-xs sm:text-sm text-neutral-400">
               No complex command chains or confusing bot tokens. Zero barrier to entry.
             </p>
           </div>
@@ -312,19 +312,19 @@ export default function LandingPage({ user, botInfo }) {
               return (
                 <div
                   key={i}
-                  className="glass-card p-6 rounded-2xl border border-white/5 flex flex-col justify-between relative group hover:border-indigo-500/30 transition-all"
+                  className="glass-card p-6 rounded-2xl border border-white/5 flex flex-col justify-between relative group hover:border-white/10 transition-all"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-2xl font-black font-mono text-indigo-400/40 group-hover:text-indigo-400/70 transition-colors">
+                      <span className="text-2xl font-black font-mono text-white/40 group-hover:text-white/70 transition-colors">
                         {st.step}
                       </span>
-                      <div className="w-8 h-8 rounded-lg bg-white/5 text-slate-300 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-lg bg-white/5 text-neutral-400 flex items-center justify-center">
                         <Icon className="w-4 h-4" />
                       </div>
                     </div>
                     <h3 className="font-bold text-base text-white mb-2">{st.title}</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">{st.desc}</p>
+                    <p className="text-xs text-neutral-400 leading-relaxed">{st.desc}</p>
                   </div>
                 </div>
               );
@@ -335,14 +335,14 @@ export default function LandingPage({ user, botInfo }) {
         {/* Bottom CTA Banner */}
         <div className="mt-20 sm:mt-28 p-8 sm:p-12 rounded-3xl glass-panel border border-white/10 relative overflow-hidden text-center space-y-6">
           <div className="max-w-2xl mx-auto space-y-3 relative z-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white text-xs font-semibold">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Instant Deployment</span>
             </div>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
               Ready to Upgrade Your Discord Server?
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-lg mx-auto">
+            <p className="text-xs sm:text-sm text-neutral-400 leading-relaxed max-w-lg mx-auto">
               Equip your community with automated verification, rate-limit resilience, and deep analytics today.
             </p>
             <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
@@ -365,7 +365,7 @@ export default function LandingPage({ user, botInfo }) {
               )}
               <Link
                 to="/docs"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 transition-all"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/10 transition-all"
               >
                 <span>Read the Docs</span>
               </Link>

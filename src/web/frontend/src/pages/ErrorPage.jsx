@@ -31,7 +31,7 @@ export default function ErrorPage({ user, botInfo }) {
       : "An unexpected error occurred while processing your request. Please try again or head back to safety.");
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased relative overflow-x-hidden selection:bg-indigo-500/30 selection:text-indigo-200">
+    <div className="min-h-screen bg-black text-neutral-200 flex flex-col antialiased relative overflow-x-hidden selection:bg-indigo-500/30 selection:text-white">
       {/* Background ambient lighting */}
       <div className="fixed top-[-140px] left-[-100px] w-[600px] h-[600px] rounded-full bg-indigo-600/15 blur-[160px] pointer-events-none -z-10" />
       <div className="fixed bottom-[-140px] right-[-100px] w-[600px] h-[600px] rounded-full bg-rose-600/10 blur-[160px] pointer-events-none -z-10" />
@@ -43,13 +43,13 @@ export default function ErrorPage({ user, botInfo }) {
       <main className="flex-1 flex items-center justify-center px-4 sm:px-8 py-16">
         <div className="max-w-xl w-full text-center space-y-6">
           {/* Status Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs font-mono font-semibold shadow-lg shadow-rose-500/10">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-rose-500/25 text-white text-xs font-mono font-semibold shadow-lg shadow-rose-500/10">
             {errorCode === "404" ? (
-              <FileQuestion className="w-4 h-4 text-rose-400" />
+              <FileQuestion className="w-4 h-4 text-white" />
             ) : errorCode === "403" ? (
-              <ShieldAlert className="w-4 h-4 text-rose-400" />
+              <ShieldAlert className="w-4 h-4 text-white" />
             ) : (
-              <AlertTriangle className="w-4 h-4 text-rose-400" />
+              <AlertTriangle className="w-4 h-4 text-white" />
             )}
             <span>Error {errorCode}</span>
           </div>
@@ -60,7 +60,7 @@ export default function ErrorPage({ user, botInfo }) {
               {errorCode}
             </h1>
             <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-              <Compass className="w-48 h-48 text-indigo-400 animate-pulse" />
+              <Compass className="w-48 h-48 text-white animate-pulse" />
             </div>
           </div>
 
@@ -69,7 +69,7 @@ export default function ErrorPage({ user, botInfo }) {
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               {errorTitle}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+            <p className="text-xs sm:text-sm text-neutral-400 max-w-md mx-auto leading-relaxed">
               {errorMessage}
             </p>
           </div>
@@ -79,7 +79,7 @@ export default function ErrorPage({ user, botInfo }) {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white border border-white/10 transition-all cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Go Back</span>
@@ -95,7 +95,7 @@ export default function ErrorPage({ user, botInfo }) {
 
             <Link
               to="/docs"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-900/80 hover:bg-slate-900 text-slate-300 hover:text-white border border-white/10 transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-neutral-900/80 hover:bg-neutral-900 text-neutral-400 hover:text-white border border-white/10 transition-all"
             >
               <BookOpen className="w-4 h-4" />
               <span>Command Docs</span>
@@ -103,7 +103,7 @@ export default function ErrorPage({ user, botInfo }) {
 
             <Link
               to="/dashboard"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-900/80 hover:bg-slate-900 text-slate-300 hover:text-white border border-white/10 transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-neutral-900/80 hover:bg-neutral-900 text-neutral-400 hover:text-white border border-white/10 transition-all"
             >
               <LayoutDashboard className="w-4 h-4" />
               <span>Dashboard</span>
@@ -111,16 +111,16 @@ export default function ErrorPage({ user, botInfo }) {
           </div>
 
           {/* Secondary Helpful Links */}
-          <div className="pt-8 border-t border-white/5 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500">
-            <Link to="/docs" className="hover:text-indigo-400 transition-colors">
+          <div className="pt-8 border-t border-white/5 flex flex-wrap items-center justify-center gap-6 text-xs text-neutral-500">
+            <Link to="/docs" className="hover:text-white transition-colors">
               Documentation
             </Link>
             <span className="text-white/10">•</span>
-            <Link to="/terms" className="hover:text-indigo-400 transition-colors">
+            <Link to="/terms" className="hover:text-white transition-colors">
               Terms of Service
             </Link>
             <span className="text-white/10">•</span>
-            <Link to="/privacy" className="hover:text-indigo-400 transition-colors">
+            <Link to="/privacy" className="hover:text-white transition-colors">
               Privacy Policy
             </Link>
             <span className="text-white/10">•</span>
@@ -128,7 +128,7 @@ export default function ErrorPage({ user, botInfo }) {
               href="https://digitalvigital.fun"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-indigo-400 transition-colors"
+              className="hover:text-white transition-colors"
             >
               Support Network
             </a>

@@ -163,7 +163,7 @@ export default function Sidebar({
               <span className="font-bold text-sm tracking-tight text-white leading-tight truncate max-w-[130px]">
                 {botName}
               </span>
-              <span className="text-[9px] font-mono text-slate-400 uppercase tracking-wider">
+              <span className="text-[9px] font-mono text-neutral-400 uppercase tracking-wider">
                 Control Panel
               </span>
             </div>
@@ -172,14 +172,14 @@ export default function Sidebar({
           <div className="flex items-center gap-1">
             <Link
               to="/dashboard"
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all text-xs"
+              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-all text-xs"
               title="Switch Server"
               onClick={() => setMobileOpen(false)}
             >
               <ArrowLeftRight className="w-3.5 h-3.5" />
             </Link>
             <button
-              className="md:hidden p-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white"
+              className="md:hidden p-1.5 rounded-lg bg-white/5 text-neutral-400 hover:text-white"
               onClick={() => setMobileOpen(false)}
             >
               <X className="w-4 h-4" />
@@ -188,9 +188,9 @@ export default function Sidebar({
         </div>
 
         {/* Active Server Badge */}
-        <div className="p-3 m-3 rounded-xl bg-slate-900/60 border border-white/5 flex items-center gap-3 shrink-0">
+        <div className="p-3 m-3 rounded-xl bg-neutral-900/60 border border-white/5 flex items-center gap-3 shrink-0">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shrink-0">
-            <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
+            <div className="w-full h-full bg-neutral-900 rounded-full flex items-center justify-center overflow-hidden">
               {currentGuild.icon ? (
                 <img
                   src={`https://cdn.discordapp.com/icons/${currentGuild.id}/${currentGuild.icon}.png`}
@@ -198,7 +198,7 @@ export default function Sidebar({
                   className="w-full h-full object-cover rounded-full"
                 />
               ) : (
-                <span className="font-bold text-xs text-indigo-300 font-mono">
+                <span className="font-bold text-xs text-white font-mono">
                   {currentGuild.name.slice(0, 2).toUpperCase()}
                 </span>
               )}
@@ -208,7 +208,7 @@ export default function Sidebar({
             <p className="font-semibold text-xs text-white truncate">
               {currentGuild.name}
             </p>
-            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-mono">
+            <span className="inline-flex items-center gap-1 text-[10px] text-white font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               Connected
             </span>
@@ -219,7 +219,7 @@ export default function Sidebar({
         <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto min-h-0">
           {navGroups.map((group) => (
             <div key={group.group}>
-              <div className="px-3 mb-1.5 text-[9px] font-mono tracking-widest text-slate-400 uppercase font-semibold">
+              <div className="px-3 mb-1.5 text-[9px] font-mono tracking-widest text-neutral-400 uppercase font-semibold">
                 {group.group}
               </div>
               <div className="space-y-1">
@@ -236,13 +236,13 @@ export default function Sidebar({
                       onClick={() => setMobileOpen(false)}
                       className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                         isActive
-                          ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm"
-                          : "text-slate-300 hover:text-white hover:bg-white/5"
+                          ? "bg-indigo-600/20 text-white border border-white/10 shadow-sm"
+                          : "text-neutral-400 hover:text-white hover:bg-white/5"
                       }`}
                     >
                       <Icon
                         className={`w-4 h-4 shrink-0 ${
-                          isActive ? "text-indigo-400" : "text-slate-400"
+                          isActive ? "text-white" : "text-neutral-400"
                         }`}
                       />
                       <span className="truncate">{item.label}</span>

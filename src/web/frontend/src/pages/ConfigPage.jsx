@@ -56,7 +56,7 @@ export default function ConfigPage({ user, botInfo, showToast }) {
             <Sliders className="w-6 h-6 text-blue-400" />
             <span>Roles & Audit Logs</span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-neutral-400 mt-1">
             Configure moderation audit log channels, automatic voice roles, and tempban isolation roles.
           </p>
         </div>
@@ -65,7 +65,7 @@ export default function ConfigPage({ user, botInfo, showToast }) {
           <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-2">
+                <label className="block text-xs font-semibold text-neutral-400 mb-2">
                   Moderation Audit Log Channel
                 </label>
                 <select
@@ -73,7 +73,7 @@ export default function ConfigPage({ user, botInfo, showToast }) {
                   onChange={(e) =>
                     setConfig({ ...config, modLogChannelId: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full px-4 py-2.5 rounded-xl bg-neutral-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500"
                 >
                   <option value="">Disabled / None</option>
                   {channels.map((ch) => (
@@ -82,13 +82,13 @@ export default function ConfigPage({ user, botInfo, showToast }) {
                     </option>
                   ))}
                 </select>
-                <p className="text-[11px] text-slate-500 mt-1.5">
+                <p className="text-[11px] text-neutral-500 mt-1.5">
                   Bot will post kick, ban, timeout, and purge moderation logs to this channel.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-2">
+                <label className="block text-xs font-semibold text-neutral-400 mb-2">
                   Active Voice Channel Dynamic Role
                 </label>
                 <select
@@ -96,7 +96,7 @@ export default function ConfigPage({ user, botInfo, showToast }) {
                   onChange={(e) =>
                     setConfig({ ...config, vcRoleId: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full px-4 py-2.5 rounded-xl bg-neutral-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500"
                 >
                   <option value="">Disabled / None</option>
                   {roles.map((r) => (
@@ -105,15 +105,15 @@ export default function ConfigPage({ user, botInfo, showToast }) {
                     </option>
                   ))}
                 </select>
-                <p className="text-[11px] text-slate-500 mt-1.5">
+                <p className="text-[11px] text-neutral-500 mt-1.5">
                   Automatically granted when a member enters voice and removed when they leave.
                 </p>
               </div>
 
               <div className="col-span-1 sm:col-span-2 pt-4 border-t border-white/5">
                 <div className="flex items-center gap-2 mb-2">
-                  <ShieldAlert className="w-4 h-4 text-amber-400" />
-                  <label className="block text-xs font-semibold text-slate-200">
+                  <ShieldAlert className="w-4 h-4 text-white" />
+                  <label className="block text-xs font-semibold text-neutral-300">
                     Tempban Isolation Role
                   </label>
                 </div>
@@ -122,7 +122,7 @@ export default function ConfigPage({ user, botInfo, showToast }) {
                   onChange={(e) =>
                     setConfig({ ...config, tempbanRoleId: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full px-4 py-2.5 rounded-xl bg-neutral-900/80 border border-white/10 text-xs text-white focus:outline-none focus:border-indigo-500"
                 >
                   <option value="">Disabled / Native Server Ban</option>
                   {roles.map((r) => (
@@ -131,12 +131,12 @@ export default function ConfigPage({ user, botInfo, showToast }) {
                     </option>
                   ))}
                 </select>
-                <div className="mt-2.5 text-[11px] text-slate-400 space-y-1.5 bg-slate-950/40 p-3.5 rounded-xl border border-white/5">
+                <div className="mt-2.5 text-[11px] text-neutral-400 space-y-1.5 bg-black/40 p-3.5 rounded-xl border border-white/5">
                   <p>
-                    • <strong className="text-slate-300">When role is selected:</strong> Executing <code className="text-indigo-300 bg-white/5 px-1 rounded">/tempban add</code> or <code className="text-indigo-300 bg-white/5 px-1 rounded">ts tempban</code> will isolate the user by giving them this role and stripping their verified role (instead of banning them from the server). When the timer expires, the isolation role is removed and verified status is restored automatically.
+                    • <strong className="text-neutral-400">When role is selected:</strong> Executing <code className="text-white bg-white/5 px-1 rounded">/tempban add</code> or <code className="text-white bg-white/5 px-1 rounded">ts tempban</code> will isolate the user by giving them this role and stripping their verified role (instead of banning them from the server). When the timer expires, the isolation role is removed and verified status is restored automatically.
                   </p>
                   <p>
-                    • <strong className="text-slate-300">When disabled:</strong> Tempbans will execute native Discord server bans and automatically unban when the duration expires.
+                    • <strong className="text-neutral-400">When disabled:</strong> Tempbans will execute native Discord server bans and automatically unban when the duration expires.
                   </p>
                 </div>
               </div>

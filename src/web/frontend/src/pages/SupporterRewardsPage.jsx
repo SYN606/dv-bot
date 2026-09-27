@@ -74,7 +74,7 @@ export default function SupporterRewardsPage({ user, botInfo, showToast }) {
               </div>
               <span>Supporter Rewards</span>
             </h1>
-            <p className="text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
+            <p className="text-sm text-neutral-400 mt-2 max-w-2xl leading-relaxed">
               Reward members who represent your server by adding your Vanity URL to their Discord status, or by equipping your Clan Tag!
             </p>
           </div>
@@ -91,7 +91,7 @@ export default function SupporterRewardsPage({ user, botInfo, showToast }) {
                 config.enabled ? "translate-x-6" : "translate-x-0"
               }`}
             >
-              <Power className={`w-3.5 h-3.5 ${config.enabled ? "text-emerald-500" : "text-slate-400"}`} />
+              <Power className={`w-3.5 h-3.5 ${config.enabled ? "text-white" : "text-neutral-400"}`} />
             </span>
           </button>
         </div>
@@ -99,15 +99,15 @@ export default function SupporterRewardsPage({ user, botInfo, showToast }) {
         <div className={`space-y-6 transition-all duration-300 ${!config.enabled ? 'opacity-50 pointer-events-none saturate-0' : ''}`}>
           
           {/* Custom Status Vanity Card */}
-          <div className="bg-slate-900/50 border border-white/10 rounded-3xl p-6">
+          <div className="bg-neutral-900/50 border border-white/10 rounded-3xl p-6">
             <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-6">
-              <Megaphone className="w-5 h-5 text-indigo-400" />
+              <Megaphone className="w-5 h-5 text-white" />
               Custom Status Vanity
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
                   Vanity Phrase
                 </label>
                 <input
@@ -115,17 +115,17 @@ export default function SupporterRewardsPage({ user, botInfo, showToast }) {
                   placeholder="e.g. gg/myserver"
                   value={config.vanity_text}
                   onChange={(e) => handleChange("vanity_text", e.target.value)}
-                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
                   Reward Role
                 </label>
                 <select
                   value={config.vanity_role_id}
                   onChange={(e) => handleChange("vanity_role_id", e.target.value)}
-                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
                 >
                   <option value="">-- Do not assign a role --</option>
                   {roles.map((r) => (
@@ -136,14 +136,14 @@ export default function SupporterRewardsPage({ user, botInfo, showToast }) {
             </div>
 
             <div className="space-y-1.5 mb-6">
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                <Hash className="w-3.5 h-3.5 text-slate-400" />
+              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-2">
+                <Hash className="w-3.5 h-3.5 text-neutral-400" />
                 Announcement Channel
               </label>
               <select
                 value={config.vanity_channel_id}
                 onChange={(e) => handleChange("vanity_channel_id", e.target.value)}
-                className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-black border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
               >
                 <option value="">-- No Announcement Channel --</option>
                 {channels.map((c) => (
@@ -153,8 +153,8 @@ export default function SupporterRewardsPage({ user, botInfo, showToast }) {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-2">
+                <MessageSquare className="w-3.5 h-3.5 text-neutral-400" />
                 Announcement Message
               </label>
               <textarea
@@ -162,31 +162,31 @@ export default function SupporterRewardsPage({ user, botInfo, showToast }) {
                 value={config.vanity_message}
                 onChange={(e) => handleChange("vanity_message", e.target.value)}
                 rows={3}
-                className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 resize-none"
+                className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 resize-none"
               />
-              <p className="text-xs text-slate-500 mt-2">Available variables: <code className="text-indigo-400 bg-indigo-500/10 px-1 py-0.5 rounded">{'{user.mention}'}</code></p>
+              <p className="text-xs text-neutral-500 mt-2">Available variables: <code className="text-white bg-white/5 px-1 py-0.5 rounded">{'{user.mention}'}</code></p>
             </div>
           </div>
 
           {/* Clan Tag Config Card */}
-          <div className="bg-slate-900/50 border border-white/10 rounded-3xl p-6">
+          <div className="bg-neutral-900/50 border border-white/10 rounded-3xl p-6">
             <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-6">
-              <Tag className="w-5 h-5 text-emerald-400" />
+              <Tag className="w-5 h-5 text-white" />
               Guild Clan Tag
             </h2>
-            <p className="text-sm text-slate-400 mb-6">
+            <p className="text-sm text-neutral-400 mb-6">
               Automatically assign a role when a user sets your server as their Primary Identity/Clan in Discord.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
                   Reward Role
                 </label>
                 <select
                   value={config.clan_role_id}
                   onChange={(e) => handleChange("clan_role_id", e.target.value)}
-                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
                 >
                   <option value="">-- Do not assign a role --</option>
                   {roles.map((r) => (
@@ -195,14 +195,14 @@ export default function SupporterRewardsPage({ user, botInfo, showToast }) {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                  <Hash className="w-3.5 h-3.5 text-slate-400" />
+                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-2">
+                  <Hash className="w-3.5 h-3.5 text-neutral-400" />
                   Announcement Channel
                 </label>
                 <select
                   value={config.clan_channel_id}
                   onChange={(e) => handleChange("clan_channel_id", e.target.value)}
-                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
                 >
                   <option value="">-- No Announcement Channel --</option>
                   {channels.map((c) => (
@@ -213,8 +213,8 @@ export default function SupporterRewardsPage({ user, botInfo, showToast }) {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-2">
+                <MessageSquare className="w-3.5 h-3.5 text-neutral-400" />
                 Announcement Message
               </label>
               <textarea
@@ -222,7 +222,7 @@ export default function SupporterRewardsPage({ user, botInfo, showToast }) {
                 value={config.clan_message}
                 onChange={(e) => handleChange("clan_message", e.target.value)}
                 rows={3}
-                className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 resize-none"
+                className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 resize-none"
               />
             </div>
           </div>

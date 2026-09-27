@@ -85,9 +85,9 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
   };
 
   const getRiskColor = (level) => {
-    if (level === "red") return "text-rose-500 bg-rose-500/10 border-rose-500/20";
-    if (level === "yellow") return "text-amber-500 bg-amber-500/10 border-amber-500/20";
-    return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
+    if (level === "red") return "text-white bg-white/5 border-white/10";
+    if (level === "yellow") return "text-white bg-white/5 border-white/10";
+    return "text-white bg-white/5 border-white/10";
   };
 
   // Calculate Heatmap percentages
@@ -124,19 +124,19 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-rose-600/30 to-red-600/30 border border-rose-500/20 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.2)]">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-rose-600/30 to-red-600/30 border border-white/10 text-white shadow-[0_0_15px_rgba(244,63,94,0.2)]">
                 <ShieldAlert className="w-6 h-6" />
               </div>
               <span>Permissions Audit</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-neutral-400 mt-2 max-w-2xl leading-relaxed">
               Detect and manage members holding dangerous permissions.
             </p>
           </div>
 
-          <div className="bg-slate-900/80 border border-white/5 rounded-2xl p-4 min-w-[250px]">
+          <div className="bg-neutral-900/80 border border-white/5 rounded-2xl p-4 min-w-[250px]">
             <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-slate-400 font-semibold uppercase tracking-wider">Server Health</span>
+              <span className="text-neutral-400 font-semibold uppercase tracking-wider">Server Health</span>
               <span className="text-white font-bold">{Math.round(safePercent)}% Safe</span>
             </div>
             <div className="w-full bg-rose-500 h-2 rounded-full overflow-hidden flex">
@@ -148,9 +148,9 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
 
         {/* Member Search */}
         <section>
-          <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6">
-            <h2 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
-              <Search className="w-5 h-5 text-indigo-400" />
+          <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-6">
+            <h2 className="text-lg font-semibold text-neutral-300 mb-4 flex items-center gap-2">
+              <Search className="w-5 h-5 text-white" />
               Individual Member Scan
             </h2>
             <form onSubmit={(e) => { e.preventDefault(); handleSearchMember(); }} className="relative mb-6">
@@ -161,7 +161,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onFocus={() => { if(searchResults.length > 0) setShowDropdown(true); }}
-                  className="flex-1 bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-neutral-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                 />
                 <button
                   type="submit"
@@ -174,7 +174,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
 
               {/* Autocomplete Dropdown */}
               {showDropdown && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 mt-2 w-full max-w-md bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className="absolute top-full left-0 mt-2 w-full max-w-md bg-neutral-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
                   {searchResults.map((res) => (
                     <div 
                       key={res.id} 
@@ -182,15 +182,15 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                         setSearch(res.id);
                         handleSearchMember(res.id);
                       }}
-                      className="flex items-center gap-3 p-3 hover:bg-slate-800 cursor-pointer border-b border-white/5 last:border-0 transition-colors"
+                      className="flex items-center gap-3 p-3 hover:bg-neutral-800 cursor-pointer border-b border-white/5 last:border-0 transition-colors"
                     >
                       <img src={res.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"} className="w-8 h-8 rounded-full" alt="av" />
                       <div>
                         <p className="text-sm font-bold text-white flex items-center gap-1">
                           {res.displayName} 
-                          {res.isBot && <span className="text-[9px] bg-indigo-500/20 text-indigo-400 px-1 py-0.5 rounded uppercase">BOT</span>}
+                          {res.isBot && <span className="text-[9px] bg-white/5 text-white px-1 py-0.5 rounded uppercase">BOT</span>}
                         </p>
-                        <p className="text-xs text-slate-500 font-mono">{res.id}</p>
+                        <p className="text-xs text-neutral-500 font-mono">{res.id}</p>
                       </div>
                     </div>
                   ))}
@@ -199,7 +199,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
             </form>
 
             {memberPerms && (
-              <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row gap-8 items-start relative overflow-hidden">
+              <div className="bg-neutral-900/50 border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row gap-8 items-start relative overflow-hidden">
                 {/* Background glow based on threat level */}
                 <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-10 pointer-events-none translate-x-1/2 -translate-y-1/2 ${
                    memberPerms.threatLevel === 'Critical' ? 'bg-rose-500' :
@@ -218,28 +218,28 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     )}
                   </div>
                   <div className="text-center">
-                    <h3 className="text-slate-100 font-bold text-lg">{memberPerms.user?.username || "Unknown"}</h3>
-                    <p className="text-xs text-slate-500 font-mono mt-1">{memberPerms.user?.id || search}</p>
+                    <h3 className="text-neutral-200 font-bold text-lg">{memberPerms.user?.username || "Unknown"}</h3>
+                    <p className="text-xs text-neutral-500 font-mono mt-1">{memberPerms.user?.id || search}</p>
                   </div>
                   
                   <div className="w-full flex flex-col gap-2 mt-2">
                     <div className={`w-full py-2 px-3 rounded-xl border flex flex-col items-center justify-center gap-1 ${
-                      memberPerms.threatLevel === 'Critical' ? 'bg-rose-500/10 border-rose-500/30' :
-                      memberPerms.threatLevel === 'High' ? 'bg-amber-500/10 border-amber-500/30' :
+                      memberPerms.threatLevel === 'Critical' ? 'bg-white/5 border-white/10' :
+                      memberPerms.threatLevel === 'High' ? 'bg-white/5 border-white/10' :
                       memberPerms.threatLevel === 'Moderate' ? 'bg-yellow-500/10 border-yellow-500/30' :
-                      'bg-emerald-500/10 border-emerald-500/30'
+                      'bg-white/5 border-white/10'
                     }`}>
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Threat Level</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">Threat Level</span>
                       <span className={`text-base font-black uppercase ${
-                        memberPerms.threatLevel === 'Critical' ? 'text-rose-400' :
-                        memberPerms.threatLevel === 'High' ? 'text-amber-400' :
+                        memberPerms.threatLevel === 'Critical' ? 'text-white' :
+                        memberPerms.threatLevel === 'High' ? 'text-white' :
                         memberPerms.threatLevel === 'Moderate' ? 'text-yellow-400' :
-                        'text-emerald-400'
+                        'text-white'
                       }`}>{memberPerms.threatLevel}</span>
                     </div>
-                    <div className="w-full py-1.5 px-3 rounded-lg bg-slate-950 border border-white/5 flex justify-between items-center">
-                      <span className="text-xs text-slate-400 font-semibold">Total Score</span>
-                      <span className="text-sm font-mono font-bold text-slate-200">{memberPerms.threatScore}</span>
+                    <div className="w-full py-1.5 px-3 rounded-lg bg-black border border-white/5 flex justify-between items-center">
+                      <span className="text-xs text-neutral-400 font-semibold">Total Score</span>
+                      <span className="text-sm font-mono font-bold text-neutral-300">{memberPerms.threatScore}</span>
                     </div>
                   </div>
                 </div>
@@ -247,11 +247,11 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                 <div className="flex-1 space-y-5 w-full relative z-10">
                   {/* Categorized Permissions */}
                   <div>
-                    <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2 pb-3 border-b border-white/5">
+                    <h4 className="text-sm font-bold text-neutral-400 uppercase tracking-wider mb-4 flex items-center gap-2 pb-3 border-b border-white/5">
                       {memberPerms.permissions?.length > 0 ? (
-                        <><AlertTriangle className="w-4 h-4 text-amber-500" /> Dangerous Permissions Detected</>
+                        <><AlertTriangle className="w-4 h-4 text-white" /> Dangerous Permissions Detected</>
                       ) : (
-                        <><ShieldCheck className="w-4 h-4 text-emerald-500" /> Safe (No Dangerous Perms)</>
+                        <><ShieldCheck className="w-4 h-4 text-white" /> Safe (No Dangerous Perms)</>
                       )}
                     </h4>
                     
@@ -272,11 +272,11 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                               <div className="space-y-2">
                                 {levelPerms.map((p, i) => (
                                   <div key={i} className="pl-6 border-l-2 border-white/10 ml-2">
-                                    <div className="font-semibold text-slate-200 text-sm flex items-center gap-2">
+                                    <div className="font-semibold text-neutral-300 text-sm flex items-center gap-2">
                                       {emoji} {p.permission}
                                     </div>
-                                    <div className="text-xs text-slate-400 font-mono mt-0.5">
-                                      └ Sources: <span className="text-slate-300">{p.roles.join(" • ")}</span>
+                                    <div className="text-xs text-neutral-400 font-mono mt-0.5">
+                                      └ Sources: <span className="text-neutral-400">{p.roles.join(" • ")}</span>
                                     </div>
                                   </div>
                                 ))}
@@ -290,37 +290,37 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                   
                   {/* Punishment History */}
                   <div className="pt-5 border-t border-white/5 mt-5">
-                    <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
-                      <ShieldAlert className="w-4 h-4 text-rose-500" /> Punishment History
+                    <h4 className="text-sm font-bold text-neutral-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-white" /> Punishment History
                     </h4>
                     
                     {!memberPerms.history || memberPerms.history.length === 0 ? (
-                      <div className="bg-slate-900/50 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl text-sm font-medium flex items-center gap-2">
+                      <div className="bg-neutral-900/50 border border-white/10 text-white p-4 rounded-xl text-sm font-medium flex items-center gap-2">
                         <ShieldCheck className="w-5 h-5" /> This user has a clean record.
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        <div className="text-xs text-slate-400 mb-2 font-semibold">Total Infractions: {memberPerms.history.length}</div>
+                        <div className="text-xs text-neutral-400 mb-2 font-semibold">Total Infractions: {memberPerms.history.length}</div>
                         {memberPerms.history.map((record, idx) => (
-                          <div key={idx} className="bg-slate-900 border border-white/5 p-4 rounded-xl flex flex-col gap-2">
+                          <div key={idx} className="bg-neutral-900 border border-white/5 p-4 rounded-xl flex flex-col gap-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                                  record.type === 'BAN' ? 'bg-rose-500/20 text-rose-400' :
+                                  record.type === 'BAN' ? 'bg-white/5 text-white' :
                                   record.type === 'KICK' ? 'bg-orange-500/20 text-orange-400' :
-                                  record.type === 'TEMPBAN' ? 'bg-amber-500/20 text-amber-400' :
+                                  record.type === 'TEMPBAN' ? 'bg-white/5 text-white' :
                                   record.type === 'TIMEOUT' ? 'bg-yellow-500/20 text-yellow-400' :
                                   'bg-blue-500/20 text-blue-400'
                                 }`}>
                                   {record.type === 'BAN' ? '🔨 ' : record.type === 'KICK' ? '👢 ' : record.type === 'TEMPBAN' ? '⏲️ ' : record.type === 'TIMEOUT' ? '⏳ ' : '⚠️ '}{record.type}
                                 </span>
                               </div>
-                              <span className="text-xs text-slate-500 font-mono">
+                              <span className="text-xs text-neutral-500 font-mono">
                                 {new Date(record.date).toLocaleDateString()} {new Date(record.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
-                            <p className="text-sm text-slate-300 mt-1">{record.reason}</p>
-                            <div className="text-xs text-slate-500 mt-1 font-mono">
+                            <p className="text-sm text-neutral-400 mt-1">{record.reason}</p>
+                            <div className="text-xs text-neutral-500 mt-1 font-mono">
                               Moderator ID: {record.moderator_id}
                             </div>
                           </div>
@@ -338,8 +338,8 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
         {/* Global Audit */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-              <Key className="w-5 h-5 text-amber-500" />
+            <h2 className="text-lg font-bold text-neutral-200 flex items-center gap-2">
+              <Key className="w-5 h-5 text-white" />
               Server-Wide Audit
             </h2>
             <div className="flex items-center gap-2">
@@ -358,7 +358,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                   link.click();
                   document.body.removeChild(link);
                 }}
-                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"
+                className="px-4 py-1.5 bg-neutral-800 hover:bg-slate-700 text-neutral-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"
                 title="Export to CSV"
               >
                 Export Report
@@ -381,17 +381,17 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               
               {/* Members with dangerous perms */}
-              <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 flex flex-col h-full">
+              <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-6 flex flex-col h-full">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
-                  <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
-                    <UserIcon className="w-5 h-5 text-rose-400" />
+                  <h2 className="text-lg font-semibold text-neutral-300 flex items-center gap-2">
+                    <UserIcon className="w-5 h-5 text-white" />
                     Privileged Members ({auditData?.members?.length || 0})
                   </h2>
                   <div className="flex items-center gap-2">
                     <select 
                       value={memberItemsPerPage}
                       onChange={(e) => { setMemberItemsPerPage(Number(e.target.value)); setMemberPage(1); }}
-                      className="bg-slate-900 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1 focus:outline-none"
+                      className="bg-neutral-900 border border-white/10 text-xs text-neutral-400 rounded-lg px-2 py-1 focus:outline-none"
                     >
                       <option value={5}>5 per page</option>
                       <option value={10}>10 per page</option>
@@ -401,7 +401,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     <select 
                       value={memberSort}
                       onChange={(e) => { setMemberSort(e.target.value); setMemberPage(1); }}
-                      className="bg-slate-900 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1 focus:outline-none"
+                      className="bg-neutral-900 border border-white/10 text-xs text-neutral-400 rounded-lg px-2 py-1 focus:outline-none"
                     >
                       <option value="threatDesc">Highest Threat</option>
                       <option value="threatAsc">Lowest Threat</option>
@@ -410,26 +410,26 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                 </div>
                 <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {currentMembers.length === 0 ? (
-                    <div className="text-slate-400 text-sm text-center py-8">
+                    <div className="text-neutral-400 text-sm text-center py-8">
                       No highly privileged members found.
                     </div>
                   ) : currentMembers.map(member => (
-                    <div key={member.id} className={`bg-slate-950/50 border rounded-xl p-4 flex flex-col gap-3 transition-colors hover:bg-slate-900/50 ${
-                      member.threatLevel === 'Critical' ? 'border-rose-500/20' : 
-                      member.threatLevel === 'High' ? 'border-amber-500/20' : 
+                    <div key={member.id} className={`bg-black/50 border rounded-xl p-4 flex flex-col gap-3 transition-colors hover:bg-neutral-900/50 ${
+                      member.threatLevel === 'Critical' ? 'border-white/10' : 
+                      member.threatLevel === 'High' ? 'border-white/10' : 
                       member.threatLevel === 'Moderate' ? 'border-yellow-500/20' :
-                      'border-emerald-500/20'
+                      'border-white/10'
                     }`}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <img src={member.avatar || "https://cdn.discordapp.com/embed/avatars/0.png"} className="w-9 h-9 rounded-full ring-2 ring-white/10" alt="av" />
                           <div className="flex-1 flex flex-col">
-                            <span className="font-semibold text-slate-200 flex items-center gap-2 text-sm">
+                            <span className="font-semibold text-neutral-300 flex items-center gap-2 text-sm">
                               {member.username}
-                              {member.bot && <span className="text-[9px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded uppercase font-bold">BOT</span>}
-                              {member.isOwner && <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded uppercase font-bold">OWNER</span>}
+                              {member.bot && <span className="text-[9px] bg-white/5 text-white px-1.5 py-0.5 rounded uppercase font-bold">BOT</span>}
+                              {member.isOwner && <span className="text-[9px] bg-white/5 text-white px-1.5 py-0.5 rounded uppercase font-bold">OWNER</span>}
                             </span>
-                            <span className="text-xs text-slate-500 font-mono">{member.id}</span>
+                            <span className="text-xs text-neutral-500 font-mono">{member.id}</span>
                           </div>
                         </div>
                         <button
@@ -440,7 +440,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                               document.querySelector("form").dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
                             }, 50);
                           }}
-                          className="px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg text-xs font-bold transition-colors"
+                          className="px-3 py-1.5 bg-white/5 hover:bg-indigo-500/30 text-white rounded-lg text-xs font-bold transition-colors"
                         >
                           Audit
                         </button>
@@ -448,22 +448,22 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                       
                       <div className="flex items-center justify-between mt-1 pt-3 border-t border-white/5">
                         <div className="flex items-center gap-2">
-                          <Activity className="w-3.5 h-3.5 text-slate-400" />
-                          <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-900 ${
-                            member.threatLevel === 'Critical' ? 'text-rose-400' :
-                            member.threatLevel === 'High' ? 'text-amber-400' :
+                          <Activity className="w-3.5 h-3.5 text-neutral-400" />
+                          <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-neutral-900 ${
+                            member.threatLevel === 'Critical' ? 'text-white' :
+                            member.threatLevel === 'High' ? 'text-white' :
                             member.threatLevel === 'Moderate' ? 'text-yellow-400' :
-                            'text-emerald-400'
+                            'text-white'
                           }`}>
                             {member.threatLevel} Risk
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1.5 text-xs font-semibold">
-                            {member.redCount > 0 && <span className="text-rose-400">🔴 {member.redCount}</span>}
-                            {member.yellowCount > 0 && <span className="text-amber-400">🟡 {member.yellowCount}</span>}
+                            {member.redCount > 0 && <span className="text-white">🔴 {member.redCount}</span>}
+                            {member.yellowCount > 0 && <span className="text-white">🟡 {member.yellowCount}</span>}
                           </div>
-                          <span className="text-xs text-slate-400 font-mono font-bold bg-slate-900 px-1.5 py-0.5 rounded-md ml-1 border border-white/5">
+                          <span className="text-xs text-neutral-400 font-mono font-bold bg-neutral-900 px-1.5 py-0.5 rounded-md ml-1 border border-white/5">
                             Score: {member.threatScore}
                           </span>
                         </div>
@@ -477,17 +477,17 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     <button
                       onClick={() => setMemberPage(Math.max(1, memberPage - 1))}
                       disabled={memberPage === 1}
-                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs font-semibold text-slate-300"
+                      className="px-3 py-1 bg-neutral-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs font-semibold text-neutral-400"
                     >
                       Prev
                     </button>
-                    <span className="text-xs text-slate-400 font-mono">
+                    <span className="text-xs text-neutral-400 font-mono">
                       Page {memberPage} of {memberTotalPages}
                     </span>
                     <button
                       onClick={() => setMemberPage(Math.min(memberTotalPages, memberPage + 1))}
                       disabled={memberPage === memberTotalPages}
-                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs font-semibold text-slate-300"
+                      className="px-3 py-1 bg-neutral-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs font-semibold text-neutral-400"
                     >
                       Next
                     </button>
@@ -496,17 +496,17 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
               </div>
 
               {/* Roles with dangerous perms */}
-              <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 flex flex-col h-full">
+              <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-6 flex flex-col h-full">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
-                  <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
-                    <Key className="w-5 h-5 text-amber-400" />
+                  <h2 className="text-lg font-semibold text-neutral-300 flex items-center gap-2">
+                    <Key className="w-5 h-5 text-white" />
                     Elevated Roles ({auditData?.roles?.length || 0})
                   </h2>
                   <div className="flex items-center gap-2">
                     <select 
                       value={roleItemsPerPage}
                       onChange={(e) => { setRoleItemsPerPage(Number(e.target.value)); setRolePage(1); }}
-                      className="bg-slate-900 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1 focus:outline-none"
+                      className="bg-neutral-900 border border-white/10 text-xs text-neutral-400 rounded-lg px-2 py-1 focus:outline-none"
                     >
                       <option value={5}>5 per page</option>
                       <option value={10}>10 per page</option>
@@ -516,7 +516,7 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     <select 
                       value={roleSort}
                       onChange={(e) => { setRoleSort(e.target.value); setRolePage(1); }}
-                      className="bg-slate-900 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1 focus:outline-none"
+                      className="bg-neutral-900 border border-white/10 text-xs text-neutral-400 rounded-lg px-2 py-1 focus:outline-none"
                     >
                       <option value="posDesc">Highest Hierarchy</option>
                       <option value="memDesc">Most Members</option>
@@ -525,20 +525,20 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                 </div>
                 <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {currentRoles.length === 0 ? (
-                    <div className="text-slate-400 text-sm text-center py-8">
+                    <div className="text-neutral-400 text-sm text-center py-8">
                       No roles found with elevated permissions.
                     </div>
                   ) : currentRoles.map(role => (
-                    <div key={role.id} className="bg-slate-950/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3 transition-colors hover:bg-slate-900/50">
+                    <div key={role.id} className="bg-black/50 border border-white/5 rounded-xl p-4 flex flex-col gap-3 transition-colors hover:bg-neutral-900/50">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-3 h-3 rounded-full ring-2 ring-white/10" style={{ backgroundColor: role.hexColor !== '#000000' ? role.hexColor : '#99aab5' }} />
                           <div className="flex flex-col">
-                            <span className="font-semibold text-slate-200 text-sm">{role.name}</span>
-                            <span className="text-xs text-slate-500 font-mono">{role.id}</span>
+                            <span className="font-semibold text-neutral-300 text-sm">{role.name}</span>
+                            <span className="text-xs text-neutral-500 font-mono">{role.id}</span>
                           </div>
                         </div>
-                        <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded-md border border-white/5 flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-neutral-400 bg-neutral-900 px-2 py-1 rounded-md border border-white/5 flex items-center gap-1.5">
                           <UserIcon className="w-3 h-3" />
                           {role.memberCount}
                         </span>
@@ -559,17 +559,17 @@ export default function PermissionsAuditPage({ user, botInfo, showToast }) {
                     <button
                       onClick={() => setRolePage(Math.max(1, rolePage - 1))}
                       disabled={rolePage === 1}
-                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs font-semibold text-slate-300"
+                      className="px-3 py-1 bg-neutral-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs font-semibold text-neutral-400"
                     >
                       Prev
                     </button>
-                    <span className="text-xs text-slate-400 font-mono">
+                    <span className="text-xs text-neutral-400 font-mono">
                       Page {rolePage} of {roleTotalPages}
                     </span>
                     <button
                       onClick={() => setRolePage(Math.min(roleTotalPages, rolePage + 1))}
                       disabled={rolePage === roleTotalPages}
-                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs font-semibold text-slate-300"
+                      className="px-3 py-1 bg-neutral-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs font-semibold text-neutral-400"
                     >
                       Next
                     </button>
