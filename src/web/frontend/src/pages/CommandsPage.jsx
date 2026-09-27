@@ -40,6 +40,8 @@ function getCategoryIcon(catId) {
 }
 
 export default function CommandsPage({ showToast }) {
+  const { user, botInfo, currentGuild } = useOutletContext() || {};
+
   
   const { guildId } = useParams();
   const [channels, setChannels] = useState([]);

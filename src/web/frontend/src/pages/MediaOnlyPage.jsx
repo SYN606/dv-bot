@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 
 export default function MediaOnlyPage({ showToast }) {
+  const { user, botInfo, currentGuild } = useOutletContext() || {};
+
   
   const { guildId } = useParams();
   const [channels, setChannels] = useState([]);

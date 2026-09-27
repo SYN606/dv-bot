@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 export default function OverviewPage({ showToast }) {
-  const { botInfo, currentGuild } = useOutletContext();
+  const { user, botInfo, currentGuild } = useOutletContext() || {};
   
   const { guildId } = useParams();
   const [meta, setMeta] = useState(null);

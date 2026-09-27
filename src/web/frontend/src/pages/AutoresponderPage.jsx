@@ -96,6 +96,8 @@ export function EmojiBadge({ emoji, onRemove = null, size = "md" }) {
 }
 
 export default function AutoresponderPage({ showToast }) {
+  const { user, botInfo, currentGuild } = useOutletContext() || {};
+
   
   const { guildId } = useParams();
 

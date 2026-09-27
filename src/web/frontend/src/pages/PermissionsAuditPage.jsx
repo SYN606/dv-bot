@@ -1,9 +1,12 @@
+import { useOutletContext } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import BaseLayout from "../components/layout/Base";
 import { fetchApi } from "../api/client";
 import { ShieldAlert, Key, Search, User as UserIcon, AlertTriangle, ShieldCheck, RefreshCw, Activity } from "lucide-react";
 
 export default function PermissionsAuditPage({ showToast }) {
+  const { user, botInfo, currentGuild } = useOutletContext() || {};
+
   
   const [loading, setLoading] = useState(true);
   const [auditData, setAuditData] = useState({ roles: [], members: [] });

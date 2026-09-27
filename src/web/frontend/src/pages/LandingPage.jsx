@@ -123,7 +123,14 @@ export default function LandingPage({ user, botInfo }) {
   ];
 
   return (
-    <div className="min-h-screen bg-black text-neutral-200 flex flex-col antialiased selection:bg-indigo-500/30 selection:text-white relative overflow-x-hidden">
+    <div className="min-h-screen bg-transparent text-neutral-200 flex flex-col antialiased selection:bg-indigo-500/30 selection:text-white relative overflow-x-hidden">
+      <div className="fixed inset-0 pointer-events-none z-0 transform-gpu" style={{
+        backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)',
+        backgroundSize: '40px 40px',
+        maskImage: 'radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%)',
+        WebkitMaskImage: 'radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%)'
+      }} />
+
       {/* Gentle ambient lighting orbs */}
       <div className="fixed top-[-120px] left-[-100px] w-[500px] h-[500px] rounded-full bg-crimson/5 blur-[140px] pointer-events-none -z-10" />
       <div className="fixed bottom-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full bg-crimson/5 blur-[140px] pointer-events-none -z-10" />

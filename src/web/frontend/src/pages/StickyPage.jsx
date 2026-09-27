@@ -27,6 +27,8 @@ import {
 const IMAGE_URL_REGEX = /(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp)(?:\?\S+)?)/i;
 
 export default function StickyPage({ showToast }) {
+  const { user, botInfo, currentGuild } = useOutletContext() || {};
+
   
   const { guildId } = useParams();
   const [channels, setChannels] = useState([]);

@@ -5,6 +5,8 @@ import { getGuildMeta, getSupporterConfig, setSupporterConfig } from "../api/cli
 import { Trophy, MessageSquare, Megaphone, Hash, Tag, Save, Power } from "lucide-react";
 
 export default function SupporterRewardsPage({ showToast }) {
+  const { user, botInfo, currentGuild } = useOutletContext() || {};
+
   
   const { guildId } = useParams();
   

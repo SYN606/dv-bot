@@ -50,6 +50,8 @@ ChartJS.register(
 );
 
 export default function AnalyticsPage({ showToast }) {
+  const { user, botInfo, currentGuild } = useOutletContext() || {};
+
   
   const { guildId } = useParams();
   const [data, setData] = useState(null);

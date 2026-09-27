@@ -5,6 +5,8 @@ import { getGuildMeta, getConfig, saveConfig } from "../api/client";
 import { Sliders, Check, ShieldAlert } from "lucide-react";
 
 export default function ConfigPage({ showToast }) {
+  const { user, botInfo, currentGuild } = useOutletContext() || {};
+
   
   const { guildId } = useParams();
   const [channels, setChannels] = useState([]);

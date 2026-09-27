@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 
 export default function AdminRolesPage({ showToast }) {
+  const { user, botInfo, currentGuild } = useOutletContext() || {};
+
   
   const { guildId } = useParams();
   const [roles, setRoles] = useState([]);

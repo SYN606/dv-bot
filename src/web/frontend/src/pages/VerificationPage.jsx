@@ -56,6 +56,8 @@ function renderEmoji(emojiString) {
 }
 
 export default function VerificationPage({ showToast }) {
+  const { user, botInfo, currentGuild } = useOutletContext() || {};
+
   
   const { guildId } = useParams();
   const [channels, setChannels] = useState([]);

@@ -5,6 +5,8 @@ import { getGuildMeta, getAutoRoleConfig, setAutoRoleConfig } from "../api/clien
 import { Award, Hash, MessageSquare, ShieldOff, Save, Mic, MessageCircle, Search } from "lucide-react";
 
 export default function AutoRoleRewardsPage({ showToast }) {
+  const { user, botInfo, currentGuild } = useOutletContext() || {};
+
   
   const { guildId } = useParams();
   
