@@ -66,6 +66,7 @@ export default createCommand({
   slashBuilder,
 
   async execute(ctx) {
+    if (ctx.isInteraction) await ctx.defer();
     const { guild, client } = ctx;
     if (!guild) return;
 

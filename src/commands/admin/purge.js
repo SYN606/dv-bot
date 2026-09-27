@@ -24,7 +24,14 @@ async function _reply(ctx, title, description, level = "ERROR", deleteAfterSecs 
     replyOptions.ephemeral = true;
   }
 
-  const msg = await ctx.reply(replyOptions);
+    let msg;
+  try {
+    msg = await ctx.reply(replyOptions);
+  } catch (e) {
+    if (!ctx.isInteraction && ctx.channel) {
+      msg = await ctx.channel.send(replyOptions).catch(() => null);
+    }
+  }
 
   // Auto-delete message command replies after N seconds
   if (!ctx.isInteraction && msg && deleteAfterSecs > 0) {
@@ -58,6 +65,7 @@ export default createCommand({
   slashBuilder,
 
   async execute(ctx) {
+    if (ctx.isInteraction) await ctx.defer({ ephemeral: true });
     const { channel, guild, message, client, isInteraction } = ctx;
     if (!channel || !channel.messages) {
       return await ctx.reply({ content: "Cannot purge messages in this channel type.", ephemeral: true });
@@ -118,10 +126,7 @@ export default createCommand({
       return await _reply(ctx, "Invalid Amount", `Amount must be between 1 and ${MAX_PURGE}.`, "WARNING");
     }
 
-    // Acknowledge interaction quickly to prevent timeout during long scans
-    if (isInteraction) {
-      await ctx.defer({ ephemeral: true });
-    }
+    
 
     // ---------------------------------------------------------
     // Collect Messages
