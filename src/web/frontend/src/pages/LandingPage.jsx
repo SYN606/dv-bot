@@ -29,10 +29,10 @@ export default function LandingPage({ user, botInfo }) {
   const botName = botInfo?.username || "Digital Vigital";
 
   const metrics = [
-    { label: "Response Latency", value: `${botInfo?.ping || 25}ms`, desc: "Live Gateway Ping", icon: Zap, color: "text-apple-yellow" },
-    { label: "Uptime SLA", value: "99.9%", desc: "Continuous 24/7 gateway", icon: Activity, color: "text-apple-green" },
-    { label: "Dashboard Driven", value: "100%", desc: "Zero command setup required", icon: Sliders, color: "text-apple-blue" },
-    { label: "System Status", value: botInfo?.status || "Online", desc: "Core services operational", icon: CheckCircle2, color: "text-apple-purple" },
+    { label: "Response Latency", value: `${botInfo?.ping || 25}ms`, desc: "Live Gateway Ping", icon: Zap, color: "text-crimson" },
+    { label: "Uptime SLA", value: "99.9%", desc: "Continuous 24/7 gateway", icon: Activity, color: "text-crimson" },
+    { label: "Dashboard Driven", value: "100%", desc: "Zero command setup required", icon: Sliders, color: "text-crimson" },
+    { label: "System Status", value: botInfo?.status || "Online", desc: "Core services operational", icon: CheckCircle2, color: "text-crimson" },
   ];
 
   const features = [
@@ -40,43 +40,43 @@ export default function LandingPage({ user, botInfo }) {
       icon: Sparkles,
       title: "Supporter Rewards (Vanity)",
       desc: "Automatically grant roles to users who put your server's vanity URL or Clan Tag in their Discord Custom Status.",
-      color: "text-apple-pink",
-      bg: "bg-apple-pink/10 border-apple-pink/20",
+      color: "text-crimson",
+      bg: "bg-crimson/10 border-crimson/20",
     },
     {
       icon: TrendingUp,
       title: "Leaderboard Auto-Roles",
       desc: "Background workers run weekly to calculate the top Text and Voice chatters, automatically assigning exclusive medals and roles.",
-      color: "text-apple-indigo",
-      bg: "bg-apple-indigo/10 border-apple-indigo/20",
+      color: "text-crimson",
+      bg: "bg-crimson/10 border-crimson/20",
     },
     {
       icon: ShieldCheck,
       title: "Automated Verification Gate",
       desc: "Instant 1-click button verification with automatic role assignment, minimum account age security, and audit logging.",
-      color: "text-apple-green",
-      bg: "bg-apple-green/10 border-apple-green/20",
+      color: "text-crimson",
+      bg: "bg-crimson/10 border-crimson/20",
     },
     {
       icon: Bot,
       title: "Intelligent Autoresponder",
       desc: "Create dynamic trigger words or phrases that the bot instantly replies to with embedded messages or custom text.",
-      color: "text-apple-blue",
-      bg: "bg-apple-blue/10 border-apple-blue/20",
+      color: "text-crimson",
+      bg: "bg-crimson/10 border-crimson/20",
     },
     {
       icon: ImageIcon,
       title: "Media-Only Channels",
       desc: "Strictly enforce meme or art channels by automatically deleting messages that don't contain attachments or links.",
-      color: "text-apple-purple",
-      bg: "bg-apple-purple/10 border-apple-purple/20",
+      color: "text-crimson",
+      bg: "bg-crimson/10 border-crimson/20",
     },
     {
       icon: Pin,
       title: "Sticky Channel Notices",
       desc: "Pin an automatic message to the absolute bottom of a busy chat channel, automatically repinning itself as people talk.",
-      color: "text-apple-orange",
-      bg: "bg-apple-orange/10 border-apple-orange/20",
+      color: "text-crimson",
+      bg: "bg-crimson/10 border-crimson/20",
     },
   ];
 
@@ -125,8 +125,8 @@ export default function LandingPage({ user, botInfo }) {
   return (
     <div className="min-h-screen bg-black text-neutral-200 flex flex-col antialiased selection:bg-indigo-500/30 selection:text-white relative overflow-x-hidden">
       {/* Gentle ambient lighting orbs */}
-      <div className="fixed top-[-120px] left-[-100px] w-[500px] h-[500px] rounded-full bg-white/5 blur-[140px] pointer-events-none -z-10" />
-      <div className="fixed bottom-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full bg-white/5 blur-[140px] pointer-events-none -z-10" />
+      <div className="fixed top-[-120px] left-[-100px] w-[500px] h-[500px] rounded-full bg-crimson/5 blur-[140px] pointer-events-none -z-10" />
+      <div className="fixed bottom-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full bg-crimson/5 blur-[140px] pointer-events-none -z-10" />
 
       {/* Global Top Navbar */}
       <Navbar user={user} botInfo={botInfo} />
@@ -150,7 +150,7 @@ export default function LandingPage({ user, botInfo }) {
           </div>
 
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white text-xs font-semibold">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-crimson/5 border border-white/10 text-white text-xs font-semibold">
               <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
               Next-Gen Discord Bot Engine
             </div>
@@ -183,7 +183,7 @@ export default function LandingPage({ user, botInfo }) {
             )}
             <Link
               to="/docs"
-              className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl font-semibold text-sm bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/10 hover:border-white/20 transition-all shadow-md"
+              className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl font-semibold text-sm bg-crimson/5 hover:bg-white/10 text-neutral-300 border border-white/10 hover:border-white/20 transition-all shadow-md"
             >
               <BookOpen className="w-4 h-4 text-white" />
               <span>Explore Commands</span>
@@ -276,10 +276,10 @@ export default function LandingPage({ user, botInfo }) {
                 >
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="w-10 h-10 rounded-xl bg-white/5 text-white flex items-center justify-center border border-white/10">
+                      <div className="w-10 h-10 rounded-xl bg-crimson/5 text-white flex items-center justify-center border border-white/10">
                         <Icon className="w-5 h-5" />
                       </div>
-                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-white/5 text-white border border-white/10">
+                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-crimson/5 text-white border border-white/10">
                         {p.highlight}
                       </span>
                     </div>
@@ -319,7 +319,7 @@ export default function LandingPage({ user, botInfo }) {
                       <span className="text-2xl font-black font-mono text-white/40 group-hover:text-white/70 transition-colors">
                         {st.step}
                       </span>
-                      <div className="w-8 h-8 rounded-lg bg-white/5 text-neutral-400 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-lg bg-crimson/5 text-neutral-400 flex items-center justify-center">
                         <Icon className="w-4 h-4" />
                       </div>
                     </div>
@@ -335,7 +335,7 @@ export default function LandingPage({ user, botInfo }) {
         {/* Bottom CTA Banner */}
         <div className="mt-20 sm:mt-28 p-8 sm:p-12 rounded-3xl glass-panel border border-white/10 relative overflow-hidden text-center space-y-6">
           <div className="max-w-2xl mx-auto space-y-3 relative z-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white text-xs font-semibold">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-crimson/5 border border-white/10 text-white text-xs font-semibold">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Instant Deployment</span>
             </div>
@@ -365,7 +365,7 @@ export default function LandingPage({ user, botInfo }) {
               )}
               <Link
                 to="/docs"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/10 transition-all"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-semibold bg-crimson/5 hover:bg-white/10 text-neutral-300 border border-white/10 transition-all"
               >
                 <span>Read the Docs</span>
               </Link>

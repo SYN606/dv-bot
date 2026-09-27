@@ -39,7 +39,7 @@ export default function Base({
   // If a guildId was requested in URL but user has no access to it
   if (guildId && !activeGuild) {
     return (
-      <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+      <div className="h-screen w-screen bg-transparent flex flex-col items-center justify-center p-6 text-center">
         <div className="glass-panel p-8 rounded-3xl max-w-md w-full border border-white/10 shadow-2xl">
           <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
           <p className="text-xs text-slate-400 mb-6">
@@ -57,10 +57,10 @@ export default function Base({
   }
 
   return (
-    <div className="h-screen w-screen flex bg-slate-950 text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200 antialiased overflow-hidden relative">
+    <div className="h-screen w-screen flex bg-transparent text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200 antialiased overflow-hidden relative">
       
       {/* Unique Base Grid Background */}
-      <div className="fixed inset-0 pointer-events-none z-[-1]" style={{
+      <div className="fixed inset-0 pointer-events-none z-0" style={{
         backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)',
         backgroundSize: '40px 40px',
         maskImage: 'radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%)',
@@ -86,7 +86,7 @@ export default function Base({
       )}
 
       {/* Main Content Viewport: independently scrollable */}
-      <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden relative">
+      <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden relative z-10">
         {/* Mobile Header Bar */}
         {!hideSidebar && (
           <div className="md:hidden flex items-center justify-between p-4 glass-panel border-b border-white/10 sticky top-0 z-40 shrink-0">

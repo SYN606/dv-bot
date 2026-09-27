@@ -56,6 +56,8 @@
   
   /* Apple Signature Palette */
   --color-apple-blue: #0a84ff;
+  --color-crimson: #dc143c;
+  --color-crimson-dark: #8b0000;
   --color-apple-green: #32d74b;
   --color-apple-indigo: #5e5ce6;
   --color-apple-orange: #ff9f0a;
@@ -93,9 +95,9 @@
   --glass-card-blur: 30px;
 
   /* Apple Ambient Accents (Subtle Glows behind the glass) */
-  --glow-primary: rgba(10, 132, 255, 0.15); /* Apple Blue */
-  --glow-secondary: rgba(191, 90, 242, 0.12); /* Apple Purple */
-  --glow-tertiary: rgba(48, 209, 88, 0.1); /* Apple Green */
+  --glow-primary: rgba(220, 20, 60, 0.12); /* Subtle Crimson */
+  --glow-secondary: rgba(139, 0, 0, 0.10); /* Dark Red */
+  --glow-tertiary: rgba(255, 99, 71, 0.08); /* Tomato */
 
   --scrollbar-width: 6px;
   --scrollbar-thumb: rgba(255, 255, 255, 0.2);
