@@ -25,7 +25,7 @@ import {
 
 export default function LandingPage({ user, botInfo }) {
   const botAvatar = botInfo?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png";
-  const botBanner = botInfo?.banner;
+  const botBanner = botInfo?.banner || "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop";
   const botName = botInfo?.username || "Digital Vigital";
 
   const metrics = [

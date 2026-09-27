@@ -121,7 +121,7 @@ export default function PermissionsAuditPage({ showToast }) {
   const currentRoles = sortedRoles.slice((rolePage - 1) * roleItemsPerPage, rolePage * roleItemsPerPage);
 
   return (
-    <BaseLayout user={user} botInfo={botInfo}>
+    <div className="animate-in fade-in duration-500">
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Header & Heatmap Summary */}
@@ -586,6 +586,6 @@ export default function PermissionsAuditPage({ showToast }) {
         </section>
 
       </div>
-    </BaseLayout>
+    </div>
   );
 }
