@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import { useOutletContext } from "react-router-dom";
 import {
   getGuildMeta,
   getMediaOnly,
@@ -21,7 +21,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
-export default function MediaOnlyPage({ user, botInfo, showToast }) {
+export default function MediaOnlyPage({ showToast }) {
+  
   const { guildId } = useParams();
   const [channels, setChannels] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -101,11 +102,7 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
   const roleMap = new Map(roles.map((r) => [r.id, r.name]));
 
   return (
-    <DashboardLayout
-      user={user}
-      botInfo={botInfo}
-      breadcrumbs={["Media-Only Channels"]}
-    >
+    <div className="animate-in fade-in duration-500">
       <div className="space-y-8 max-w-6xl mx-auto pb-12">
         {/* Header Title */}
         <div>
@@ -402,6 +399,6 @@ export default function MediaOnlyPage({ user, botInfo, showToast }) {
           )}
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

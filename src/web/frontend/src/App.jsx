@@ -20,6 +20,7 @@ import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ErrorPage from "./pages/ErrorPage";
 import Toast from "./components/ui/Toast";
+import DashboardLayout from "./components/layout/DashboardLayout";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -95,128 +96,23 @@ export default function App() {
             )
           }
         />
-        <Route
+                <Route
           path="/dashboard/:guildId"
-          element={
-            <OverviewPage
-              user={user}
-              botInfo={botInfo}
-              showToast={showToast}
-            />
-          }
-        />
-        <Route
-          path="/dashboard/:guildId/analytics"
-          element={
-            <AnalyticsPage
-              user={user}
-              botInfo={botInfo}
-              showToast={showToast}
-            />
-          }
-        />
-        <Route
-          path="/dashboard/:guildId/verification"
-          element={
-            <VerificationPage
-              user={user}
-              botInfo={botInfo}
-              showToast={showToast}
-            />
-          }
-        />
-        <Route
-          path="/dashboard/:guildId/admin-roles"
-          element={
-            <AdminRolesPage
-              user={user}
-              botInfo={botInfo}
-              showToast={showToast}
-            />
-          }
-        />
-        <Route
-          path="/dashboard/:guildId/permissions"
-          element={
-            <PermissionsAuditPage
-              user={user}
-              botInfo={botInfo}
-              showToast={showToast}
-            />
-          }
-        />
-        <Route
-          path="/dashboard/:guildId/media-only"
-          element={
-            <MediaOnlyPage
-              user={user}
-              botInfo={botInfo}
-              showToast={showToast}
-            />
-          }
-        />
-        <Route
-          path="/dashboard/:guildId/commands"
-          element={
-            <CommandsPage
-              user={user}
-              botInfo={botInfo}
-              showToast={showToast}
-            />
-          }
-        />
-        <Route
-          path="/dashboard/:guildId/sticky"
-          element={
-            <StickyPage
-              user={user}
-              botInfo={botInfo}
-              showToast={showToast}
-            />
-          }
-        />
-        <Route
-          path="/dashboard/:guildId/autoresponder"
-          element={
-            <AutoresponderPage
-              user={user}
-              botInfo={botInfo}
-              showToast={showToast}
-            />
-          }
-        />
-        <Route
-          path="/dashboard/:guildId/supporter"
-          element={
-            <SupporterRewardsPage
-              user={user}
-              botInfo={botInfo}
-              showToast={showToast}
-            />
-          }
-        />
-        <Route
-          path="/dashboard/:guildId/autorole"
-          element={
-            <AutoRoleRewardsPage
-              user={user}
-              botInfo={botInfo}
-              showToast={showToast}
-            />
-          }
-        />
-        <Route
-          path="/dashboard/:guildId/config"
-          element={
-            <ConfigPage
-              user={user}
-              botInfo={botInfo}
-              showToast={showToast}
-            />
-          }
-        />
-
-        {/* Public & Unprotected Pages */}
+          element={<DashboardLayout user={user} botInfo={botInfo} toast={toast} />}
+        >
+          <Route index element={<OverviewPage showToast={showToast} />} />
+          <Route path="analytics" element={<AnalyticsPage showToast={showToast} />} />
+          <Route path="verification" element={<VerificationPage showToast={showToast} />} />
+          <Route path="admin-roles" element={<AdminRolesPage showToast={showToast} />} />
+          <Route path="media-only" element={<MediaOnlyPage showToast={showToast} />} />
+          <Route path="commands" element={<CommandsPage showToast={showToast} />} />
+          <Route path="sticky" element={<StickyPage showToast={showToast} />} />
+          <Route path="autoresponder" element={<AutoresponderPage showToast={showToast} />} />
+          <Route path="config" element={<ConfigPage showToast={showToast} />} />
+          <Route path="permissions" element={<PermissionsAuditPage showToast={showToast} />} />
+          <Route path="supporter" element={<SupporterRewardsPage showToast={showToast} />} />
+          <Route path="autorole" element={<AutoRoleRewardsPage showToast={showToast} />} />
+        </Route>
         <Route path="/docs" element={<DocumentationPage user={user} botInfo={botInfo} />} />
         <Route path="/documentation" element={<DocumentationPage user={user} botInfo={botInfo} />} />
         <Route path="/terms" element={<TermsPage user={user} botInfo={botInfo} />} />

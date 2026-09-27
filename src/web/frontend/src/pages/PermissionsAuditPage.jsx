@@ -3,7 +3,8 @@ import BaseLayout from "../components/layout/Base";
 import { fetchApi } from "../api/client";
 import { ShieldAlert, Key, Search, User as UserIcon, AlertTriangle, ShieldCheck, RefreshCw, Activity } from "lucide-react";
 
-export default function PermissionsAuditPage({ user, botInfo, showToast }) {
+export default function PermissionsAuditPage({ showToast }) {
+  
   const [loading, setLoading] = useState(true);
   const [auditData, setAuditData] = useState({ roles: [], members: [] });
   const [search, setSearch] = useState("");

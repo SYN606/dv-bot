@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useParams } from "react-router-dom";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import { useOutletContext } from "react-router-dom";
 import {
   getGuildMeta,
   getVerification,
@@ -55,7 +55,8 @@ function renderEmoji(emojiString) {
   return <span className="text-base leading-none">{emojiString}</span>;
 }
 
-export default function VerificationPage({ user, botInfo, showToast }) {
+export default function VerificationPage({ showToast }) {
+  
   const { guildId } = useParams();
   const [channels, setChannels] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -285,11 +286,7 @@ export default function VerificationPage({ user, botInfo, showToast }) {
   }, [config, guildInfo, roles, user, guildId]);
 
   return (
-    <DashboardLayout
-      user={user}
-      botInfo={botInfo}
-      breadcrumbs={["Verification Gate"]}
-    >
+    <div className="animate-in fade-in duration-500">
       <div className="space-y-6 max-w-7xl mx-auto">
         {/* Simple Header & Global Status */}
         <div className="glass-card p-5 sm:p-6 rounded-3xl border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -839,6 +836,6 @@ export default function VerificationPage({ user, botInfo, showToast }) {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

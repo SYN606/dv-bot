@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import { useOutletContext } from "react-router-dom";
 import { getGuildMeta, getAutoRoleConfig, setAutoRoleConfig } from "../api/client";
 import { Award, Hash, MessageSquare, ShieldOff, Save, Mic, MessageCircle, Search } from "lucide-react";
 
-export default function AutoRoleRewardsPage({ user, botInfo, showToast }) {
+export default function AutoRoleRewardsPage({ showToast }) {
+  
   const { guildId } = useParams();
   
   const [config, setConfig] = useState({
@@ -87,7 +88,7 @@ export default function AutoRoleRewardsPage({ user, botInfo, showToast }) {
   };
 
   return (
-    <DashboardLayout user={user} botInfo={botInfo} breadcrumbs={["Auto-Role Rewards"]}>
+    <div className="animate-in fade-in duration-500">
       <div className="space-y-6 max-w-5xl mx-auto">
         
         {/* Header */}
@@ -284,6 +285,6 @@ export default function AutoRoleRewardsPage({ user, botInfo, showToast }) {
           
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

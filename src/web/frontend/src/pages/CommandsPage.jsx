@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import { useOutletContext } from "react-router-dom";
 import { getGuildMeta, getCommands, toggleCommand, toggleCommandModule } from "../api/client";
 import {
   Terminal,
@@ -39,7 +39,8 @@ function getCategoryIcon(catId) {
   }
 }
 
-export default function CommandsPage({ user, botInfo, showToast }) {
+export default function CommandsPage({ showToast }) {
+  
   const { guildId } = useParams();
   const [channels, setChannels] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState("");
@@ -227,11 +228,7 @@ export default function CommandsPage({ user, botInfo, showToast }) {
   const selectedChannelObj = channels.find((c) => c.id === selectedChannel);
 
   return (
-    <DashboardLayout
-      user={user}
-      botInfo={botInfo}
-      breadcrumbs={["Commands & Restrictions"]}
-    >
+    <div className="animate-in fade-in duration-500">
       <div className="space-y-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -598,6 +595,6 @@ export default function CommandsPage({ user, botInfo, showToast }) {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, Navigate, Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
@@ -58,7 +58,16 @@ export default function Base({
 
   return (
     <div className="h-screen w-screen flex bg-slate-950 text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200 antialiased overflow-hidden relative">
-      {/* Ambient background glows (controlled via theme.css variables) */}
+      
+      {/* Unique Base Grid Background */}
+      <div className="fixed inset-0 pointer-events-none z-[-1]" style={{
+        backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)',
+        backgroundSize: '40px 40px',
+        maskImage: 'radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%)',
+        WebkitMaskImage: 'radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%)'
+      }} />
+
+      {/* Ambient background glows */}
       <div className="fixed top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full glow-orb-primary blur-[140px] pointer-events-none -z-10" />
       <div className="fixed bottom-[-100px] right-[-100px] w-[550px] h-[550px] rounded-full glow-orb-secondary blur-[150px] pointer-events-none -z-10" />
       <div className="fixed top-[40%] left-[50%] -translate-x-1/2 w-[400px] h-[400px] rounded-full glow-orb-tertiary blur-[130px] pointer-events-none -z-10" />
@@ -120,7 +129,7 @@ export default function Base({
         {/* Independently Scrollable Page Content */}
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col focus:outline-none">
           <main className={`p-4 sm:p-8 ${maxWidth} w-full mx-auto flex-1 ${className}`}>
-            {children}
+            {children || <Outlet context={{ user, botInfo, currentGuild: activeGuild }} />}
           </main>
 
           {/* Branded Footer */}

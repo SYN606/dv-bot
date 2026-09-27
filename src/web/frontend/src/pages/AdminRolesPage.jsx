@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import { useOutletContext } from "react-router-dom";
 import {
   getGuildMeta,
   getAdminRoles,
@@ -24,7 +24,8 @@ import {
   UserCheck,
 } from "lucide-react";
 
-export default function AdminRolesPage({ user, botInfo, showToast }) {
+export default function AdminRolesPage({ showToast }) {
+  
   const { guildId } = useParams();
   const [roles, setRoles] = useState([]);
   const [adminRoles, setAdminRoles] = useState([]);
@@ -195,11 +196,7 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
   const roleMap = new Map(roles.map((r) => [r.id, r]));
 
   return (
-    <DashboardLayout
-      user={user}
-      botInfo={botInfo}
-      breadcrumbs={["Staff & Admin Access"]}
-    >
+    <div className="animate-in fade-in duration-500">
       <div className="space-y-6">
         {/* Page Header */}
         <div className="mb-8">
@@ -584,6 +581,6 @@ export default function AdminRolesPage({ user, botInfo, showToast }) {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

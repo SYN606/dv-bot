@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useParams } from "react-router-dom";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import { useOutletContext } from "react-router-dom";
 import {
   getAutoresponders,
   saveAutoresponder,
@@ -95,7 +95,8 @@ export function EmojiBadge({ emoji, onRemove = null, size = "md" }) {
   );
 }
 
-export default function AutoresponderPage({ user, botInfo, showToast }) {
+export default function AutoresponderPage({ showToast }) {
+  
   const { guildId } = useParams();
 
   // Rules & Emojis data
@@ -331,11 +332,7 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
   const activeCount = rules.filter((r) => r.enabled !== false).length;
 
   return (
-    <DashboardLayout
-      user={user}
-      botInfo={botInfo}
-      breadcrumbs={["Autoresponder"]}
-    >
+    <div className="animate-in fade-in duration-500">
       <div className="space-y-8">
         {/* Page Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
@@ -1080,6 +1077,6 @@ export default function AutoresponderPage({ user, botInfo, showToast }) {
           )}
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import { useOutletContext } from "react-router-dom";
 import {
   getGuildMeta,
   getSticky,
@@ -26,7 +26,8 @@ import {
 
 const IMAGE_URL_REGEX = /(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp)(?:\?\S+)?)/i;
 
-export default function StickyPage({ user, botInfo, showToast }) {
+export default function StickyPage({ showToast }) {
+  
   const { guildId } = useParams();
   const [channels, setChannels] = useState([]);
   const [stickyList, setStickyList] = useState([]);
@@ -190,11 +191,7 @@ export default function StickyPage({ user, botInfo, showToast }) {
   });
 
   return (
-    <DashboardLayout
-      user={user}
-      botInfo={botInfo}
-      breadcrumbs={["Sticky Channel Notice"]}
-    >
+    <div className="animate-in fade-in duration-500">
       <div className="space-y-6">
         {/* Header & Metrics Banner */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
@@ -544,6 +541,6 @@ export default function StickyPage({ user, botInfo, showToast }) {
           )}
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

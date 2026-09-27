@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import { useOutletContext } from "react-router-dom";
 import { getGuildMeta, getSupporterConfig, setSupporterConfig } from "../api/client";
 import { Trophy, MessageSquare, Megaphone, Hash, Tag, Save, Power } from "lucide-react";
 
-export default function SupporterRewardsPage({ user, botInfo, showToast }) {
+export default function SupporterRewardsPage({ showToast }) {
+  
   const { guildId } = useParams();
   
   const [config, setConfig] = useState({
@@ -62,7 +63,7 @@ export default function SupporterRewardsPage({ user, botInfo, showToast }) {
   };
 
   return (
-    <DashboardLayout user={user} botInfo={botInfo} breadcrumbs={["Supporter Rewards"]}>
+    <div className="animate-in fade-in duration-500">
       <div className="space-y-6 max-w-5xl mx-auto">
         
         {/* Header */}
@@ -240,6 +241,6 @@ export default function SupporterRewardsPage({ user, botInfo, showToast }) {
           
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

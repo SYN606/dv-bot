@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import { useOutletContext } from "react-router-dom";
 import { getGuildMeta } from "../api/client";
 import {
   ShieldCheck,
@@ -17,7 +17,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-export default function OverviewPage({ user, botInfo, showToast }) {
+export default function OverviewPage({ showToast }) {
+  
   const { guildId } = useParams();
   const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -97,7 +98,7 @@ export default function OverviewPage({ user, botInfo, showToast }) {
   ];
 
   return (
-    <DashboardLayout user={user} botInfo={botInfo} breadcrumbs={["Overview"]}>
+    <div className="animate-in fade-in duration-500">
       <div className="space-y-6">
         {/* Welcome Banner */}
         <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 relative overflow-hidden">
@@ -235,6 +236,6 @@ export default function OverviewPage({ user, botInfo, showToast }) {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

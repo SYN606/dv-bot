@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import { useOutletContext } from "react-router-dom";
 import { getGuildMeta, getConfig, saveConfig } from "../api/client";
 import { Sliders, Check, ShieldAlert } from "lucide-react";
 
-export default function ConfigPage({ user, botInfo, showToast }) {
+export default function ConfigPage({ showToast }) {
+  
   const { guildId } = useParams();
   const [channels, setChannels] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -45,11 +46,7 @@ export default function ConfigPage({ user, botInfo, showToast }) {
   };
 
   return (
-    <DashboardLayout
-      user={user}
-      botInfo={botInfo}
-      breadcrumbs={["Roles & Audit Logs"]}
-    >
+    <div className="animate-in fade-in duration-500">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
@@ -155,6 +152,6 @@ export default function ConfigPage({ user, botInfo, showToast }) {
           </div>
         </form>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

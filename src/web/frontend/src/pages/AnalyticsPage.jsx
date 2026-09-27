@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import { useOutletContext } from "react-router-dom";
 import { getAnalytics } from "../api/client";
 import {
   TrendingUp,
@@ -49,7 +49,8 @@ ChartJS.register(
   Filler
 );
 
-export default function AnalyticsPage({ user, botInfo }) {
+export default function AnalyticsPage({ showToast }) {
+  
   const { guildId } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -329,11 +330,7 @@ export default function AnalyticsPage({ user, botInfo }) {
   }, [data?.topVoice, leaderboardSearch]);
 
   return (
-    <DashboardLayout
-      user={user}
-      botInfo={botInfo}
-      breadcrumbs={["Analytics & Insights"]}
-    >
+    <div className="animate-in fade-in duration-500">
       <div className="space-y-6">
         {/* Header & Timeframe Switcher */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -880,6 +877,6 @@ export default function AnalyticsPage({ user, botInfo }) {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }
