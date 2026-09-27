@@ -1,17 +1,30 @@
 // Centralized API Client with automatic JSON parsing and credential inclusion
 
+// Simple frontend cache to eliminate redundant loading states on tab switching
+const FRONTEND_CACHE = new Map();
+const CACHE_TTL = 15000; // 15 seconds
+
 export async function fetchApi(endpoint, options = {}) {
-  const url = endpoint.startsWith("/") ? endpoint : `/api/${endpoint}`;
+  const url = endpoint.startsWith('/') ? endpoint : '/api/' + endpoint;
+  
+  const isGet = !options.method || options.method === 'GET';
+  
+  if (isGet && FRONTEND_CACHE.has(url)) {
+    const cached = FRONTEND_CACHE.get(url);
+    if (Date.now() < cached.expires) return cached.data;
+    FRONTEND_CACHE.delete(url);
+  }
+
   const config = {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...(options.headers || {}),
     },
-    credentials: "include",
+    credentials: 'include',
   };
 
-  if (options.body && typeof options.body === "object") {
+  if (options.body && typeof options.body === 'object') {
     config.body = JSON.stringify(options.body);
   }
 
@@ -19,7 +32,13 @@ export async function fetchApi(endpoint, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.error || `Request failed with status ${response.status}`);
+    throw new Error(data.error || 'Request failed with status ' + response.status);
+  }
+
+  if (isGet) {
+    FRONTEND_CACHE.set(url, { data, expires: Date.now() + CACHE_TTL });
+  } else {
+    FRONTEND_CACHE.clear(); // Aggressive invalidation on any POST/PUT/DELETE
   }
 
   return data;
