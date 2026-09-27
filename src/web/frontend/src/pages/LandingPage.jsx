@@ -29,10 +29,10 @@ export default function LandingPage({ user, botInfo }) {
   const botName = botInfo?.username || "Digital Vigital";
 
   const metrics = [
-    { label: "Response Latency", value: `${botInfo?.ping || 25}ms`, desc: "Live Gateway Ping", icon: Zap, color: "text-white" },
-    { label: "Uptime SLA", value: "99.9%", desc: "Continuous 24/7 gateway", icon: Activity, color: "text-white" },
-    { label: "Dashboard Driven", value: "100%", desc: "Zero command setup required", icon: Sliders, color: "text-white" },
-    { label: "System Status", value: botInfo?.status || "Online", desc: "Core services operational", icon: CheckCircle2, color: "text-white" },
+    { label: "Response Latency", value: `${botInfo?.ping || 25}ms`, desc: "Live Gateway Ping", icon: Zap, color: "text-apple-yellow" },
+    { label: "Uptime SLA", value: "99.9%", desc: "Continuous 24/7 gateway", icon: Activity, color: "text-apple-green" },
+    { label: "Dashboard Driven", value: "100%", desc: "Zero command setup required", icon: Sliders, color: "text-apple-blue" },
+    { label: "System Status", value: botInfo?.status || "Online", desc: "Core services operational", icon: CheckCircle2, color: "text-apple-purple" },
   ];
 
   const features = [
@@ -40,43 +40,43 @@ export default function LandingPage({ user, botInfo }) {
       icon: Sparkles,
       title: "Supporter Rewards (Vanity)",
       desc: "Automatically grant roles to users who put your server's vanity URL or Clan Tag in their Discord Custom Status.",
-      color: "text-white",
-      bg: "bg-white/5",
+      color: "text-apple-pink",
+      bg: "bg-apple-pink/10 border-apple-pink/20",
     },
     {
       icon: TrendingUp,
       title: "Leaderboard Auto-Roles",
       desc: "Background workers run weekly to calculate the top Text and Voice chatters, automatically assigning exclusive medals and roles.",
-      color: "text-white",
-      bg: "bg-white/5",
+      color: "text-apple-indigo",
+      bg: "bg-apple-indigo/10 border-apple-indigo/20",
     },
     {
       icon: ShieldCheck,
       title: "Automated Verification Gate",
       desc: "Instant 1-click button verification with automatic role assignment, minimum account age security, and audit logging.",
-      color: "text-white",
-      bg: "bg-white/5",
-    },
-    {
-      icon: Pin,
-      title: "Self-Repinning Sticky Notices",
-      desc: "Keep guidelines, schedules, or announcements perpetually pinned at the bottom of channel history with debounce protection.",
-      color: "text-white",
-      bg: "bg-white/5",
+      color: "text-apple-green",
+      bg: "bg-apple-green/10 border-apple-green/20",
     },
     {
       icon: Bot,
-      title: "Dynamic Autoresponder",
-      desc: "Trigger rich replies and auto-reactions on exact keywords, phrases, or regex patterns with channel burst rate-limiting.",
-      color: "text-white",
-      bg: "bg-white/5",
+      title: "Intelligent Autoresponder",
+      desc: "Create dynamic trigger words or phrases that the bot instantly replies to with embedded messages or custom text.",
+      color: "text-apple-blue",
+      bg: "bg-apple-blue/10 border-apple-blue/20",
     },
     {
-      icon: Sliders,
-      title: "Granular Command Matrix",
-      desc: "Restrict sensitive slash commands per-channel while safeguarding essential moderation tools with admin overrides.",
-      color: "text-white",
-      bg: "bg-white/5",
+      icon: ImageIcon,
+      title: "Media-Only Channels",
+      desc: "Strictly enforce meme or art channels by automatically deleting messages that don't contain attachments or links.",
+      color: "text-apple-purple",
+      bg: "bg-apple-purple/10 border-apple-purple/20",
+    },
+    {
+      icon: Pin,
+      title: "Sticky Channel Notices",
+      desc: "Pin an automatic message to the absolute bottom of a busy chat channel, automatically repinning itself as people talk.",
+      color: "text-apple-orange",
+      bg: "bg-apple-orange/10 border-apple-orange/20",
     },
   ];
 
