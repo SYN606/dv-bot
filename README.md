@@ -49,57 +49,57 @@ A production-ready, high-performance, fully async Discord framework powered by *
 
 ## Y>? Command Reference
 
-> Note: All commands support Slash (`/`) invocations. Use `/help <command>` for detailed interactive usage.
+> Note: All commands support Slash (`/`) invocations. If you prefer standard prefixes, the bot will automatically listen to the prefix defined by `PREFIX` in your `.env` file (e.g. `dv`).
 
 ### Moderation
-| Command | Description | Usage |
-|---------|-------------|-------|
-| `/ban` | Permanently ban a member from the server | `/ban <user> [reason]` |
-| `/fakeban` | Simulate a user ban completely (Sends DM and custom channel warnings) | `/fakeban <user> [reason]` |
-| `/kick` | Kick a member from the server | `/kick <user> [reason]` |
-| `/permscan` | Run a security audit on a member or the entire server. | `/permscan [member] [server]` |
-| `/punishments` | View all punishments and warnings for a user | `/punishments` |
-| `/tempban` | Temporarily ban or isolate a member from the server | `/tempban [add] [remove] [role]` |
-| `/timeout` | Mute/timeout a member for a specified duration | `/timeout <user> [duration] [reason]` |
-| `/unban` | Unban a previously banned user from the server | `/unban <userid> [reason]` |
-| `/warnings` | Manage and view member warnings | `/warnings [add] [list] [delete] [clear]` |
+| Command | Description | Slash Usage | Prefix Usage |
+|---------|-------------|-------------|--------------|
+| `/ban` | Permanently ban a member from the server | `/ban <user> [reason]` | `dvban <user> [reason]` |
+| `/fakeban` | Simulate a user ban completely (Sends DM and custom channel warnings) | `/fakeban <user> [reason]` | `dvfakeban <user> [reason]` |
+| `/kick` | Kick a member from the server | `/kick <user> [reason]` | `dvkick <user> [reason]` |
+| `/permscan` | Run a security audit on a member or the entire server. | `/permscan [member] [server]` | `dvpermscan [member] [server]` |
+| `/punishments` | View all punishments and warnings for a user | `/punishments` | `dvpunishments` |
+| `/tempban` | Temporarily ban or isolate a member from the server | `/tempban [add] [remove] [role]` | `dvtempban [add] [remove] [role]` |
+| `/timeout` | Mute/timeout a member for a specified duration | `/timeout <user> [duration] [reason]` | `dvtimeout <user> [duration] [reason]` |
+| `/unban` | Unban a previously banned user from the server | `/unban <userid> [reason]` | `dvunban <userid> [reason]` |
+| `/warnings` | Manage and view member warnings | `/warnings [add] [list] [delete] [clear]` | `dvwarnings [add] [list] [delete] [clear]` |
 
 ### Administration
-| Command | Description | Usage |
-|---------|-------------|-------|
-| `/checkperms` | Audit a member's assigned permissions. | `/checkperms <user>` |
-| `/command` | Manage channel command restrictions (disable / enable / list / panel) | `/command [panel] [disable] [enable] [list]` |
-| `/purge` | Bulk message deletion in guild channels. | `/purge <amount> [user]` |
-| `/rename` | Change or reset a member's server nickname | `/rename <user> <nickname>` |
-| `/role` | Assign or remove a role from a member | `/role [add] [remove]` |
-| `/whois` | Comprehensive user and member lookup information. | `/whois [user]` |
+| Command | Description | Slash Usage | Prefix Usage |
+|---------|-------------|-------------|--------------|
+| `/checkperms` | Audit a member's assigned permissions. | `/checkperms <user>` | `dvcheckperms <user>` |
+| `/command` | Manage channel command restrictions (disable / enable / list / panel) | `/command [panel] [disable] [enable] [list]` | `dvcommand [panel] [disable] [enable] [list]` |
+| `/purge` | Bulk message deletion in guild channels. | `/purge <amount> [user]` | `dvpurge <amount> [user]` |
+| `/rename` | Change or reset a member's server nickname | `/rename <user> <nickname>` | `dvrename <user> <nickname>` |
+| `/role` | Assign or remove a role from a member | `/role [add] [remove]` | `dvrole [add] [remove]` |
+| `/whois` | Comprehensive user and member lookup information. | `/whois [user]` | `dvwhois [user]` |
 
 ### Utility
-| Command | Description | Usage |
-|---------|-------------|-------|
-| `/afk` | Set your Away-From-Keyboard status for this server | `/afk [reason]` |
-| `/avatar` | View user avatar in high resolution | `/avatar [user]` |
-| `/banner` | View user banner in high resolution | `/banner [user]` |
-| `/fuck` | Generate a witty, non-repetitive roast for a user | `/fuck [user]` |
-| `/help` | View bot commands and usage instructions | `/help [command]` |
-| `/ping` | Measure WebSocket gateway heartbeat and HTTP API round-trip latency. | `/ping` |
-| `/serverinfo` | Display comprehensive, beautifully formatted information about the server. | `/serverinfo` |
-| `/steal` | Steal custom emojis and stickers from messages or URLs | `/steal <source> [name]` |
+| Command | Description | Slash Usage | Prefix Usage |
+|---------|-------------|-------------|--------------|
+| `/afk` | Set your Away-From-Keyboard status for this server | `/afk [reason]` | `dvafk [reason]` |
+| `/avatar` | View user avatar in high resolution | `/avatar [user]` | `dvavatar [user]` |
+| `/banner` | View user banner in high resolution | `/banner [user]` | `dvbanner [user]` |
+| `/fuck` | Generate a witty, non-repetitive roast for a user | `/fuck [user]` | `dvfuck [user]` |
+| `/help` | View bot commands and usage instructions | `/help [command]` | `dvhelp [command]` |
+| `/ping` | Measure WebSocket gateway heartbeat and HTTP API round-trip latency. | `/ping` | `dvping` |
+| `/serverinfo` | Display comprehensive, beautifully formatted information about the server. | `/serverinfo` | `dvserverinfo` |
+| `/steal` | Steal custom emojis and stickers from messages or URLs | `/steal <source> [name]` | `dvsteal <source> [name]` |
 
 ### Analytics
-| Command | Description | Usage |
-|---------|-------------|-------|
-| `/leaderboard` | View server chat and voice leaderboards | `/leaderboard [type] [timeframe]` |
-| `/userstats` | View member chat and voice activity statistics | `/userstats [user]` |
+| Command | Description | Slash Usage | Prefix Usage |
+|---------|-------------|-------------|--------------|
+| `/leaderboard` | View server chat and voice leaderboards | `/leaderboard [type] [timeframe]` | `dvleaderboard [type] [timeframe]` |
+| `/userstats` | View member chat and voice activity statistics | `/userstats [user]` | `dvuserstats [user]` |
 
 ### Channels & Voice
-| Command | Description | Usage |
-|---------|-------------|-------|
-| `/hide` | Hide or unhide a channel | `/hide <action> [channel]` |
-| `/lock` | Lock or unlock a channel | `/lock <action> [duration] [channel]` |
-| `/slowmode` | Set the slowmode rate limit for the current channel | `/slowmode <seconds>` |
-| `/drag` | Move a member to a specified voice channel or your current channel | `/drag <user> [channel]` |
-| `/moveall` | Move all members from one voice channel to another | `/moveall <source> [target]` |
+| Command | Description | Slash Usage | Prefix Usage |
+|---------|-------------|-------------|--------------|
+| `/hide` | Hide or unhide a channel | `/hide <action> [channel]` | `dvhide <action> [channel]` |
+| `/lock` | Lock or unlock a channel | `/lock <action> [duration] [channel]` | `dvlock <action> [duration] [channel]` |
+| `/slowmode` | Set the slowmode rate limit for the current channel | `/slowmode <seconds>` | `dvslowmode <seconds>` |
+| `/drag` | Move a member to a specified voice channel or your current channel | `/drag <user> [channel]` | `dvdrag <user> [channel]` |
+| `/moveall` | Move all members from one voice channel to another | `/moveall <source> [target]` | `dvmoveall <source> [target]` |
 
 ---
 
