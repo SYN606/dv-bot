@@ -91,6 +91,12 @@ export default function Sidebar({
       group: "CHANNELS & MODERATION",
       items: [
         {
+          id: "warning_punishments",
+          label: "Warning Punishments",
+          icon: AlertTriangle,
+          path: `/dashboard/${currentGuild.id}/warning-punishments`,
+        },
+        {
           id: "media_only",
           label: "Media-Only Channels",
           icon: ImageIcon,
