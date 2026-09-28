@@ -114,21 +114,39 @@ else
   log_deploy "📦 Frontend dependencies verified."
 fi
 
-# 6. Ensure Web Dashboard Frontend Build Exists
+# 6. Build Web Dashboard Frontend (dist/ is gitignored — always rebuild on deploy)
+log_deploy "🌐 Building web dashboard frontend assets..."
+BUILD_START="$(date +%s)"
+if ! (cd src/web/frontend && bun install --frozen-lockfile 2>/dev/null || bun install && bun run build); then
+  log_deploy "❌ Frontend build FAILED. Aborting deployment."
+  exit 1
+fi
+BUILD_DURATION=$(( $(date +%s) - BUILD_START ))
+log_deploy "✅ Frontend build completed in ${BUILD_DURATION}s. Output → src/web/dist/"
+
+# Sanity-check: ensure dist/index.html exists after build
 if [ ! -f "src/web/dist/index.html" ]; then
-  log_deploy "🌐 Frontend production bundle missing. Building web dashboard assets..."
-  BUILD_START="$(date +%s)"
-  bun run build:web
-  BUILD_DURATION=$(( $(date +%s) - BUILD_START ))
-  log_deploy "✅ Frontend build completed in ${BUILD_DURATION}s."
+  log_deploy "❌ Build succeeded but src/web/dist/index.html not found. Check vite.config.js outDir setting."
+  exit 1
+fi
+
+# 7. Run Test Suite
+log_deploy "🧪 Running test suite..."
+TEST_START="$(date +%s)"
+if bun test tests/ --timeout 10000 2>&1 | tee -a "$DEPLOY_LOG"; then
+  TEST_DURATION=$(( $(date +%s) - TEST_START ))
+  log_deploy "✅ All tests passed in ${TEST_DURATION}s."
 else
-  log_deploy "🌐 Frontend production build verified (src/web/dist/index.html)."
+  TEST_DURATION=$(( $(date +%s) - TEST_START ))
+  log_deploy "❌ Tests FAILED in ${TEST_DURATION}s. Aborting deployment to prevent broken state."
+  exit 1
 fi
 
 log_deploy "=========================================================="
 log_deploy "🎉 Pre-flight deployment checks passed successfully."
 
-# 7. Process Lifecycle & Graceful Signal Propagation
+
+# 8. Process Lifecycle & Graceful Signal Propagation
 CHILD_PID=0
 START_TIME="$(date +%s)"
 

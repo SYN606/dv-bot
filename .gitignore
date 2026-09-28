@@ -182,4 +182,26 @@ pyrightconfig.json
 /tests/__pycache__/
 /CODE_REVIEW.md
 node_modules/
-# End of https://www.toptal.com/developers/gitignore/api/python
+
+# ── Node / Bun / JS ────────────────────────────────────────────────────────────
+# Frontend build output — always rebuild on deploy, never commit
+src/web/dist/
+src/web/frontend/dist/
+
+# Bun / Node caches
+.bun-cache/
+.bun/
+
+# Test coverage output
+coverage/
+.nyc_output/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
