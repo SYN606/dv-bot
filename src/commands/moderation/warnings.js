@@ -8,6 +8,8 @@ import {
   deleteWarning,
   getWarnings,
 } from "../../db/helpers/warnings.js";
+import { getWarningPunishmentConfig } from "../../db/helpers/warningPunishments.js";
+import { executeTempban } from "../../services/tempbanService.js";
 import { sendModLog } from "../../utils/modLog.js";
 
 const slashBuilder = new SlashCommandBuilder()
@@ -74,24 +76,75 @@ export default createCommand({
 
       if (!targetUserId) return await ctx.reply("Please specify a user to warn.");
 
+      const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
+      if (!targetMember) return await ctx.reply({ embeds: [makeEmbed({ title: "Error", description: "Target member not found in server.", level: "ERROR" })]});
+
       const record = await addWarning(guild.id, targetUserId, user.id, reason);
+      const warnings = await getWarnings(guild.id, targetUserId);
+      const warnCount = warnings.length;
+
+      let punishmentApplied = "";
+
+      // Check for auto-punishment threshold
+      const config = await getWarningPunishmentConfig(guild.id, warnCount);
+      if (config) {
+        const botMember = guild.members.me;
+        const canPunish = targetMember.roles.highest.position < botMember.roles.highest.position;
+
+        if (canPunish) {
+          const action = config.action_type.toLowerCase();
+          const duration = config.duration || null;
+          const punishReason = `Auto-Punishment: Reached ${warnCount} warnings. Latest: ${reason}`;
+
+          try {
+            if (action === "kick") {
+              await targetMember.kick(punishReason);
+              punishmentApplied = "\n\n⚠️ **Auto-Punishment Applied:** `Kick`";
+            } else if (action === "ban") {
+              await guild.bans.create(targetMember.id, { reason: punishReason });
+              punishmentApplied = "\n\n⚠️ **Auto-Punishment Applied:** `Ban`";
+            } else if (action === "timeout") {
+              if (duration) {
+                await targetMember.timeout(duration * 1000, punishReason);
+                punishmentApplied = `\n\n⚠️ **Auto-Punishment Applied:** \`Timeout (${duration}s)\``;
+              }
+            } else if (action === "tempban") {
+              if (duration) {
+                await executeTempban({
+                  guild,
+                  moderator: user, // Auto-action executed by bot under moderator's name
+                  targetMember,
+                  durationSeconds: duration,
+                  reason: punishReason,
+                });
+                punishmentApplied = `\n\n⚠️ **Auto-Punishment Applied:** \`Tempban (${duration}s)\``;
+              }
+            }
+          } catch (e) {
+            punishmentApplied = "\n\n⚠️ **Auto-Punishment Failed:** Missing permissions to execute punishment.";
+          }
+        } else {
+          punishmentApplied = "\n\n⚠️ **Auto-Punishment Failed:** Target member has a higher role than me.";
+        }
+      }
 
       await sendModLog({
         guild,
         category: "MODERATION",
         title: "Member Warned",
-        description: `User <@${targetUserId}> was warned by <@${user.id}>.\n\n• **Reason:** ${reason}`,
+        description: `User <@${targetUserId}> was warned by <@${user.id}>.\n\n• **Reason:** ${reason}${punishmentApplied}`,
         level: "WARNING",
         actor: user,
-        extraFields: { "Warning ID": `#${record.warn_id}` },
+        extraFields: { "Warning ID": `#${record.warn_id}`, "Total Warnings": warnCount.toString() },
       });
 
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Warning Issued",
-            description: `${EMOJIS.get("warning") || "⚠️"} Successfully warned <@${targetUserId}> (ID: \`#${record.warn_id}\`).\n\n• **Reason:** ${reason}`,
+            description: `${EMOJIS.get("warning") || "⚠️"} Successfully warned <@${targetUserId}> (ID: \`#${record.warn_id}\`).\n\n• **Reason:** ${reason}${punishmentApplied}`,
             level: "WARNING",
+            footer: `Total Warnings: ${warnCount}`,
           }),
         ],
       });

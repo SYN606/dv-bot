@@ -27,6 +27,7 @@ import {
   TempbanConfig,
   TempbanRecord,
   WarningRecord,
+  WarningPunishmentConfig,
 } from "./moderationModels.js";
 import {
   ChannelActivity,
@@ -67,6 +68,7 @@ export {
   TempbanConfig,
   TempbanRecord,
   WarningRecord,
+  WarningPunishmentConfig,
   PunishmentRecord,
   AutoResponder,
   AutoResponderReaction,

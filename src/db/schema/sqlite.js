@@ -320,6 +320,22 @@ export const punishmentRecords = sqliteTable(
   })
 );
 
+export const warningPunishmentConfig = sqliteTable(
+  "warning_punishment_config",
+  {
+    id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+    guild_id: text("guild_id").notNull(),
+    warn_count: integer("warn_count", { mode: "number" }).notNull(),
+    action_type: text("action_type").notNull(),
+    duration: integer("duration", { mode: "number" }),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+    updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    guildWarnCountUnique: uniqueIndex("idx_warning_punishment_unique").on(table.guild_id, table.warn_count),
+  })
+);
+
 export const autoresponders = sqliteTable(
   "autoresponders",
   {
