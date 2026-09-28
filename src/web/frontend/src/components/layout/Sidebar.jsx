@@ -14,7 +14,7 @@ import {
   ArrowLeftRight,
   X,
   Trophy,
-  Award,
+  Award, AlertTriangle,
 } from "lucide-react";
 
 export default function Sidebar({
