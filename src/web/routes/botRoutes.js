@@ -1,7 +1,20 @@
 import { Hono } from "hono";
+import { PermissionFlagsBits } from "discord.js";
 import { getLiveBotGuildIds } from "./authRoutes.js";
 import { apiCache } from "./cache.js";
 import { PROTECTED_COMMANDS } from "../../core/permissions.js";
+
+
+function getPermissionName(bitfield) {
+  if (!bitfield) return null;
+  for (const [key, value] of Object.entries(PermissionFlagsBits)) {
+    if (value === bitfield) {
+       // Format "ManageRoles" -> "Manage Roles"
+       return key.replace(/([A-Z])/g, ' $1').trim();
+    }
+  }
+  return String(bitfield);
+}
 
 export const botRoutes = new Hono();
 
@@ -98,6 +111,7 @@ botRoutes.get("/commands", async (c) => {
         adminOnly: Boolean(cmd.adminOnly),
         modOnly: Boolean(cmd.modOnly),
         configOnly: Boolean(cmd.configOnly),
+        requiredPermissionName: getPermissionName(cmd.requiredPermission),
         isProtected: PROTECTED_COMMANDS.has(cmd.name.toLowerCase()),
         slashOnly: Boolean(cmd.slashOnly),
         options,

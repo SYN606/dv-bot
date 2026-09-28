@@ -187,14 +187,8 @@ export default function DocumentationPage({ user, botInfo }) {
                       </div>
 
                       {/* Permission Badge */}
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border font-mono ${
-                        cmd.adminOnly
-                          ? "bg-red-500/10 text-red-400 border-red-500/20"
-                          : cmd.modOnly
-                          ? "bg-orange-500/10 text-orange-400 border-orange-500/20"
-                          : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                      }`}>
-                        {cmd.adminOnly ? "Bot Admin" : cmd.modOnly ? "Moderator" : "Everyone"}
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border font-mono ${ cmd.adminOnly ? "bg-red-500/10 text-red-400 border-red-500/20" : cmd.modOnly ? "bg-orange-500/10 text-orange-400 border-orange-500/20" : cmd.requiredPermissionName ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" }`}>
+                        {cmd.adminOnly ? "Bot Admin" : cmd.modOnly ? "Moderator" : cmd.requiredPermissionName ? cmd.requiredPermissionName : "Everyone"}
                       </span>
                     </div>
 
