@@ -387,6 +387,14 @@ function ensureSqliteSchema(sqlite) {
   try {
     sqlite.exec("ALTER TABLE afk ADD COLUMN mentions TEXT;");
   } catch (_) {}
+
+  // Migrate warning_punishment_config: add columns missing from earlier schema versions
+  try {
+    sqlite.exec("ALTER TABLE warning_punishment_config ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE warning_punishment_config ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP;");
+  } catch (_) {}
 }
 
 export async function initDb(options = {}) {
