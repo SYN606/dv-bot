@@ -26,66 +26,29 @@ export default createCommand({
   name: "role",
   description: "Assign or remove a role from a member",
   category: "Admin",
-  aliases: ["roles", "giverole", "removerole"],
   modOnly: true,
   requiredPermission: PermissionFlagsBits.ManageRoles,
   slashBuilder,
 
   async execute(ctx) {
+    // Restrict to Slash Command Only
+    if (!ctx.isInteraction) {
+      return;
+    }
+
     const { guild, member: actorMember, user } = ctx;
     if (!guild) return;
 
-    // ── Resolve subcommand ──────────────────────────────────────────────────
-    // Slash: ctx.subcommand = "add" | "remove"
-    // Prefix: ts role add @user @role  →  _args[0]="add", _args[1]="<@id>", _args[2]="<@&id>"
-    //         ts giverole @user @role  →  (alias) treated as "add"
-    //         ts removerole @user @role→  (alias) treated as "remove"
-    const invokedAs = ctx.message?.content
-      ?.trim()
-      .split(/\s+/)[0]
-      ?.toLowerCase()
-      .replace(/^[^\w]*/, "");
+    const sub = ctx.subcommand;
+    const targetUserId = ctx.options.user;
+    const roleId = ctx.options.role;
 
-    let sub = ctx.subcommand;
-    if (!sub) {
-      const firstArg = ctx.options._args?.[0]?.toLowerCase();
-      if (firstArg === "add" || firstArg === "remove") {
-        sub = firstArg;
-      } else if (invokedAs === "removerole") {
-        sub = "remove";
-      } else {
-        // default to "add" for giverole / bare "role" with no sub
-        sub = "add";
-      }
-    }
-
-    // ── Resolve target user ────────────────────────────────────────────────
-    let targetUserId = ctx.options.user; // slash: resolved user ID
-    if (!targetUserId) {
-      // prefix: skip first arg if it was the subcommand keyword
-      const argOffset = (ctx.options._args?.[0]?.toLowerCase() === "add" || ctx.options._args?.[0]?.toLowerCase() === "remove") ? 1 : 0;
-      const rawUser = ctx.options._args?.[argOffset] || "";
-      targetUserId = rawUser.replace(/[<@!>]/g, "");
-    }
-
-    // ── Resolve role ───────────────────────────────────────────────────────
-    let roleId = ctx.options.role; // slash: resolved role ID
-    if (!roleId) {
-      const argOffset = (ctx.options._args?.[0]?.toLowerCase() === "add" || ctx.options._args?.[0]?.toLowerCase() === "remove") ? 2 : 1;
-      const rawRole = ctx.options._args?.[argOffset] || "";
-      roleId = rawRole.replace(/[<@&>]/g, "");
-    }
-
-    // ── Validation ─────────────────────────────────────────────────────────
     if (!targetUserId || !roleId) {
-      const prefix = ctx.client?.prefix || "ts";
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Usage",
-            description:
-              `**Slash:**\n\`/role add <user> <role>\`\n\`/role remove <user> <role>\`\n\n` +
-              `**Prefix:**\n\`${prefix}role add @user @role\`\n\`${prefix}giverole @user @role\`\n\`${prefix}removerole @user @role\``,
+            description: "**Slash:**\n`/role add <user> <role>`\n`/role remove <user> <role>`",
             level: "INFO",
           }),
         ],
@@ -94,7 +57,7 @@ export default createCommand({
     }
 
     const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
-    const role = guild.roles.cache.get(roleId) || guild.roles.cache.find((r) => r.id === roleId);
+    const role = guild.roles.cache.get(roleId);
 
     if (!targetMember) {
       return await ctx.reply({
@@ -105,7 +68,7 @@ export default createCommand({
 
     if (!role) {
       return await ctx.reply({
-        embeds: [makeEmbed({ title: "Not Found", description: `${EMOJIS.get("fail") || "❌"} Role not found. Make sure you @mention the role.`, level: "ERROR" })],
+        embeds: [makeEmbed({ title: "Not Found", description: `${EMOJIS.get("fail") || "❌"} Role not found.`, level: "ERROR" })],
         ephemeral: true,
       });
     }
@@ -118,7 +81,7 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "Hierarchy Error",
-            description: `${EMOJIS.get("fail") || "❌"} I cannot manage ${role} — it is at or above my highest role.`,
+            description: `${EMOJIS.get("fail") || "❌"} I cannot manage ${role} - it is at or above my highest role.`,
             level: "ERROR",
           }),
         ],
@@ -132,7 +95,7 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `${EMOJIS.get("fail") || "❌"} You cannot manage ${role} — it is at or above your highest role.`,
+            description: `${EMOJIS.get("fail") || "❌"} You cannot manage ${role} - it is at or above your highest role.`,
             level: "ERROR",
           }),
         ],
@@ -140,7 +103,6 @@ export default createCommand({
       });
     }
 
-    // ── Execute ────────────────────────────────────────────────────────────
     if (sub === "add") {
       if (targetMember.roles.cache.has(role.id)) {
         return await ctx.reply({
@@ -173,13 +135,14 @@ export default createCommand({
             title: "Role Added",
             description:
               `${EMOJIS.get("success") || "✅"} Successfully gave ${role} to ${targetMember}.\n\n` +
-              `• **Member:** ${targetMember} (\`${targetMember.user.tag || targetMember.user.username}\`)\n` +
-              `• **Role:** ${role} (\`${role.name}\`)\n` +
+              `• **Member:** ${targetMember} (`${targetMember.user.tag || targetMember.user.username}`)\n` +
+              `• **Role:** ${role} (`${role.name}`)\n` +
               `• **Moderator:** ${user}`,
             level: "SUCCESS",
             headerDivider: false,
           }),
         ],
+        ephemeral: false
       });
     }
 
@@ -215,13 +178,14 @@ export default createCommand({
             title: "Role Removed",
             description:
               `${EMOJIS.get("success") || "✅"} Successfully removed ${role} from ${targetMember}.\n\n` +
-              `• **Member:** ${targetMember} (\`${targetMember.user.tag || targetMember.user.username}\`)\n` +
-              `• **Role:** ${role} (\`${role.name}\`)\n` +
+              `• **Member:** ${targetMember} (`${targetMember.user.tag || targetMember.user.username}`)\n` +
+              `• **Role:** ${role} (`${role.name}`)\n` +
               `• **Moderator:** ${user}`,
             level: "SUCCESS",
             headerDivider: false,
           }),
         ],
+        ephemeral: false
       });
     }
   },
