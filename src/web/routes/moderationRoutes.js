@@ -20,6 +20,7 @@ import {
   setTempbanConfig,
   removeTempbanConfig,
 } from "../../db/helpers/tempban.js";
+import { getAllWarningPunishmentConfigs, setWarningPunishmentConfig, removeWarningPunishmentConfig } from "../../db/helpers/warningPunishments.js";
 import { ModerationLogConfig, VCRoleConfig } from "../../db/models/index.js";
 import { apiCache } from "./cache.js";
 
@@ -343,4 +344,32 @@ moderationRoutes.post("/guilds/:guildId/tempban", async (c) => {
     role_id: roleId ? String(roleId) : null,
     enabled: !!roleId,
   });
+});
+
+
+// Warning Punishments Setup
+moderationRoutes.get("/guilds/:guildId/warning_punishments", async (c) => {
+  const guildId = c.req.param("guildId");
+  const configs = await getAllWarningPunishmentConfigs(guildId);
+  return c.json({ configs });
+});
+
+moderationRoutes.post("/guilds/:guildId/warning_punishments", async (c) => {
+  const guildId = c.req.param("guildId");
+  const { warnCount, actionType, duration } = await c.req.json();
+
+  if (!warnCount || !actionType) {
+    return c.json({ error: "warnCount and actionType are required" }, 400);
+  }
+
+  const config = await setWarningPunishmentConfig(guildId, parseInt(warnCount), actionType, duration ? parseInt(duration) : null);
+  return c.json({ success: true, config });
+});
+
+moderationRoutes.delete("/guilds/:guildId/warning_punishments/:warnCount", async (c) => {
+  const guildId = c.req.param("guildId");
+  const warnCount = c.req.param("warnCount");
+
+  const success = await removeWarningPunishmentConfig(guildId, parseInt(warnCount));
+  return c.json({ success });
 });

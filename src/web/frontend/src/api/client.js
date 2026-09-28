@@ -274,3 +274,21 @@ export async function setAutoRoleConfig(guildId, payload) {
   });
 }
 
+
+// Warning Punishments
+export async function getWarningPunishments(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/warning_punishments`);
+}
+
+export async function addWarningPunishment(guildId, payload) {
+  return fetchApi(`/api/guilds/${guildId}/warning_punishments`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function removeWarningPunishment(guildId, warnCount) {
+  return fetchApi(`/api/guilds/${guildId}/warning_punishments/${warnCount}`, {
+    method: "DELETE",
+  });
+}
