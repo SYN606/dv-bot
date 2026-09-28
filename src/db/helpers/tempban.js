@@ -94,3 +94,9 @@ export async function deactivateTempban(guildId, userId) {
   }
   return false;
 }
+
+
+export async function isTempbanned(guildId, userId) {
+  const record = await TempbanRecord.findOne({ where: { guild_id: String(guildId), user_id: String(userId), active: true } });
+  return !!record;
+}
