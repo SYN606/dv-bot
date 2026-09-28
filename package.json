@@ -12,7 +12,8 @@
     "dev": "bun --watch src/bot.js",
     "install:all": "bun install && cd src/web/frontend && bun install",
     "build:web": "cd src/web/frontend && bun install && bun run build",
-    "test": "bun test"
+    "test": "bun test",
+    "generate-secret": "bun -e \"console.log('\\nYour Secure Session Secret:\\n' + require('crypto').randomBytes(64).toString('hex') + '\\n')\""
   },
   "dependencies": {
     "discord.js": "^14.18.0",
