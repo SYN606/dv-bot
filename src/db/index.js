@@ -272,6 +272,7 @@ function ensureSqliteSchema(sqlite) {
       action_type TEXT NOT NULL,
       duration INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(guild_id, warn_count)
     );
     CREATE TABLE IF NOT EXISTS tempban_config (
