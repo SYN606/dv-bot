@@ -77,27 +77,24 @@ export async function executeTempban({
   });
   await targetMember.send({ embeds: [dmEmbed] }).catch(() => {});
 
-  if (isRoleIsolation) {
-    // 1. Assign isolation role
-    await targetMember.roles.add(isolationRole, `Tempban by ${moderator.tag || moderator.id}: ${reason}`);
+  if (!isRoleIsolation) {
+    return { success: false, error: "Isolation role not configured" };
+  }
 
-    // 2. Temporarily strip verified role if server has verification enabled
-    try {
-      const verifConfig = await VerificationConfig.findByPk(guild.id);
-      if (verifConfig && verifConfig.enabled && verifConfig.verified_role_id) {
-        const verifiedRole = guild.roles.cache.get(String(verifConfig.verified_role_id));
-        if (verifiedRole && targetMember.roles.cache.has(verifiedRole.id)) {
-          await targetMember.roles.remove(verifiedRole, "Stripping verified status during tempban isolation").catch(() => {});
-        }
+  // 1. Assign isolation role
+  await targetMember.roles.add(isolationRole, `Tempban by ${moderator.tag || moderator.id}: ${reason}`).catch(() => {});
+
+  // 2. Temporarily strip verified role if server has verification enabled
+  try {
+    const verifConfig = await VerificationConfig.findByPk(guild.id);
+    if (verifConfig && verifConfig.enabled && verifConfig.verified_role_id) {
+      const verifiedRole = guild.roles.cache.get(String(verifConfig.verified_role_id));
+      if (verifiedRole && targetMember.roles.cache.has(verifiedRole.id)) {
+        await targetMember.roles.remove(verifiedRole, "Stripping verified status during tempban isolation").catch(() => {});
       }
-    } catch (err) {
-      logger.warn("[TEMPBAN SERVICE] Failed to strip verified role:", err?.message);
     }
-  } else {
-    // Native Discord ban
-    await guild.bans.create(targetMember.id, {
-      reason: `Tempban (${formattedTime}) by ${moderator.tag || moderator.id}: ${reason}`,
-    });
+  } catch (err) {
+    logger.warn("[TEMPBAN SERVICE] Failed to strip verified role:", err?.message);
   }
 
   // Record in database
