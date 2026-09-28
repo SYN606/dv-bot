@@ -79,6 +79,16 @@ export default createCommand({
       const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
       if (!targetMember) return await ctx.reply({ embeds: [makeEmbed({ title: "Error", description: "Target member not found in server.", level: "ERROR" })]});
 
+      if (targetMember.id === user.id) {
+        return await ctx.reply({ embeds: [makeEmbed({ title: "Error", description: "You cannot warn yourself.", level: "ERROR" })], ephemeral: true });
+      }
+      if (targetMember.id === guild.ownerId) {
+        return await ctx.reply({ embeds: [makeEmbed({ title: "Permission Denied", description: "You cannot warn the server owner.", level: "ERROR" })], ephemeral: true });
+      }
+      if (guild.ownerId !== user.id && targetMember.roles.highest.position >= ctx.member.roles.highest.position) {
+        return await ctx.reply({ embeds: [makeEmbed({ title: "Permission Denied", description: "You cannot warn a member with an equal or higher role.", level: "ERROR" })], ephemeral: true });
+      }
+
       const record = await addWarning(guild.id, targetUserId, user.id, reason);
       const warnings = await getWarnings(guild.id, targetUserId);
       const warnCount = warnings.length;
@@ -99,10 +109,10 @@ export default createCommand({
           try {
             if (action === "kick") {
               await targetMember.kick(punishReason);
-              punishmentApplied = "\n\n⚠️ **Auto-Punishment Applied:** `Kick`";
+              punishmentApplied = "\n\n🛡️ **Auto-Punishment Applied:** `Kick`";
             } else if (action === "ban") {
               await guild.bans.create(targetMember.id, { reason: punishReason });
-              punishmentApplied = "\n\n⚠️ **Auto-Punishment Applied:** `Ban`";
+              punishmentApplied = "\n\n🛡️ **Auto-Punishment Applied:** `Ban`";
             } else if (action === "timeout") {
               if (duration) {
                 await targetMember.timeout(duration * 1000, punishReason);
@@ -121,10 +131,10 @@ export default createCommand({
               }
             }
           } catch (e) {
-            punishmentApplied = "\n\n⚠️ **Auto-Punishment Failed:** Missing permissions to execute punishment.";
+            punishmentApplied = "\n\n❌ **Auto-Punishment Failed:** Missing permissions to execute punishment.";
           }
         } else {
-          punishmentApplied = "\n\n⚠️ **Auto-Punishment Failed:** Target member has a higher role than me.";
+          punishmentApplied = "\n\n❌ **Auto-Punishment Failed:** Target member has a higher role than me.";
         }
       }
 
