@@ -3,18 +3,20 @@
  * Uses bun:test (native bun test runner)
  * Run: bun test tests/
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, mock } from "bun:test";
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import * as schema from "../src/db/schema/sqlite.js";
 
-// ─── In-memory DB for isolated tests ─────────────────────────────────────────
+// --- In-memory DB for isolated tests ---
 let rawDb;
 let db;
 
-// Monkeypatch getDb() to return our test DB
-const dbModule = await import("../src/db/index.js");
-let originalGetDb;
+mock.module("../src/db/index.js", () => {
+  return {
+    getDb: () => db,
+  };
+});
 
 beforeAll(() => {
   rawDb = new Database(":memory:");
@@ -52,30 +54,23 @@ beforeAll(() => {
   `);
 
   db = drizzle(rawDb, { schema });
-
-  // Patch the exported getDb to use our test DB
-  originalGetDb = dbModule.getDb;
-  Object.defineProperty(dbModule, "getDb", {
-    value: () => db,
-    writable: true,
-    configurable: true,
-  });
 });
 
 afterAll(() => {
-  // Restore
-  Object.defineProperty(dbModule, "getDb", {
-    value: originalGetDb,
-    writable: true,
-    configurable: true,
-  });
-  rawDb.close();
+  if (rawDb) rawDb.close();
 });
 
-// ─── Warning Punishment Config tests ─────────────────────────────────────────
+// --- Warning Punishment Config tests ---
 describe("warningPunishments helper", () => {
-  const { setWarningPunishmentConfig, getWarningPunishmentConfig, getAllWarningPunishmentConfigs, removeWarningPunishmentConfig } =
-    await import("../src/db/helpers/warningPunishments.js");
+  let setWarningPunishmentConfig, getWarningPunishmentConfig, getAllWarningPunishmentConfigs, removeWarningPunishmentConfig;
+
+  beforeAll(async () => {
+    const helpers = await import("../src/db/helpers/warningPunishments.js");
+    setWarningPunishmentConfig = helpers.setWarningPunishmentConfig;
+    getWarningPunishmentConfig = helpers.getWarningPunishmentConfig;
+    getAllWarningPunishmentConfigs = helpers.getAllWarningPunishmentConfigs;
+    removeWarningPunishmentConfig = helpers.removeWarningPunishmentConfig;
+  });
 
   const GUILD = "111111111111111111";
 
@@ -149,7 +144,7 @@ describe("warningPunishments helper", () => {
   });
 });
 
-// ─── Warning duration parse utility ──────────────────────────────────────────
+// --- Warning duration parse utility ---
 describe("formatDuration utility", () => {
   function formatDuration(seconds) {
     if (!seconds) return "?";
