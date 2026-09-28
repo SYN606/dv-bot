@@ -349,21 +349,32 @@ moderationRoutes.post("/guilds/:guildId/tempban", async (c) => {
 
 // Warning Punishments Setup
 moderationRoutes.get("/guilds/:guildId/warning_punishments", async (c) => {
-  const guildId = c.req.param("guildId");
-  const configs = await getAllWarningPunishmentConfigs(guildId);
-  return c.json({ configs });
+  try {
+    const guildId = c.req.param("guildId");
+    const configs = await getAllWarningPunishmentConfigs(guildId);
+    return c.json({ configs: configs || [] });
+  } catch (err) {
+    console.error("[WARNING PUNISHMENTS] GET error:", err);
+    return c.json({ configs: [] });
+  }
 });
 
 moderationRoutes.post("/guilds/:guildId/warning_punishments", async (c) => {
-  const guildId = c.req.param("guildId");
-  const { warnCount, actionType, duration } = await c.req.json();
+  try {
+    const guildId = c.req.param("guildId");
+    const body = await c.req.json().catch(() => ({}));
+    const { warnCount, actionType, duration } = body;
 
-  if (!warnCount || !actionType) {
-    return c.json({ error: "warnCount and actionType are required" }, 400);
+    if (!warnCount || !actionType) {
+      return c.json({ error: "warnCount and actionType are required" }, 400);
+    }
+
+    const config = await setWarningPunishmentConfig(guildId, parseInt(warnCount), actionType, duration ? parseInt(duration) : null);
+    return c.json({ success: true, config });
+  } catch (err) {
+    console.error("[WARNING PUNISHMENTS] POST error:", err);
+    return c.json({ error: err.message || "Internal server error" }, 500);
   }
-
-  const config = await setWarningPunishmentConfig(guildId, parseInt(warnCount), actionType, duration ? parseInt(duration) : null);
-  return c.json({ success: true, config });
 });
 
 moderationRoutes.delete("/guilds/:guildId/warning_punishments/:warnCount", async (c) => {
