@@ -14,6 +14,7 @@ export default {
   description: "View all punishments and warnings for a user",
   usage: "/punishments <user>",
   category: "moderation",
+  adminOnly: true,
   permissions: ["ModerateMembers"],
   aliases: ["history", "modlogs", "infractions"],
 

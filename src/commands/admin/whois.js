@@ -62,6 +62,7 @@ export default createCommand({
   name: "whois",
   description: "Cog providing comprehensive user and member lookup information.",
   category: "Admin",
+  adminOnly: true,
   aliases: ["userinfo", "user", "ui"],
   slashBuilder,
 

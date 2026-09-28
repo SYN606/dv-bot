@@ -11,6 +11,7 @@ export default createCommand({
   name: "roleinfo",
   description: "Get detailed statistics, member count, and permissions for a role.",
   category: "Utility",
+  adminOnly: true,
   slashBuilder,
   aliases: ["rinfo", "role-info"],
 

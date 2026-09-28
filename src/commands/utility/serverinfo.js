@@ -11,6 +11,7 @@ export default createCommand({
   name: "serverinfo",
   description: "Display comprehensive, beautifully formatted information about the server.",
   category: "Utility",
+  adminOnly: true,
   aliases: ["si", "server", "guildinfo", "ginfo"],
   slashBuilder,
 
