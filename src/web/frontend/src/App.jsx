@@ -108,7 +108,7 @@ export default function App() {
           <Route path="media-only" element={<MediaOnlyPage showToast={showToast} />} />
           <Route path="commands" element={<CommandsPage showToast={showToast} />} />
           <Route path="sticky" element={<StickyPage showToast={showToast} />} />
-          <Route path="warning-punishments" element={<WarningPunishmentsPage />} />
+          <Route path="warning-punishments" element={<WarningPunishmentsPage showToast={showToast} />} />
             <Route path="autoresponder" element={<AutoresponderPage showToast={showToast} />} />
           <Route path="config" element={<ConfigPage showToast={showToast} />} />
           <Route path="permissions" element={<PermissionsAuditPage showToast={showToast} />} />

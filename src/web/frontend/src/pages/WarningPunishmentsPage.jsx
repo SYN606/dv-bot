@@ -10,10 +10,9 @@ const PUNISHMENT_TYPES = [
   { id: "tempban", name: "Tempban", icon: Clock, desc: "Temporarily ban member" }
 ];
 
-export default function WarningPunishmentsPage() {
+export default function WarningPunishmentsPage({ showToast }) {
   const { guildId } = useParams();
-  const { showToast } = useOutletContext();
-  
+    
   const [configs, setConfigs] = useState([]);
   const [loading, setLoading] = useState(true);
 

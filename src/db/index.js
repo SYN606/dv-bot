@@ -264,6 +264,16 @@ function ensureSqliteSchema(sqlite) {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    
+    CREATE TABLE IF NOT EXISTS warning_punishment_config (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      warn_count INTEGER NOT NULL,
+      action_type TEXT NOT NULL,
+      duration INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(guild_id, warn_count)
+    );
     CREATE TABLE IF NOT EXISTS tempban_config (
       guild_id TEXT PRIMARY KEY,
       role_id TEXT NOT NULL
