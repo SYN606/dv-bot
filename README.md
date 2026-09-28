@@ -1,104 +1,129 @@
-# 🛡️ Digital Vigital
+# Y>? Digital Vigital (DV-BOT) v2.0
 ### Advanced Discord Moderation & Management Framework
 
-A production-ready, high-performance, fully async Discord framework powered by **discord.py 2.x** and **Tortoise-ORM**. Features interactive setup panels, persistent UI components, dynamic command directories, and database-backed guild configurations.
+A production-ready, high-performance, fully async Discord framework powered by **Bun**, **discord.js v14**, and **Hono/React**. Features a stunning web dashboard, persistent UI components, dynamic command directories, and a robust SQLite/Drizzle database.
 
 ---
 
 <p align="center">
-  <a href="#-verification-system"><img src="https://img.shields.io/badge/Verification-System-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Verification System"></a>
-  <a href="#-moderation--logging"><img src="https://img.shields.io/badge/Moderation-System-DA373C?style=for-the-badge&logo=shield&logoColor=white" alt="Moderation System"></a>
-  <a href="#-bot-admin--permissions"><img src="https://img.shields.io/badge/Bot--Admin-System-1F8B4C?style=for-the-badge&logo=users&logoColor=white" alt="Bot Admin"></a>
-  <a href="#-tech-stack--architecture"><img src="https://img.shields.io/badge/Architecture-Tortoise--ORM-8E44AD?style=for-the-badge&logo=postgresql&logoColor=white" alt="Architecture"></a>
+  <img src="https://img.shields.io/badge/Bun-1.4+-black?style=for-the-badge&logo=bun&logoColor=white" alt="Bun">
+  <img src="https://img.shields.io/badge/discord.js-v14-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord.js">
+  <img src="https://img.shields.io/badge/React-Web_Dashboard-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Dashboard">
+  <img src="https://img.shields.io/badge/Drizzle-SQLite-C4D600?style=for-the-badge&logo=sqlite&logoColor=white" alt="Database">
 </p>
 
 ---
 
-## ✨ Core Systems
+## o Core Systems
 
-### 📖 Dynamic Help & Directory
-* **Hybrid Command Support:** Uniform support across standard prefix (`!`) and slash (`/`) commands.
-* **Interactive Command Directory:** Dynamic dropdown navigation with category-filtered command trees based on user permissions and channel restrictions.
-* **Autocomplete Inspection:** Fast, interactive autocomplete for detailed syntax, alias, and permission lookups via `/help <command_name>`.
+### Y"- Web Dashboard & API
+* **React + TailwindCSS Dashboard:** A beautiful, real-time configuration panel built with Vite and React Router.
+* **Hono REST API:** High-speed backend router for modifying configurations instantly without restarting the bot.
+* **Modules:** Configure Supporter Rewards, Leaderboard Auto-Roles, Autoresponders, Sticky Messages, and Media Only Channels.
 
-### 🛡️ Verification System
-* Interactive `/verify_setup` panel deployment.
-* Persistent UI buttons that survive bot restarts.
-* Captcha-based modal verification.
-* Automatic role assignment upon successful verification.
-* Full cleanup and reset capabilities using `/reset_verification`.
+### Y>? Growth & Activity Modules
+* **Supporter Rewards (Vanity):** Automatically grant roles to users who put your server's vanity URL or Clan Tag in their Discord Custom Status. Features built-in anti-spam caching and multi-role exclusions.
+* **Leaderboard Auto-Roles:** A background worker runs weekly to calculate the top Text and Voice chatters, automatically assigning them exclusive medals and roles.
+* **Analytics Batcher:** Real-time metrics engine tracking messages, voice seconds, and hourly peak activity.
 
-### 👮 Bot Admin & Permissions
+### Y' Bot Admin & Permissions
 * **Delegated Roles:** Database-backed custom bot-admin roles per guild.
-* **Hierarchical Permission Resolution:**
-  1. Guild Owner
-  2. Server Administrator (`administrator` permission)
-  3. Custom Bot-Admin Role
-* Role hierarchy validation prevents accidental target escalation on higher-privileged users.
+* **Permission Scanners:** Built-in auditing (`/checkperms`, `/permscan`) to find dangerous admin privileges, ensuring roles assigned through automated systems (like Supporter Rewards) never compromise server security.
 
-### 🔨 Moderation & Logging
-* **Role-Based Tempbans:** Automatic temporary bans with timed expirations.
-* **Role Restoration:** Removal and automatic restoration of verified roles post-punishment.
-* **Configurable Logging:** Centralized guild audit and moderation logs.
-* **Active Case Tracking:** Database records stored for active tempbans, mutes, and warning histories.
-
-### 📌 Utility Modules
-* **Command Restriction:** Per-channel command blacklisting (`get_restricted_commands`) enforced dynamically across help menus and invocation handlers.
-* **Sticky Messages:** Auto-reposting persistent channel notes.
-* **Media-Only & Counting Channels:** Automated enforcement rules per channel.
-* **AFK Tracking:** Global and guild-specific AFK status management with auto-mentions notification.
+### Y" Moderation & Logging
+* **Role-Based Tempbans:** Automatic temporary bans with a dedicated worker script for expirations.
+* **Warnings & Punishments:** Full audit trail for strikes, kicks, mutes, and bans.
+* **Command Restriction:** Per-channel command blacklisting (`/command panel`) enforced dynamically.
 
 ---
 
-## 🎨 Embed Framework
+## s Tech Stack & Architecture
 
-Built-in standardized dark-mode embed system (`make_embed`) featuring:
-* **Severity Levels:** `INFO`, `SUCCESS`, `WARNING`, `ERROR`, `DEBUG`, `SYSTEM`
-* **Auto-Formatting:** Safe text trimming, custom status emojis, and standardized footers.
-* **Interaction Safe:** Native compatibility with deferred responses and interaction follow-ups.
-
----
-
-## ⚡ Tech Stack & Architecture
-
-* **Framework:** Python 3.11+ | `discord.py` 2.6+
-* **Database & ORM:** Tortoise-ORM with `asyncpg` (PostgreSQL)
-* **Async Engine:** Native Python `asyncio` loop
-* **Persistence:** Fully persistent Discord `ui.View` & `ui.Select` handling across client restarts
+* **Runtime:** [Bun](https://bun.sh)
+* **Discord Library:** `discord.js` v14
+* **Database & ORM:** `drizzle-orm` (SQLite) with a bespoke Sequelize-like adapter.
+* **Web Server:** `hono`
+* **Frontend:** `React`, `Vite`, `Tailwind CSS`, `lucide-react`
 
 ---
 
-## 🛠️ Environment & Setup
+## Y>? Command Reference
 
-### Environment Variables (`.env`)
-```env
-TOKEN=your_discord_bot_token
-DATABASE_URL=postgres://user:password@localhost:5432/digital_vigital
-HELP_BANNER_GIF=[https://your-domain.com/banner.gif](https://your-domain.com/banner.gif)
-```
+> Note: All commands support Slash (`/`) invocations. If you prefer standard prefixes, the bot will automatically listen to the prefix defined by `PREFIX` in your `.env` file (e.g. `dv`).
 
-### Installation
+### Moderation
+| Command | Description | Slash Usage | Prefix Usage |
+|---------|-------------|-------------|--------------|
+| `/ban` | Permanently ban a member from the server | `/ban <user> [reason]` | `dvban <user> [reason]` |
+| `/fakeban` | Simulate a user ban completely (Sends DM and custom channel warnings) | `/fakeban <user> [reason]` | `dvfakeban <user> [reason]` |
+| `/kick` | Kick a member from the server | `/kick <user> [reason]` | `dvkick <user> [reason]` |
+| `/permscan` | Run a security audit on a member or the entire server. | `/permscan [member] [server]` | `dvpermscan [member] [server]` |
+| `/punishments` | View all punishments and warnings for a user | `/punishments` | `dvpunishments` |
+| `/tempban` | Temporarily ban or isolate a member from the server | `/tempban [add] [remove] [role]` | `dvtempban [add] [remove] [role]` |
+| `/timeout` | Mute/timeout a member for a specified duration | `/timeout <user> [duration] [reason]` | `dvtimeout <user> [duration] [reason]` |
+| `/unban` | Unban a previously banned user from the server | `/unban <userid> [reason]` | `dvunban <userid> [reason]` |
+| `/warnings` | Manage and view member warnings | `/warnings [add] [list] [delete] [clear]` | `dvwarnings [add] [list] [delete] [clear]` |
 
+### Administration
+| Command | Description | Slash Usage | Prefix Usage |
+|---------|-------------|-------------|--------------|
+| `/checkperms` | Audit a member's assigned permissions. | `/checkperms <user>` | `dvcheckperms <user>` |
+| `/command` | Manage channel command restrictions (disable / enable / list / panel) | `/command [panel] [disable] [enable] [list]` | `dvcommand [panel] [disable] [enable] [list]` |
+| `/purge` | Bulk message deletion in guild channels. | `/purge <amount> [user]` | `dvpurge <amount> [user]` |
+| `/rename` | Change or reset a member's server nickname | `/rename <user> <nickname>` | `dvrename <user> <nickname>` |
+| `/role` | Assign or remove a role from a member | `/role [add] [remove]` | `dvrole [add] [remove]` |
+| `/whois` | Comprehensive user and member lookup information. | `/whois [user]` | `dvwhois [user]` |
 
-# Clone the repository
-```bash
-git clone https://github.com/your-repo/digital-vigital.git
-cd digital-vigital
-```
+### Utility
+| Command | Description | Slash Usage | Prefix Usage |
+|---------|-------------|-------------|--------------|
+| `/afk` | Set your Away-From-Keyboard status for this server | `/afk [reason]` | `dvafk [reason]` |
+| `/avatar` | View user avatar in high resolution | `/avatar [user]` | `dvavatar [user]` |
+| `/banner` | View user banner in high resolution | `/banner [user]` | `dvbanner [user]` |
+| `/fuck` | Generate a witty, non-repetitive roast for a user | `/fuck [user]` | `dvfuck [user]` |
+| `/help` | View bot commands and usage instructions | `/help [command]` | `dvhelp [command]` |
+| `/ping` | Measure WebSocket gateway heartbeat and HTTP API round-trip latency. | `/ping` | `dvping` |
+| `/serverinfo` | Display comprehensive, beautifully formatted information about the server. | `/serverinfo` | `dvserverinfo` |
+| `/steal` | Steal custom emojis and stickers from messages or URLs | `/steal <source> [name]` | `dvsteal <source> [name]` |
 
-# Create and activate virtual environment
-```bash
-python -m venv .venv
-source .venv/bin/activate  
-# On Windows: .venv\Scripts\activate
-```
+### Analytics
+| Command | Description | Slash Usage | Prefix Usage |
+|---------|-------------|-------------|--------------|
+| `/leaderboard` | View server chat and voice leaderboards | `/leaderboard [type] [timeframe]` | `dvleaderboard [type] [timeframe]` |
+| `/userstats` | View member chat and voice activity statistics | `/userstats [user]` | `dvuserstats [user]` |
 
-# Install dependencies
-```bash
-pip install -r requirements.txt
-```
+### Channels & Voice
+| Command | Description | Slash Usage | Prefix Usage |
+|---------|-------------|-------------|--------------|
+| `/hide` | Hide or unhide a channel | `/hide <action> [channel]` | `dvhide <action> [channel]` |
+| `/lock` | Lock or unlock a channel | `/lock <action> [duration] [channel]` | `dvlock <action> [duration] [channel]` |
+| `/slowmode` | Set the slowmode rate limit for the current channel | `/slowmode <seconds>` | `dvslowmode <seconds>` |
+| `/drag` | Move a member to a specified voice channel or your current channel | `/drag <user> [channel]` | `dvdrag <user> [channel]` |
+| `/moveall` | Move all members from one voice channel to another | `/moveall <source> [target]` | `dvmoveall <source> [target]` |
 
-# Run the bot
-```bash
-python bot.py
-```
+---
+
+## Y" Installation & Deployment
+
+1. **Install Bun:**
+   ```bash
+   curl -fsSL https://bun.sh/install | bash
+   ```
+
+2. **Clone & Install:**
+   ```bash
+   git clone https://github.com/SYN606/dv-bot.git
+   cd dv-bot
+   bun run install:all
+   ```
+
+3. **Configure Environment:**
+   Create a `.env` file based on `example.env` and add your bot token.
+
+4. **Build Dashboard & Start:**
+   ```bash
+   bun run build:web
+   bun start
+   ```
+
+*During development, use `bun run dev` to boot the backend and Vite HMR simultaneously.*
