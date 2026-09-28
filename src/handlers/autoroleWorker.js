@@ -10,6 +10,7 @@ export class AutoRoleWorker {
   constructor(client) {
     this.client = client;
     this.timer = null;
+    this.isProcessing = false;
     
     // Check every hour if it's Sunday at midnight (UTC)
     this.intervalMs = 60 * 60 * 1000;
@@ -31,11 +32,17 @@ export class AutoRoleWorker {
   }
 
   async check() {
-    const now = new Date();
-    // Example: If it's Sunday (0) and hour is 0 (Midnight UTC)
-    if (now.getUTCDay() === 0 && now.getUTCHours() === 0) {
-      logger.info("[AutoRoleWorker] Triggering weekly rollover...");
-      await processWeeklyAutoRoles(this.client);
+    if (this.isProcessing) return;
+    this.isProcessing = true;
+    try {
+      const now = new Date();
+      // Example: If it's Sunday (0) and hour is 0 (Midnight UTC)
+      if (now.getUTCDay() === 0 && now.getUTCHours() === 0) {
+        logger.info("[AutoRoleWorker] Triggering weekly rollover...");
+        await processWeeklyAutoRoles(this.client);
+      }
+    } finally {
+      this.isProcessing = false;
     }
   }
 }

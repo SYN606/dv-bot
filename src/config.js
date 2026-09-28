@@ -64,7 +64,7 @@ export const CONFIG = {
   DASHBOARD_URL: dashboardUrl,
   DASHBOARD_URL_DEV: dashboardUrlDev,
   DASHBOARD_URL_PROD: dashboardUrlProd,
-  SESSION_SECRET: process.env.SESSION_SECRET || "dv-bot-super-secure-secret-key-2026",
+  SESSION_SECRET: process.env.SESSION_SECRET || (env === "production" ? null : "dv-bot-super-secure-secret-key-2026"),
 
   // Superusers (comma-separated list of up to 3 Discord User IDs)
   SUPERUSERS: (process.env.SUPERUSER_IDS || "")
@@ -75,3 +75,7 @@ export const CONFIG = {
 
   ROOT_DIR,
 };
+
+if (CONFIG.ENV === "production" && !CONFIG.SESSION_SECRET) {
+  throw new Error("FATAL SECURITY ERROR: You MUST set a secure SESSION_SECRET in .env for production environments.");
+}

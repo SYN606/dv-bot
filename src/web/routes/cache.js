@@ -7,6 +7,18 @@ export class ApiCache {
   constructor(defaultTtlMs = 30000) {
     this.store = new Map();
     this.defaultTtlMs = defaultTtlMs;
+
+    // Background sweeper to prevent memory leaks from one-off requested keys
+    setInterval(() => this.prune(), 60000);
+  }
+
+  prune() {
+    const now = Date.now();
+    for (const [key, item] of this.store.entries()) {
+      if (now > item.expiresAt) {
+        this.store.delete(key);
+      }
+    }
   }
 
   get(key) {

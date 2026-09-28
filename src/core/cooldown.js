@@ -3,6 +3,9 @@ export class GlobalCooldownManager {
     this.rate = rate;
     this.per = per;
     this.buckets = new Map(); // key -> { tokens, lastUpdate }
+
+    // Prevent memory leaks by pruning old records in the background
+    setInterval(() => this.prune(), 60000);
   }
 
   _getKey(userId, guildId = null) {

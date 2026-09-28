@@ -8,6 +8,7 @@ export class TempbanWorker {
     this.client = client;
     this.intervalMs = intervalMs;
     this.timer = null;
+    this.isProcessing = false;
   }
 
   start() {
@@ -24,6 +25,12 @@ export class TempbanWorker {
   }
 
   async check() {
-    return await processExpiredTempbans(this.client);
+    if (this.isProcessing) return;
+    this.isProcessing = true;
+    try {
+      await processExpiredTempbans(this.client);
+    } finally {
+      this.isProcessing = false;
+    }
   }
 }

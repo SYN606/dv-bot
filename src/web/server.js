@@ -123,6 +123,7 @@ export function createWebApp(client = null) {
         path: "/",
         httpOnly: true,
         sameSite: "Lax",
+        secure: CONFIG.ENV !== "dev" && CONFIG.ENV !== "test",
         maxAge: 60 * 60 * 24 * 7,
       });
 

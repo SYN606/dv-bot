@@ -13,12 +13,16 @@ import { permissionsRoutes } from "./permissionsRoutes.js";
 import { supporterRoutes } from "./supporterRoutes.js";
 import { autoroleRoutes } from "./autoroleRoutes.js";
 import { apiCache } from "./cache.js";
+import { rateLimiter } from "../middleware/rateLimit.js";
 
 /**
  * Modular API Router
  * Aggregates all domain-specific route modules with in-memory TTL caching and auth guards.
  */
 export const apiRouter = new Hono();
+
+// Global Rate Limiter: Max 200 requests per minute per IP
+apiRouter.use("*", rateLimiter({ windowMs: 60 * 1000, maxRequests: 200 }));
 
 // 1. Public & Session Routes (no guild admin guard)
 apiRouter.route("/", authRoutes);
