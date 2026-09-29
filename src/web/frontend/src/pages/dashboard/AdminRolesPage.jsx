@@ -47,8 +47,8 @@ export default function AdminRolesPage({ showToast }) {
         <div className="h-24 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
         <div className="h-32 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="h-[400px] glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
-          <div className="h-[400px] glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
+          <div className="h-100 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
+          <div className="h-100 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
         </div>
       </div>
     );

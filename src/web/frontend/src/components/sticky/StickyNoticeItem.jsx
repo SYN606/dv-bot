@@ -21,7 +21,7 @@ export default function StickyNoticeItem({ notice, channelName, onEdit, onDelete
           )}
         </div>
         
-        <p className="text-sm text-slate-300 break-words whitespace-pre-wrap leading-relaxed max-w-3xl">
+        <p className="text-sm text-slate-300 wrap-break-word whitespace-pre-wrap leading-relaxed max-w-3xl">
           {contentPreview}
         </p>
       </div>

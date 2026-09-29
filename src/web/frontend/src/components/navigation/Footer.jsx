@@ -11,7 +11,7 @@ export default function Footer({ botInfo }) {
         
         {/* Brand Section */}
         <div className="md:col-span-5 space-y-4">
-          <Link to="/" className="flex items-center gap-3 group inline-flex">
+          <Link to="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shadow-lg group-hover:border-brand-crimson/50 transition-colors">
               <img src={botAvatar} alt="DV" className="w-full h-full object-cover rounded-full" />
             </div>

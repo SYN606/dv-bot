@@ -33,8 +33,8 @@ export default function ErrorPage({ user, botInfo }) {
   return (
     <div className="min-h-screen bg-black text-neutral-200 flex flex-col antialiased relative overflow-x-hidden selection:bg-indigo-500/30 selection:text-white">
       {/* Background ambient lighting */}
-      <div className="fixed top-[-200px] left-[-200px] w-[800px] h-[800px] rounded-full glow-orb-secondary opacity-50 pointer-events-none -z-10" />
-      <div className="fixed bottom-[-200px] right-[-200px] w-[800px] h-[800px] rounded-full glow-orb-primary opacity-30 pointer-events-none -z-10" />
+      <div className="fixed -top-50 -left-50 w-200 h-200 rounded-full glow-orb-secondary opacity-50 pointer-events-none -z-10" />
+      <div className="fixed -bottom-50 -right-50 w-200 h-200 rounded-full glow-orb-primary opacity-30 pointer-events-none -z-10" />
 
       {/* Top Navigation */}
       <Navbar user={user} botInfo={botInfo} />
@@ -56,7 +56,7 @@ export default function ErrorPage({ user, botInfo }) {
 
           {/* Graphic & Error Numbers */}
           <div className="relative">
-            <h1 className="text-8xl sm:text-9xl font-black tracking-tighter bg-gradient-to-b from-white via-slate-200 to-slate-600/30 bg-clip-text text-transparent select-none">
+            <h1 className="text-8xl sm:text-9xl font-black tracking-tighter bg-linear-to-b from-white via-slate-200 to-slate-600/30 bg-clip-text text-transparent select-none">
               {errorCode}
             </h1>
             <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">

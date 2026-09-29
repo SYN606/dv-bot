@@ -76,7 +76,7 @@ export default function ElevatedRoles({ roles }) {
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full shadow-sm" style={colorStyle}></div>
-                  <span className="font-bold text-sm text-white truncate max-w-[150px] sm:max-w-[200px]">@{r.name}</span>
+                  <span className="font-bold text-sm text-white truncate max-w-37.5 sm:max-w-50">@{r.name}</span>
                 </div>
                 <div className="text-xs text-slate-400 font-semibold bg-white/5 px-2 py-1 rounded-md">
                   {r.memberCount || 0} members

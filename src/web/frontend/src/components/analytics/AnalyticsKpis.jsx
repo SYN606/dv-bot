@@ -49,7 +49,7 @@ export default function AnalyticsKpis({ summary, loading, timeframe }) {
         const Icon = kpi.icon;
         return (
           <div key={idx} className="glass-card p-6 rounded-2xl border border-white/5 relative overflow-hidden group">
-            <Icon className="absolute top-6 right-6 w-16 h-16 text-white/[0.02] -z-10 group-hover:scale-110 transition-transform" />
+            <Icon className="absolute top-6 right-6 w-16 h-16 text-white/2 -z-10 group-hover:scale-110 transition-transform" />
             <h3 className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-3">
               {kpi.title}
             </h3>

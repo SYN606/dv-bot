@@ -78,7 +78,7 @@ export default function Sidebar({ currentGuild, botInfo, mobileOpen, setMobileOp
 
         {/* Server Context Badge */}
         <div className="p-3 m-3 rounded-xl bg-slate-900/80 border border-white/5 flex items-center gap-3 shrink-0 group relative overflow-hidden">
-          <div className="w-10 h-10 rounded-full border border-white/10 p-[2px] shrink-0 bg-slate-950">
+          <div className="w-10 h-10 rounded-full border border-white/10 p-0.5 shrink-0 bg-slate-950">
             <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-slate-800">
               {currentGuild.icon ? (
                 <img src={`https://cdn.discordapp.com/icons/${currentGuild.id}/${currentGuild.icon}.png`} alt="" className="w-full h-full object-cover" />

@@ -85,7 +85,7 @@ export default function StickyEditor({
               ref={textareaRef}
               value={editor.content}
               onChange={(e) => updateEditor("content", e.target.value)}
-              className="w-full flex-1 min-h-[150px] p-3 bg-transparent text-sm text-white placeholder-slate-600 resize-none focus:outline-none"
+              className="w-full flex-1 min-h-37.5 p-3 bg-transparent text-sm text-white placeholder-slate-600 resize-none focus:outline-none"
               placeholder="Write your sticky notice..."
             />
             <div className="px-3 py-2 border-t border-white/5 bg-slate-900/50 rounded-b-xl flex justify-between items-center">

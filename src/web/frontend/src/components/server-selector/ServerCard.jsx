@@ -54,7 +54,7 @@ export default function ServerCard({ guild, onRequestAccess }) {
           <h3 className="text-base font-bold text-white truncate mb-1" title={guild.name}>
             {guild.name}
           </h3>
-          <Badge variant={getBadgeVariant()} className="flex inline-flex items-center gap-1.5 w-fit">
+          <Badge variant={getBadgeVariant()} className="flex items-center gap-1.5 w-fit">
             {getAccessIcon()}
             {accessLevel}
           </Badge>

@@ -32,7 +32,7 @@ export default function DiscordPreview({ botInfo, user, trigger, isEmbed, embedT
                 <span className="font-semibold text-white truncate">{user?.username || "Member"}</span>
                 <span className="text-xs text-[#80848E]">Today at 12:00 PM</span>
               </div>
-              <div className="text-[#DBDEE1] break-words whitespace-pre-wrap">{trigger}</div>
+              <div className="text-[#DBDEE1] wrap-break-word whitespace-pre-wrap">{trigger}</div>
             </div>
           </div>
         )}
@@ -53,18 +53,18 @@ export default function DiscordPreview({ botInfo, user, trigger, isEmbed, embedT
             </div>
             
             {!isEmbed ? (
-              <div className="text-[#DBDEE1] break-words whitespace-pre-wrap mt-0.5">
+              <div className="text-[#DBDEE1] wrap-break-word whitespace-pre-wrap mt-0.5">
                 {formatText(reply) || <span className="opacity-50 italic">Empty response...</span>}
               </div>
             ) : (
-              <div className="mt-1.5 border-l-4 border-[#2B2D31] bg-[#2B2D31] rounded-[4px] p-3 max-w-lg">
+              <div className="mt-1.5 border-l-4 border-[#2B2D31] bg-[#2B2D31] rounded-xs p-3 max-w-lg">
                 <div className="flex flex-col gap-2">
-                  {embedTitle && <div className="font-bold text-white break-words">{formatText(embedTitle)}</div>}
-                  <div className="text-sm text-[#DBDEE1] break-words whitespace-pre-wrap">
+                  {embedTitle && <div className="font-bold text-white wrap-break-word">{formatText(embedTitle)}</div>}
+                  <div className="text-sm text-[#DBDEE1] wrap-break-word whitespace-pre-wrap">
                     {formatText(reply) || <span className="opacity-50 italic">Empty embed description...</span>}
                   </div>
                   {imageUrl && (
-                    <img src={imageUrl} alt="Embed" className="rounded-lg max-w-full max-h-[300px] object-cover mt-2" onError={(e) => e.target.style.display = 'none'} />
+                    <img src={imageUrl} alt="Embed" className="rounded-lg max-w-full max-h-75 object-cover mt-2" onError={(e) => e.target.style.display = 'none'} />
                   )}
                 </div>
               </div>

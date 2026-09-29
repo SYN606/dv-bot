@@ -44,7 +44,7 @@ export default function CommandPalette({ isOpen, setIsOpen, currentGuild }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-32 sm:pt-48">
+    <div className="fixed inset-0 z-100 flex items-start justify-center pt-32 sm:pt-48">
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"

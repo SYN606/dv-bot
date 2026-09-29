@@ -65,7 +65,7 @@ export default function StatusVanityReward({ guildId, roles, channels, config, o
             value={config.vanity_message || ""}
             onChange={(e) => onChange("vanity_message", e.target.value)}
             placeholder="Thanks {user.mention} for representing the server!"
-            className="w-full min-h-[100px] px-4 py-3 bg-slate-900/80 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+            className="w-full min-h-25 px-4 py-3 bg-slate-900/80 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors resize-none"
           />
           <p className="text-[10px] text-slate-500 mt-1.5 flex items-center gap-1.5">
             <span className="font-mono bg-white/5 px-1 rounded text-slate-400">{`{user.mention}`}</span> 

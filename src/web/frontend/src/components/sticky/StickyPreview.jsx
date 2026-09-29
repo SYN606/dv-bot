@@ -34,7 +34,7 @@ export default function StickyPreview({ channelName, content, botInfo }) {
                 <span className="text-[10px] font-bold text-white bg-indigo-500 px-1.5 py-0.5 rounded uppercase tracking-wide">BOT</span>
               </div>
               
-              <div className="text-slate-300 text-sm whitespace-pre-wrap break-words leading-relaxed mb-3">
+              <div className="text-slate-300 text-sm whitespace-pre-wrap wrap-break-word leading-relaxed mb-3">
                 <div className="flex items-center gap-2 font-bold text-white mb-2 pb-2 border-b border-white/5 w-fit pr-4">
                   <Pin className="w-4 h-4 text-indigo-400" />
                   Sticky Notice

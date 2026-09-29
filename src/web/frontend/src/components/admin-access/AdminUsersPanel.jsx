@@ -44,7 +44,7 @@ export default function AdminUsersPanel({ guildId, adminUsers, ownerId, onAddUse
         <button
           onClick={handleAdd}
           disabled={!selectedUser || addingUserId}
-          className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors disabled:opacity-50 shrink-0 flex items-center justify-center min-w-[140px]"
+          className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors disabled:opacity-50 shrink-0 flex items-center justify-center min-w-35"
         >
           {addingUserId ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Admin"}
         </button>

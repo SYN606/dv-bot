@@ -80,8 +80,8 @@ export default function DocumentationPage({ user, botInfo }) {
       }} />
 
       {/* Gentle ambient lighting orbs */}
-      <div className="fixed top-[-200px] left-[-200px] w-[800px] h-[800px] rounded-full glow-orb-primary opacity-30 pointer-events-none -z-10" />
-      <div className="fixed bottom-[-200px] right-[-200px] w-[800px] h-[800px] rounded-full glow-orb-primary opacity-30 pointer-events-none -z-10" />
+      <div className="fixed -top-50 -left-50 w-200 h-200 rounded-full glow-orb-primary opacity-30 pointer-events-none -z-10" />
+      <div className="fixed -bottom-50 -right-50 w-200 h-200 rounded-full glow-orb-primary opacity-30 pointer-events-none -z-10" />
 
       {/* Top Navbar */}
       <Navbar user={user} botInfo={botInfo} />
@@ -93,7 +93,7 @@ export default function DocumentationPage({ user, botInfo }) {
             <BookOpen className="w-3.5 h-3.5" />
             <span>Bot Documentation & Commands Guide</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-crimson/80 bg-clip-text text-transparent">
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight bg-linear-to-r from-white via-slate-100 to-crimson/80 bg-clip-text text-transparent">
             Commands & Features
           </h1>
           <p className="text-xs sm:text-sm text-neutral-400 mt-2 max-w-2xl leading-relaxed">

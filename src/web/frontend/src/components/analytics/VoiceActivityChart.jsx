@@ -21,7 +21,7 @@ export default function VoiceActivityChart({ timeline, loading }) {
   }, [timeline]);
 
   return (
-    <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-4 flex flex-col h-[360px]">
+    <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-4 flex flex-col h-90">
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-xl bg-white/5 text-slate-300 border border-white/10">

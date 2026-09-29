@@ -4,7 +4,7 @@ import { Hash } from "lucide-react";
 export default function ChannelActivity({ channelBreakdown, loading }) {
   if (loading) {
     return (
-      <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-6 h-[360px] animate-pulse">
+      <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-6 h-90 animate-pulse">
         <div className="flex gap-2">
           <div className="w-8 h-8 rounded bg-white/5"></div>
           <div className="flex-1 space-y-2"><div className="h-4 w-32 bg-white/5 rounded"></div></div>
@@ -19,7 +19,7 @@ export default function ChannelActivity({ channelBreakdown, loading }) {
   const channels = channelBreakdown || [];
 
   return (
-    <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-6 flex flex-col h-[360px]">
+    <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-6 flex flex-col h-90">
       <div className="flex items-center gap-2 shrink-0">
         <div className="p-2 rounded-xl bg-white/5 text-slate-300 border border-white/10">
           <Hash className="w-4 h-4" />

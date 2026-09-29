@@ -30,11 +30,11 @@ export default function AutoresponderRule({ rule, isEditing, onEdit, onToggle, o
   }
 
   return (
-    <div className={`glass-card p-5 rounded-2xl border transition-colors ${isEditing ? "border-indigo-500/50 bg-indigo-500/5" : "border-white/5 hover:bg-white/[0.02]"}`}>
+    <div className={`glass-card p-5 rounded-2xl border transition-colors ${isEditing ? "border-indigo-500/50 bg-indigo-500/5" : "border-white/5 hover:bg-white/2"}`}>
       <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-start">
         <div className="space-y-3 min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-white truncate break-words font-sans">{rule.trigger}</span>
+            <span className="text-lg font-bold text-white truncate wrap-break-word font-sans">{rule.trigger}</span>
             {!rule.enabled && (
               <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400">Disabled</span>
             )}
@@ -59,7 +59,7 @@ export default function AutoresponderRule({ rule, isEditing, onEdit, onToggle, o
           </div>
 
           {(rule.reply || rule.embedTitle) && (
-            <div className="text-sm text-slate-300 bg-slate-900/50 p-3 rounded-lg border border-white/5 break-words">
+            <div className="text-sm text-slate-300 bg-slate-900/50 p-3 rounded-lg border border-white/5 wrap-break-word">
               {rule.isEmbed && (
                 <div className="mb-1 text-xs font-mono text-indigo-400 uppercase tracking-widest">[ Embed ]</div>
               )}

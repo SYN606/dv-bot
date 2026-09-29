@@ -40,7 +40,7 @@ export default function InsightsPanel({ insights, loading }) {
         {insights.topChannel && (
           <div className="shrink-0">
             <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Top Channel</div>
-            <div className="text-sm font-mono text-slate-200 truncate max-w-[120px]">{insights.topChannel}</div>
+            <div className="text-sm font-mono text-slate-200 truncate max-w-30">{insights.topChannel}</div>
           </div>
         )}
         

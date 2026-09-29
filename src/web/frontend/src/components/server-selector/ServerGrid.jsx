@@ -5,7 +5,7 @@ import { Server, Search } from "lucide-react";
 export default function ServerGrid({ servers, search, filterMode, onRequestAccess, onRefresh }) {
   if (servers.length === 0) {
     return (
-      <div className="glass-panel p-12 rounded-3xl border border-dashed border-white/5 text-center flex flex-col items-center justify-center min-h-[300px]">
+      <div className="glass-panel p-12 rounded-3xl border border-dashed border-white/5 text-center flex flex-col items-center justify-center min-h-75">
         {search ? (
           <>
             <Search className="w-10 h-10 text-slate-600 mb-4" />

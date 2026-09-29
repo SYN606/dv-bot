@@ -159,7 +159,7 @@ export default function HomePage({ user, botInfo }) {
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
               {/* Featured Large Card */}
-              <div className="md:col-span-7 glass-card p-8 sm:p-10 rounded-4xl border border-white/5 flex flex-col justify-between group hover:border-brand-crimson/30 transition-colors bg-gradient-to-br from-slate-900 to-slate-950">
+              <div className="md:col-span-7 glass-card p-8 sm:p-10 rounded-4xl border border-white/5 flex flex-col justify-between group hover:border-brand-crimson/30 transition-colors bg-linear-to-br from-slate-900 to-slate-950">
                 <div className="flex items-center justify-between mb-8">
                   <div className="w-12 h-12 rounded-2xl bg-brand-crimson/10 flex items-center justify-center text-brand-crimson border border-brand-crimson/20">
                     <ShieldCheck className="w-6 h-6" />
@@ -176,7 +176,7 @@ export default function HomePage({ user, botInfo }) {
 
               {/* Smaller Cards */}
               <div className="md:col-span-5 flex flex-col gap-6">
-                <div className="glass-card p-8 rounded-[2rem] border border-white/5 flex-1 group hover:border-brand-cyan/30 transition-colors">
+                <div className="glass-card p-8 rounded-4xlrder border-white/5 flex-1 group hover:border-brand-cyan/30 transition-colors">
                   <div className="flex items-center justify-between mb-6">
                     <div className="w-10 h-10 rounded-xl bg-brand-cyan/10 flex items-center justify-center text-brand-cyan">
                       <Bot className="w-5 h-5" />
@@ -187,7 +187,7 @@ export default function HomePage({ user, botInfo }) {
                   <p className="text-sm text-slate-400">Intelligent trigger-based responses to handle common community questions.</p>
                 </div>
 
-                <div className="glass-card p-8 rounded-[2rem] border border-white/5 flex-1 group hover:border-brand-violet/30 transition-colors">
+                <div className="glass-card p-8 rounded-4xl border border-white/5 flex-1 group hover:border-brand-violet/30 transition-colors">
                   <div className="flex items-center justify-between mb-6">
                     <div className="w-10 h-10 rounded-xl bg-brand-violet/10 flex items-center justify-center text-brand-violet">
                       <ImageIcon className="w-5 h-5" />
@@ -220,7 +220,7 @@ export default function HomePage({ user, botInfo }) {
             {/* Dashboard Mock */}
             <div className="relative mx-auto max-w-5xl">
               <div className="absolute inset-0 glow-orb-primary opacity-50 rounded-full"></div>
-              <div className="glass-panel border border-white/10 rounded-2xl sm:rounded-[2rem] overflow-hidden shadow-2xl relative z-10 bg-slate-950/90 aspect-[16/9] sm:aspect-auto sm:h-[600px] flex flex-col">
+              <div className="glass-panel border border-white/10 rounded-2xl sm:rounded-4xl overflow-hidden shadow-2xl relative z-10 bg-slate-950/90 aspect-video sm:aspect-auto sm:h-150 flex flex-col">
                 {/* Mock Header */}
                 <div className="h-12 border-b border-white/5 flex items-center px-4 gap-2 bg-slate-900/50">
                   <div className="flex gap-1.5">
@@ -269,7 +269,7 @@ export default function HomePage({ user, botInfo }) {
         </section>
 
         {/* FINAL CTA */}
-        <section className="py-24 sm:py-32 px-6 border-t border-white/5 bg-gradient-to-b from-slate-950 to-black">
+        <section className="py-24 sm:py-32 px-6 border-t border-white/5 bg-linear-to-b from-slate-950 to-black">
           <div className="max-w-3xl mx-auto text-center space-y-8">
             <h2 className="text-4xl sm:text-6xl font-display text-white tracking-tight">
               समुदाय से जुड़िये

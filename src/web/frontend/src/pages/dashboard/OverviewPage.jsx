@@ -73,7 +73,7 @@ export default function OverviewPage({ showToast }) {
   );
 
   const ModuleCard = ({ title, path, icon: Icon, active, statusText, accent }) => (
-    <Link to={path} className={`glass-card p-5 rounded-2xl group flex flex-col justify-between min-h-[140px] hover:border-[${accent}] transition-colors`}>
+    <Link to={path} className={`glass-card p-5 rounded-2xl group flex flex-col justify-between min-h-35 hover:border-[${accent}] transition-colors`}>
       <div className="flex items-start justify-between">
         <div className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-300 group-hover:text-white transition-colors`}>
           <Icon className="w-5 h-5" />
@@ -93,7 +93,7 @@ export default function OverviewPage({ showToast }) {
     <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 font-body">
       
       {/* Hero Section */}
-      <div className="relative overflow-hidden glass-panel p-8 sm:p-10 rounded-[24px] border border-white/10 shrink-0 bg-slate-900/60">
+      <div className="relative overflow-hidden glass-panel p-8 sm:p-10 rounded-3xl border border-white/10 shrink-0 bg-slate-900/60">
         <div className="absolute -bottom-10 -right-4 text-9xl font-display text-brand-crimson opacity-[0.03] select-none pointer-events-none leading-none">नियंत्रण</div>
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">

@@ -37,7 +37,7 @@ export default function VerificationPreview({ config, roles, botInfo }) {
               {config.embedTitle && (
                 <div className="font-bold text-white mb-2">{config.embedTitle}</div>
               )}
-              <div className="text-slate-300 text-sm whitespace-pre-wrap break-words leading-relaxed">
+              <div className="text-slate-300 text-sm whitespace-pre-wrap wrap-break-word leading-relaxed">
                 {resolvedDescription}
               </div>
             </div>

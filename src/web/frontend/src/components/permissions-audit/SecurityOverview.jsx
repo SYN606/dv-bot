@@ -44,7 +44,7 @@ export default function SecurityOverview({ auditData }) {
         </div>
       </div>
 
-      <div className="p-4 rounded-2xl bg-slate-900 border border-white/5 min-w-[200px]">
+      <div className="p-4 rounded-2xl bg-slate-900 border border-white/5 min-w-50">
         <div className="text-xs text-slate-400 mb-2">Highest observed risk</div>
         <div className="flex items-center justify-between">
           <Badge variant={getRiskVariant(highestRisk)} className="text-sm px-3 py-1">
