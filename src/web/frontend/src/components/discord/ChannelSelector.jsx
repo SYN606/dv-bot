@@ -38,7 +38,7 @@ export default function ChannelSelector({ channels = [], value, onChange, multip
   };
 
   const filtered = channels.filter(c => {
-    if (allowedTypes.length && !allowedTypes.includes(c.type)) return false;
+    if (allowedTypes.length > 0 && !(allowedTypes.map(t => t === 'text' ? [0, 5] : t === 'voice' ? [2] : [t]).flat().includes(c.type === undefined ? 0 : c.type))) return false;
     if (!search) return true;
     return c.name.toLowerCase().includes(search.toLowerCase());
   });
@@ -59,7 +59,7 @@ export default function ChannelSelector({ channels = [], value, onChange, multip
   };
 
   return (
-    <div className={`relative w-full ${open ? 'z-50' : 'z-10'}`} ref={containerRef}>
+    <div className={`relative w-full ${open ? 'z-50' : ''}`} ref={containerRef}>
       <button
         type="button"
         onClick={() => {

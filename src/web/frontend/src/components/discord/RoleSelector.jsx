@@ -52,7 +52,7 @@ export default function RoleSelector({ roles = [], value, onChange, multiple = f
   };
 
   return (
-    <div className={`relative w-full ${open ? 'z-50' : 'z-10'}`} ref={containerRef}>
+    <div className={`relative w-full ${open ? 'z-50' : ''}`} ref={containerRef}>
       <button
         type="button"
         onClick={() => {

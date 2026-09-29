@@ -3,7 +3,7 @@ import { RoleSelector, ChannelSelector } from "../discord";
 
 export default function StatusVanityReward({ guildId, roles, channels, config, onChange }) {
   return (
-    <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/5 relative overflow-hidden h-full flex flex-col">
+    <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/5 relative  h-full flex flex-col">
       <div className="mb-6 border-b border-white/5 pb-6">
         <h2 className="text-sm font-bold text-white tracking-wider mb-2 font-mono uppercase">Status Vanity Reward</h2>
         <p className="text-sm text-slate-400">
