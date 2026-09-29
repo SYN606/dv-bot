@@ -7,8 +7,8 @@ export default function LegalLayout({ botInfo }) {
     <div className="min-h-screen bg-slate-950 text-slate-300 font-sans selection:bg-brand-violet/30 selection:text-white flex flex-col relative overflow-hidden">
       
       {/* Background Gradients */}
-      <div className="fixed top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full glow-orb-primary blur-[140px] pointer-events-none -z-10 opacity-50" />
-      <div className="fixed bottom-[-100px] right-[-100px] w-[550px] h-[550px] rounded-full glow-orb-cyan blur-[150px] pointer-events-none -z-10 opacity-30" />
+      <div className="fixed -top-50 -left-50 w-200 h-200 rounded-full glow-orb-primary pointer-events-none -z-10 opacity-50" />
+      <div className="fixed -bottom-50 -right-50 w-200 h-200 rounded-full glow-orb-cyan pointer-events-none -z-10 opacity-30" />
 
       {/* Grid Pattern */}
       <div className="fixed inset-0 pointer-events-none z-0 opacity-40" style={{

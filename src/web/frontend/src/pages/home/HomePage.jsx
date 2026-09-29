@@ -19,8 +19,8 @@ export default function HomePage({ user, botInfo }) {
     <div className="min-h-screen bg-slate-950 text-slate-100 font-body selection:bg-brand-crimson/30 selection:text-white flex flex-col relative overflow-hidden">
       
       {/* Background Gradients */}
-      <div className="fixed top-[-20%] left-[-10%] w-[60vw] h-[60vw] rounded-full bg-brand-crimson/5 blur-[120px] pointer-events-none -z-10" />
-      <div className="fixed bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-brand-cyan/5 blur-[120px] pointer-events-none -z-10" />
+      <div className="fixed top-[-20%] left-[-10%] w-[60vw] h-[60vw] rounded-full glow-orb-primary opacity-30 pointer-events-none -z-10" />
+      <div className="fixed bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full glow-orb-cyan opacity-30 pointer-events-none -z-10" />
       
       {/* Grid Pattern */}
       <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.15]" style={{
@@ -159,7 +159,7 @@ export default function HomePage({ user, botInfo }) {
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
               {/* Featured Large Card */}
-              <div className="md:col-span-7 glass-card p-8 sm:p-10 rounded-[2rem] border border-white/5 flex flex-col justify-between group hover:border-brand-crimson/30 transition-colors bg-gradient-to-br from-slate-900 to-slate-950">
+              <div className="md:col-span-7 glass-card p-8 sm:p-10 rounded-4xl border border-white/5 flex flex-col justify-between group hover:border-brand-crimson/30 transition-colors bg-gradient-to-br from-slate-900 to-slate-950">
                 <div className="flex items-center justify-between mb-8">
                   <div className="w-12 h-12 rounded-2xl bg-brand-crimson/10 flex items-center justify-center text-brand-crimson border border-brand-crimson/20">
                     <ShieldCheck className="w-6 h-6" />
@@ -219,7 +219,7 @@ export default function HomePage({ user, botInfo }) {
 
             {/* Dashboard Mock */}
             <div className="relative mx-auto max-w-5xl">
-              <div className="absolute inset-0 bg-brand-crimson/20 blur-[100px] rounded-full"></div>
+              <div className="absolute inset-0 glow-orb-primary opacity-50 rounded-full"></div>
               <div className="glass-panel border border-white/10 rounded-2xl sm:rounded-[2rem] overflow-hidden shadow-2xl relative z-10 bg-slate-950/90 aspect-[16/9] sm:aspect-auto sm:h-[600px] flex flex-col">
                 {/* Mock Header */}
                 <div className="h-12 border-b border-white/5 flex items-center px-4 gap-2 bg-slate-900/50">

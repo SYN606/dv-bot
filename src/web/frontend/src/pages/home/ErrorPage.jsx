@@ -33,8 +33,8 @@ export default function ErrorPage({ user, botInfo }) {
   return (
     <div className="min-h-screen bg-black text-neutral-200 flex flex-col antialiased relative overflow-x-hidden selection:bg-indigo-500/30 selection:text-white">
       {/* Background ambient lighting */}
-      <div className="fixed top-[-140px] left-[-100px] w-[600px] h-[600px] rounded-full bg-indigo-600/15 blur-[160px] pointer-events-none -z-10" />
-      <div className="fixed bottom-[-140px] right-[-100px] w-[600px] h-[600px] rounded-full bg-rose-600/10 blur-[160px] pointer-events-none -z-10" />
+      <div className="fixed top-[-200px] left-[-200px] w-[800px] h-[800px] rounded-full glow-orb-secondary opacity-50 pointer-events-none -z-10" />
+      <div className="fixed bottom-[-200px] right-[-200px] w-[800px] h-[800px] rounded-full glow-orb-primary opacity-30 pointer-events-none -z-10" />
 
       {/* Top Navigation */}
       <Navbar user={user} botInfo={botInfo} />

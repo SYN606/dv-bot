@@ -80,8 +80,8 @@ export default function DocumentationPage({ user, botInfo }) {
       }} />
 
       {/* Gentle ambient lighting orbs */}
-      <div className="fixed top-[-120px] left-[-100px] w-[500px] h-[500px] rounded-full bg-crimson/5 blur-[140px] pointer-events-none -z-10" />
-      <div className="fixed bottom-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full bg-crimson/5 blur-[140px] pointer-events-none -z-10" />
+      <div className="fixed top-[-200px] left-[-200px] w-[800px] h-[800px] rounded-full glow-orb-primary opacity-30 pointer-events-none -z-10" />
+      <div className="fixed bottom-[-200px] right-[-200px] w-[800px] h-[800px] rounded-full glow-orb-primary opacity-30 pointer-events-none -z-10" />
 
       {/* Top Navbar */}
       <Navbar user={user} botInfo={botInfo} />

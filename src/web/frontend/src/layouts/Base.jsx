@@ -71,9 +71,9 @@ export default function Base({
       }} />
 
       {/* Ambient background glows */}
-      <div className="fixed top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full glow-orb-primary blur-[140px] pointer-events-none -z-10" />
-      <div className="fixed bottom-[-100px] right-[-100px] w-[550px] h-[550px] rounded-full glow-orb-secondary blur-[150px] pointer-events-none -z-10" />
-      <div className="fixed top-[40%] left-[50%] -translate-x-1/2 w-[400px] h-[400px] rounded-full glow-orb-tertiary blur-[130px] pointer-events-none -z-10" />
+      <div className="fixed -top-50 -left-50 w-200 h-200 rounded-full glow-orb-primary pointer-events-none -z-10" />
+      <div className="fixed -bottom-50t-[-200px] w-225 h-225 rounded-full glow-orb-secondary pointer-events-none -z-10" />
+      <div className="fixed top-[40%] left-[50%] -translate-x-1/2 w-150 h-150 rounded-full glow-orb-tertiary pointer-events-none -z-10" />
 
       {/* Stationary Sidebar (never moves on scroll) */}
       {!hideSidebar && (
