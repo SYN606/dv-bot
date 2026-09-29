@@ -1,108 +1,84 @@
 /**
  * ============================================================================
- * DIGITAL VIGITAL - APPLE MONOCHROME GLASSMORPHISM (TAILWIND CSS 4)
+ * DIGITAL VIGITAL - COMMUNITY COMMAND CENTER
  * ============================================================================
- * Ultra-subtle, sleek, and high-performance design system.
+ * Dark UI, Charcoal Glass, Editorial Typography, Crimson Accents
  */
 
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-mono: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
-
-  /* Typographic Scale */
-  --text-xs: 0.8125rem;
-  --text-xs--line-height: 1.3;
-  --text-sm: 0.875rem;
-  --text-sm--line-height: 1.4;
-  --text-base: 1rem;
-  --text-base--line-height: 1.5;
-  --text-lg: 1.125rem;
-  --text-lg--line-height: 1.5;
-  --text-xl: 1.25rem;
-  --text-xl--line-height: 1.5;
-  --text-2xl: 1.5rem;
-  --text-2xl--line-height: 1.4;
-  --text-3xl: 1.875rem;
-  --text-3xl--line-height: 1.3;
-  --text-4xl: 2.25rem;
-  --text-4xl--line-height: 1.2;
+  --font-display: "Tiro Devanagari Hindi", serif;
+  --font-body: "Inter", -apple-system, sans-serif;
+  --font-sans: "Inter", -apple-system, sans-serif; /* fallback */
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* Monochrome Colors */
-  --color-slate-950: #000000;
-  --color-slate-900: #0a0a0a;
-  --color-slate-850: #121212;
-  --color-slate-800: #171717;
-  --color-slate-700: #262626;
-  --color-slate-600: #404040;
-  --color-slate-500: #737373;
-  --color-slate-400: #a3a3a3;
-  --color-slate-300: #d4d4d4;
-  --color-slate-200: #e5e5e5;
-  --color-slate-100: #f5f5f5;
+  --color-slate-950: #030303;
+  --color-slate-900: #080808;
+  --color-slate-850: #0f0f10;
+  --color-slate-800: #151515;
+  --color-slate-700: #222222;
+  --color-slate-600: #3f3f46;
+  --color-slate-500: #71717a;
+  --color-slate-400: #a1a1aa;
+  --color-slate-300: #d4d4d8;
+  --color-slate-200: #e4e4e7;
+  --color-slate-100: #f4f4f5;
   --color-white: #ffffff;
 
-  --color-brand: #ffffff;
-  --color-brand-hover: #e5e5e5;
-  --color-brand-glow: rgba(255, 255, 255, 0.1);
-
-  /* Status Colors (Subtle Apple-like) */
-    /* Status Colors (Subtle Apple-like) */
-  --color-status-success: #32d74b; /* iOS Green */
-  --color-status-warning: #ff9f0a; /* iOS Orange */
-  --color-status-error: #ff453a;   /* iOS Red */
-  --color-status-info: #0a84ff;    /* iOS Blue */
+  /* Brand Accents */
+  --color-brand-crimson: #dc143c;
+  --color-brand-crimson-dark: #9f1239;
+  --color-brand-violet: #8b5cf6;
+  --color-brand-cyan: #06b6d4;
+  --color-brand-orange: #f97316;
+  --color-brand-green: #10b981;
   
-  /* Apple Signature Palette */
-  --color-apple-blue: #0a84ff;
-  --color-crimson: #dc143c;
-  --color-crimson-dark: #8b0000;
-  --color-apple-green: #32d74b;
-  --color-apple-indigo: #5e5ce6;
-  --color-apple-orange: #ff9f0a;
-  --color-apple-pink: #ff375f;
-  --color-apple-purple: #bf5af2;
-  --color-apple-red: #ff453a;
-  --color-apple-teal: #64d2ff;
-  --color-apple-yellow: #ffd60a;
+  --color-status-success: #10b981;
+  --color-status-warning: #f59e0b;
+  --color-status-error: #e11d48;
+  --color-status-info: #0ea5e9;
   
   --radius-xs: 0.25rem;
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
-  --radius-3xl: 2rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
   --radius-full: 9999px;
 }
 
 :root {
-  /* Apple HIG Dark Mode Background */
-  --bg-primary: #000000;
-  --bg-secondary: #121212;
+  --bg-primary: #030303;
+  --bg-secondary: #080808;
   
-  /* Apple HIG Dark Mode Materials */
-  /* Thick Material (Modals, Popovers) */
-  --glass-panel-bg: rgba(30, 30, 30, 0.75);
-  --glass-panel-border: rgba(255, 255, 255, 0.1);
-  --glass-panel-blur: 40px;
+  /* Charcoal Glass Materials */
+  --glass-panel-bg: rgba(15, 15, 15, 0.65);
+  --glass-panel-border: rgba(255, 255, 255, 0.05);
+  --glass-panel-blur: 24px;
 
-  /* Thin Material (Cards, Elements) */
-  --glass-card-bg: rgba(40, 40, 40, 0.45);
-  --glass-card-border: rgba(255, 255, 255, 0.08);
-  --glass-card-border-hover: rgba(255, 255, 255, 0.2);
-  --glass-card-blur: 30px;
+  --glass-card-bg: rgba(25, 25, 25, 0.4);
+  --glass-card-border: rgba(255, 255, 255, 0.04);
+  --glass-card-border-hover: rgba(255, 255, 255, 0.1);
+  --glass-card-blur: 16px;
 
-  /* Apple Ambient Accents (Subtle Glows behind the glass) */
-  --glow-primary: rgba(220, 20, 60, 0.12); /* Subtle Crimson */
-  --glow-secondary: rgba(139, 0, 0, 0.10); /* Dark Red */
-  --glow-tertiary: rgba(255, 99, 71, 0.08); /* Tomato */
+  /* Accents */
+  --glow-crimson: rgba(220, 20, 60, 0.15);
+  --glow-crimson-dark: rgba(159, 18, 57, 0.15);
+  --glow-violet: rgba(139, 92, 246, 0.15);
+  --glow-cyan: rgba(6, 182, 212, 0.15);
 
   --scrollbar-width: 6px;
-  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.35);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
   --scrollbar-track: transparent;
+
+  /* Glow orb color mappings (used by .glow-orb-* utility classes) */
+  --glow-primary: var(--glow-crimson);
+  --glow-secondary: var(--glow-violet);
+  --glow-tertiary: var(--glow-cyan);
 }
 
 body {

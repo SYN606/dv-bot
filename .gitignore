@@ -205,3 +205,4 @@ coverage/
 .DS_Store
 Thumbs.db
 tests/
+*.txt
