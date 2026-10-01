@@ -156,6 +156,14 @@ export async function handleAutoresponder(message) {
 
     // 3. Consume Cooldowns Upon Confirmed Match
     channelBurstCooldowns.set(channelKey, now);
+    
+    // Prune channelBurstCooldowns
+    if (channelBurstCooldowns.size >= MAX_COOLDOWNS) {
+      const cutoff = now - 10;
+      for (const [k, t] of channelBurstCooldowns.entries()) {
+        if (t < cutoff) channelBurstCooldowns.delete(k);
+      }
+    }
 
     if (ar.cooldown > 0) {
       responderCooldowns.set(cdKey, now);

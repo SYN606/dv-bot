@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { setAfkStatus } from "../../db/helpers/afk.js";
+import { CONFIG } from "../../config.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("afk")
@@ -47,6 +48,7 @@ export default createCommand({
         `• **Reason:** \`${reason}\`\n\n` +
         `-# Sending a message in this server will clear your AFK status and show any mentions you received.`,
       thumbnail: avatar,
+      image: CONFIG.AFK_IMAGE_URL || null,
       level: "SUCCESS",
       headerDivider: false,
     });

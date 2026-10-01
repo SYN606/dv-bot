@@ -68,6 +68,14 @@ export async function checkGuildTag(member) {
         const channel = guild.channels.cache.get(config.clan_channel_id);
         if (channel && channel.isTextBased()) {
           announcementCooldowns.set(cdKey, now);
+          
+          if (announcementCooldowns.size > 5000) {
+            const cutoff = now - COOLDOWN_SECONDS;
+            for (const [k, v] of announcementCooldowns.entries()) {
+              if (v < cutoff) announcementCooldowns.delete(k);
+            }
+          }
+          
           const msg = formatMessage(config.clan_message, member);
           await channel.send({ content: msg }).catch(() => {});
         }
@@ -128,6 +136,14 @@ export async function checkVanityStatus(oldPresence, newPresence) {
         const channel = guild.channels.cache.get(config.vanity_channel_id);
         if (channel && channel.isTextBased()) {
           announcementCooldowns.set(cdKey, now);
+          
+          if (announcementCooldowns.size > 5000) {
+            const cutoff = now - COOLDOWN_SECONDS;
+            for (const [k, v] of announcementCooldowns.entries()) {
+              if (v < cutoff) announcementCooldowns.delete(k);
+            }
+          }
+          
           const msg = formatMessage(config.vanity_message, member);
           await channel.send({ content: msg }).catch(() => {});
         }

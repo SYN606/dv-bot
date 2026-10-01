@@ -59,6 +59,7 @@ export default createCommand({
     const members = [...source.members.values()];
     for (const m of members) {
       await m.voice.setChannel(target).catch(() => {});
+      await new Promise(r => setTimeout(r, 500)); // Delay to prevent 429
     }
 
     return await ctx.reply({

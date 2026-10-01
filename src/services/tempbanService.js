@@ -213,6 +213,7 @@ export async function processExpiredTempbans(client) {
         reason: "Temporary ban duration expired",
       });
       count++;
+      await new Promise(r => setTimeout(r, 1000)); // Delay to prevent 429
     } catch (err) {
       logger.error(`[TEMPBAN SERVICE] Error lifting expired tempban for ${record.user_id}:`, err);
     }

@@ -15,8 +15,17 @@ export default createCommand({
   slashBuilder,
 
   async execute(ctx) {
-    const user = ctx.options.user ? await ctx.client.users.fetch(ctx.options.user, { force: true }) : await ctx.client.users.fetch(ctx.user.id, { force: true });
-    const bannerUrl = user.bannerURL({ size: 1024, dynamic: true });
+    let targetId = ctx.options.user;
+    if (!targetId && ctx.message?.mentions?.users?.first()) {
+      targetId = ctx.message.mentions.users.first().id;
+    } else if (!targetId && ctx.options._args?.length > 0) {
+       const match = ctx.options._args[0].match(/\d{17,20}/);
+       if (match) targetId = match[0];
+    }
+    
+    targetId = targetId || ctx.user.id;
+    const user = await ctx.client.users.fetch(targetId, { force: true }).catch(() => ctx.user);
+    const bannerUrl = user.bannerURL?.({ size: 1024, dynamic: true }) || null;
 
     if (!bannerUrl) {
       return await ctx.reply({

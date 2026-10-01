@@ -191,6 +191,7 @@ export default createCommand({
         else currentStaticCount++;
 
         addedItems.push(String(newEmoji));
+        await new Promise(r => setTimeout(r, 1000)); // Delay to prevent 429
       } catch (err) {
         failedItems.push(`\`${sanitizedName}\` (${err?.message?.slice(0, 30) || "Error"})`);
       }
@@ -226,6 +227,7 @@ export default createCommand({
 
         currentStickerCount++;
         addedItems.push(`Sticker: \`${newSticker.name}\``);
+        await new Promise(r => setTimeout(r, 1000)); // Delay to prevent 429
       } catch (err) {
         failedItems.push(`Sticker \`${sanitizedName}\` (${err?.message?.slice(0, 30) || "Error"})`);
       }

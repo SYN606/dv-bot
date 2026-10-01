@@ -73,6 +73,7 @@ export async function processWeeklyAutoRoles(client) {
         if (!role) continue;
         for (const member of role.members.values()) {
           await member.roles.remove(role, "Weekly Auto-Role Reset").catch(() => {});
+          await new Promise(r => setTimeout(r, 1000)); // Delay to prevent 429
         }
       }
 

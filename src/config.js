@@ -73,6 +73,10 @@ export const CONFIG = {
     .filter(Boolean)
     .slice(0, 3),
 
+  // Feature Media URLs
+  AFK_IMAGE_URL: process.env.AFK_IMAGE_URL || null,
+  MENTION_GIF_URL: process.env.MENTION_GIF_URL || null,
+
   ROOT_DIR,
 };
 

@@ -212,8 +212,8 @@ export async function handleMediaOnly(message) {
     }).catch(() => {});
   }
 
-  // 8. Ephemeral User Warning (throttled to avoid 429 when user spams multiple lines)
-  const warnKey = `${message.guild.id}:${message.author.id}:${message.channel.id}`;
+  // 8. Ephemeral Channel Warning (throttled to avoid 429 when multiple users spam)
+  const warnKey = `${message.guild.id}:${message.channel.id}`;
   const lastWarn = warningThrottle.get(warnKey) || 0;
   if (now - lastWarn >= WARNING_COOLDOWN_MS) {
     warningThrottle.set(warnKey, now);

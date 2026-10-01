@@ -2,6 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { addAfkMention, getAfkStatus, removeAfkStatus } from "../db/helpers/afk.js";
 import { makeEmbed, COLORS } from "../core/embeds.js";
 import { EMOJIS } from "../core/emojis.js";
+import { CONFIG } from "../config.js";
 
 // Cache for mention notification cooldowns: `${guildId}:${targetUserId}:${channelId}` -> timestamp (ms)
 const afkMentionCooldown = new Map();
@@ -114,6 +115,7 @@ export async function handleAfk(message) {
           title: `${authorName} is no longer AFK`,
           description,
           thumbnail: authorAvatar,
+          image: CONFIG.AFK_IMAGE_URL || null,
           level: "SUCCESS",
           color: COLORS.DARK,
           headerDivider: false,
@@ -185,6 +187,7 @@ export async function handleAfk(message) {
               `• **Time:** <t:${Math.floor(now / 1000)}:R>\n\n` +
               `**Message Content:**\n> ${message.content?.slice(0, 250) || "*No text content*"}`,
             thumbnail: message.author.displayAvatarURL?.({ dynamic: true, size: 256 }) || undefined,
+            image: CONFIG.MENTION_GIF_URL || null,
             level: "INFO",
             color: COLORS.DARK,
             footer: {

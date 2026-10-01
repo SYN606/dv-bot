@@ -49,6 +49,9 @@ export class PermissionScanner {
         }
 
         await this.scanGuild(guild);
+        
+        // Add a delay between guilds to prevent API spikes
+        await new Promise(r => setTimeout(r, 2000));
       } catch (err) {
         console.error(`[PermissionScanner] Failed to scan guild ${guild.id}:`, err);
       }

@@ -16,7 +16,7 @@ export default createCommand({
   category: "Admin",
   aliases: ["nick", "setnick"],
   modOnly: true,
-  requiredPermission: PermissionFlagsBits.ManageNicknames,
+  requiredPermission: PermissionFlagsBits.ManageMessages,
   slashBuilder,
 
   async execute(ctx) {
@@ -45,10 +45,14 @@ export default createCommand({
       if (ctx.message?.mentions?.members?.first()) {
         const mentioned = ctx.message.mentions.members.first();
         targetUserId = mentioned.id;
-        newNick = ctx.options._args?.slice(1).join(" ");
+        // The nickname is all arguments that aren't the mention
+        newNick = ctx.options._args.filter(arg => !arg.includes(mentioned.id)).join(" ");
       } else if (ctx.options._args?.length > 1 && /^\d{17,20}$/.test(ctx.options._args[0])) {
         targetUserId = ctx.options._args[0];
         newNick = ctx.options._args.slice(1).join(" ");
+      } else if (ctx.options._args?.length > 1 && /^\d{17,20}$/.test(ctx.options._args[1])) {
+        targetUserId = ctx.options._args[1];
+        newNick = ctx.options._args.filter((_, i) => i !== 1).join(" ");
       } else if (ctx.options._args?.length > 0) {
         // Renaming self if no user mentioned
         targetUserId = user.id;
