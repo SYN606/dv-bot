@@ -41,7 +41,7 @@ export const CONFIG = {
   SYNC_COMMANDS: (process.env.SYNC_COMMANDS || "true").toLowerCase() === "true",
 
   // Bot Presence Configuration
-  BOT_STATUS: process.env.BOT_STATUS || "online",
+  BOT_STATUS: process.env.BOT_STATUS || "idle",
   BOT_ACTIVITY_TYPE: process.env.BOT_ACTIVITY_TYPE || "LISTENING",
   BOT_ACTIVITY_TEXT: process.env.BOT_ACTIVITY_TEXT || null,
 

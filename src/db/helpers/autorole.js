@@ -59,7 +59,7 @@ export async function getAutoRoleBlacklist(guildId) {
       restriction_type: "DENY",
     },
   });
-  return records.map((r) => r.role_id);
+  return Array.from(new Set(records.map((r) => r.role_id)));
 }
 
 export async function addAutoRoleBlacklist(guildId, roleId) {

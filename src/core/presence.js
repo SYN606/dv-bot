@@ -71,9 +71,9 @@ export function startPresence(client) {
     }
   };
 
-  // Run immediately and then rotate every 20 seconds
+  // Run immediately and then rotate every 2 minutes
   updateStatus();
-  presenceInterval = setInterval(updateStatus, 20_000);
+  presenceInterval = setInterval(updateStatus, 120_000);
 }
 
 /**

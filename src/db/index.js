@@ -112,7 +112,8 @@ function ensureSqliteSchema(sqlite) {
       feature TEXT NOT NULL,
       restriction_type TEXT NOT NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(guild_id, role_id, feature, restriction_type)
     );
 
     CREATE TABLE IF NOT EXISTS channel_restrictions (
