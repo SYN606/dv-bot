@@ -56,6 +56,8 @@ export default createCommand({
       return await ctx.reply("Invalid voice channels.");
     }
 
+    await ctx.defer();
+
     const members = [...source.members.values()];
     for (const m of members) {
       await m.voice.setChannel(target).catch(() => {});
