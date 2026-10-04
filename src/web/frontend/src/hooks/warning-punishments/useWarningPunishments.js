@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { getWarningPunishments, addWarningPunishment, removeWarningPunishment } from "../../api/client";
-import { findNextUnusedThreshold } from "../../utils/warning-punishments/punishment";
+import {
+  findNextUnusedThreshold,
+  getPunishmentType,
+  MIN_WARNING_THRESHOLD,
+  MAX_WARNING_THRESHOLD
+} from "../../utils/warning-punishments/punishment";
 
 export function useWarningPunishments(guildId, showToast) {
   const [rules, setRules] = useState([]);
@@ -42,19 +47,17 @@ export function useWarningPunishments(guildId, showToast) {
   }, [fetchRules]);
 
   const addRule = useCallback(async () => {
-    const count = parseInt(warnCount);
-    if (!count || count < 1 || count > 100) return false;
+    const count = parseInt(warnCount, 10);
+    if (!count || count < MIN_WARNING_THRESHOLD || count > MAX_WARNING_THRESHOLD) return false;
     if (rules.find((r) => r.warn_count === count)) return false;
 
+    const pType = getPunishmentType(actionType);
     setAdding(true);
     try {
       await addWarningPunishment(guildId, {
         warnCount: count,
         actionType,
-        duration:
-          actionType === "timeout" || actionType === "tempban"
-            ? parseInt(duration)
-            : null,
+        duration: pType?.requiresDuration ? parseInt(duration, 10) : null,
       });
       showToast?.({
         title: "Success",
@@ -66,7 +69,10 @@ export function useWarningPunishments(guildId, showToast) {
       const data = await getWarningPunishments(guildId);
       const updatedRules = data?.configs || [];
       setRules(updatedRules);
-      setWarnCount(findNextUnusedThreshold(updatedRules, count));
+      const nextThreshold = findNextUnusedThreshold(updatedRules, count);
+      if (nextThreshold !== null) {
+        setWarnCount(nextThreshold);
+      }
       return true;
     } catch (err) {
       console.error(err);

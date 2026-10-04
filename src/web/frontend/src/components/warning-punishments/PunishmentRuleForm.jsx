@@ -1,6 +1,12 @@
 import React from "react";
 import { Plus } from "lucide-react";
-import { PUNISHMENT_TYPES, DURATION_OPTIONS } from "../../utils/warning-punishments/punishment";
+import {
+  PUNISHMENT_TYPES,
+  MIN_WARNING_THRESHOLD,
+  MAX_WARNING_THRESHOLD,
+  getPunishmentType,
+  getDurationOptionsForPunishment,
+} from "../../utils/warning-punishments/punishment";
 
 export default function PunishmentRuleForm({
   warnCount, setWarnCount,
@@ -9,9 +15,11 @@ export default function PunishmentRuleForm({
   onSubmit, adding, existingRules
 }) {
   const existingCounts = new Set(existingRules.map(r => r.warn_count));
-  const isDuplicate = existingCounts.has(parseInt(warnCount));
-  const isValid = warnCount >= 1 && warnCount <= 100 && !isDuplicate;
-  const selectedType = PUNISHMENT_TYPES.find(p => p.id === actionType);
+  const parsedCount = parseInt(warnCount, 10);
+  const isDuplicate = existingCounts.has(parsedCount);
+  const isValid = Number.isInteger(parsedCount) && parsedCount >= MIN_WARNING_THRESHOLD && parsedCount <= MAX_WARNING_THRESHOLD && !isDuplicate;
+  const selectedType = getPunishmentType(actionType);
+  const durationOptions = getDurationOptionsForPunishment(actionType);
 
   return (
     <div className="glass-panel bg-slate-900/50 p-6 rounded-3xl border border-white/5 space-y-6 h-full flex flex-col">
@@ -27,10 +35,10 @@ export default function PunishmentRuleForm({
         </label>
         <input
           type="number"
-          min={1}
-          max={100}
+          min={MIN_WARNING_THRESHOLD}
+          max={MAX_WARNING_THRESHOLD}
           value={warnCount}
-          onChange={(e) => setWarnCount(parseInt(e.target.value) || 1)}
+          onChange={(e) => setWarnCount(parseInt(e.target.value, 10) || MIN_WARNING_THRESHOLD)}
           className={`w-full px-4 py-2.5 bg-slate-900 border rounded-xl text-sm text-white font-mono focus:outline-none transition-colors ${
             isDuplicate ? "border-rose-500/50 focus:border-rose-500" : "border-white/10 focus:border-indigo-500"
           }`}
@@ -56,7 +64,12 @@ export default function PunishmentRuleForm({
               <button
                 type="button"
                 key={type.id}
-                onClick={() => setActionType(type.id)}
+                onClick={() => {
+                  setActionType(type.id);
+                  if (type.requiresDuration && (!duration || duration <= 0)) {
+                    setDuration(type.defaultDuration || 3600);
+                  }
+                }}
                 className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-colors ${
                   isSelected
                     ? "bg-indigo-500/10 border-indigo-500/50"
@@ -70,7 +83,7 @@ export default function PunishmentRuleForm({
                   <div className={`text-sm font-bold ${isSelected ? "text-indigo-300" : "text-slate-300"}`}>
                     {type.name}
                   </div>
-                  <div className="text-[10px] text-slate-500 leading-snug">{type.desc}</div>
+                  <div className="text-[10px] text-slate-500 leading-snug">{type.description || type.desc}</div>
                 </div>
               </button>
             );
@@ -79,17 +92,17 @@ export default function PunishmentRuleForm({
       </div>
 
       {/* Duration — only for timeout / tempban */}
-      {selectedType?.hasDuration && (
+      {selectedType?.requiresDuration && (
         <div>
           <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
             Duration
           </label>
           <select
             value={duration}
-            onChange={(e) => setDuration(parseInt(e.target.value))}
+            onChange={(e) => setDuration(parseInt(e.target.value, 10))}
             className="w-full px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
           >
-            {DURATION_OPTIONS.map(opt => (
+            {durationOptions.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>

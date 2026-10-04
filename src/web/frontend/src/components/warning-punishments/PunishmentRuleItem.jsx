@@ -15,7 +15,7 @@ function getPunishmentVariant(actionType) {
 
 export default function PunishmentRuleItem({ rule, onDelete, isDeleting, isLast }) {
   const pType = getPunishmentType(rule.action_type);
-  const hasDuration = rule.action_type === "timeout" || rule.action_type === "tempban";
+  const hasDuration = pType ? pType.requiresDuration : (rule.action_type === "timeout" || rule.action_type === "tempban");
   const variant = getPunishmentVariant(rule.action_type);
 
   return (
@@ -30,7 +30,7 @@ export default function PunishmentRuleItem({ rule, onDelete, isDeleting, isLast 
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-base font-bold text-white">{pType.name}</span>
+              <span className="text-base font-bold text-white">{pType?.name || rule.action_type}</span>
               <Badge variant={variant}>{rule.action_type.toUpperCase()}</Badge>
             </div>
             {hasDuration && rule.duration && (
