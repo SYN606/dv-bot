@@ -352,7 +352,8 @@ function ensureSqliteSchema(sqlite) {
       active_vc_start TEXT,
       last_active_at TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(guild_id, user_id)
     );
 
     CREATE TABLE IF NOT EXISTS daily_activity_snapshots (
@@ -363,7 +364,8 @@ function ensureSqliteSchema(sqlite) {
       leaves_count INTEGER DEFAULT 0,
       total_messages INTEGER DEFAULT 0,
       total_vc_seconds INTEGER DEFAULT 0,
-      peak_active_members INTEGER DEFAULT 0
+      peak_active_members INTEGER DEFAULT 0,
+      UNIQUE(guild_id, date)
     );
 
     CREATE TABLE IF NOT EXISTS channel_activities (
@@ -372,7 +374,8 @@ function ensureSqliteSchema(sqlite) {
       channel_id TEXT NOT NULL,
       date TEXT NOT NULL,
       message_count INTEGER DEFAULT 0,
-      vc_seconds_spent INTEGER DEFAULT 0
+      vc_seconds_spent INTEGER DEFAULT 0,
+      UNIQUE(guild_id, channel_id, date)
     );
 
     CREATE TABLE IF NOT EXISTS hourly_activities (
@@ -381,7 +384,8 @@ function ensureSqliteSchema(sqlite) {
       day_of_week INTEGER NOT NULL,
       hour_of_day INTEGER NOT NULL,
       message_count INTEGER DEFAULT 0,
-      vc_seconds INTEGER DEFAULT 0
+      vc_seconds INTEGER DEFAULT 0,
+      UNIQUE(guild_id, day_of_week, hour_of_day)
     );
   `);
 
@@ -395,6 +399,20 @@ function ensureSqliteSchema(sqlite) {
   } catch (_) {}
   try {
     sqlite.exec("ALTER TABLE warning_punishment_config ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP;");
+  } catch (_) {}
+
+  // Unique indexes for existing SQLite databases to prevent analytics duplication
+  try {
+    sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_member_analytics_guild_user ON member_analytics (guild_id, user_id);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_activity_guild_date ON daily_activity_snapshots (guild_id, date);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_channel_activities_unique ON channel_activities (guild_id, channel_id, date);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_hourly_activities_unique ON hourly_activities (guild_id, day_of_week, hour_of_day);");
   } catch (_) {}
 }
 

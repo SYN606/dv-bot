@@ -1,6 +1,4 @@
-/**
- * Server Config & Bot Settings API
- */
+
 export {
   getConfig,
   saveConfig,

@@ -84,7 +84,10 @@ authRoutes.get("/me", async (c) => {
   }
 
   return c.json({
-    user: session.user,
+    user: {
+      ...session.user,
+      isSuperuser,
+    },
     isSuperuser,
     guilds: Array.from(guildsMap.values()),
   });
@@ -157,7 +160,10 @@ authRoutes.post("/me/sync", async (c) => {
   }
 
   return c.json({
-    user: session.user,
+    user: {
+      ...session.user,
+      isSuperuser,
+    },
     isSuperuser,
     guilds: Array.from(guildsMap.values()),
   });

@@ -1,13 +1,13 @@
 import React, { useMemo } from "react";
 import { Line } from "react-chartjs-2";
 import { MessageSquare } from "lucide-react";
-import { commonChartOptions, analyticsColors } from "../../utils/analytics";
+import { commonChartOptions, analyticsColors, formatShortDate } from "../../utils/analytics";
 
 export default function MessageActivityChart({ timeline, loading }) {
   const chartData = useMemo(() => {
     if (!timeline || timeline.length === 0) return null;
     return {
-      labels: timeline.map(t => t.date),
+      labels: timeline.map(t => formatShortDate(t.date)),
       datasets: [
         {
           label: "Messages",

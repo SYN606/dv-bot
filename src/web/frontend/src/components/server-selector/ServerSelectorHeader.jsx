@@ -1,12 +1,14 @@
 import React from "react";
 import { Search, RotateCw } from "lucide-react";
+import SuperuserBadge from "../ui/SuperuserBadge";
 
-export default function ServerSelectorHeader({ search, setSearch, refreshing, onRefresh }) {
+export default function ServerSelectorHeader({ search, setSearch, refreshing, onRefresh, user }) {
   return (
     <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
       <div>
         <div className="flex items-center gap-3 mb-2">
           <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest opacity-80">Dashboard</span>
+          {user?.isSuperuser && <SuperuserBadge size="sm" />}
         </div>
         <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Your Servers</h1>
         <p className="text-sm text-slate-400 max-w-xl">

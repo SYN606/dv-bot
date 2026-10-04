@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react";
 export default function LegalLayout({ botInfo }) {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-300 font-sans selection:bg-brand-violet/30 selection:text-white flex flex-col relative overflow-hidden">
-      
+
       {/* Background Gradients */}
       <div className="fixed -top-50 -left-50 w-200 h-200 rounded-full glow-orb-primary pointer-events-none -z-10 opacity-50" />
       <div className="fixed -bottom-50 -right-50 w-200 h-200 rounded-full glow-orb-cyan pointer-events-none -z-10 opacity-30" />

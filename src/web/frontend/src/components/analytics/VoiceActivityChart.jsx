@@ -1,16 +1,15 @@
 import React, { useMemo } from "react";
 import { Bar } from "react-chartjs-2";
 import { Mic } from "lucide-react";
-import { commonChartOptions, analyticsColors } from "../../utils/analytics";
+import { commonChartOptions, analyticsColors, formatShortDate } from "../../utils/analytics";
 
 export default function VoiceActivityChart({ timeline, loading }) {
   const chartData = useMemo(() => {
     if (!timeline || timeline.length === 0) return null;
     return {
-      labels: timeline.map(t => t.date),
+      labels: timeline.map(t => formatShortDate(t.date)),
       datasets: [
         {
-          type: "bar",
           label: "Voice Minutes",
           data: timeline.map(t => t.voiceMinutes),
           backgroundColor: analyticsColors.tertiaryBg,

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useParams, useOutletContext } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useAnalytics } from "../../hooks/analytics";
 
 // Components
@@ -13,13 +13,6 @@ import {
   ChannelActivity,
   Leaderboard
 } from "../../components/analytics";
-
-
-
-
-
-
-
 
 export default function AnalyticsPage() {
   const { guildId } = useParams();
@@ -81,6 +74,7 @@ export default function AnalyticsPage() {
       <Leaderboard 
         topChatters={data?.topChatters} 
         topVoice={data?.topVoice} 
+        leaderboards={data?.leaderboards}
         loading={loading} 
       />
     </div>

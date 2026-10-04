@@ -93,3 +93,23 @@ export async function removeAutoRoleBlacklist(guildId, roleId) {
   });
   return deleted > 0;
 }
+
+export async function setAutoRoleBlacklist(guildId, roleIds) {
+  const gId = String(guildId);
+  await ensureGuild(gId);
+  const targetIds = Array.from(new Set((roleIds || []).map(String).filter(Boolean)));
+  
+  const existing = await getAutoRoleBlacklist(gId);
+  const toAdd = targetIds.filter(id => !existing.includes(id));
+  const toRemove = existing.filter(id => !targetIds.includes(id));
+
+  for (const roleId of toRemove) {
+    await removeAutoRoleBlacklist(gId, roleId);
+  }
+  for (const roleId of toAdd) {
+    await addAutoRoleBlacklist(gId, roleId);
+  }
+
+  return targetIds;
+}
+

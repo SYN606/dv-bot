@@ -41,6 +41,16 @@ export const analyticsColors = {
   tooltipBorder: "rgba(255, 255, 255, 0.1)",
 };
 
+export function formatShortDate(dateStr) {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length < 3) return dateStr;
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const m = parseInt(parts[1], 10) - 1;
+  const d = parseInt(parts[2], 10);
+  return `${monthNames[m] || parts[1]} ${d}`;
+}
+
 export const commonChartOptions = {
   responsive: true,
   maintainAspectRatio: false,

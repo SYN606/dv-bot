@@ -1,11 +1,6 @@
 import React from "react";
 
-/**
- * RouteLoader — Suspense fallback for lazy-loaded route pages.
- *
- * Shows a minimal skeleton structure that matches the dashboard layout
- * without triggering a full-page spinner reset on navigation.
- */
+
 export default function RouteLoader() {
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6 animate-pulse">

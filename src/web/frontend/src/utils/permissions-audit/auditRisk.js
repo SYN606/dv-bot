@@ -7,6 +7,8 @@ export function getRiskLabel(level) {
     case "high":
     case "elevated":
       return "ELEVATED";
+    case "moderate":
+      return "MODERATE";
     case "green":
     case "low":
     case "safe":
@@ -25,6 +27,8 @@ export function getRiskVariant(level) {
     case "high":
     case "elevated":
       return "warning";
+    case "moderate":
+      return "warning";
     case "green":
     case "low":
     case "safe":
@@ -42,6 +46,7 @@ export function getPermissionPriority(level) {
     case "yellow":
     case "high":
     case "elevated":
+    case "moderate":
       return 2;
     case "green":
     case "low":

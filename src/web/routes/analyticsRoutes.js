@@ -16,11 +16,14 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
   const guildId = c.req.param("guildId");
   const daysParam = parseInt(c.req.query("days"), 10);
   const numDays = [7, 14, 30].includes(daysParam) ? daysParam : 7;
+  const isForced = c.req.query("refresh") === "true" || c.req.query("force") === "true";
 
   const cacheKey = `guild:${guildId}:analytics:${numDays}`;
-  const cached = apiCache.get(cacheKey);
-  if (cached) {
-    return c.json(cached);
+  if (!isForced) {
+    const cached = apiCache.get(cacheKey);
+    if (cached) {
+      return c.json(cached);
+    }
   }
 
   const botGuild = c.get("botGuild");
@@ -63,11 +66,12 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
 
   // 3. Server Retention & Engagement Summary
   const stats = await getServerRetentionStats(guildId, numDays);
-  const totalMessages = timeline.reduce((acc, curr) => acc + curr.messages, 0) || stats.totalMessages;
-  const totalVoiceMinutes = timeline.reduce((acc, curr) => acc + curr.voiceMinutes, 0) || Math.round(stats.totalVcSeconds / 60);
+  const hasSnapshots = stats.hasSnapshots;
+  const totalMessages = hasSnapshots ? timeline.reduce((acc, curr) => acc + curr.messages, 0) : stats.totalMessages;
+  const totalVoiceMinutes = hasSnapshots ? timeline.reduce((acc, curr) => acc + curr.voiceMinutes, 0) : Math.round(stats.totalVcSeconds / 60);
   const totalVoiceHours = Math.round((totalVoiceMinutes / 60) * 10) / 10;
-  const totalJoins = timeline.reduce((acc, curr) => acc + curr.joins, 0) || stats.totalJoins;
-  const totalLeaves = timeline.reduce((acc, curr) => acc + curr.leaves, 0) || stats.totalLeaves;
+  const totalJoins = hasSnapshots ? timeline.reduce((acc, curr) => acc + curr.joins, 0) : stats.totalJoins;
+  const totalLeaves = hasSnapshots ? timeline.reduce((acc, curr) => acc + curr.leaves, 0) : stats.totalLeaves;
   const netGrowth = totalJoins - totalLeaves;
   const dailyAvgMessages = Math.round(totalMessages / numDays);
   const dailyAvgVoiceMinutes = Math.round(totalVoiceMinutes / numDays);
@@ -105,7 +109,7 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
   const hourly = await getHourlyDistribution(guildId);
 
   // 6. Algorithmic Server Insights
-  const topChannelItem = channelBreakdown[0];
+  const topChannelItem = channelBreakdown.find((ch) => ch.messages > 0 || ch.voiceMinutes > 0);
   const insights = {
     primeWindow: hourly.primeWindow,
     busiestDay: hourly.busiestDay,
@@ -113,10 +117,12 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
     growthSummary: `${netGrowth >= 0 ? "+" : ""}${netGrowth} members over past ${numDays} days (${stats.retentionRate}% retention)`,
   };
 
-  // 7. Top Chatters & Top Voice Members (Top 10)
-  const [topChattersRaw, topVoiceRaw] = await Promise.all([
-    getLeaderboard(guildId, "messages", numDays <= 7 ? "weekly" : "total", 10),
-    getLeaderboard(guildId, "vc", numDays <= 7 ? "weekly" : "total", 10),
+  // 7. Top Chatters & Top Voice Members (Both Weekly & All-Time)
+  const [topChattersWeeklyRaw, topChattersTotalRaw, topVoiceWeeklyRaw, topVoiceTotalRaw] = await Promise.all([
+    getLeaderboard(guildId, "messages", "weekly", 10),
+    getLeaderboard(guildId, "messages", "total", 10),
+    getLeaderboard(guildId, "vc", "weekly", 10),
+    getLeaderboard(guildId, "vc", "total", 10),
   ]);
 
   const client = c.get("discordClient");
@@ -129,34 +135,42 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
     return u;
   };
 
-  const topChatters = await Promise.all(topChattersRaw.map(async (m) => {
+  const formatChatter = async (m) => {
     const userObj = await resolveUser(m.user_id);
+    const weeklyMessages = Number(m.weekly_messages || 0);
+    const totalMessages = Number(m.total_messages || 0);
     return {
       userId: String(m.user_id),
       username: userObj?.username || `User ${m.user_id}`,
       avatar: userObj?.displayAvatarURL?.() || null,
-      messages: Number(m.total_messages || 0),
-      weeklyMessages: Number(m.weekly_messages || 0),
-      totalMessages: Number(m.total_messages || 0),
-      count: Number(m.total_messages || 0),
+      messages: numDays <= 7 ? weeklyMessages : totalMessages,
+      weeklyMessages,
+      totalMessages,
+      count: numDays <= 7 ? weeklyMessages : totalMessages,
     };
-  }));
+  };
 
-  const topVoice = await Promise.all(topVoiceRaw.map(async (m) => {
+  const formatVoice = async (m) => {
     const userObj = await resolveUser(m.user_id);
     const totalMinutes = Math.round(Number(m.total_vc_seconds || 0) / 60);
     const weeklyMinutes = Math.round(Number(m.weekly_vc_seconds || 0) / 60);
-
     return {
       userId: String(m.user_id),
       username: userObj?.username || `User ${m.user_id}`,
       avatar: userObj?.displayAvatarURL?.() || null,
-      vcMinutes: totalMinutes,
+      vcMinutes: numDays <= 7 ? weeklyMinutes : totalMinutes,
       totalMinutes,
       weeklyMinutes,
-      minutes: totalMinutes,
+      minutes: numDays <= 7 ? weeklyMinutes : totalMinutes,
     };
-  }));
+  };
+
+  const [topChattersWeekly, topChattersTotal, topVoiceWeekly, topVoiceTotal] = await Promise.all([
+    Promise.all(topChattersWeeklyRaw.map(formatChatter)),
+    Promise.all(topChattersTotalRaw.map(formatChatter)),
+    Promise.all(topVoiceWeeklyRaw.map(formatVoice)),
+    Promise.all(topVoiceTotalRaw.map(formatVoice)),
+  ]);
 
   const payload = {
     timeframe: numDays,
@@ -165,8 +179,14 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
     timeline,
     channelBreakdown,
     hourlyDistribution: hourly.hours,
-    topChatters,
-    topVoice,
+    topChatters: numDays <= 7 ? topChattersWeekly : topChattersTotal,
+    topVoice: numDays <= 7 ? topVoiceWeekly : topVoiceTotal,
+    leaderboards: {
+      chattersWeekly: topChattersWeekly,
+      chattersTotal: topChattersTotal,
+      voiceWeekly: topVoiceWeekly,
+      voiceTotal: topVoiceTotal,
+    },
   };
 
   // Cache for 60 seconds

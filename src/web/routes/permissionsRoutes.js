@@ -37,6 +37,7 @@ permissionsRoutes.get("/guilds/:guildId/permissions/audit", async (c) => {
       auditResult.roles.push({
         id: role.id,
         name: role.name,
+        color: role.hexColor,
         hexColor: role.hexColor,
         position: role.position,
         permissions: dangerous,
@@ -60,18 +61,22 @@ permissionsRoutes.get("/guilds/:guildId/permissions/audit", async (c) => {
       else if (threatScore >= 10 || yellowCount >= 2) threatLevel = "High";
       else if (threatScore >= 5 || yellowCount > 0) threatLevel = "Moderate";
 
-      auditResult.members.push({
-        id: member.id,
-        username: member.user.username,
-        avatar: member.user.displayAvatarURL(),
-        bot: member.user.bot,
-        permissions: data,
-        isOwner: member.id === guild.ownerId,
-        redCount,
-        yellowCount,
-        threatScore,
-        threatLevel
-      });
+      // Only include members with real elevated risk or ownership in server-wide audit list
+      // (avoids returning thousands of regular users if @everyone has basic invite permissions)
+      if (redCount > 0 || yellowCount > 0 || threatScore >= 5 || member.id === guild.ownerId) {
+        auditResult.members.push({
+          id: member.id,
+          username: member.user.username,
+          avatar: member.user.displayAvatarURL(),
+          bot: member.user.bot,
+          permissions: data,
+          isOwner: member.id === guild.ownerId,
+          redCount,
+          yellowCount,
+          threatScore,
+          threatLevel
+        });
+      }
     }
   }
 
@@ -121,7 +126,7 @@ permissionsRoutes.get("/guilds/:guildId/permissions/member/:userId", async (c) =
     username: member.user?.username || member.displayName || "Unknown User",
     avatar: member.user?.displayAvatarURL() || "https://cdn.discordapp.com/embed/avatars/0.png",
     bot: !!member.user?.bot,
-    roles: member.roles.cache.map(r => ({ id: r.id, name: r.name, hexColor: r.hexColor })).filter(r => r.name !== "@everyone")
+    roles: member.roles.cache.map(r => ({ id: r.id, name: r.name, hexColor: r.hexColor, color: r.hexColor })).filter(r => r.name !== "@everyone")
   };
 
   // Fetch punishment history
@@ -137,19 +142,25 @@ permissionsRoutes.get("/guilds/:guildId/permissions/member/:userId", async (c) =
       type: p.action_type.toUpperCase(),
       reason: p.reason,
       moderator_id: p.moderator_id,
+      moderatorId: p.moderator_id,
       date: p.created_at,
+      timestamp: p.created_at,
     })),
     ...warnings.map(w => ({
       type: 'WARNING',
       reason: w.reason,
       moderator_id: w.moderator_id,
+      moderatorId: w.moderator_id,
       date: w.created_at,
+      timestamp: w.created_at,
     })),
     ...tempbans.map(t => ({
       type: 'TEMPBAN',
       reason: t.tempban_reason || "No reason provided",
       moderator_id: t.moderator_id,
+      moderatorId: t.moderator_id,
       date: t.created_at,
+      timestamp: t.created_at,
     }))
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -158,6 +169,7 @@ permissionsRoutes.get("/guilds/:guildId/permissions/member/:userId", async (c) =
     permissions: data,
     threatScore,
     threatLevel,
-    history
+    history,
+    moderationHistory: history
   });
 });

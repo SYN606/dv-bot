@@ -3,6 +3,7 @@ import {
   getAutoRoleConfig, 
   setAutoRoleConfig,
   getAutoRoleBlacklist,
+  setAutoRoleBlacklist,
   addAutoRoleBlacklist,
   removeAutoRoleBlacklist
 } from "../../db/helpers/autorole.js";
@@ -33,15 +34,19 @@ autoroleRoutes.put("/guilds/:guildId/autorole", async (c) => {
     await setAutoRoleConfig(guildId, body.config);
   }
   
-  if (body.blacklist_add && Array.isArray(body.blacklist_add)) {
-    for (const roleId of body.blacklist_add) {
-      await addAutoRoleBlacklist(guildId, roleId);
+  if (Array.isArray(body.blacklist)) {
+    await setAutoRoleBlacklist(guildId, body.blacklist);
+  } else {
+    if (body.blacklist_add && Array.isArray(body.blacklist_add)) {
+      for (const roleId of body.blacklist_add) {
+        await addAutoRoleBlacklist(guildId, roleId);
+      }
     }
-  }
-  
-  if (body.blacklist_remove && Array.isArray(body.blacklist_remove)) {
-    for (const roleId of body.blacklist_remove) {
-      await removeAutoRoleBlacklist(guildId, roleId);
+    
+    if (body.blacklist_remove && Array.isArray(body.blacklist_remove)) {
+      for (const roleId of body.blacklist_remove) {
+        await removeAutoRoleBlacklist(guildId, roleId);
+      }
     }
   }
 

@@ -4,8 +4,10 @@ import {
   LayoutDashboard, TrendingUp, ShieldCheck, Pin, Image as ImageIcon,
   Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award
 } from "lucide-react";
+import SuperuserBadge from "../ui/SuperuserBadge";
+import { getDiscordAvatarUrl } from "../../utils/discord";
 
-export default function Sidebar({ currentGuild, botInfo, mobileOpen, setMobileOpen }) {
+export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMobileOpen }) {
   const location = useLocation();
   const botAvatar = botInfo?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png";
 
@@ -21,10 +23,15 @@ export default function Sidebar({ currentGuild, botInfo, mobileOpen, setMobileOp
       group: "COMMUNITY",
       items: [
         { id: "verification", label: "Verification Gate", icon: ShieldCheck, path: `/dashboard/${currentGuild.id}/verification` },
-        { id: "sticky", label: "Sticky Messages", icon: Pin, path: `/dashboard/${currentGuild.id}/sticky` },
-        { id: "media_only", label: "Media-Only Channels", icon: ImageIcon, path: `/dashboard/${currentGuild.id}/media-only` },
         { id: "supporter", label: "Supporter Rewards", icon: Trophy, path: `/dashboard/${currentGuild.id}/supporter` },
         { id: "autorole", label: "Leaderboard Auto-Roles", icon: Award, path: `/dashboard/${currentGuild.id}/autorole` }
+      ]
+    },
+    {
+      group: "CONTENT",
+      items: [
+        { id: "sticky", label: "Sticky Messages", icon: Pin, path: `/dashboard/${currentGuild.id}/sticky` },
+        { id: "media_only", label: "Media-Only Channels", icon: ImageIcon, path: `/dashboard/${currentGuild.id}/media-only` }
       ]
     },
     {
@@ -37,9 +44,9 @@ export default function Sidebar({ currentGuild, botInfo, mobileOpen, setMobileOp
     {
       group: "MODERATION",
       items: [
+        { id: "warning_punishments", label: "Warning Punishments", icon: AlertTriangle, path: `/dashboard/${currentGuild.id}/warning-punishments` },
         { id: "admin_roles", label: "Admin Roles", icon: Shield, path: `/dashboard/${currentGuild.id}/admin-roles` },
-        { id: "permissions", label: "Permissions Audit", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/permissions` },
-        { id: "warning_punishments", label: "Warning Punishments", icon: AlertTriangle, path: `/dashboard/${currentGuild.id}/warning-punishments` }
+        { id: "permissions", label: "Permissions Audit", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/permissions` }
       ]
     },
     {
@@ -125,6 +132,30 @@ export default function Sidebar({ currentGuild, botInfo, mobileOpen, setMobileOp
             </div>
           ))}
         </nav>
+
+        {/* User Profile Card */}
+        {user && (
+          <div className="p-2.5 mx-3 mb-2 rounded-xl bg-slate-900/80 border border-white/5 flex items-center gap-2.5 shrink-0 shadow-sm">
+            <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 shrink-0 bg-slate-950">
+              <img
+                src={getDiscordAvatarUrl(user)}
+                alt={user.username || "User"}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-semibold text-slate-200 truncate">
+                  {user.global_name || user.username}
+                </span>
+                {user.isSuperuser && <SuperuserBadge size="sm" />}
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono block truncate">
+                @{user.username}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* System Status Footer */}
         <div className="p-4 border-t border-white/5 bg-slate-900/50 shrink-0">

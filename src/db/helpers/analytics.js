@@ -256,7 +256,12 @@ export async function getServerRetentionStats(guildId, days = 7) {
   }
 
   const netGrowth = totalJoins - totalLeaves;
-  const retentionRate = totalJoins > 0 ? Math.max(0, Math.min(100, Math.round(((totalJoins - totalLeaves) / totalJoins) * 100))) : 100;
+  let retentionRate = 100;
+  if (totalJoins > 0) {
+    retentionRate = Math.max(0, Math.min(100, Math.round(((totalJoins - totalLeaves) / totalJoins) * 100)));
+  } else if (totalLeaves > 0) {
+    retentionRate = 0;
+  }
 
   return {
     totalActive,
@@ -268,6 +273,7 @@ export async function getServerRetentionStats(guildId, days = 7) {
     netGrowth,
     retentionRate,
     snapshots,
+    hasSnapshots: snapshots.length > 0,
   };
 }
 
@@ -345,11 +351,14 @@ export async function getHourlyDistribution(guildId) {
   const sortedByMessages = [...hoursList].sort((a, b) => b.messages - a.messages);
   const peakHourObj = sortedByMessages[0] || { hour: 20, messages: 0 };
   const peakHour = peakHourObj.hour;
+  const hasActivity = sortedByMessages.some((h) => h.messages > 0 || h.vcSeconds > 0);
 
-  // Prime window: 3-hour block around peak
+  // Prime window: 3-hour block around peak (only if activity exists)
   const startWindow = (peakHour - 1 + 24) % 24;
   const endWindow = (peakHour + 2) % 24;
-  const primeWindow = `${String(startWindow).padStart(2, "0")}:00 – ${String(endWindow).padStart(2, "0")}:00 UTC`;
+  const primeWindow = hasActivity
+    ? `${String(startWindow).padStart(2, "0")}:00 – ${String(endWindow).padStart(2, "0")}:00 UTC`
+    : null;
 
   // Busiest day
   let maxDayIdx = 0;
@@ -360,7 +369,7 @@ export async function getHourlyDistribution(guildId) {
       maxDayIdx = i;
     }
   }
-  const busiestDay = dayNames[maxDayIdx];
+  const busiestDay = hasActivity && maxDayMsgs > 0 ? dayNames[maxDayIdx] : null;
 
   return {
     hours: hoursList.map((h) => ({
@@ -372,7 +381,7 @@ export async function getHourlyDistribution(guildId) {
     peakHour,
     primeWindow,
     busiestDay,
-    hasActivity: sortedByMessages.some((h) => h.messages > 0 || h.vcSeconds > 0),
+    hasActivity,
   };
 }
 

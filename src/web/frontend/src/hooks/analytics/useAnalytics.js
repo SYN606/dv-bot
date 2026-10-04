@@ -11,7 +11,7 @@ export function useAnalytics(guildId, timeframe) {
     setLoading(true);
     setError(null);
     try {
-      const res = await getAnalytics(guildId, timeframe);
+      const res = await getAnalytics(guildId, timeframe, forced);
       setData(res);
     } catch (err) {
       console.error("Failed to load analytics:", err);

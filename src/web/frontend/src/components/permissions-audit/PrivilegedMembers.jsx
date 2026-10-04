@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import Badge from "../ui/Badge";
 import Pagination from "../ui/Pagination";
-import { getRiskLabel, getRiskVariant, getPermissionPriority } from "../../utils/permissions-audit";
+import { getRiskLabel, getRiskVariant } from "../../utils/permissions-audit";
+import { getDiscordAvatarUrl } from "../../utils/discord";
 import { Search } from "lucide-react";
 
 export default function PrivilegedMembers({ members, onInspect }) {
@@ -69,14 +70,17 @@ export default function PrivilegedMembers({ members, onInspect }) {
         {paginatedMembers.map(m => {
           const riskLabel = getRiskLabel(m.threatLevel);
           const riskVariant = getRiskVariant(m.threatLevel);
-          const avatarUrl = m.avatar 
-            ? `https://cdn.discordapp.com/avatars/${m.id}/${m.avatar}.png` 
-            : "https://cdn.discordapp.com/embed/avatars/0.png";
+          const avatarUrl = getDiscordAvatarUrl(m);
 
           return (
             <div key={m.id} className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <img src={avatarUrl} alt={m.username} className="w-10 h-10 rounded-full border border-white/10" />
+                <img 
+                  src={avatarUrl} 
+                  alt={m.username} 
+                  className="w-10 h-10 rounded-full border border-white/10" 
+                  onError={(e) => { e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png"; }}
+                />
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="font-bold text-sm text-white">{m.username}</span>

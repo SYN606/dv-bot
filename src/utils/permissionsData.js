@@ -26,22 +26,25 @@ export const PERMISSION_RISKS = {
 export function analyzeMemberPermissions(member) {
   const perms = member.permissions;
   const found = [];
+  const isOwner = member.id === member.guild?.ownerId;
 
   for (const key of Object.keys(PERMISSION_RISKS)) {
     const permData = PERMISSION_RISKS[key];
     if (perms.has(permData.flag)) {
-      // Find sources
+      // Find which roles specifically grant this flag
       const sources = [];
       for (const role of member.roles.cache.values()) {
-        if (role.permissions.has(permData.flag)) {
+        if (role.permissions.has(permData.flag, false) || role.permissions.has(PermissionFlagsBits.Administrator, false)) {
           sources.push(role.name);
         }
       }
 
       found.push({
         permission: permData.name,
+        name: permData.name,
         level: permData.level,
-        roles: sources.length > 0 ? sources : ["Direct / Owner"],
+        roles: sources.length > 0 ? sources : (isOwner ? ["Server Owner"] : ["Direct / Explicit"]),
+        sources: sources.length > 0 ? sources : (isOwner ? ["Server Owner"] : ["Direct / Explicit"]),
       });
     }
   }

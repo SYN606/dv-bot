@@ -16,7 +16,7 @@ export default {
       await ensureGuild(guildId);
       const [snapshot] = await DailyActivitySnapshot.findOrCreate({
         where: { guild_id: guildId, date: today },
-        defaults: { guild_id: guildId, date: today, joins_count: 1 },
+        defaults: { guild_id: guildId, date: today, joins_count: 0 },
       });
       await snapshot.increment("joins_count");
     } catch (err) {

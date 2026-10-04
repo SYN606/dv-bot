@@ -31,10 +31,20 @@ export default {
     } catch {}
 
     // 2. Voice Analytics Tracking
-    const joined = !oldState.channelId && newState.channelId;
-    const left = oldState.channelId && !newState.channelId;
+    const joined = !oldState.channelId && Boolean(newState.channelId);
+    const left = Boolean(oldState.channelId) && !newState.channelId;
+    const switched = Boolean(oldState.channelId) && Boolean(newState.channelId) && oldState.channelId !== newState.channelId;
 
     if (joined) {
+      activeVoiceSessions.set(sessionKey, Date.now());
+    } else if (switched) {
+      const startTime = activeVoiceSessions.get(sessionKey);
+      if (startTime) {
+        const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+        if (elapsedSeconds > 5) {
+          await recordVoiceActivity(guildId, userId, oldState.channelId, elapsedSeconds).catch(() => {});
+        }
+      }
       activeVoiceSessions.set(sessionKey, Date.now());
     } else if (left) {
       const startTime = activeVoiceSessions.get(sessionKey);
@@ -45,6 +55,8 @@ export default {
         if (elapsedSeconds > 5) {
           await recordVoiceActivity(guildId, userId, oldState.channelId, elapsedSeconds).catch(() => {});
         }
+      } else {
+        activeVoiceSessions.delete(sessionKey);
       }
     }
   },

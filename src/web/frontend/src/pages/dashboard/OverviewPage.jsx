@@ -9,6 +9,7 @@ import {
   getGuildMeta, getVerification, getMediaOnly,
   getSticky, getAutoresponders, getAdminRoles
 } from "../../api/client";
+import SuperuserBadge from "../../components/ui/SuperuserBadge";
 
 export default function OverviewPage({ showToast }) {
   const { user, botInfo, currentGuild } = useOutletContext() || {};
@@ -102,7 +103,10 @@ export default function OverviewPage({ showToast }) {
               <div className="w-6 h-6 rounded bg-brand-crimson flex items-center justify-center font-bold text-white text-[10px] font-mono shadow-lg">DV</div>
               <span className="text-xs font-mono text-slate-400 tracking-widest uppercase">Command Center</span>
             </div>
-            <h1 className="text-4xl sm:text-5xl font-display font-bold text-white mb-2 tracking-tight">नमस्ते, {user?.username}.</h1>
+            <div className="flex items-center gap-3 flex-wrap mb-2">
+              <h1 className="text-4xl sm:text-5xl font-display font-bold text-white tracking-tight">नमस्ते, {user?.username}.</h1>
+              {user?.isSuperuser && <SuperuserBadge size="md" />}
+            </div>
             <p className="text-slate-400 text-lg">Your community command center for <span className="text-slate-200 font-semibold">{currentGuild?.name}</span>.</p>
           </div>
           

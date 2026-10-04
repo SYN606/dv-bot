@@ -86,6 +86,7 @@ export function useAutoRoleRewards(guildId, showToast) {
       
       await setAutoRoleConfig(guildId, {
         config,
+        blacklist,
         blacklist_add: toAdd,
         blacklist_remove: toRemove
       });

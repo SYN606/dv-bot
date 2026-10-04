@@ -134,9 +134,7 @@ export async function fetchApi(endpoint, options = {}) {
   return requestPromise;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Auth & Bot
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getAuthSession() {
   return fetchApi("/api/me");
@@ -151,9 +149,7 @@ export async function getBotInfo() {
   return fetchApi("/api/bot");
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Guild Metadata
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getGuildMeta(guildId) {
   return fetchApi(`/api/guilds/${guildId}/meta`);
@@ -164,9 +160,7 @@ export async function getGuildMembers(guildId, query = "") {
   return fetchApi(`/api/guilds/${guildId}/members${q}`);
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Verification
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getVerification(guildId) {
   return fetchApi(`/api/guilds/${guildId}/verification`);
@@ -197,9 +191,7 @@ export async function resetVerification(guildId) {
   return result;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Staff Admin Roles & Users
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getAdminRoles(guildId) {
   return fetchApi(`/api/guilds/${guildId}/admin_roles`);
@@ -239,9 +231,7 @@ export async function deleteAdminUser(guildId, userId) {
   return result;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Media Only Channels
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getMediaOnly(guildId) {
   return fetchApi(`/api/guilds/${guildId}/media_only`);
@@ -264,9 +254,7 @@ export async function deleteMediaOnly(guildId, channelId) {
   return result;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Command Restrictions
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getCommands(guildId, channelId) {
   const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : "";
@@ -291,9 +279,7 @@ export async function toggleCommandModule(guildId, payload) {
   return result;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Sticky Messages
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getSticky(guildId) {
   return fetchApi(`/api/guilds/${guildId}/sticky`);
@@ -316,9 +302,7 @@ export async function deleteSticky(guildId, channelId) {
   return result;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Autoresponder
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getAutoresponders(guildId) {
   return fetchApi(`/api/guilds/${guildId}/autoresponder`);
@@ -357,17 +341,13 @@ export async function deleteAutoresponder(guildId, ruleId) {
   return result;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Server Emojis
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getGuildEmojis(guildId) {
   return fetchApi(`/api/guilds/${guildId}/emojis`);
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // General Server Config
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getConfig(guildId) {
   return fetchApi(`/api/guilds/${guildId}/config`);
@@ -382,9 +362,7 @@ export async function saveConfig(guildId, payload) {
   return result;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Tempban Role Config
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getTempban(guildId) {
   return fetchApi(`/api/guilds/${guildId}/tempban`);
@@ -399,25 +377,20 @@ export async function saveTempban(guildId, roleId) {
   return result;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Analytics
-// ──────────────────────────────────────────────────────────────────────────────
 
-export async function getAnalytics(guildId, days = 7) {
-  return fetchApi(`/api/guilds/${guildId}/analytics?days=${days}`);
+export async function getAnalytics(guildId, days = 7, refresh = false) {
+  const url = `/api/guilds/${guildId}/analytics?days=${days}${refresh ? "&refresh=true" : ""}`;
+  return fetchApi(url);
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Public Documentation & Commands
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getPublicCommands() {
   return fetchApi("/api/commands");
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Supporter Rewards
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getSupporterConfig(guildId) {
   return fetchApi(`/api/guilds/${guildId}/supporter`);
@@ -433,9 +406,7 @@ export async function setSupporterConfig(guildId, data) {
   return result;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // AutoRole Rewards
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getAutoRoleConfig(guildId) {
   return fetchApi(`/api/guilds/${guildId}/autorole`);
@@ -451,9 +422,7 @@ export async function setAutoRoleConfig(guildId, payload) {
   return result;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
 // Warning Punishments
-// ──────────────────────────────────────────────────────────────────────────────
 
 export async function getWarningPunishments(guildId) {
   return fetchApi(`/api/guilds/${guildId}/warning_punishments`);

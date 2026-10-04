@@ -1,7 +1,7 @@
 import React from "react";
 import { MessageSquare, Mic, Users, Zap } from "lucide-react";
 
-export default function AnalyticsKpis({ summary, loading, timeframe }) {
+export default function AnalyticsKpis({ summary, loading, timeframe = 7 }) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -16,29 +16,33 @@ export default function AnalyticsKpis({ summary, loading, timeframe }) {
     );
   }
 
+  const days = Number(timeframe) || 7;
+  const joins = summary?.totalJoins || 0;
+  const leaves = summary?.totalLeaves || 0;
+
   const kpis = [
     {
       title: "MESSAGES",
-      value: summary?.totalMessages?.toLocaleString() || "0",
-      subtext: `~${Math.round((summary?.totalMessages || 0) / timeframe).toLocaleString()} / day`,
+      value: (summary?.totalMessages ?? 0).toLocaleString(),
+      subtext: `~${Math.round((summary?.totalMessages || 0) / days).toLocaleString()} / day`,
       icon: MessageSquare,
     },
     {
       title: "VOICE HOURS",
-      value: summary?.totalVoiceHours?.toLocaleString() || "0",
-      subtext: `~${Math.round((summary?.totalVoiceHours || 0) / timeframe).toLocaleString()} / day`,
+      value: (summary?.totalVoiceHours ?? 0).toLocaleString(),
+      subtext: `~${(Math.round(((summary?.totalVoiceHours || 0) / days) * 10) / 10).toLocaleString()}h / day`,
       icon: Mic,
     },
     {
       title: "MEMBER GROWTH",
-      value: `${(summary?.netGrowth || 0) >= 0 ? "+" : ""}${summary?.netGrowth?.toLocaleString() || "0"}`,
-      subtext: "Net new joins",
+      value: `${(summary?.netGrowth || 0) >= 0 ? "+" : ""}${(summary?.netGrowth ?? 0).toLocaleString()}`,
+      subtext: `+${joins} joins, -${leaves} leaves`,
       icon: Users,
     },
     {
       title: "RETENTION",
       value: summary?.retentionRate != null ? `${summary.retentionRate}%` : "—",
-      subtext: "7-day return rate",
+      subtext: `${days}-day member retention`,
       icon: Zap,
     },
   ];

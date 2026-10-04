@@ -1,17 +1,14 @@
 import { AutoRoleRewardConfig, MemberAnalytics, RoleRestriction } from "../db/models/index.js";
-import { Op } from "../db/models/drizzleAdapter.js";
 import { makeEmbed } from "../core/embeds.js";
 import { logger } from "../utils/logger.js";
 
-async function getBlacklistedUsers(guild, blacklistRoleIds) {
-  const blacklistedUsers = new Set();
-  for (const roleId of blacklistRoleIds) {
-    const role = guild.roles.cache.get(roleId);
-    if (role) {
-      role.members.forEach(member => blacklistedUsers.add(member.id));
-    }
+async function getGuildMember(guild, userId) {
+  if (!guild || !userId) return null;
+  let member = guild.members.cache.get(String(userId));
+  if (!member) {
+    member = await guild.members.fetch(String(userId)).catch(() => null);
   }
-  return blacklistedUsers;
+  return member;
 }
 
 export async function processWeeklyAutoRoles(client) {
@@ -37,63 +34,77 @@ export async function processWeeklyAutoRoles(client) {
           restriction_type: "DENY",
         }
       });
-      const blacklistRoleIds = blacklists.map(b => b.role_id);
-      const blacklistedUsers = await getBlacklistedUsers(guild, blacklistRoleIds);
+      const blacklistRoleIds = new Set(blacklists.map(b => String(b.role_id)));
+
+      // Helper to check if a Discord GuildMember has any excluded role
+      const hasExcludedRole = (discordMember) => {
+        if (!discordMember || discordMember.user?.bot) return true;
+        return discordMember.roles.cache.some(r => blacklistRoleIds.has(String(r.id)));
+      };
 
       // Fetch Members Analytics
       const allMembers = await MemberAnalytics.findAll({
         where: { guild_id: guild.id }
       });
 
-      // Filter out blacklisted and bots
-      const validMembers = allMembers.filter(m => {
-        const discordMember = guild.members.cache.get(m.user_id);
-        if (!discordMember || discordMember.user.bot) return false;
-        if (blacklistedUsers.has(m.user_id)) return false;
-        return true;
-      });
+      // Filter and pick Top 3 valid chatters (skipping bots and any with excluded roles)
+      const topChatters = [];
+      const sortedByChat = [...allMembers].sort((a, b) => (b.weekly_messages || 0) - (a.weekly_messages || 0));
+      for (const m of sortedByChat) {
+        if ((m.weekly_messages || 0) <= 0) break;
+        const discordMember = await getGuildMember(guild, m.user_id);
+        if (!discordMember || discordMember.user?.bot) continue;
+        if (hasExcludedRole(discordMember)) continue;
+        topChatters.push(m);
+        if (topChatters.length >= 3) break;
+      }
 
-      // Sort for Chat
-      const topChatters = [...validMembers]
-        .sort((a, b) => b.weekly_messages - a.weekly_messages)
-        .slice(0, 3);
-        
-      // Sort for VC
-      const topVC = [...validMembers]
-        .sort((a, b) => b.weekly_vc_seconds - a.weekly_vc_seconds)
-        .slice(0, 3);
+      // Filter and pick Top 3 valid VC members (skipping bots and any with excluded roles)
+      const topVC = [];
+      const sortedByVC = [...allMembers].sort((a, b) => (b.weekly_vc_seconds || 0) - (a.weekly_vc_seconds || 0));
+      for (const m of sortedByVC) {
+        if ((m.weekly_vc_seconds || 0) <= 0) break;
+        const discordMember = await getGuildMember(guild, m.user_id);
+        if (!discordMember || discordMember.user?.bot) continue;
+        if (hasExcludedRole(discordMember)) continue;
+        topVC.push(m);
+        if (topVC.length >= 3) break;
+      }
 
       const chatRoles = [config.top_chat_role_1, config.top_chat_role_2, config.top_chat_role_3];
       const vcRoles = [config.top_vc_role_1, config.top_vc_role_2, config.top_vc_role_3];
 
-      // Remove previous roles from everyone
+      // Remove previous reward roles from everyone who currently holds them
       const allRolesToRemove = [...chatRoles, ...vcRoles].filter(Boolean);
       for (const roleId of allRolesToRemove) {
         const role = guild.roles.cache.get(roleId);
         if (!role) continue;
         for (const member of role.members.values()) {
           await member.roles.remove(role, "Weekly Auto-Role Reset").catch(() => {});
-          await new Promise(r => setTimeout(r, 1000)); // Delay to prevent 429
+          await new Promise(r => setTimeout(r, 400)); // Delay to prevent 429
         }
       }
 
-      // Assign new roles
+      // Assign new reward roles
       const formatMention = (user) => user ? `<@${user.user_id}>` : "None";
+      const botHighestPos = guild.members.me?.roles?.highest?.position ?? 0;
 
       for (let i = 0; i < 3; i++) {
         if (topChatters[i] && chatRoles[i]) {
-          const member = guild.members.cache.get(topChatters[i].user_id);
+          const member = await getGuildMember(guild, topChatters[i].user_id);
           const role = guild.roles.cache.get(chatRoles[i]);
-          if (member && role && role.position < guild.members.me.roles.highest.position) {
+          if (member && role && role.position < botHighestPos) {
             await member.roles.add(role, "Weekly Top Chatter").catch(() => {});
+            await new Promise(r => setTimeout(r, 350));
           }
         }
         
         if (topVC[i] && vcRoles[i]) {
-          const member = guild.members.cache.get(topVC[i].user_id);
+          const member = await getGuildMember(guild, topVC[i].user_id);
           const role = guild.roles.cache.get(vcRoles[i]);
-          if (member && role && role.position < guild.members.me.roles.highest.position) {
+          if (member && role && role.position < botHighestPos) {
             await member.roles.add(role, "Weekly Top VC").catch(() => {});
+            await new Promise(r => setTimeout(r, 350));
           }
         }
       }
@@ -122,13 +133,11 @@ export async function processWeeklyAutoRoles(client) {
       await channel.send({ embeds: [embed] }).catch(() => {});
 
       // Reset the weekly stats for this guild
-      const db = require("../db/index.js").getDb(); // Hack for drizzle raw update if needed
-      // Actually we can just update all records using Sequelize DrizzleAdapter
       for (const m of allMembers) {
         if (m.weekly_messages > 0 || m.weekly_vc_seconds > 0) {
           m.weekly_messages = 0;
           m.weekly_vc_seconds = 0;
-          await m.save();
+          await m.save().catch(() => {});
         }
       }
       

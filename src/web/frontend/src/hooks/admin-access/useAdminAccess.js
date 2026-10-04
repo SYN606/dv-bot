@@ -17,10 +17,10 @@ export function useAdminAccess(guildId, showToast) {
     ownerId: "",
     ownerUser: null,
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // Async states
   const [addingUserId, setAddingUserId] = useState(null);
   const [removingUserId, setRemovingUserId] = useState(null);

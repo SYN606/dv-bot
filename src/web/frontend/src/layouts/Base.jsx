@@ -7,11 +7,7 @@ import Toast from "../components/ui/Toast";
 import CommandPalette from "../components/ui/CommandPalette";
 import { Menu } from "lucide-react";
 
-/**
- * Base layout component.
- * Provides a stationary, non-moving sidebar with an independently scrollable main content viewport.
- * Guarantees that the sidebar stays pinned in place when scrolling across any device.
- */
+
 export default function Base({
   user,
   botInfo,
@@ -25,7 +21,7 @@ export default function Base({
   customSidebar = null,
   customNavbar = null,
   maxWidth = "max-w-6xl",
-  className = "",
+  className = ""
 }) {
   const { guildId } = useParams();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -61,7 +57,7 @@ export default function Base({
   return (
     <div className="h-screen w-screen flex bg-transparent text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200 antialiased overflow-hidden relative">
       <CommandPalette isOpen={commandOpen} setIsOpen={setCommandOpen} currentGuild={activeGuild} />
-      
+
       {/* Unique Base Grid Background */}
       <div className="fixed inset-0 pointer-events-none z-0" style={{
         backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)',

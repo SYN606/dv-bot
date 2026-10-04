@@ -1,2 +1,2 @@
 export { exportAnalyticsCSV } from "./exportAnalytics";
-export { analyticsColors, commonChartOptions } from "./chartConfig";
+export { analyticsColors, commonChartOptions, formatShortDate } from "./chartConfig";

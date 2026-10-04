@@ -11,7 +11,7 @@ export default function InsightsPanel({ insights, loading }) {
     );
   }
 
-  // Only show if we have data to display. Don't show fake fallbacks.
+  // Only show if we have data to display
   const hasInsights = insights && (insights.primeWindow || insights.busiestDay || insights.topChannel || insights.growthSummary);
 
   if (!hasInsights) return null;
@@ -40,7 +40,12 @@ export default function InsightsPanel({ insights, loading }) {
         {insights.topChannel && (
           <div className="shrink-0">
             <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Top Channel</div>
-            <div className="text-sm font-mono text-slate-200 truncate max-w-30">{insights.topChannel}</div>
+            <div 
+              className="text-sm font-mono text-slate-200 truncate max-w-[180px] sm:max-w-xs" 
+              title={insights.topChannel}
+            >
+              {insights.topChannel}
+            </div>
           </div>
         )}
         

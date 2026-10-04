@@ -35,6 +35,7 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate, showTo
           setSearch={setSearch}
           refreshing={refreshing}
           onRefresh={handleRefresh}
+          user={user}
         />
 
         <ServerFilters 

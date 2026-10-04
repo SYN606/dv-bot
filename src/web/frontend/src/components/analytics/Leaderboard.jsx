@@ -2,17 +2,41 @@ import React, { useState, useMemo } from "react";
 import { Trophy, MessageSquare, Mic, Search } from "lucide-react";
 import { getDiscordAvatarUrl } from "../../utils/discord";
 
-export default function Leaderboard({ topChatters = [], topVoice = [], loading }) {
+export default function Leaderboard({ topChatters = [], topVoice = [], leaderboards, loading }) {
   const [tab, setTab] = useState("chat");
   const [scope, setScope] = useState("weekly");
   const [search, setSearch] = useState("");
 
   const filteredData = useMemo(() => {
-    const rawData = tab === "chat" ? topChatters : topVoice;
-    if (!search.trim()) return rawData;
-    const lower = search.toLowerCase();
-    return rawData.filter((u) => u.username?.toLowerCase().includes(lower));
-  }, [tab, topChatters, topVoice, search]);
+    let rawData = [];
+    if (tab === "chat") {
+      rawData = scope === "weekly"
+        ? (leaderboards?.chattersWeekly || topChatters)
+        : (leaderboards?.chattersTotal || topChatters);
+    } else {
+      rawData = scope === "weekly"
+        ? (leaderboards?.voiceWeekly || topVoice)
+        : (leaderboards?.voiceTotal || topVoice);
+    }
+
+    const isChat = tab === "chat";
+    const getVal = (u) => {
+      if (isChat) {
+        return scope === "weekly" ? (u.weeklyMessages ?? u.messages ?? 0) : (u.totalMessages ?? u.messages ?? 0);
+      } else {
+        return scope === "weekly" ? (u.weeklyMinutes ?? u.vcMinutes ?? 0) : (u.totalMinutes ?? u.vcMinutes ?? 0);
+      }
+    };
+
+    let list = [...rawData].sort((a, b) => getVal(b) - getVal(a));
+
+    if (search.trim()) {
+      const lower = search.toLowerCase();
+      list = list.filter((u) => u.username?.toLowerCase().includes(lower) || u.userId?.includes(lower));
+    }
+
+    return list.map((item, idx) => ({ ...item, rank: idx + 1, activeVal: getVal(item) }));
+  }, [tab, scope, topChatters, topVoice, leaderboards, search]);
 
   if (loading) {
     return (
@@ -24,6 +48,8 @@ export default function Leaderboard({ topChatters = [], topVoice = [], loading }
       </div>
     );
   }
+
+  const isChat = tab === "chat";
 
   return (
     <div className="glass-panel p-4 sm:p-8 rounded-3xl border border-white/5 mt-8 space-y-8">
@@ -103,28 +129,26 @@ export default function Leaderboard({ topChatters = [], topVoice = [], loading }
             No active members found matching your search.
           </div>
         ) : (
-          filteredData.map((u, idx) => {
+          filteredData.map((u) => {
+            const rank = u.rank;
             let medalClass = "text-slate-500 bg-slate-900 border-white/5";
-            let medalText = `#${idx + 1}`;
+            let medalText = `#${rank}`;
             
-            if (idx === 0) {
+            if (rank === 1) {
               medalClass = "text-yellow-400 bg-yellow-400/10 border-yellow-400/30 shadow-lg shadow-yellow-400/10";
               medalText = "1st";
-            } else if (idx === 1) {
+            } else if (rank === 2) {
               medalClass = "text-slate-300 bg-slate-300/10 border-slate-300/30";
               medalText = "2nd";
-            } else if (idx === 2) {
+            } else if (rank === 3) {
               medalClass = "text-amber-600 bg-amber-600/10 border-amber-600/30";
               medalText = "3rd";
             }
 
-            const isChat = tab === "chat";
-            const val = isChat
-              ? (scope === "weekly" ? (u.weeklyMessages ?? u.messages ?? 0) : (u.totalMessages ?? u.messages ?? 0))
-              : (scope === "weekly" ? (u.weeklyMinutes ?? u.vcMinutes ?? 0) : (u.totalMinutes ?? u.vcMinutes ?? 0));
+            const val = u.activeVal ?? 0;
 
             return (
-              <div key={u.userId || idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 rounded-2xl bg-slate-900/40 hover:bg-slate-900 border border-white/5 transition-colors gap-3">
+              <div key={u.userId || rank} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 rounded-2xl bg-slate-900/40 hover:bg-slate-900 border border-white/5 transition-colors gap-3">
                 <div className="flex items-center gap-3.5">
                   <span className={`w-8 h-8 rounded-lg border flex items-center justify-center text-[10px] font-bold font-mono ${medalClass}`}>
                     {medalText}

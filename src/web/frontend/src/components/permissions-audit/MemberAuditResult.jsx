@@ -25,7 +25,8 @@ export default function MemberAuditResult({ memberAudit, loading }) {
 
   if (!memberAudit || !memberAudit.user) return null;
 
-  const { user, permissions, moderationHistory, threatLevel, threatScore } = memberAudit;
+  const { user, permissions = [], threatLevel, threatScore } = memberAudit;
+  const moderationHistory = memberAudit.moderationHistory || memberAudit.history || [];
   const avatarUrl = getDiscordAvatarUrl(user);
   
   const riskLabel = getRiskLabel(threatLevel);
@@ -40,7 +41,7 @@ export default function MemberAuditResult({ memberAudit, loading }) {
   }, {});
 
   const criticalPerms = groupedPerms["CRITICAL"] || [];
-  const elevatedPerms = groupedPerms["ELEVATED"] || [];
+  const elevatedPerms = [...(groupedPerms["ELEVATED"] || []), ...(groupedPerms["MODERATE"] || [])];
 
   return (
     <div className="glass-panel p-0 rounded-3xl border border-white/5 mb-8 overflow-hidden animate-in fade-in duration-300">
@@ -51,7 +52,7 @@ export default function MemberAuditResult({ memberAudit, loading }) {
             src={avatarUrl} 
             alt={user.username} 
             className="w-14 h-14 rounded-full border border-white/10"
-            onError={(e) => { e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png" }}
+            onError={(e) => { e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png"; }}
           />
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -60,7 +61,7 @@ export default function MemberAuditResult({ memberAudit, loading }) {
             </div>
             <div className="flex flex-col text-sm text-slate-400">
               <span>@{user.username}</span>
-              <span className="font-mono text-[10px] uppercase">{user.id}</span>
+              <span className="font-mono text-[10px] uppercase text-slate-500">{user.id}</span>
             </div>
           </div>
         </div>
@@ -91,38 +92,48 @@ export default function MemberAuditResult({ memberAudit, loading }) {
               {criticalPerms.length > 0 && (
                 <div className="space-y-3">
                   <Badge variant="danger" className="mb-2">CRITICAL</Badge>
-                  {criticalPerms.map((perm, idx) => (
-                    <div key={idx} className="p-4 bg-slate-900 rounded-2xl border border-rose-500/10">
-                      <div className="font-bold text-white mb-2">{perm.name}</div>
-                      <div className="text-xs text-slate-400 mb-1">Granted through:</div>
-                      <div className="flex flex-wrap gap-2">
-                        {perm.sources?.length ? perm.sources.map(s => (
-                          <span key={s.id} className="text-xs font-semibold px-2 py-1 bg-white/5 rounded-md text-slate-300">@{s.name}</span>
-                        )) : (
-                          <span className="text-xs font-semibold px-2 py-1 bg-white/5 rounded-md text-slate-500">Unknown Source</span>
-                        )}
+                  {criticalPerms.map((perm, idx) => {
+                    const permName = perm.permission || perm.name || "Unknown Permission";
+                    const rolesList = perm.roles || (Array.isArray(perm.sources) ? perm.sources.map(s => s.name || s) : []);
+
+                    return (
+                      <div key={idx} className="p-4 bg-slate-900 rounded-2xl border border-rose-500/10">
+                        <div className="font-bold text-white mb-2">{permName}</div>
+                        <div className="text-xs text-slate-400 mb-1">Granted through:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {rolesList.length ? rolesList.map((rName, rIdx) => (
+                            <span key={rIdx} className="text-xs font-semibold px-2 py-1 bg-white/5 rounded-md text-slate-300">@{rName}</span>
+                          )) : (
+                            <span className="text-xs font-semibold px-2 py-1 bg-white/5 rounded-md text-slate-500">Direct / Owner</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
               {elevatedPerms.length > 0 && (
                 <div className="space-y-3">
                   <Badge variant="warning" className="mb-2">ELEVATED</Badge>
-                  {elevatedPerms.map((perm, idx) => (
-                    <div key={idx} className="p-4 bg-slate-900 rounded-2xl border border-amber-500/10">
-                      <div className="font-bold text-white mb-2">{perm.name}</div>
-                      <div className="text-xs text-slate-400 mb-1">Granted through:</div>
-                      <div className="flex flex-wrap gap-2">
-                        {perm.sources?.length ? perm.sources.map(s => (
-                          <span key={s.id} className="text-xs font-semibold px-2 py-1 bg-white/5 rounded-md text-slate-300">@{s.name}</span>
-                        )) : (
-                          <span className="text-xs font-semibold px-2 py-1 bg-white/5 rounded-md text-slate-500">Unknown Source</span>
-                        )}
+                  {elevatedPerms.map((perm, idx) => {
+                    const permName = perm.permission || perm.name || "Unknown Permission";
+                    const rolesList = perm.roles || (Array.isArray(perm.sources) ? perm.sources.map(s => s.name || s) : []);
+
+                    return (
+                      <div key={idx} className="p-4 bg-slate-900 rounded-2xl border border-amber-500/10">
+                        <div className="font-bold text-white mb-2">{permName}</div>
+                        <div className="text-xs text-slate-400 mb-1">Granted through:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {rolesList.length ? rolesList.map((rName, rIdx) => (
+                            <span key={rIdx} className="text-xs font-semibold px-2 py-1 bg-white/5 rounded-md text-slate-300">@{rName}</span>
+                          )) : (
+                            <span className="text-xs font-semibold px-2 py-1 bg-white/5 rounded-md text-slate-500">Direct / Owner</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -139,21 +150,27 @@ export default function MemberAuditResult({ memberAudit, loading }) {
           
           {!moderationHistory || moderationHistory.length === 0 ? (
             <div className="text-sm text-slate-400 p-4 rounded-2xl border border-dashed border-white/5 bg-slate-900/50">
-              No moderation history found.
+              No moderation history found for this member.
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="text-xs font-bold text-white mb-2">{moderationHistory.length} previous actions</div>
-              {moderationHistory.map((hist, idx) => (
-                <div key={idx} className="p-4 rounded-2xl border border-white/5 bg-slate-900">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="default" className="text-[10px]">{hist.type || "ACTION"}</Badge>
-                    <span className="text-[10px] text-slate-500">{new Date(hist.timestamp).toLocaleDateString()}</span>
+              <div className="text-xs font-bold text-white mb-2">{moderationHistory.length} previous action(s)</div>
+              {moderationHistory.map((hist, idx) => {
+                const dateVal = hist.date || hist.timestamp || hist.created_at;
+                const formattedDate = dateVal ? new Date(dateVal).toLocaleDateString() : "Recent";
+                const modId = hist.moderator_id || hist.moderatorId;
+
+                return (
+                  <div key={idx} className="p-4 rounded-2xl border border-white/5 bg-slate-900">
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="default" className="text-[10px]">{hist.type || "ACTION"}</Badge>
+                      <span className="text-[10px] text-slate-500">{formattedDate}</span>
+                    </div>
+                    <div className="text-sm text-slate-300 mb-2">{hist.reason || "No reason provided"}</div>
+                    {modId && <div className="text-[10px] text-slate-500 font-mono">Mod ID: {modId}</div>}
                   </div>
-                  <div className="text-sm text-slate-300 mb-2">{hist.reason || "No reason provided"}</div>
-                  <div className="text-[10px] text-slate-500 font-mono">Mod: {hist.moderatorId}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -69,16 +69,17 @@ export default function ElevatedRoles({ roles }) {
 
       <div className="flex-1 space-y-3">
         {paginatedRoles.map(r => {
-          const colorStyle = r.color ? { backgroundColor: r.color } : { backgroundColor: '#475569' };
+          const rawColor = r.hexColor || r.color;
+          const roleColor = rawColor && rawColor !== "#000000" ? rawColor : "#94a3b8";
           
           return (
             <div key={r.id} className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex flex-col gap-3">
               <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full shadow-sm" style={colorStyle}></div>
-                  <span className="font-bold text-sm text-white truncate max-w-37.5 sm:max-w-50">@{r.name}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: roleColor }}></div>
+                  <span className="font-bold text-sm text-white truncate max-w-[160px] sm:max-w-[240px]">@{r.name}</span>
                 </div>
-                <div className="text-xs text-slate-400 font-semibold bg-white/5 px-2 py-1 rounded-md">
+                <div className="text-xs text-slate-400 font-semibold bg-white/5 px-2 py-1 rounded-md shrink-0">
                   {r.memberCount || 0} members
                 </div>
               </div>
@@ -89,7 +90,7 @@ export default function ElevatedRoles({ roles }) {
                   const pVariant = getRiskVariant(p.level);
                   return (
                     <div key={idx} className="flex items-center justify-between bg-slate-950/50 px-3 py-1.5 rounded-lg border border-white/5">
-                      <span className="text-xs font-semibold text-slate-300 truncate mr-2">{p.name}</span>
+                      <span className="text-xs font-semibold text-slate-300 truncate mr-2">{p.name || p.permission}</span>
                       <Badge variant={pVariant}>{pRisk}</Badge>
                     </div>
                   );
