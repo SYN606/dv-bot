@@ -51,6 +51,9 @@ export default function ServerSelectorPage({ user, botInfo, onUserUpdate, showTo
           filterMode={filterMode}
           onRequestAccess={setRequestGuild}
           onRefresh={handleRefresh}
+          setFilterMode={setFilterMode}
+          totalCount={totalCount}
+          manageableCount={manageableCount}
         />
       </main>
 

@@ -13,13 +13,13 @@ export function useServerSelector(user, botInfo, onUserUpdate, showToast) {
 
   // Normalize server data once
   const servers = useMemo(() => {
-    const rawGuilds = user?.guilds || [];
-    return rawGuilds.map(guild => ({
+    const rawGuilds = Array.isArray(user?.guilds) ? user.guilds : [];
+    return rawGuilds.map((guild) => ({
       ...guild,
-      access: getGuildAccess(guild),
-      botPresent: isBotInGuild(guild, botGuildIds)
+      access: getGuildAccess(guild, Boolean(user?.isSuperuser)),
+      botPresent: isBotInGuild(guild, botGuildIds),
     }));
-  }, [user?.guilds, botGuildIds]);
+  }, [user?.guilds, user?.isSuperuser, botGuildIds]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -46,10 +46,10 @@ export function useServerSelector(user, botInfo, onUserUpdate, showToast) {
   const sortedServers = useMemo(() => {
     const sorted = [...servers];
     sorted.sort((a, b) => {
-      const aManage = a.access.canManage;
-      const bManage = b.access.canManage;
-      const aBot = a.botPresent;
-      const bBot = b.botPresent;
+      const aManage = Boolean(a.access?.canManage);
+      const bManage = Boolean(b.access?.canManage);
+      const aBot = Boolean(a.botPresent);
+      const bBot = Boolean(b.botPresent);
 
       const getGroup = (manage, bot) => {
         if (manage && bot) return 1;
@@ -63,25 +63,41 @@ export function useServerSelector(user, botInfo, onUserUpdate, showToast) {
 
       if (groupA !== groupB) return groupA - groupB;
 
-      return a.name.localeCompare(b.name);
+      const nameA = a.name || "";
+      const nameB = b.name || "";
+      return nameA.localeCompare(nameB);
     });
     return sorted;
   }, [servers]);
 
   const filteredServers = useMemo(() => {
+    const query = search.trim().toLowerCase();
     return sortedServers.filter((g) => {
-      if (search && !g.name.toLowerCase().includes(search.toLowerCase())) {
+      if (query && !(g.name || "").toLowerCase().includes(query)) {
         return false;
       }
-      if (filterMode === "manageable" && !g.access.canManage) {
+      if (filterMode === "manageable" && !g.access?.canManage) {
         return false;
       }
       return true;
     });
   }, [sortedServers, search, filterMode]);
 
-  const manageableCount = servers.filter(g => g.access.canManage).length;
-  const totalCount = servers.length;
+  const manageableCount = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) {
+      return servers.filter((g) => g.access?.canManage).length;
+    }
+    return servers.filter((g) => g.access?.canManage && (g.name || "").toLowerCase().includes(query)).length;
+  }, [servers, search]);
+
+  const totalCount = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) {
+      return servers.length;
+    }
+    return servers.filter((g) => (g.name || "").toLowerCase().includes(query)).length;
+  }, [servers, search]);
 
   return {
     search,

@@ -57,6 +57,7 @@ export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
                 user={user}
                 botInfo={botInfo}
                 onUserUpdate={onUserUpdate}
+                showToast={showToast}
               />
             ) : (
               <Navigate to="/auth/login" replace />

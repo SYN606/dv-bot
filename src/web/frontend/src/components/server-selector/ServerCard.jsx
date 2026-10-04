@@ -1,14 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import Badge from "../ui/Badge";
-import { ShieldAlert, UserCheck, Shield, Crown } from "lucide-react";
+import { ShieldAlert, UserCheck, Shield, Crown, Lock } from "lucide-react";
 
 export default function ServerCard({ guild, onRequestAccess }) {
-  const { access, botPresent } = guild;
-  const { canManage, accessLevel } = access;
+  const { access = {}, botPresent = false } = guild || {};
+  const { canManage = false, accessLevel = "Member" } = access;
 
   const getAvatarUrl = () => {
-    if (guild.icon) {
+    if (guild?.icon) {
       return `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.${guild.icon.startsWith("a_") ? "gif" : "png"}?size=128`;
     }
     return null;
@@ -17,6 +17,7 @@ export default function ServerCard({ guild, onRequestAccess }) {
   const getAccessIcon = () => {
     switch(accessLevel) {
       case "Owner": return <Crown className="w-3.5 h-3.5" />;
+      case "Superuser": return <ShieldAlert className="w-3.5 h-3.5 text-indigo-400" />;
       case "Administrator": return <Shield className="w-3.5 h-3.5" />;
       case "Manager": return <UserCheck className="w-3.5 h-3.5" />;
       default: return null;
@@ -26,6 +27,7 @@ export default function ServerCard({ guild, onRequestAccess }) {
   const getBadgeVariant = () => {
     switch(accessLevel) {
       case "Owner": return "brand";
+      case "Superuser": return "brand";
       case "Administrator": return "warning";
       case "Manager": return "success";
       default: return "default";
@@ -33,6 +35,7 @@ export default function ServerCard({ guild, onRequestAccess }) {
   };
 
   const avatarUrl = getAvatarUrl();
+  const guildName = guild?.name || "Unknown Server";
 
   return (
     <div className="bg-slate-900 border border-white/5 rounded-3xl p-5 flex flex-col h-full hover:border-white/10 transition-colors shadow-sm">
@@ -41,18 +44,18 @@ export default function ServerCard({ guild, onRequestAccess }) {
           {avatarUrl ? (
             <img 
               src={avatarUrl} 
-              alt={guild.name} 
+              alt={guildName} 
               className="w-14 h-14 rounded-2xl bg-slate-800 object-cover border border-white/5"
             />
           ) : (
             <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center font-bold text-lg text-slate-400">
-              {guild.name.charAt(0)}
+              {guildName.charAt(0)}
             </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-bold text-white truncate mb-1" title={guild.name}>
-            {guild.name}
+          <h3 className="text-base font-bold text-white truncate mb-1" title={guildName}>
+            {guildName}
           </h3>
           <Badge variant={getBadgeVariant()} className="flex items-center gap-1.5 w-fit">
             {getAccessIcon()}
@@ -97,11 +100,20 @@ export default function ServerCard({ guild, onRequestAccess }) {
         )}
         {!botPresent && canManage && (
           <button
-            onClick={() => onRequestAccess(guild)}
+            onClick={() => onRequestAccess?.(guild)}
             className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-bold transition-colors border border-white/5"
           >
             Request Bot Access
           </button>
+        )}
+        {!canManage && (
+          <div 
+            className="w-full py-2.5 rounded-xl bg-white/[0.03] text-slate-500 text-xs font-semibold border border-white/5 flex items-center justify-center gap-1.5 cursor-not-allowed select-none"
+            title="You need Manage Server or Administrator permission to configure this server"
+          >
+            <Lock className="w-3.5 h-3.5 text-slate-500" />
+            No Manage Permission
+          </div>
         )}
       </div>
     </div>
