@@ -2,29 +2,29 @@ import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
-import { hideChannel } from "../../services/channelLockService.js";
+import { unlockChannel } from "../../services/channelLockService.js";
 
 const slashBuilder = new SlashCommandBuilder()
-  .setName("hide")
-  .setDescription("Hide a channel to make it invisible to non-staff members")
+  .setName("unlock")
+  .setDescription("Unlock a previously locked channel or thread")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
   .setDMPermission(false)
   .addChannelOption((opt) =>
     opt
       .setName("channel")
-      .setDescription("Target channel to hide (defaults to current)")
+      .setDescription("Target channel to unlock (defaults to current)")
       .setRequired(false)
   )
   .addStringOption((opt) =>
     opt
       .setName("reason")
-      .setDescription("Reason for hiding the channel")
+      .setDescription("Reason for unlocking")
       .setRequired(false)
   );
 
 export default createCommand({
-  name: "hide",
-  description: "Hide a channel to make it invisible to non-staff members.",
+  name: "unlock",
+  description: "Unlock a previously locked channel or thread.",
   category: "Channels",
   slashOnly: true,
   modOnly: true,
@@ -61,7 +61,7 @@ export default createCommand({
 
     const reason = ctx.interaction?.options?.getString?.("reason") || ctx.options?.reason;
 
-    const res = await hideChannel({
+    const res = await unlockChannel({
       channel: targetChannel,
       guild,
       moderator: user,
@@ -72,12 +72,42 @@ export default createCommand({
       return await ctx.reply({
         embeds: [
           makeEmbed({
-            title: "Hide Failed",
+            title: "Unlock Failed",
             description: `${EMOJIS.get("fail") || "❌"} ${res.error}`,
             level: "ERROR",
           }),
         ],
         ephemeral: true,
+      });
+    }
+
+    if (res.notLocked) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Channel Not Locked",
+            description: `${EMOJIS.get("info") || "ℹ️"} ${targetChannel} is not currently locked.`,
+            level: "INFO",
+            color: COLORS.DARK,
+            headerDivider: false,
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    if (res.isThread) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            author: { name: "Thread Management", iconURL: guild.iconURL?.() || undefined },
+            title: "🔓 Thread Unlocked",
+            description: `${targetChannel} has been **unlocked** — members can chat in this thread again.`,
+            level: "SUCCESS",
+            color: COLORS.DARK,
+            headerDivider: false,
+          }),
+        ],
       });
     }
 
@@ -88,32 +118,14 @@ export default createCommand({
       ? `-# 🔐 Verification mode active — targeting **@${res.verifiedRoleName}** instead of @everyone.`
       : `-# 🌐 No verification role configured — targeting **@everyone**.`;
 
-    if (res.alreadyHidden) {
-      return await ctx.reply({
-        embeds: [
-          makeEmbed({
-            title: "Already Hidden",
-            description:
-              `${EMOJIS.get("warning") || "⚠️"} ${targetChannel} is already hidden from ${roleLabel}.\n\n` +
-              `${scopeNote}\n-# Use \`/unhide\` to make it visible again.`,
-            level: "WARNING",
-            color: COLORS.DARK,
-            headerDivider: false,
-          }),
-        ],
-        ephemeral: true,
-      });
-    }
-
     return await ctx.reply({
       embeds: [
         makeEmbed({
-          author: { name: "Channel Visibility", iconURL: guild.iconURL?.() || undefined },
-          title: "🙈 Channel Hidden",
+          author: { name: "Channel Lockdown", iconURL: guild.iconURL?.() || undefined },
+          title: "🔓 Channel Unlocked",
           description:
-            `${targetChannel} is now **hidden** from ${roleLabel}.\n\n` +
-            `${scopeNote}\n-# Use \`/unhide\` to restore original visibility.`,
-          level: "WARNING",
+            `${targetChannel} has been **unlocked** — ${roleLabel} can send messages again.\n\n${scopeNote}`,
+          level: "SUCCESS",
           color: COLORS.DARK,
           headerDivider: false,
         }),

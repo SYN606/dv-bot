@@ -33,54 +33,137 @@ export async function resolveTargetRole(guild) {
   try {
     const vConfig = await VerificationConfig.findByPk(String(guild.id));
     if (vConfig && vConfig.enabled && vConfig.verified_role_id) {
-      const verifiedRole = guild.roles.cache.get(String(vConfig.verified_role_id));
+      const roleId = String(vConfig.verified_role_id);
+      const verifiedRole =
+        guild.roles.cache.get(roleId) ||
+        (await guild.roles.fetch(roleId).catch(() => null));
       if (verifiedRole) {
         return { role: verifiedRole, usingVerifiedRole: true, verifiedRoleName: verifiedRole.name };
       }
     }
-  } catch (_) { }
+  } catch (_) {}
   return { role: guild.roles.everyone, usingVerifiedRole: false, verifiedRoleName: null };
 }
 
 /**
- * Locks a channel for the target role (SendMessages & AddReactions -> false)
+ * Locks a channel for the target role (SendMessages, Threads, Reactions -> false)
  * Preserves existing permission states in ChannelPermissionSnapshot
  */
-export async function lockChannel({ channel, guild, moderator = null, durationStr = null }) {
+export async function lockChannel({ channel, guild, moderator = null, durationStr = null, reason = null }) {
+  if (!channel || !guild) {
+    return { error: "Invalid channel or guild." };
+  }
+
+  // Handle Thread channels
+  if (channel.isThread?.()) {
+    const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+    const botPerms = channel.permissionsFor?.(botMember);
+    if (!botPerms?.has(PermissionFlagsBits.ManageThreads)) {
+      return { error: "I need the **Manage Threads** permission to lock this thread." };
+    }
+
+    if (channel.locked) {
+      return { alreadyLocked: true, isThread: true, channel };
+    }
+
+    const auditReason = `Thread locked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
+    try {
+      await channel.setLocked(true, auditReason);
+    } catch (err) {
+      return { error: `Failed to lock thread: ${err?.message || "Discord API error"}` };
+    }
+
+    await sendModLog({
+      guild,
+      category: "CHANNELS",
+      title: "Thread Locked",
+      description: `Thread ${channel} locked by ${moderator?.tag || moderator?.username || "Staff"}.`,
+      level: "WARNING",
+      actor: moderator,
+      extraFields: {
+        Channel: `${channel.name} (\`${channel.id}\`)`,
+        Reason: reason || "None",
+      },
+    });
+
+    return {
+      success: true,
+      isThread: true,
+      channel,
+      targetRole: null,
+      usingVerifiedRole: false,
+      verifiedRoleName: null,
+      durationSeconds: null,
+      expiryUnix: null,
+    };
+  }
+
+  // Non-thread channel: verify bot permissions
+  const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+  const botPerms = channel.permissionsFor?.(botMember);
+  if (!botPerms?.has(PermissionFlagsBits.ManageChannels) && !botPerms?.has(PermissionFlagsBits.ManageRoles)) {
+    return { error: "I need the **Manage Channels** or **Manage Roles** permission in this channel to modify permissions." };
+  }
+
   const { role: targetRole, usingVerifiedRole, verifiedRoleName } = await resolveTargetRole(guild);
   const durationSeconds = parseDuration(durationStr);
 
   const existingOverwrite = channel.permissionOverwrites.cache.get(targetRole.id);
-  const prevSendMessages =
-    existingOverwrite?.allow.has(PermissionFlagsBits.SendMessages) ? true
-      : existingOverwrite?.deny.has(PermissionFlagsBits.SendMessages) ? false
-        : null;
-  const prevAddReactions =
-    existingOverwrite?.allow.has(PermissionFlagsBits.AddReactions) ? true
-      : existingOverwrite?.deny.has(PermissionFlagsBits.AddReactions) ? false
-        : null;
+  const isCurrentlyLocked = existingOverwrite?.deny.has(PermissionFlagsBits.SendMessages);
 
-  // Snapshot previous state before editing
-  await ChannelPermissionSnapshot.findOrCreate({
+  const existingSnapshot = await ChannelPermissionSnapshot.findOne({
     where: {
       guild_id: String(guild.id),
       channel_id: String(channel.id),
       target_id: String(targetRole.id),
       permission_name: "SendMessages",
     },
-    defaults: {
+  });
+
+  // If already locked and no new timer is requested, notify user
+  if (isCurrentlyLocked && existingSnapshot && !durationSeconds && !unlockTimers.has(channel.id)) {
+    return {
+      alreadyLocked: true,
+      channel,
+      targetRole,
+      usingVerifiedRole,
+      verifiedRoleName,
+    };
+  }
+
+  // Snapshot previous state before editing if we don't already have an active lock snapshot
+  if (!existingSnapshot) {
+    const prevSendMessages =
+      existingOverwrite?.allow.has(PermissionFlagsBits.SendMessages) ? true
+        : existingOverwrite?.deny.has(PermissionFlagsBits.SendMessages) ? false
+          : null;
+
+    await ChannelPermissionSnapshot.create({
       guild_id: String(guild.id),
       channel_id: String(channel.id),
       target_id: String(targetRole.id),
       permission_name: "SendMessages",
       permission_value: prevSendMessages,
-    },
-  });
+    });
+  }
 
-  await channel.permissionOverwrites.edit(targetRole, {
-    SendMessages: false,
-    AddReactions: false,
-  });
+  const auditReason = `Channel locked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
+
+  try {
+    await channel.permissionOverwrites.edit(
+      targetRole,
+      {
+        SendMessages: false,
+        SendMessagesInThreads: false,
+        CreatePublicThreads: false,
+        CreatePrivateThreads: false,
+        AddReactions: false,
+      },
+      { reason: auditReason }
+    );
+  } catch (err) {
+    return { error: `Failed to edit channel permissions: ${err?.message || "Discord API error"}` };
+  }
 
   // Clear existing timer if any
   if (unlockTimers.has(channel.id)) {
@@ -94,9 +177,9 @@ export async function lockChannel({ channel, guild, moderator = null, durationSt
     const timer = setTimeout(async () => {
       unlockTimers.delete(channel.id);
       try {
-        await unlockChannel({ channel, guild, moderator: null });
-        await channel.send({ content: `🔓 **Channel Unlocked**: The temporary lock duration has expired.` }).catch(() => { });
-      } catch (_) { }
+        await unlockChannel({ channel, guild, moderator: null, reason: "Temporary lock duration expired" });
+        await channel.send({ content: `🔓 **Channel Unlocked**: The temporary lock duration has expired.` }).catch(() => {});
+      } catch (_) {}
     }, durationSeconds * 1000);
     unlockTimers.set(channel.id, timer);
   }
@@ -109,8 +192,10 @@ export async function lockChannel({ channel, guild, moderator = null, durationSt
     level: "WARNING",
     actor: moderator,
     extraFields: {
+      Channel: `${channel.name} (\`${channel.id}\`)`,
       Target: usingVerifiedRole ? `@${verifiedRoleName}` : "@everyone",
       Duration: durationStr || "Indefinite",
+      Reason: reason || "None",
     },
   });
 
@@ -126,9 +211,62 @@ export async function lockChannel({ channel, guild, moderator = null, durationSt
 }
 
 /**
- * Unlocks a channel by restoring snapshot or deleting denies
+ * Unlocks a channel by restoring snapshot or neutralizing denies
  */
-export async function unlockChannel({ channel, guild, moderator = null }) {
+export async function unlockChannel({ channel, guild, moderator = null, reason = null }) {
+  if (!channel || !guild) {
+    return { error: "Invalid channel or guild." };
+  }
+
+  // Handle Thread channels
+  if (channel.isThread?.()) {
+    const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+    const botPerms = channel.permissionsFor?.(botMember);
+    if (!botPerms?.has(PermissionFlagsBits.ManageThreads)) {
+      return { error: "I need the **Manage Threads** permission to unlock this thread." };
+    }
+
+    if (!channel.locked) {
+      return { notLocked: true, isThread: true, channel };
+    }
+
+    const auditReason = `Thread unlocked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
+    try {
+      await channel.setLocked(false, auditReason);
+    } catch (err) {
+      return { error: `Failed to unlock thread: ${err?.message || "Discord API error"}` };
+    }
+
+    await sendModLog({
+      guild,
+      category: "CHANNELS",
+      title: "Thread Unlocked",
+      description: `Thread ${channel} unlocked by ${moderator?.tag || moderator?.username || "Staff"}.`,
+      level: "SUCCESS",
+      actor: moderator,
+      extraFields: {
+        Channel: `${channel.name} (\`${channel.id}\`)`,
+        Reason: reason || "None",
+      },
+    });
+
+    return {
+      success: true,
+      isThread: true,
+      channel,
+      targetRole: null,
+      usingVerifiedRole: false,
+      verifiedRoleName: null,
+    };
+  }
+
+  // Non-thread channel: verify bot permissions
+  const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+  const botPerms = channel.permissionsFor?.(botMember);
+  if (!botPerms?.has(PermissionFlagsBits.ManageChannels) && !botPerms?.has(PermissionFlagsBits.ManageRoles)) {
+    return { error: "I need the **Manage Channels** or **Manage Roles** permission in this channel to modify permissions." };
+  }
+
   const { role: targetRole, usingVerifiedRole, verifiedRoleName } = await resolveTargetRole(guild);
 
   if (unlockTimers.has(channel.id)) {
@@ -146,25 +284,38 @@ export async function unlockChannel({ channel, guild, moderator = null }) {
   });
 
   const existingOverwrite = channel.permissionOverwrites.cache.get(targetRole.id);
+  const isCurrentlyDenied = existingOverwrite?.deny.has(PermissionFlagsBits.SendMessages);
+
+  if (!snapshot && !isCurrentlyDenied) {
+    return { notLocked: true, channel, targetRole, usingVerifiedRole, verifiedRoleName };
+  }
+
+  const auditReason = `Channel unlocked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
+
+  // When restoring:
+  // If snapshot was explicitly true, restore true.
+  // Otherwise restore null (neutral / inherit).
+  // CRITICAL: NEVER restore false on an unlock command!
+  const restoredSendMessages = snapshot?.permission_value === true ? true : null;
+
+  try {
+    await channel.permissionOverwrites.edit(
+      targetRole,
+      {
+        SendMessages: restoredSendMessages,
+        SendMessagesInThreads: null,
+        CreatePublicThreads: null,
+        CreatePrivateThreads: null,
+        AddReactions: null,
+      },
+      { reason: auditReason }
+    );
+  } catch (err) {
+    return { error: `Failed to restore channel permissions: ${err?.message || "Discord API error"}` };
+  }
 
   if (snapshot) {
-    if (snapshot.permission_value !== null) {
-      await channel.permissionOverwrites.edit(targetRole, {
-        SendMessages: Boolean(snapshot.permission_value),
-        AddReactions: null,
-      });
-    } else {
-      await channel.permissionOverwrites.edit(targetRole, {
-        SendMessages: null,
-        AddReactions: null,
-      });
-    }
     await snapshot.destroy();
-  } else if (existingOverwrite) {
-    await channel.permissionOverwrites.edit(targetRole, {
-      SendMessages: null,
-      AddReactions: null,
-    });
   }
 
   await sendModLog({
@@ -175,7 +326,9 @@ export async function unlockChannel({ channel, guild, moderator = null }) {
     level: "SUCCESS",
     actor: moderator,
     extraFields: {
+      Channel: `${channel.name} (\`${channel.id}\`)`,
       Target: usingVerifiedRole ? `@${verifiedRoleName}` : "@everyone",
+      Reason: reason || "None",
     },
   });
 
@@ -191,7 +344,21 @@ export async function unlockChannel({ channel, guild, moderator = null }) {
 /**
  * Hides a channel from target role (ViewChannel -> false)
  */
-export async function hideChannel({ channel, guild, moderator = null }) {
+export async function hideChannel({ channel, guild, moderator = null, reason = null }) {
+  if (!channel || !guild) {
+    return { error: "Invalid channel or guild." };
+  }
+
+  if (channel.isThread?.()) {
+    return { error: "Threads cannot be hidden individually. Hide the parent channel instead." };
+  }
+
+  const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+  const botPerms = channel.permissionsFor?.(botMember);
+  if (!botPerms?.has(PermissionFlagsBits.ManageChannels) && !botPerms?.has(PermissionFlagsBits.ManageRoles)) {
+    return { error: "I need the **Manage Channels** or **Manage Roles** permission in this channel to modify visibility." };
+  }
+
   const { role: targetRole, usingVerifiedRole, verifiedRoleName } = await resolveTargetRole(guild);
 
   const existingSnapshot = await ChannelPermissionSnapshot.findOne({
@@ -203,27 +370,41 @@ export async function hideChannel({ channel, guild, moderator = null }) {
     },
   });
 
-  if (existingSnapshot) {
+  const existingOverwrite = channel.permissionOverwrites.cache.get(targetRole.id);
+  const isCurrentlyHidden = existingOverwrite?.deny.has(PermissionFlagsBits.ViewChannel);
+
+  if (existingSnapshot && isCurrentlyHidden) {
     return { alreadyHidden: true, channel, targetRole, usingVerifiedRole, verifiedRoleName };
   }
 
-  const existingOverwrite = channel.permissionOverwrites.cache.get(targetRole.id);
-  const prevViewChannel =
-    existingOverwrite?.allow.has(PermissionFlagsBits.ViewChannel) ? true
-      : existingOverwrite?.deny.has(PermissionFlagsBits.ViewChannel) ? false
-        : null;
+  if (!existingSnapshot) {
+    const prevViewChannel =
+      existingOverwrite?.allow.has(PermissionFlagsBits.ViewChannel) ? true
+        : existingOverwrite?.deny.has(PermissionFlagsBits.ViewChannel) ? false
+          : null;
 
-  await ChannelPermissionSnapshot.create({
-    guild_id: String(guild.id),
-    channel_id: String(channel.id),
-    target_id: String(targetRole.id),
-    permission_name: "ViewChannel",
-    permission_value: prevViewChannel,
-  });
+    await ChannelPermissionSnapshot.create({
+      guild_id: String(guild.id),
+      channel_id: String(channel.id),
+      target_id: String(targetRole.id),
+      permission_name: "ViewChannel",
+      permission_value: prevViewChannel,
+    });
+  }
 
-  await channel.permissionOverwrites.edit(targetRole, {
-    ViewChannel: false,
-  });
+  const auditReason = `Channel hidden by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
+
+  try {
+    await channel.permissionOverwrites.edit(
+      targetRole,
+      {
+        ViewChannel: false,
+      },
+      { reason: auditReason }
+    );
+  } catch (err) {
+    return { error: `Failed to edit channel visibility: ${err?.message || "Discord API error"}` };
+  }
 
   await sendModLog({
     guild,
@@ -233,7 +414,9 @@ export async function hideChannel({ channel, guild, moderator = null }) {
     level: "WARNING",
     actor: moderator,
     extraFields: {
+      Channel: `${channel.name} (\`${channel.id}\`)`,
       Target: usingVerifiedRole ? `@${verifiedRoleName}` : "@everyone",
+      Reason: reason || "None",
     },
   });
 
@@ -247,9 +430,23 @@ export async function hideChannel({ channel, guild, moderator = null }) {
 }
 
 /**
- * Unhides a channel by restoring snapshot
+ * Unhides a channel by restoring snapshot or neutralizing denies
  */
-export async function unhideChannel({ channel, guild, moderator = null }) {
+export async function unhideChannel({ channel, guild, moderator = null, reason = null }) {
+  if (!channel || !guild) {
+    return { error: "Invalid channel or guild." };
+  }
+
+  if (channel.isThread?.()) {
+    return { error: "Threads do not have individual visibility settings. Unhide the parent channel instead." };
+  }
+
+  const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+  const botPerms = channel.permissionsFor?.(botMember);
+  if (!botPerms?.has(PermissionFlagsBits.ManageChannels) && !botPerms?.has(PermissionFlagsBits.ManageRoles)) {
+    return { error: "I need the **Manage Channels** or **Manage Roles** permission in this channel to modify visibility." };
+  }
+
   const { role: targetRole, usingVerifiedRole, verifiedRoleName } = await resolveTargetRole(guild);
 
   const snapshot = await ChannelPermissionSnapshot.findOne({
@@ -268,21 +465,28 @@ export async function unhideChannel({ channel, guild, moderator = null }) {
     return { notHidden: true, channel, targetRole, usingVerifiedRole, verifiedRoleName };
   }
 
+  const auditReason = `Channel unhidden by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
+
+  // When restoring:
+  // If snapshot was explicitly true, restore true.
+  // Otherwise restore null (neutral / inherit).
+  // CRITICAL: NEVER restore false on an unhide command!
+  const restoredViewChannel = snapshot?.permission_value === true ? true : null;
+
+  try {
+    await channel.permissionOverwrites.edit(
+      targetRole,
+      {
+        ViewChannel: restoredViewChannel,
+      },
+      { reason: auditReason }
+    );
+  } catch (err) {
+    return { error: `Failed to restore channel visibility: ${err?.message || "Discord API error"}` };
+  }
+
   if (snapshot) {
-    if (snapshot.permission_value !== null) {
-      await channel.permissionOverwrites.edit(targetRole, {
-        ViewChannel: Boolean(snapshot.permission_value),
-      });
-    } else {
-      await channel.permissionOverwrites.edit(targetRole, {
-        ViewChannel: null,
-      });
-    }
     await snapshot.destroy();
-  } else if (existingOverwrite) {
-    await channel.permissionOverwrites.edit(targetRole, {
-      ViewChannel: null,
-    });
   }
 
   await sendModLog({
@@ -293,7 +497,9 @@ export async function unhideChannel({ channel, guild, moderator = null }) {
     level: "SUCCESS",
     actor: moderator,
     extraFields: {
+      Channel: `${channel.name} (\`${channel.id}\`)`,
       Target: usingVerifiedRole ? `@${verifiedRoleName}` : "@everyone",
+      Reason: reason || "None",
     },
   });
 

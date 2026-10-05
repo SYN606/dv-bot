@@ -2,29 +2,29 @@ import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
-import { hideChannel } from "../../services/channelLockService.js";
+import { unhideChannel } from "../../services/channelLockService.js";
 
 const slashBuilder = new SlashCommandBuilder()
-  .setName("hide")
-  .setDescription("Hide a channel to make it invisible to non-staff members")
+  .setName("unhide")
+  .setDescription("Unhide a previously hidden channel to restore its visibility")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
   .setDMPermission(false)
   .addChannelOption((opt) =>
     opt
       .setName("channel")
-      .setDescription("Target channel to hide (defaults to current)")
+      .setDescription("Target channel to unhide (defaults to current)")
       .setRequired(false)
   )
   .addStringOption((opt) =>
     opt
       .setName("reason")
-      .setDescription("Reason for hiding the channel")
+      .setDescription("Reason for unhiding the channel")
       .setRequired(false)
   );
 
 export default createCommand({
-  name: "hide",
-  description: "Hide a channel to make it invisible to non-staff members.",
+  name: "unhide",
+  description: "Unhide a previously hidden channel to restore its visibility.",
   category: "Channels",
   slashOnly: true,
   modOnly: true,
@@ -61,7 +61,7 @@ export default createCommand({
 
     const reason = ctx.interaction?.options?.getString?.("reason") || ctx.options?.reason;
 
-    const res = await hideChannel({
+    const res = await unhideChannel({
       channel: targetChannel,
       guild,
       moderator: user,
@@ -72,7 +72,7 @@ export default createCommand({
       return await ctx.reply({
         embeds: [
           makeEmbed({
-            title: "Hide Failed",
+            title: "Unhide Failed",
             description: `${EMOJIS.get("fail") || "❌"} ${res.error}`,
             level: "ERROR",
           }),
@@ -88,15 +88,15 @@ export default createCommand({
       ? `-# 🔐 Verification mode active — targeting **@${res.verifiedRoleName}** instead of @everyone.`
       : `-# 🌐 No verification role configured — targeting **@everyone**.`;
 
-    if (res.alreadyHidden) {
+    if (res.notHidden) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
-            title: "Already Hidden",
+            title: "Channel Not Hidden",
             description:
-              `${EMOJIS.get("warning") || "⚠️"} ${targetChannel} is already hidden from ${roleLabel}.\n\n` +
-              `${scopeNote}\n-# Use \`/unhide\` to make it visible again.`,
-            level: "WARNING",
+              `${EMOJIS.get("info") || "ℹ️"} ${targetChannel} is not currently hidden from ${roleLabel}.\n\n` +
+              `${scopeNote}\n-# No snapshot found. The channel already has normal visibility.`,
+            level: "INFO",
             color: COLORS.DARK,
             headerDivider: false,
           }),
@@ -109,11 +109,11 @@ export default createCommand({
       embeds: [
         makeEmbed({
           author: { name: "Channel Visibility", iconURL: guild.iconURL?.() || undefined },
-          title: "🙈 Channel Hidden",
+          title: "👁️ Channel Unhidden",
           description:
-            `${targetChannel} is now **hidden** from ${roleLabel}.\n\n` +
-            `${scopeNote}\n-# Use \`/unhide\` to restore original visibility.`,
-          level: "WARNING",
+            `${targetChannel} is now **visible** again to ${roleLabel}.\n\n` +
+            `${scopeNote}\n-# Original permission state has been fully restored.`,
+          level: "SUCCESS",
           color: COLORS.DARK,
           headerDivider: false,
         }),
