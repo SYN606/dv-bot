@@ -6,74 +6,109 @@ import { sendModLog } from "../../utils/modLog.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("role")
-  .setDescription("Manage server roles")
+  .setDescription("Manage server roles (assign or remove roles from members)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
+  .setDMPermission(false)
   .addSubcommand((sub) =>
     sub
       .setName("add")
       .setDescription("Assign a role to a member")
-      .addUserOption((opt) => opt.setName("user").setDescription("The target member").setRequired(true))
-      .addRoleOption((opt) => opt.setName("role").setDescription("The role to assign").setRequired(true))
+      .addUserOption((opt) =>
+        opt.setName("user").setDescription("The member to receive the role").setRequired(true)
+      )
+      .addRoleOption((opt) =>
+        opt.setName("role").setDescription("The role to assign").setRequired(true)
+      )
+      .addBooleanOption((opt) =>
+        opt.setName("silent").setDescription("Make the response visible only to you").setRequired(false)
+      )
   )
   .addSubcommand((sub) =>
     sub
       .setName("remove")
       .setDescription("Remove a role from a member")
-      .addUserOption((opt) => opt.setName("user").setDescription("The target member").setRequired(true))
-      .addRoleOption((opt) => opt.setName("role").setDescription("The role to remove").setRequired(true))
+      .addUserOption((opt) =>
+        opt.setName("user").setDescription("The member to lose the role").setRequired(true)
+      )
+      .addRoleOption((opt) =>
+        opt.setName("role").setDescription("The role to remove").setRequired(true)
+      )
+      .addBooleanOption((opt) =>
+        opt.setName("silent").setDescription("Make the response visible only to you").setRequired(false)
+      )
   );
 
 export default createCommand({
   name: "role",
-  description: "Manage server roles.",
+  description: "Manage server roles (assign or remove roles from members).",
   category: "Admin",
-  slashOnly: true, // User requested strict slash
-  adminOnly: true,
+  slashOnly: true,
+  modOnly: true,
   requiredPermission: PermissionFlagsBits.ManageRoles,
   slashBuilder,
 
   async execute(ctx) {
-    const { guild, user, member } = ctx;
-    if (!guild || !ctx.isInteraction) return; // Enforce strict slash command
+    if (!ctx.isInteraction) return;
 
-    const sub = ctx.subcommand;
-    const targetUserId = ctx.options.user;
-    const roleId = ctx.options.role;
+    const { guild, user, member, client } = ctx;
+    if (!guild) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Command Error",
+            description: "This command can only be used in a server.",
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    const sub = ctx.subcommand || ctx.interaction?.options?.getSubcommand?.(false);
+    if (sub !== "add" && sub !== "remove") {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Invalid Usage",
+            description: "Please specify either `/role add` or `/role remove`.",
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    const targetUserId =
+      ctx.interaction?.options?.getUser?.("user")?.id || ctx.options?.user;
+    const roleId =
+      ctx.interaction?.options?.getRole?.("role")?.id || ctx.options?.role;
+    const silent = Boolean(ctx.interaction?.options?.getBoolean?.("silent"));
 
     if (!targetUserId || !roleId) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
-            title: "Usage",
-            description: "**Slash:**\n`/role add <user> <role>`\n`/role remove <user> <role>`",
-            level: "INFO",
+            title: "Invalid Arguments",
+            description: "Both **user** and **role** options are required.\n\n`/role add <user> <role>`\n`/role remove <user> <role>`",
+            level: "WARNING",
           }),
         ],
         ephemeral: true,
       });
     }
 
-    const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
-    const role = guild.roles.cache.get(roleId);
-
-    if (!targetMember) {
-      return await ctx.reply({
-        embeds: [
-          makeEmbed({
-            title: "Not Found",
-            description: "Member not found in this server.",
-            level: "ERROR",
-          }),
-        ],
-        ephemeral: true,
-      });
-    }
+    // Resolve Role
+    const role =
+      ctx.interaction?.options?.getRole?.("role") ||
+      guild.roles.cache.get(roleId) ||
+      (await guild.roles.fetch(roleId).catch(() => null));
 
     if (!role) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
-            title: "Not Found",
-            description: "Role not found in this server.",
+            title: "Role Not Found",
+            description: "The specified role could not be found in this server.",
             level: "ERROR",
           }),
         ],
@@ -81,8 +116,85 @@ export default createCommand({
       });
     }
 
-    // Role Hierarchy Checks
-    const botMember = guild.members.me;
+    // Disallow modifying @everyone
+    if (role.id === guild.id) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Invalid Role",
+            description: "The `@everyone` role cannot be assigned or removed.",
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    // Disallow managed roles (bot/integration/nitro boost roles)
+    if (role.managed) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Managed Role",
+            description: `The role ${role} is automatically managed by an integration (bot, nitro booster, or application) and cannot be manually assigned or removed.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    // Resolve Member
+    let targetMember =
+      ctx.interaction?.options?.getMember?.("user") ||
+      guild.members.cache.get(targetUserId);
+
+    if (!targetMember) {
+      targetMember = await guild.members.fetch(targetUserId).catch(() => null);
+    }
+
+    if (!targetMember) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Member Not Found",
+            description: "The specified user is not a member of this server.",
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    // Check Bot Permissions & Hierarchy
+    const botMember =
+      guild.members.me || (await guild.members.fetchMe().catch(() => null));
+
+    if (!botMember) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Error",
+            description: "Could not verify bot permissions in this guild.",
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    if (!botMember.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Missing Permissions",
+            description: "I need the **Manage Roles** permission to modify member roles.",
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
 
     // 1. Can Bot Manage this Role?
     if (role.position >= botMember.roles.highest.position) {
@@ -90,7 +202,7 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "Hierarchy Error",
-            description: `I cannot manage ${role} because it is higher than or equal to my highest role.`,
+            description: `I cannot manage ${role} because its position is higher than or equal to my highest role (${botMember.roles.highest}).`,
             level: "ERROR",
           }),
         ],
@@ -98,13 +210,14 @@ export default createCommand({
       });
     }
 
-    // 2. Can Mod Manage this Role?
-    if (guild.ownerId !== user.id && role.position >= member.roles.highest.position) {
+    // 2. Can Moderator Manage this Role? (Server owner bypasses hierarchy)
+    const isOwner = guild.ownerId === user.id;
+    if (!isOwner && member?.roles?.highest && role.position >= member.roles.highest.position) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `You cannot manage ${role} because it is higher than or equal to your highest role.`,
+            description: `You cannot manage ${role} because its position is higher than or equal to your highest role (${member.roles.highest}).`,
             level: "ERROR",
           }),
         ],
@@ -112,17 +225,32 @@ export default createCommand({
       });
     }
 
-    // 3. Mod vs Target Member Hierarchy (Only applies if doing aggressive actions, but good practice for roles too)
+    // 3. Can Moderator Manage Target Member?
+    if (targetMember.id === guild.ownerId && !isOwner) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Permission Denied",
+            description: "You cannot modify roles for the server owner.",
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
     if (
-      guild.ownerId !== user.id &&
+      !isOwner &&
       targetMember.id !== user.id &&
+      member?.roles?.highest &&
+      targetMember.roles?.highest &&
       targetMember.roles.highest.position >= member.roles.highest.position
     ) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `You cannot manage roles for ${targetMember} because they have an equal or higher role than you.`,
+            description: `You cannot manage roles for ${targetMember} because they have an equal or higher role than you (${targetMember.roles.highest}).`,
             level: "ERROR",
           }),
         ],
@@ -130,92 +258,98 @@ export default createCommand({
       });
     }
 
-    if (sub === "add") {
-      if (targetMember.roles.cache.has(role.id)) {
-        return await ctx.reply({
-          embeds: [
-            makeEmbed({
-              title: "Already Has Role",
-              description: `${targetMember} already has the ${role} role.`,
-              level: "WARNING",
-            }),
-          ],
-          ephemeral: true,
-        });
-      }
+    // Check Role Presence
+    const hasRole = targetMember.roles.cache.has(role.id);
 
-      await ctx.defer({ ephemeral: false });
-      await targetMember.roles.add(role, `Role assigned by ${user.tag}`);
-
-      await sendModLog({
-        guild,
-        category: "ADMIN",
-        title: "Role Added",
-        description: `${user} assigned the ${role} role to ${targetMember}.`,
-        level: "INFO",
-        actor: user,
-      });
-
+    if (sub === "add" && hasRole) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
-            author: { name: "Role Management", iconURL: guild.iconURL?.({ dynamic: true }) || undefined },
-            title: "Role Added",
-            description:
-              `${EMOJIS.get("success") || "✅"} Successfully gave ${role} to ${targetMember}.\n\n` +
-              `➡️ **Member:** ${targetMember} (\`${targetMember.user.tag || targetMember.user.username}\`)\n` +
-              `➡️ **Role:** ${role} (\`${role.name}\`)\n` +
-              `➡️ **Moderator:** ${user}`,
-            level: "SUCCESS",
-            headerDivider: false,
+            title: "Already Has Role",
+            description: `${targetMember} already has the ${role} role.`,
+            level: "WARNING",
           }),
         ],
-        ephemeral: false
+        ephemeral: true,
       });
     }
 
-    if (sub === "remove") {
-      if (!targetMember.roles.cache.has(role.id)) {
-        return await ctx.reply({
-          embeds: [
-            makeEmbed({
-              title: "Missing Role",
-              description: `${targetMember} does not have the ${role} role.`,
-              level: "WARNING",
-            }),
-          ],
-          ephemeral: true,
-        });
-      }
-
-      await ctx.defer({ ephemeral: false });
-      await targetMember.roles.remove(role, `Role removed by ${user.tag}`);
-
-      await sendModLog({
-        guild,
-        category: "ADMIN",
-        title: "Role Removed",
-        description: `${user} removed the ${role} role from ${targetMember}.`,
-        level: "INFO",
-        actor: user,
-      });
-
+    if (sub === "remove" && !hasRole) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
-            author: { name: "Role Management", iconURL: guild.iconURL?.({ dynamic: true }) || undefined },
-            title: "Role Removed",
-            description:
-              `${EMOJIS.get("success") || "✅"} Successfully removed ${role} from ${targetMember}.\n\n` +
-              `➡️ **Member:** ${targetMember} (\`${targetMember.user.tag || targetMember.user.username}\`)\n` +
-              `➡️ **Role:** ${role} (\`${role.name}\`)\n` +
-              `➡️ **Moderator:** ${user}`,
-            level: "SUCCESS",
-            headerDivider: false,
+            title: "Missing Role",
+            description: `${targetMember} does not have the ${role} role.`,
+            level: "WARNING",
           }),
         ],
-        ephemeral: false
+        ephemeral: true,
       });
     }
+
+    // Perform Action
+    await ctx.defer({ ephemeral: silent });
+
+    const auditReason = `Role ${sub === "add" ? "assigned" : "removed"} by ${user.tag || user.username} (${user.id})`;
+
+    try {
+      if (sub === "add") {
+        await targetMember.roles.add(role, auditReason);
+      } else {
+        await targetMember.roles.remove(role, auditReason);
+      }
+    } catch (err) {
+      console.error(`[ROLE ${sub.toUpperCase()} ERROR]:`, err);
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Role Operation Failed",
+            description: `Failed to ${sub === "add" ? "assign" : "remove"} ${role}: ${err?.message || "Discord API error"}.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    // Send Mod Log (Non-blocking)
+    try {
+      await sendModLog({
+        guild,
+        category: "ADMIN",
+        title: sub === "add" ? "Role Assigned" : "Role Removed",
+        description: `${user} ${sub === "add" ? "assigned" : "removed"} the ${role} role ${sub === "add" ? "to" : "from"} ${targetMember}.`,
+        level: "INFO",
+        actor: user,
+        extraFields: {
+          Member: `${targetMember.user?.tag || targetMember.user?.username || targetMember.id} (\`${targetMember.id}\`)`,
+          Role: `${role.name} (\`${role.id}\`)`,
+          Action: sub === "add" ? "Assigned" : "Removed",
+        },
+      });
+    } catch (e) {
+      // Mod log failure is non-fatal
+    }
+
+    const successIcon = EMOJIS.get("success") || "✅";
+    const memberTag = targetMember.user?.tag || targetMember.user?.username || targetMember.id;
+    const authorIcon = guild.iconURL?.() || undefined;
+
+    return await ctx.reply({
+      embeds: [
+        makeEmbed({
+          author: { name: "Role Management", iconURL: authorIcon },
+          title: sub === "add" ? "Role Assigned" : "Role Removed",
+          description:
+            `${successIcon} Successfully ${sub === "add" ? "assigned" : "removed"} ${role} ${sub === "add" ? "to" : "from"} ${targetMember}.\n\n` +
+            `➡️ **Member:** ${targetMember} (\`${memberTag}\`)\n` +
+            `➡️ **Role:** ${role} (\`${role.name}\`)\n` +
+            `➡️ **Moderator:** ${user}`,
+          level: "SUCCESS",
+          headerDivider: false,
+        }),
+      ],
+      ephemeral: silent,
+    });
   },
 });
