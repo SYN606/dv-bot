@@ -1,6 +1,6 @@
 # 🚀 DV-BOT Production Deployment Guide
 
-Complete, step-by-step production deployment guide for hosting **DV-BOT** on a Linux VPS (Ubuntu/Debian) with **isolated persistent database storage**, **systemd auto-healing**, and **Nginx reverse proxy** locked strictly to `bot.digitalvigital.fun`.
+Complete, step-by-step production deployment guide for hosting **DV-BOT** on a Linux VPS (Ubuntu/Debian) with **isolated persistent database storage**, **systemd auto-healing (`dv-bot.service`)**, and **Nginx reverse proxy** locked strictly to `bot.digitalvigital.fun`.
 
 ---
 
@@ -10,7 +10,7 @@ Complete, step-by-step production deployment guide for hosting **DV-BOT** on a L
 3. [Environment Configuration & Auto-Switching](#3-environment-configuration--auto-switching)
 4. [Server Setup & User Permissions](#4-server-setup--user-permissions)
 5. [Code Deployment & Build](#5-code-deployment--build)
-6. [Systemd Service Management](#6-systemd-service-management)
+6. [Systemd Service Management (`dv-bot.service`)](#6-systemd-service-management-dv-botservice)
 7. [Nginx Reverse Proxy & SSL (Strict Domain Lock)](#7-nginx-reverse-proxy--ssl-strict-domain-lock)
 8. [Safe Code-Only Updates](#8-safe-code-only-updates)
 9. [Deployment & Diagnostic Logs (`logs/`)](#9-deployment--diagnostic-logs-logs)
@@ -27,7 +27,7 @@ Linux VPS
 ├── /var/webhost/dv-bot/          # [CODEBASE] Owned by syn:webhost (Git repo, frontend build, scripts)
 │   ├── .env                      # Production secrets & configuration
 │   ├── entrypoint.sh             # Production lifecycle manager
-│   ├── dvbot.service             # Systemd service unit
+│   ├── dv-bot.service            # Systemd service unit
 │   └── src/
 │
 ├── /var/db/                      # [PERSISTENT DATA] Owned by syn:webhost (chmod 700)
@@ -42,6 +42,7 @@ Linux VPS
 - **Group**: `webhost`
 - **Internal Web Port**: `3000` (Bound to `127.0.0.1:3000`, not exposed publicly)
 - **Public Domain**: `https://bot.digitalvigital.fun`
+- **Systemd Service**: `dv-bot.service`
 
 ---
 
@@ -84,7 +85,7 @@ DV-BOT automatically adapts the OAuth redirect URI based on the `ENV` mode:
 # ───── BOT ENVIRONMENT CONFIGURATION ─────
 # ==========================================
 ENV=prod
-PREFIX=ts
+PREFIX=dv
 DEV_GUILD_ID=1033451129364811929
 
 # ==========================================
@@ -180,8 +181,8 @@ Switch to user `syn` to clone the repository and build:
 su - syn
 cd /var/webhost/dv-bot
 
-# Clone the repository
-git clone -b bun-migration https://github.com/SYN606/dv-bot.git .
+# Clone the repository (main branch)
+git clone https://github.com/SYN606/dv-bot.git .
 
 # Create production .env
 nano .env
@@ -200,29 +201,47 @@ exit
 
 ---
 
-## 6. Systemd Service Management
+## 6. Systemd Service Management (`dv-bot.service`)
 
-The unit file [`dvbot.service`](file:///d:/projects/DV-BOT/dvbot.service) handles auto-restarts, environment injection, and graceful SIGTERM shutdown.
+The unit file [`dv-bot.service`](dv-bot.service) handles auto-restarts, environment injection, and graceful SIGTERM shutdown.
 
 As `root`:
 ```bash
 # 1. Copy the unit file into systemd
-cp /var/webhost/dv-bot/dvbot.service /etc/systemd/system/dvbot.service
+cp /var/webhost/dv-bot/dv-bot.service /etc/systemd/system/dv-bot.service
 
-# 2. Reload systemd
+# 2. Reload systemd daemon
 systemctl daemon-reload
 
 # 3. Enable auto-start on boot & start the bot
-systemctl enable --now dvbot
+systemctl enable --now dv-bot
 
-# 4. Verify status
-systemctl status dvbot
+# 4. Verify service status
+systemctl status dv-bot
 ```
 
-### Viewing Live Logs:
+### Essential `dv-bot.service` Commands:
 ```bash
-# Stream live logs in realtime
-journalctl -u dvbot -f -o cat
+# Check service status
+systemctl status dv-bot
+
+# Restart the bot (triggers graceful shutdown, state flush & restart)
+systemctl restart dv-bot
+
+# Stop the bot
+systemctl stop dv-bot
+
+# Start the bot
+systemctl start dv-bot
+
+# Disable auto-start on boot
+systemctl disable dv-bot
+
+# View live application & deployment logs
+journalctl -u dv-bot -f -o cat
+
+# View last 100 log lines
+journalctl -u dv-bot -n 100 --no-pager
 ```
 
 ---
@@ -269,6 +288,21 @@ apt update && apt install -y certbot python3-certbot-nginx
 certbot --nginx -d bot.digitalvigital.fun
 ```
 
+### Essential Nginx Commands:
+```bash
+# Test configuration syntax
+nginx -t
+
+# Reload Nginx without dropping active connections
+systemctl reload nginx
+
+# Restart Nginx service
+systemctl restart nginx
+
+# Check Nginx status
+systemctl status nginx
+```
+
 Certbot will automatically install the SSL certificates and set up HTTP ➔ HTTPS 301 redirection.
 
 ---
@@ -282,8 +316,8 @@ Because your SQLite database lives in `/var/db/bot.db`, you can update your code
 su - syn
 cd /var/webhost/dv-bot
 
-# Pull latest code
-git pull origin bun-migration
+# Pull latest code from main
+git pull origin main
 
 # Install dependencies if package.json was updated
 bun install
@@ -291,8 +325,14 @@ bun install
 # Rebuild frontend if web assets were updated
 bun run build:web
 
-# Restart the service (as root or via sudo)
-sudo systemctl restart dvbot
+# Exit back to root or run with sudo
+exit
+
+# Restart the service cleanly
+sudo systemctl restart dv-bot
+
+# Verify status
+sudo systemctl status dv-bot
 ```
 
 Your server database, analytics history, role configurations, and sticky messages in `/var/db/` remain completely untouched.
@@ -338,8 +378,8 @@ tail -f /var/webhost/dv-bot/logs/error.log
 # 4. Search for specific command or database errors
 grep -i "error" /var/webhost/dv-bot/logs/app.log | tail -n 30
 
-# 5. Monitor systemd service output in realtime
-journalctl -u dvbot -f -o cat
+# 5. Monitor dv-bot systemd service output in realtime
+journalctl -u dv-bot -f -o cat
 ```
 
 ---
@@ -350,8 +390,8 @@ journalctl -u dvbot -f -o cat
 | :--- | :--- | :--- |
 | `Failed to open database` | Permission issue on `/var/db` | Run `chown -R syn:webhost /var/db` and `chmod 700 /var/db` |
 | `OAuth2 Invalid redirect_uri` | Mismatch in Discord Portal | Verify `https://bot.digitalvigital.fun/auth/callback` is listed in Discord App redirects |
-| `502 Bad Gateway in Nginx` | Bot service is offline or crashed | Check `systemctl status dvbot` and inspect `logs/error.log` |
-| `Port 3000 already in use` | Zombie node/bun process | Run `lsof -i :3000` or `fuser -k 3000/tcp` then restart `dvbot` |
+| `502 Bad Gateway in Nginx` | Bot service is offline or crashed | Check `systemctl status dv-bot` and inspect `logs/error.log` |
+| `Port 3000 already in use` | Zombie node/bun process | Run `lsof -i :3000` or `fuser -k 3000/tcp` then run `systemctl restart dv-bot` |
 | `Gateway 429 / Disconnects` | Event loop lockup or rate-limiting | Inspect `logs/error.log` for rate-limit warnings and check `logs/deploy.log` for memory leaks |
 
 ### Database Backup Script
@@ -360,4 +400,3 @@ You can schedule automated SQLite database backups via cron without stopping the
 # Add to crontab -e for user syn (runs daily at 3:00 AM):
 0 3 * * * sqlite3 /var/db/bot.db ".backup '/var/db/bot_backup_$(date +\%F).db'"
 ```
-
