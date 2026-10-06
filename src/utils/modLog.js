@@ -26,6 +26,7 @@ const ACTION_THEMES = {
   VERIFICATION: { color: 0x57f287, emoji: "✅", label: "Member Verified" },
   MEDIA: { color: 0xfee75c, emoji: "🖼️", label: "Media Filter Violation" },
   CONFIG: { color: 0x8e44ad, emoji: "⚙️", label: "Configuration Updated" },
+  VOICE: { color: 0x5865f2, emoji: "🔊", label: "Voice Channel Action" },
   DEFAULT: { color: 0x2b2d31, emoji: "🛡️", label: "Moderation Audit" },
 };
 
@@ -60,6 +61,7 @@ function resolveActionTheme(category = "", title = "") {
   if (normCategory === "VERIFICATION" || normTitle.includes("verif")) return ACTION_THEMES.VERIFICATION;
   if (normCategory === "MEDIA" || normTitle.includes("media")) return ACTION_THEMES.MEDIA;
   if (normCategory === "CONFIG" || normTitle.includes("command")) return ACTION_THEMES.CONFIG;
+  if (normCategory === "VOICE" || normTitle.includes("voice") || normTitle.includes("move")) return ACTION_THEMES.VOICE;
 
   return ACTION_THEMES.DEFAULT;
 }

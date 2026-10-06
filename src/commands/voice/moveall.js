@@ -2,6 +2,7 @@ import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from "discord.j
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
+import { sendModLog } from "../../utils/modLog.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("moveall")
@@ -186,8 +187,11 @@ export default createCommand({
       });
     }
 
-    const members = [...source.members.values()];
-    if (members.length === 0) {
+    const activeMembers = [...source.members.values()].filter(
+      (m) => m && m.voice?.channelId === source.id
+    );
+
+    if (activeMembers.length === 0) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
@@ -202,23 +206,34 @@ export default createCommand({
 
     await ctx.defer();
 
+    const startTime = Date.now();
     let movedCount = 0;
     let failedCount = 0;
+    let index = 0;
 
-    for (const m of members) {
-      if (!m.voice?.channelId || m.voice.channelId !== source.id) {
-        continue;
-      }
-      try {
-        await m.voice.setChannel(target);
-        movedCount++;
-      } catch {
-        failedCount++;
-      }
-      if (members.length > 1) {
-        await new Promise((r) => setTimeout(r, 350));
+    // Concurrently move members using a parallel worker pool (10 concurrent workers)
+    const CONCURRENCY = 10;
+    const workerCount = Math.min(CONCURRENCY, activeMembers.length);
+
+    async function moveWorker() {
+      while (index < activeMembers.length) {
+        const m = activeMembers[index++];
+        if (!m || m.voice?.channelId !== source.id) {
+          continue;
+        }
+        try {
+          await m.voice.setChannel(target);
+          movedCount++;
+        } catch {
+          failedCount++;
+        }
       }
     }
+
+    const workers = Array.from({ length: workerCount }, () => moveWorker());
+    await Promise.all(workers);
+
+    const elapsedSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
 
     if (movedCount === 0) {
       return await ctx.reply({
@@ -232,12 +247,30 @@ export default createCommand({
       });
     }
 
+    // Send Mod Log for audit tracking (non-blocking)
+    try {
+      await sendModLog({
+        guild,
+        category: "VOICE",
+        title: "Bulk Voice Move",
+        description: `<@${ctx.user.id}> moved **${movedCount}** members from **${source.name}** to **${target.name}** in **${elapsedSeconds}s**.`,
+        level: "INFO",
+        actor: ctx.user,
+        extraFields: {
+          "Source Channel": `${source.name} (\`${source.id}\`)`,
+          "Target Channel": `${target.name} (\`${target.id}\`)`,
+          "Members Moved": `${movedCount}/${activeMembers.length}`,
+          "Duration": `${elapsedSeconds}s`,
+        },
+      });
+    } catch (_) {}
+
     const failedText = failedCount > 0 ? ` (${failedCount} failed or disconnected)` : "";
     return await ctx.reply({
       embeds: [
         makeEmbed({
           title: "Members Moved",
-          description: `${EMOJIS.get("success") || "✅"} Moved **${movedCount}** of **${members.length}** members from **${source.name}** to **${target.name}**${failedText}.`,
+          description: `${EMOJIS.get("success") || "✅"} Fast-moved **${movedCount}** of **${activeMembers.length}** members from **${source.name}** to **${target.name}** in **${elapsedSeconds}s**${failedText}.`,
           level: failedCount > 0 ? "WARNING" : "SUCCESS",
         }),
       ],
