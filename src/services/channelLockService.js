@@ -25,6 +25,74 @@ export function parseDuration(str) {
 }
 
 /**
+ * Adds prefix (e.g. "locked-", "hidden-") to a channel name without duplicating
+ */
+export function addChannelPrefix(name, prefix, isVoice = false) {
+  if (!name) return name;
+  const regex = new RegExp(`(^|[-_\\s]+)${prefix}([-_\\s]+|$)`, "i");
+  if (regex.test(name)) return name;
+
+  const separator = isVoice ? " " : "-";
+  return `${prefix}${separator}${name}`.slice(0, 100);
+}
+
+/**
+ * Strips prefix (e.g. "locked", "(hidden|hidded)") from a channel name and cleans whitespace/hyphens
+ */
+export function stripChannelPrefix(name, prefixPattern) {
+  if (!name) return "";
+  let res = name.replace(new RegExp(`^${prefixPattern}[-_\\s]*`, "i"), "");
+  res = res.replace(new RegExp(`[-_\\s]+${prefixPattern}(?=[-_\\s]|$)`, "i"), "");
+  const cleaned = res.replace(/^[\s\-_]+|[\s\-_]+$/g, "").trim();
+  return cleaned || name;
+}
+
+/**
+ * Safely applies a prefix to a channel's name in Discord, catching rate limits or permission errors
+ */
+export async function applyChannelNamePrefix(channel, prefix, auditReason) {
+  if (!channel || typeof channel.setName !== "function") return null;
+  try {
+    const currentName = channel.name;
+    if (!currentName) return null;
+
+    const isVoice = typeof channel.isVoiceBased === "function" && channel.isVoiceBased();
+    const newName = addChannelPrefix(currentName, prefix, isVoice);
+
+    if (newName && newName !== currentName) {
+      await channel.setName(newName, auditReason);
+      return newName;
+    }
+    return currentName;
+  } catch (err) {
+    console.warn(`[channelLockService] Could not update channel name for ${channel.id}: ${err?.message || err}`);
+    return null;
+  }
+}
+
+/**
+ * Safely removes a prefix from a channel's name in Discord, catching rate limits or permission errors
+ */
+export async function removeChannelNamePrefix(channel, prefixPattern, auditReason) {
+  if (!channel || typeof channel.setName !== "function") return null;
+  try {
+    const currentName = channel.name;
+    if (!currentName) return null;
+
+    const restoredName = stripChannelPrefix(currentName, prefixPattern);
+
+    if (restoredName && restoredName !== currentName) {
+      await channel.setName(restoredName, auditReason);
+      return restoredName;
+    }
+    return currentName;
+  } catch (err) {
+    console.warn(`[channelLockService] Could not restore channel name for ${channel.id}: ${err?.message || err}`);
+    return null;
+  }
+}
+
+/**
  * Resolves target role for channel lockdown:
  * - Uses verified_role_id if verification system is enabled and configured
  * - Falls back to @everyone otherwise
@@ -69,6 +137,7 @@ export async function lockChannel({ channel, guild, moderator = null, durationSt
     const auditReason = `Thread locked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
     try {
       await channel.setLocked(true, auditReason);
+      await applyChannelNamePrefix(channel, "locked", auditReason);
     } catch (err) {
       return { error: `Failed to lock thread: ${err?.message || "Discord API error"}` };
     }
@@ -161,6 +230,7 @@ export async function lockChannel({ channel, guild, moderator = null, durationSt
       },
       { reason: auditReason }
     );
+    await applyChannelNamePrefix(channel, "locked", auditReason);
   } catch (err) {
     return { error: `Failed to edit channel permissions: ${err?.message || "Discord API error"}` };
   }
@@ -233,6 +303,7 @@ export async function unlockChannel({ channel, guild, moderator = null, reason =
     const auditReason = `Thread unlocked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
     try {
       await channel.setLocked(false, auditReason);
+      await removeChannelNamePrefix(channel, "locked", auditReason);
     } catch (err) {
       return { error: `Failed to unlock thread: ${err?.message || "Discord API error"}` };
     }
@@ -310,6 +381,7 @@ export async function unlockChannel({ channel, guild, moderator = null, reason =
       },
       { reason: auditReason }
     );
+    await removeChannelNamePrefix(channel, "locked", auditReason);
   } catch (err) {
     return { error: `Failed to restore channel permissions: ${err?.message || "Discord API error"}` };
   }
@@ -402,6 +474,7 @@ export async function hideChannel({ channel, guild, moderator = null, reason = n
       },
       { reason: auditReason }
     );
+    await applyChannelNamePrefix(channel, "hidden", auditReason);
   } catch (err) {
     return { error: `Failed to edit channel visibility: ${err?.message || "Discord API error"}` };
   }
@@ -481,6 +554,7 @@ export async function unhideChannel({ channel, guild, moderator = null, reason =
       },
       { reason: auditReason }
     );
+    await removeChannelNamePrefix(channel, "(hidden|hidded)", auditReason);
   } catch (err) {
     return { error: `Failed to restore channel visibility: ${err?.message || "Discord API error"}` };
   }
