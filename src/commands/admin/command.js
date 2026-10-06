@@ -90,6 +90,14 @@ export default createCommand({
   description: "Manage channel command restrictions (disable / enable / list / panel)",
   category: "Admin",
   aliases: ["disable", "enable"],
+  usage: "<panel|disable|enable|list> [command] [channel]",
+  examples: [
+    "/command panel",
+    "/command disable command:fuck channel:#serious-chat",
+    "/command enable command:fuck channel:#serious-chat",
+    "/command list channel:#general",
+    "dvcommand panel",
+  ],
   configOnly: true,
   slashBuilder,
 

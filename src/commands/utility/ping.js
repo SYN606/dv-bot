@@ -11,6 +11,12 @@ export default createCommand({
   name: "ping",
   description: "Measure WebSocket gateway heartbeat and HTTP API round-trip latency.",
   category: "Utility",
+  aliases: ["latency", "pong"],
+  usage: "",
+  examples: [
+    "/ping",
+    "dvping",
+  ],
   slashBuilder,
 
   async execute(ctx) {

@@ -15,8 +15,14 @@ export default createCommand({
   description: "Change or reset a member's server nickname",
   category: "Admin",
   aliases: ["nick", "setnick"],
+  usage: "<user> <nickname>",
+  examples: [
+    "/rename user:@User nickname:Ace",
+    "/rename user:@User nickname:reset",
+    "dvrename @User Ace",
+  ],
   modOnly: true,
-  requiredPermission: PermissionFlagsBits.ManageMessages,
+  requiredPermission: PermissionFlagsBits.ManageNicknames,
   slashBuilder,
 
   async execute(ctx) {

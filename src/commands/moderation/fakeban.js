@@ -27,6 +27,10 @@ export default createCommand({
   name: "fakeban",
   description: "Simulate a user ban completely (Sends DM and custom channel warnings)",
   category: "Moderation",
+  usage: "<user> [reason]",
+  examples: [
+    "/fakeban user:@Troublemaker reason:Trolling in chat",
+  ],
   slashOnly: true,
   modOnly: true,
   requiredPermission: PermissionFlagsBits.BanMembers,

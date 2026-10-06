@@ -48,6 +48,12 @@ export default createCommand({
   name: "slowmode",
   description: "Set the slowmode rate limit for a channel or thread.",
   category: "Channels",
+  usage: "<seconds> [channel] [reason]",
+  examples: [
+    "/slowmode seconds:5",
+    "/slowmode seconds:0 (disable)",
+    "/slowmode seconds:60 channel:#general reason:Chat moving too fast",
+  ],
   slashOnly: true,
   modOnly: true,
   requiredPermission: PermissionFlagsBits.ManageChannels,

@@ -40,6 +40,13 @@ export default createCommand({
   description: "View server chat and voice leaderboards",
   category: "Analytics",
   aliases: ["lb", "top"],
+  usage: "[type] [timeframe]",
+  examples: [
+    "/leaderboard",
+    "/leaderboard type:Messages timeframe:Weekly",
+    "/leaderboard type:Voice Time timeframe:All Time",
+    "dvleaderboard",
+  ],
   slashBuilder,
 
   async execute(ctx) {

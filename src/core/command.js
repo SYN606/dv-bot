@@ -89,6 +89,8 @@ export class HybridCommand {
     this.options = options.options || [];
     this.subcommands = options.subcommands || new Map();
     this.slashBuilder = options.slashBuilder || null;
+    this.usage = options.usage || null;
+    this.examples = options.examples || [];
     this.execute = options.execute;
     this.autocomplete = options.autocomplete || null;
   }

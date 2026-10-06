@@ -14,6 +14,11 @@ export default createCommand({
   name: "ban",
   description: "Permanently ban a member from the server",
   category: "Moderation",
+  usage: "<user> [reason]",
+  examples: [
+    "/ban user:@User reason:Rule violation",
+    "dvban @User Spamming in chat",
+  ],
   modOnly: true,
   requiredPermission: PermissionFlagsBits.BanMembers,
   slashBuilder,

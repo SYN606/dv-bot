@@ -20,7 +20,11 @@ const slashBuilder = new SlashCommandBuilder()
 export default createCommand({
   name: "warn",
   description: "Issue a formal warning to a member",
-  usage: "/warn <user> [reason] | {prefix}warn <@user|id> [reason]",
+  usage: "<user> [reason]",
+  examples: [
+    "/warn user:@User reason:Excessive caps",
+    "dvwarn @User Inappropriate language",
+  ],
   category: "Moderation",
   aliases: ["strike"],
   modOnly: true,

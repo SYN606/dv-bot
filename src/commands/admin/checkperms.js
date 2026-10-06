@@ -13,6 +13,10 @@ export default createCommand({
   name: "checkperms",
   description: "Audit a member's assigned permissions.",
   category: "Admin",
+  usage: "<user>",
+  examples: [
+    "/checkperms user:@User",
+  ],
   modOnly: true,
   slashOnly: true,
   slashBuilder,

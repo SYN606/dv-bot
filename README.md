@@ -53,6 +53,8 @@ A production-ready, high-performance, fully async Discord framework powered by *
 ## 📜 Command Reference
 
 > **Note:** Sensitive moderation and channel protection commands are **Slash Only** (`slashOnly: true`) for strict permission safety. Utility commands also support the configurable prefix (`PREFIX` in `.env`, e.g. `dv`).
+> 
+> 📖 **Full Command Guide:** For detailed parameter breakdowns, subcommands, and copy-pasteable examples for all 35 commands, see [**`COMMANDS.md`**](COMMANDS.md).
 
 ### Moderation
 | Command | Description | Slash Usage | Prefix Usage |

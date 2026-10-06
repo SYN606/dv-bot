@@ -12,11 +12,16 @@ export default {
     ),
   name: "punishments",
   description: "View all punishments and warnings for a user",
-  usage: "/punishments <user>",
-  category: "moderation",
+  usage: "<user>",
+  examples: [
+    "/punishments user:@User",
+    "dvpunishments @User",
+  ],
+  category: "Moderation",
   adminOnly: true,
+  requiredPermission: PermissionFlagsBits.ModerateMembers,
   permissions: ["ModerateMembers"],
-  aliases: ["history", "modlogs", "infractions"],
+  aliases: ["history", "infractions"],
 
   async execute({ interaction, message, args, guild }) {
     const targetUser = interaction ? interaction.options.getUser("user") : message.mentions.users.first() || (args[0] ? await guild.client.users.fetch(args[0]).catch(() => null) : null);

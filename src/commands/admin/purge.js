@@ -44,6 +44,11 @@ export default createCommand({
   name: "purge",
   description: "Bulk delete up to 1000 messages from the current channel.",
   category: "Admin",
+  usage: "<amount> [user]",
+  examples: [
+    "/purge amount:20",
+    "/purge amount:50 user:@Spammer",
+  ],
   slashOnly: true,
   modOnly: true,
   requiredPermission: PermissionFlagsBits.ManageMessages,

@@ -33,6 +33,12 @@ export default createCommand({
   name: "drag",
   description: "Move a member to a specified voice channel or your current channel",
   category: "Voice",
+  usage: "<user> [channel]",
+  examples: [
+    "/drag user:@User",
+    "/drag user:@User channel:#Gaming",
+    "dvdrag @User #Gaming",
+  ],
   modOnly: true,
   requiredPermission: PermissionFlagsBits.MoveMembers,
   slashBuilder,

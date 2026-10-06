@@ -40,6 +40,12 @@ export default createCommand({
   name: "moveall",
   description: "Move all members from one voice channel to another",
   category: "Voice",
+  usage: "<source> [target]",
+  examples: [
+    "/moveall target:#Gaming",
+    "/moveall source:#Lobby target:#Gaming",
+    "dvmoveall #Lobby #Gaming",
+  ],
   modOnly: true,
   requiredPermission: PermissionFlagsBits.MoveMembers,
   slashBuilder,

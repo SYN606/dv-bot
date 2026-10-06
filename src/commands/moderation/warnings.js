@@ -44,7 +44,13 @@ const slashBuilder = new SlashCommandBuilder()
 export default createCommand({
   name: "warnings",
   description: "Manage and view member warnings",
-  usage: "/warnings <add|list|delete|clear> | {prefix}warnings <add|list|delete|clear>",
+  usage: "<add|list|delete|clear> [user] [reason] [id]",
+  examples: [
+    "/warnings list user:@User",
+    "/warnings clear user:@User",
+    "/warnings delete id:3",
+    "dvwarnings list @User",
+  ],
   category: "Moderation",
   aliases: ["delwarn", "clearwarnings", "modlogs"],
   modOnly: true,

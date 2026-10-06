@@ -14,6 +14,12 @@ export default createCommand({
   name: "unban",
   description: "Unban a previously banned user from the server",
   category: "Moderation",
+  aliases: ["ub"],
+  usage: "<userid> [reason]",
+  examples: [
+    "/unban userid:123456789012345678 reason:Appeal approved",
+    "dvunban 123456789012345678 Mistake ban",
+  ],
   modOnly: true,
   requiredPermission: PermissionFlagsBits.BanMembers,
   slashBuilder,

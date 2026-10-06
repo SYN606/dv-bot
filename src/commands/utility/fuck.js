@@ -115,6 +115,12 @@ export default createCommand({
   aliases: ["roast", "burn"],
   description: "Generate a witty, non-repetitive roast for a user",
   category: "Utility",
+  usage: "[user]",
+  examples: [
+    "/fuck",
+    "/fuck user:@Friend",
+    "dvfuck @Friend",
+  ],
   slashBuilder,
 
   async execute(ctx) {

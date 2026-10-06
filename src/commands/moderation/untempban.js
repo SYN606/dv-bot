@@ -16,6 +16,11 @@ export default createCommand({
   description: "Lifts an active tempban/jail isolation role from a user.",
   category: "Moderation",
   aliases: ["untb", "unjail"],
+  usage: "<user> [reason]",
+  examples: [
+    "/untempban user:@User reason:Appeal granted",
+    "dvuntempban @User",
+  ],
   modOnly: true,
   requiredPermission: PermissionFlagsBits.ManageRoles,
   slashBuilder,

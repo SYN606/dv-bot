@@ -12,6 +12,13 @@ export default createCommand({
   name: "banner",
   description: "View user banner in high resolution",
   category: "Utility",
+  aliases: ["userbanner"],
+  usage: "[user]",
+  examples: [
+    "/banner",
+    "/banner user:@User",
+    "dvbanner @User",
+  ],
   slashBuilder,
 
   async execute(ctx) {

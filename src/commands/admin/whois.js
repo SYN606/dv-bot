@@ -60,10 +60,16 @@ const slashBuilder = new SlashCommandBuilder()
 
 export default createCommand({
   name: "whois",
-  description: "Cog providing comprehensive user and member lookup information.",
+  description: "Comprehensive user and member lookup information.",
   category: "Admin",
   adminOnly: true,
   aliases: ["userinfo", "user", "ui"],
+  usage: "[user]",
+  examples: [
+    "/whois",
+    "/whois user:@User",
+    "dvwhois @User",
+  ],
   slashBuilder,
 
   async execute(ctx) {

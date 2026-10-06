@@ -32,6 +32,12 @@ export default createCommand({
   name: "lock",
   description: "Lock a channel or thread to prevent members from sending messages.",
   category: "Channels",
+  usage: "[duration] [channel] [reason]",
+  examples: [
+    "/lock",
+    "/lock duration:15m reason:Raid containment",
+    "/lock channel:#general duration:2h",
+  ],
   slashOnly: true,
   modOnly: true,
   requiredPermission: PermissionFlagsBits.ManageChannels,

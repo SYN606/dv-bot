@@ -17,6 +17,11 @@ export default createCommand({
   description: "Temporarily restrict a member using an isolation role.",
   category: "Moderation",
   aliases: ["tb", "jail"],
+  usage: "<user> <duration> [reason]",
+  examples: [
+    "/tempban user:@User duration:24h reason:Severe toxicity",
+    "dvtempban @User 7d Rule violations",
+  ],
   modOnly: true,
   requiredPermission: PermissionFlagsBits.ManageRoles,
   slashBuilder,

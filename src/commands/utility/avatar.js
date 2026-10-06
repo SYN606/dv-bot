@@ -12,6 +12,12 @@ export default createCommand({
   description: "View user avatar in high resolution",
   category: "Utility",
   aliases: ["av", "pfp"],
+  usage: "[user]",
+  examples: [
+    "/avatar",
+    "/avatar user:@User",
+    "dvavatar @User",
+  ],
   slashBuilder,
 
   async execute(ctx) {

@@ -13,6 +13,11 @@ export default createCommand({
   category: "Utility",
   adminOnly: true,
   aliases: ["si", "server", "guildinfo", "ginfo"],
+  usage: "",
+  examples: [
+    "/serverinfo",
+    "dvserverinfo",
+  ],
   slashBuilder,
 
   async execute(ctx) {

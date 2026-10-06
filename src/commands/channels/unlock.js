@@ -26,6 +26,12 @@ export default createCommand({
   name: "unlock",
   description: "Unlock a previously locked channel or thread.",
   category: "Channels",
+  usage: "[channel] [reason]",
+  examples: [
+    "/unlock",
+    "/unlock channel:#general",
+    "/unlock reason:Raid concluded",
+  ],
   slashOnly: true,
   modOnly: true,
   requiredPermission: PermissionFlagsBits.ManageChannels,

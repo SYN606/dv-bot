@@ -26,6 +26,12 @@ export default createCommand({
   name: "hide",
   description: "Hide a channel to make it invisible to non-staff members.",
   category: "Channels",
+  usage: "[channel] [reason]",
+  examples: [
+    "/hide",
+    "/hide channel:#secret-chat",
+    "/hide reason:Under renovation",
+  ],
   slashOnly: true,
   modOnly: true,
   requiredPermission: PermissionFlagsBits.ManageChannels,

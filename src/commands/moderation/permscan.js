@@ -25,6 +25,13 @@ export default createCommand({
   description: "Run a security audit on a member or the entire server.",
   category: "Moderation",
   aliases: ["audit", "paudit"],
+  usage: "<server|member> [user]",
+  examples: [
+    "/permscan server",
+    "/permscan member user:@User",
+    "dvpermscan server",
+    "dvpermscan @User",
+  ],
   modOnly: true,
   slashBuilder,
 

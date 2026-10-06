@@ -26,6 +26,12 @@ export default createCommand({
   name: "unhide",
   description: "Unhide a previously hidden channel to restore its visibility.",
   category: "Channels",
+  usage: "[channel] [reason]",
+  examples: [
+    "/unhide",
+    "/unhide channel:#announcements",
+    "/unhide reason:Renovation complete",
+  ],
   slashOnly: true,
   modOnly: true,
   requiredPermission: PermissionFlagsBits.ManageChannels,

@@ -14,6 +14,12 @@ export default createCommand({
   name: "kick",
   description: "Kick a member from the server",
   category: "Moderation",
+  aliases: ["k"],
+  usage: "<user> [reason]",
+  examples: [
+    "/kick user:@User reason:Inactivity",
+    "dvkick @User Disrespectful behavior",
+  ],
   modOnly: true,
   requiredPermission: PermissionFlagsBits.KickMembers,
   slashBuilder,

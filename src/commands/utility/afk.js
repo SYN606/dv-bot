@@ -13,6 +13,12 @@ export default createCommand({
   name: "afk",
   description: "Set your Away-From-Keyboard status for this server",
   category: "Utility",
+  usage: "[reason]",
+  examples: [
+    "/afk",
+    "/afk reason:Studying for exams",
+    "dvafk Taking a quick break",
+  ],
   slashBuilder,
 
   async execute(ctx) {

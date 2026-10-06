@@ -40,6 +40,12 @@ export default createCommand({
   name: "steal",
   description: "Steal custom emojis and stickers from messages or URLs",
   category: "Utility",
+  usage: "<source> [name]",
+  examples: [
+    "/steal source:https://cdn.discordapp.com/emojis/12345.png name:hype",
+    "/steal source:<:custom_emoji:123456789>",
+    "dvsteal <:custom_emoji:123456789>",
+  ],
   requiredPermission: PermissionFlagsBits.ManageGuildExpressions || PermissionFlagsBits.ManageEmojisAndStickers,
   modOnly: true,
   slashBuilder,

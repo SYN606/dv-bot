@@ -31,6 +31,12 @@ export default createCommand({
   description: "Mute/timeout a member for a specified duration",
   category: "Moderation",
   aliases: ["mute"],
+  usage: "<user> [duration] [reason]",
+  examples: [
+    "/timeout user:@User duration:10m reason:Spamming",
+    "/timeout user:@User duration:1h reason:Heated argument",
+    "dvtimeout @User 30m Disrespect",
+  ],
   modOnly: true,
   requiredPermission: PermissionFlagsBits.ModerateMembers,
   slashBuilder,

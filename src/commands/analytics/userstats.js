@@ -21,6 +21,12 @@ export default createCommand({
   description: "View member chat and voice activity statistics",
   category: "Analytics",
   aliases: ["mystats", "activity"],
+  usage: "[user]",
+  examples: [
+    "/userstats",
+    "/userstats user:@User",
+    "dvuserstats @User",
+  ],
   slashBuilder,
 
   async execute(ctx) {

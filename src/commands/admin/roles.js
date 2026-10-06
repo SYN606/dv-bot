@@ -43,6 +43,11 @@ export default createCommand({
   name: "role",
   description: "Manage server roles (assign or remove roles from members).",
   category: "Admin",
+  usage: "<add|remove> <user> <role> [silent]",
+  examples: [
+    "/role add user:@User role:@Member",
+    "/role remove user:@User role:@Muted silent:True",
+  ],
   slashOnly: true,
   modOnly: true,
   requiredPermission: PermissionFlagsBits.ManageRoles,
