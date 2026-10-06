@@ -142,12 +142,17 @@ export default createCommand({
 
       await sendModLog({
         guild,
-        category: "MODERATION",
-        title: "⚠️ Member Warned",
+        category: "WARN",
+        title: "Member Warned",
         description: `User <@${targetUserId}> was warned by <@${user.id}>.\n\n📌 **Reason:** ${reason}${punishmentApplied}`,
         level: "WARNING",
         actor: user,
-        extraFields: { "Warning ID": `#${record.warn_id}`, "Total Warnings": warnCount.toString() },
+        target: targetUserId,
+        extraFields: {
+          "Warning ID": `#${record.warn_id}`,
+          "Total Warnings": warnCount.toString(),
+          Reason: reason,
+        },
       });
 
       return await ctx.reply({

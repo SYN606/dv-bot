@@ -348,13 +348,13 @@ export default createCommand({
     try {
       await sendModLog({
         guild,
-        category: "ADMIN",
+        category: "ROLE",
         title: sub === "add" ? "Role Assigned" : "Role Removed",
         description: `${user} ${sub === "add" ? "assigned" : "removed"} the <@&${role.id}> role ${sub === "add" ? "to" : "from"} ${targetMember}.`,
         level: "INFO",
         actor: user,
+        target: targetMember.user || targetMember,
         extraFields: {
-          Member: `${targetMember.user?.tag || targetMember.user?.username || targetMember.id} (\`${targetMember.id}\`)`,
           Role: `${role.name} (\`${role.id}\`)`,
           Action: sub === "add" ? "Assigned" : "Removed",
         },

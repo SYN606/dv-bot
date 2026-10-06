@@ -170,7 +170,7 @@ export default createCommand({
 
       await sendModLog({
         guild,
-        category: "MODERATION",
+        category: "NICKNAME",
         title: "Nickname Reset",
         description: `<@${user.id}> reset the nickname of <@${targetMember.id}>.`,
         level: "INFO",
@@ -224,7 +224,7 @@ export default createCommand({
 
     await sendModLog({
       guild,
-      category: "MODERATION",
+      category: "NICKNAME",
       title: "Nickname Changed",
       description: `<@${user.id}> changed the nickname of <@${targetMember.id}> to **${clampedNick}**.`,
       level: "INFO",

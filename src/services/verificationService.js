@@ -200,9 +200,10 @@ export async function verifyMember({ guild, user, member, config }) {
     guild,
     category: "VERIFICATION",
     title: "Member Verified",
-    description: `<@${user.id}> successfully verified.`,
+    description: `<@${user.id}> successfully completed server verification.`,
     level: "SUCCESS",
-    actor: user,
+    actor: guild.members.me?.user || null,
+    target: user,
     extraFields: {
       Role: verifiedRole.name,
       AccountAge: `${Math.floor(ageCheck.ageHours)}h`,

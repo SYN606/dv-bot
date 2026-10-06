@@ -148,7 +148,7 @@ export default createCommand({
     try {
       await sendModLog({
         guild,
-        category: "CHANNELS",
+        category: "SLOWMODE",
         title: "Slowmode Updated",
         description:
           seconds > 0
@@ -157,7 +157,7 @@ export default createCommand({
         level: seconds > 0 ? "WARNING" : "SUCCESS",
         actor: user,
         extraFields: {
-          Channel: `${targetChannel.name} (\`${targetChannel.id}\`)`,
+          Channel: `<#${targetChannel.id}> (\`${targetChannel.id}\`)`,
           Interval: seconds > 0 ? `${formatSeconds(seconds)} (${seconds}s)` : "Disabled (0s)",
           Reason: reason || "None",
         },

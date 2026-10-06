@@ -205,10 +205,16 @@ export async function handleMediaOnly(message) {
     sendModLog({
       guild: message.guild,
       category: "MEDIA",
-      title: "Media-Only Violation",
-      description: `**User:** <@${message.author.id}>\n**Channel:** ${message.channel}\n**Violations:** ${violations}${timeoutApplied ? " *(Timed out 60s)*" : ""}`,
+      title: "Media-Only Channel Violation",
+      description: `Sent non-media message in media-restricted channel.`,
       level: "WARNING",
-      actor: message.author,
+      actor: message.guild.members.me?.user || null,
+      target: message.author,
+      extraFields: {
+        Channel: `<#${message.channel.id}> (\`${message.channel.id}\`)`,
+        Violations: `${violations}/3`,
+        Action: timeoutApplied ? "Timed out (60 seconds)" : "Message Deleted",
+      },
     }).catch(() => {});
   }
 

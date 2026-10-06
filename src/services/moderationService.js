@@ -34,6 +34,7 @@ export async function executeKick({ guild, moderator, targetMember, reason = "No
     description: `<@${targetMember.id}> was kicked by ${moderator.tag || moderator.username || "Staff"}.`,
     level: "WARNING",
     actor: moderator,
+    target: targetMember.user || targetMember,
     extraFields: { Reason: reason },
   });
 
@@ -80,12 +81,13 @@ export async function executeBan({
   // Modlog
   await sendModLog({
     guild,
-    category: "MODERATION",
+    category: "BAN",
     title: "Member Banned",
     description: `User <@${targetId}> was banned by ${moderator.tag || moderator.username || "Staff"}.\n\n• **Reason:** ${reason}`,
     level: "ERROR",
     actor: moderator,
-    extraFields: { Target: `<@${targetId}> (\`${targetId}\`)`, Reason: reason },
+    target: targetUser,
+    extraFields: { Reason: reason },
   });
 
   return { success: true };
@@ -99,12 +101,13 @@ export async function executeUnban({ guild, moderator, targetUserId, reason = "U
 
   await sendModLog({
     guild,
-    category: "MODERATION",
+    category: "UNBAN",
     title: "Member Unbanned",
     description: `User <@${targetUserId}> was unbanned by ${moderator?.tag || moderator?.username || "Staff"}.`,
     level: "SUCCESS",
     actor: moderator,
-    extraFields: { Target: `<@${targetUserId}> (\`${targetUserId}\`)`, Reason: reason },
+    target: targetUserId,
+    extraFields: { Reason: reason },
   });
 
   return { success: true };
@@ -149,13 +152,14 @@ export async function executeTimeout({
 
   await sendModLog({
     guild,
-    category: "MODERATION",
+    category: "TIMEOUT",
     title: "Member Timed Out",
     description: `<@${targetMember.id}> was timed out by ${moderator.tag || moderator.username || "Staff"}.`,
     level: "WARNING",
     actor: moderator,
+    target: targetMember.user || targetMember,
     extraFields: {
-      Expires: `<t:${Math.floor(expiresAt.getTime() / 1000)}:R>`,
+      Duration: `<t:${Math.floor(expiresAt.getTime() / 1000)}:R>`,
       Reason: reason,
     },
   });

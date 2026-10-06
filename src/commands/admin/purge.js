@@ -243,17 +243,17 @@ export default createCommand({
     try {
       await sendModLog({
         guild,
-        category: "CONFIG",
-        title: "Channel Clean Purge",
+        category: "PURGE",
+        title: "Channel Message Purge",
         description: `Purged **${deletedCount}** messages in <#${channel.id}>.`,
         level: "SUCCESS",
         actor: user,
+        target: targetUser || null,
         extraFields: {
-          "Channel": `<#${channel.id}> (\`${channel.id}\`)`,
-          "Requested": String(amount),
-          "Deleted": String(deletedCount),
-          ...(targetUser ? { "Filtered User": `${targetUser.tag || targetUser.username} (\`${targetUser.id}\`)` } : {}),
-          ...(skippedOldCount > 0 ? { "Skipped (>14d)": String(skippedOldCount) } : {}),
+          Channel: `<#${channel.id}> (\`${channel.id}\`)`,
+          Requested: `${amount} messages`,
+          Deleted: `${deletedCount} messages`,
+          ...(skippedOldCount > 0 ? { "Skipped (>14d)": `${skippedOldCount} messages` } : {}),
         },
       });
     } catch (e) {

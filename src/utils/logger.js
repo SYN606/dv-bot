@@ -12,31 +12,83 @@ const MAX_LOG_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per log file
 const LOG_LEVELS = {
   DEBUG: 0,
   INFO: 1,
+  SUCCESS: 1,
   WARN: 2,
   ERROR: 3,
   FATAL: 4,
 };
 
+// ANSI terminal color codes
 const COLOR_RESET = "\x1b[0m";
-const LEVEL_COLORS = {
-  DEBUG: "\x1b[90m", // Gray
-  INFO: "\x1b[36m",  // Cyan
-  WARN: "\x1b[33m",  // Yellow
-  ERROR: "\x1b[31m", // Red
-  FATAL: "\x1b[35m", // Magenta
+const COLOR_DIM = "\x1b[90m";
+const COLOR_BOLD = "\x1b[1m";
+
+const LEVEL_STYLES = {
+  DEBUG: {
+    color: "\x1b[90m",
+    badge: "\x1b[90mDEBUG  \x1b[0m",
+  },
+  INFO: {
+    color: "\x1b[36m",
+    badge: "\x1b[36m\x1b[1mINFO   \x1b[0m",
+  },
+  SUCCESS: {
+    color: "\x1b[32m",
+    badge: "\x1b[32m\x1b[1mSUCCESS\x1b[0m",
+  },
+  WARN: {
+    color: "\x1b[33m",
+    badge: "\x1b[33m\x1b[1mWARN   \x1b[0m",
+  },
+  ERROR: {
+    color: "\x1b[31m",
+    badge: "\x1b[31m\x1b[1mERROR  \x1b[0m",
+  },
+  FATAL: {
+    color: "\x1b[35m",
+    badge: "\x1b[35m\x1b[1mFATAL  \x1b[0m",
+  },
 };
+
+/**
+ * Remove ANSI escape sequences from strings
+ */
+function stripAnsi(str) {
+  if (typeof str !== "string") return String(str);
+  return str.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+/**
+ * Format local time in HH:mm:ss.SSS
+ */
+function formatLocalTime(date = new Date()) {
+  const pad = (n, s = 2) => String(n).padStart(s, "0");
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+  const ms = pad(date.getMilliseconds(), 3);
+  return `${hours}:${minutes}:${seconds}.${ms}`;
+}
+
+/**
+ * Format ISO timestamp
+ */
+function formatIsoTime(date = new Date()) {
+  return date.toISOString();
+}
 
 class AsyncLogger {
   constructor() {
     this.buffer = [];
     this.flushTimer = null;
-    this.isFlushing = false;
+    this.currentFlushPromise = null;
     this.minLevel = process.env.LOG_LEVEL
       ? (LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] ?? LOG_LEVELS.INFO)
       : (CONFIG.ENV === "dev" ? LOG_LEVELS.DEBUG : LOG_LEVELS.INFO);
 
     this.ensureLogDirectory();
     this.startFlushInterval();
+    this.registerExitHooks();
   }
 
   ensureLogDirectory() {
@@ -55,41 +107,84 @@ class AsyncLogger {
         }
       }, 500);
 
-      // Unref timer so it doesn't prevent clean process exit
       if (this.flushTimer.unref) {
         this.flushTimer.unref();
       }
     }
   }
 
-  formatValue(val) {
+  registerExitHooks() {
+    // Ensure all logs are flushed on process termination
+    const onExit = () => this.flushSync();
+    if (typeof process !== "undefined") {
+      process.once("beforeExit", onExit);
+    }
+  }
+
+  /**
+   * Safely format arbitrary values (handles Discord objects, errors, circular structures)
+   */
+  formatValue(val, colorize = false) {
     if (val === null || val === undefined) return String(val);
     if (val instanceof Error) {
       return val.stack || `${val.name}: ${val.message}`;
     }
+
+    // Friendly serialization for Discord.js complex entities
     if (typeof val === "object") {
+      if (val.id && (val.tag || val.username)) {
+        return `[User: ${val.tag || val.username} (${val.id})]`;
+      }
+      if (val.id && val.name && val.channels) {
+        return `[Guild: ${val.name} (${val.id})]`;
+      }
+      if (val.id && val.name && val.guild) {
+        return `[Channel: #${val.name} (${val.id})]`;
+      }
       try {
-        return util.inspect(val, { depth: 3, colors: false, compact: true, breakLength: Infinity });
+        return util.inspect(val, {
+          depth: 3,
+          colors: colorize,
+          compact: true,
+          breakLength: 120,
+        });
       } catch (_) {
         return String(val);
       }
     }
+
     return String(val);
   }
 
+  /**
+   * Enhance module tags like [GATEWAY], [DB], [CLIENT] with stylish coloring
+   */
+  highlightTags(message) {
+    if (typeof message !== "string") return String(message);
+
+    return message.replace(/^(\[[^\]]+\])/, (match) => {
+      return `${COLOR_BOLD}\x1b[35m${match}${COLOR_RESET}`;
+    });
+  }
+
   formatConsoleMessage(level, message, ...args) {
-    const time = new Date().toISOString().replace("T", " ").replace("Z", "");
-    const color = LEVEL_COLORS[level] || "";
-    const prefix = `${color}[${time}] [${level}]${COLOR_RESET}`;
-    const formattedArgs = args.map((a) => this.formatValue(a)).join(" ");
-    return `${prefix} ${message}${formattedArgs ? " " + formattedArgs : ""}`;
+    const time = formatLocalTime();
+    const style = LEVEL_STYLES[level] || LEVEL_STYLES.INFO;
+    const timePrefix = `${COLOR_DIM}[${time}]${COLOR_RESET}`;
+    const badge = style.badge;
+
+    const formattedMessage = this.highlightTags(message);
+    const formattedArgs = args.map((a) => this.formatValue(a, true)).join(" ");
+
+    return `${timePrefix} ${badge} ${formattedMessage}${formattedArgs ? " " + formattedArgs : ""}`;
   }
 
   formatFileEntry(level, message, ...args) {
-    const time = new Date().toISOString();
-    const formattedArgs = args.map((a) => this.formatValue(a)).join(" ");
+    const time = formatIsoTime();
+    const formattedArgs = args.map((a) => this.formatValue(a, false)).join(" ");
     const fullMessage = `${message}${formattedArgs ? " " + formattedArgs : ""}`;
-    return `[${time}] [${level}] ${fullMessage}\n`;
+    const cleanMessage = stripAnsi(fullMessage);
+    return `[${time}] [${level.padEnd(5)}] ${cleanMessage}\n`;
   }
 
   rotateIfNeeded(filePath) {
@@ -125,7 +220,7 @@ class AsyncLogger {
     const fileEntry = this.formatFileEntry(level, message, ...args);
     this.buffer.push({ levelVal, entry: fileEntry });
 
-    // Flush immediately for high-priority errors or buffer overflow
+    // Flush immediately on severe errors or when buffer fills up
     if (levelVal >= LOG_LEVELS.ERROR || this.buffer.length >= 25) {
       this.flush().catch(() => {});
     }
@@ -139,6 +234,10 @@ class AsyncLogger {
     this.writeEntry("INFO", message, args);
   }
 
+  success(message, ...args) {
+    this.writeEntry("SUCCESS", message, args);
+  }
+
   warn(message, ...args) {
     this.writeEntry("WARN", message, args);
   }
@@ -149,6 +248,25 @@ class AsyncLogger {
 
   fatal(message, ...args) {
     this.writeEntry("FATAL", message, args);
+  }
+
+  /**
+   * Create a scoped logger that automatically prefixes all log lines with [TAG]
+   */
+  scope(tag) {
+    const prefix = `[${tag}]`;
+    return {
+      debug: (msg, ...args) => this.debug(`${prefix} ${msg}`, ...args),
+      info: (msg, ...args) => this.info(`${prefix} ${msg}`, ...args),
+      success: (msg, ...args) => this.success(`${prefix} ${msg}`, ...args),
+      warn: (msg, ...args) => this.warn(`${prefix} ${msg}`, ...args),
+      error: (msg, ...args) => this.error(`${prefix} ${msg}`, ...args),
+      fatal: (msg, ...args) => this.fatal(`${prefix} ${msg}`, ...args),
+    };
+  }
+
+  withTag(tag) {
+    return this.scope(tag);
   }
 
   async flush() {

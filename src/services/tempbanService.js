@@ -107,11 +107,12 @@ export async function executeTempban({
   // Audit log
   await sendModLog({
     guild,
-    category: "MODERATION",
+    category: "TEMPBAN",
     title: isRoleIsolation ? "Member Isolated (Tempban)" : "Member Tempbanned",
     description: `<@${targetMember.id}> was tempbanned for **${formattedTime}** by ${moderator.tag || moderator.username || "Staff"}.`,
     level: "WARNING",
     actor: moderator,
+    target: targetMember.user || targetMember,
     extraFields: {
       Method: isRoleIsolation ? `@${isolationRole.name}` : "Native Ban",
       Duration: formattedTime,
@@ -176,11 +177,12 @@ export async function liftTempban({
 
   await sendModLog({
     guild,
-    category: "MODERATION",
+    category: "UNBAN",
     title: "Tempban Lifted",
     description: `Temporary ban lifted early for <@${targetUserId}> by ${moderator?.tag || moderator?.username || "Staff"}.`,
     level: "SUCCESS",
     actor: moderator,
+    target: targetUserId,
     extraFields: { Reason: reason },
   });
 
