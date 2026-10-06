@@ -1,7 +1,7 @@
 import React from "react";
 import Badge from "../ui/Badge";
 import { getRiskLabel, getRiskVariant } from "../../utils/permissions-audit";
-import { ShieldAlert, AlertTriangle, Key } from "lucide-react";
+import { AlertTriangle, Key } from "lucide-react";
 import { getDiscordAvatarUrl } from "../../utils/discord";
 
 export default function MemberAuditResult({ memberAudit, loading }) {

@@ -2,7 +2,6 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  PermissionFlagsBits,
 } from "discord.js";
 import { CONFIG } from "../config.js";
 import { CommandContext } from "../core/command.js";

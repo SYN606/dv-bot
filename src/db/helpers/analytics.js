@@ -5,7 +5,7 @@ import {
   DailyActivitySnapshot,
   HourlyActivity,
 } from "../models/index.js";
-import { ensureGuildAndUser, ensureGuild } from "./common.js";
+import { ensureGuildAndUser } from "./common.js";
 
 export async function getMemberAnalytics(guildId, userId) {
   const [record] = await MemberAnalytics.findOrCreate({

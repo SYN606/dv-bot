@@ -1,8 +1,8 @@
 import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowRight, Activity, ShieldCheck, Pin, Image as ImageIcon,
-  Bot, Terminal, Shield, Users, Server, Disc, ChevronRight, Hash, CheckCircle2
+  ArrowRight, Activity, ShieldCheck, Image as ImageIcon,
+  Bot, Server, Disc, ChevronRight, CheckCircle2
 } from "lucide-react";
 import Navbar from "../../components/navigation/Navbar";
 import Footer from "../../components/navigation/Footer";

@@ -1,4 +1,4 @@
-import { MessageFlags, PermissionFlagsBits } from "discord.js";
+import { MessageFlags } from "discord.js";
 import { CommandContext } from "../core/command.js";
 import { GLOBAL_COOLDOWN } from "../core/cooldown.js";
 import { makeEmbed, COLORS } from "../core/embeds.js";

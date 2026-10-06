@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link, useOutletContext } from "react-router-dom";
 import {
   ShieldCheck, Pin, Image as ImageIcon,
-  Bot, Terminal, Shield, ShieldAlert, Sliders,
-  Users, Hash, Server, Activity, ArrowRight, CheckCircle2, XCircle
+  Bot, Terminal, Shield, ShieldAlert,
+  Users, Hash, Server, ArrowRight, CheckCircle2, XCircle
 } from "lucide-react";
 import {
   getGuildMeta, getVerification, getMediaOnly,

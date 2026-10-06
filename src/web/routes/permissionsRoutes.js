@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { PermissionFlagsBits } from "discord.js";
 import { PERMISSION_RISKS, analyzeMemberPermissions } from "../../utils/permissionsData.js";
 
 export const permissionsRoutes = new Hono();

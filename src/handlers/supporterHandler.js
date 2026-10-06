@@ -1,7 +1,6 @@
-import { Events, PermissionFlagsBits, ActivityType } from "discord.js";
+import { ActivityType } from "discord.js";
 import { getSupporterConfig } from "../db/helpers/supporter.js";
 import { PERMISSION_RISKS } from "../utils/permissionsData.js";
-import { makeEmbed } from "../core/embeds.js";
 
 // LRU Cache for anti-spam (Key: 'guildId:userId', Value: timestamp of last announcement)
 const announcementCooldowns = new Map();

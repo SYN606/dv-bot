@@ -1,10 +1,6 @@
 import { Hono } from "hono";
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, parseEmoji } from "discord.js";
 import { VerificationConfig } from "../../db/models/index.js";
 import { ensureGuild } from "../../db/helpers/common.js";
-import { makeEmbed } from "../../core/embeds.js";
-import { EMOJIS } from "../../core/emojis.js";
-import { formatServerVariables } from "../../utils/templateParser.js";
 import { apiCache } from "./cache.js";
 import { VerificationService } from "../../services/index.js";
 

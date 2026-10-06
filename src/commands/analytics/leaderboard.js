@@ -1,7 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
-import { EMOJIS } from "../../core/emojis.js";
 import { getLeaderboard } from "../../db/helpers/analytics.js";
 
 function formatSeconds(sec) {

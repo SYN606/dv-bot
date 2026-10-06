@@ -8,7 +8,7 @@ import {
 } from "discord.js";
 import { CONFIG } from "../../config.js";
 import { createCommand } from "../../core/command.js";
-import { makeEmbed, COLORS } from "../../core/embeds.js";
+import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import { getRestrictedCommands } from "../../db/helpers/channelCommandRestrict.js";
 

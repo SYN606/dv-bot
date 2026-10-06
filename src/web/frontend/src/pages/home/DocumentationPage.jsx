@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
 import Navbar from "../../components/navigation/Navbar";
 import Footer from "../../components/navigation/Footer";
 import { getPublicCommands } from "../../api/client";
@@ -12,7 +11,6 @@ import {
   Wrench,
   BarChart3,
   Volume2,
-  Check,
   Layers,
   BookOpen,
 } from "lucide-react";

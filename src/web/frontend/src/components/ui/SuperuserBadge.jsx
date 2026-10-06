@@ -1,5 +1,5 @@
 import React from "react";
-import { ShieldAlert, Sparkles, Crown } from "lucide-react";
+import { Crown } from "lucide-react";
 
 export default function SuperuserBadge({ size = "sm", showIcon = true, className = "" }) {
   const isSm = size === "sm";

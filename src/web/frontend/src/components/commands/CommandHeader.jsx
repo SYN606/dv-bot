@@ -1,5 +1,4 @@
 import React from "react";
-import { Terminal } from "lucide-react";
 
 export default function CommandHeader() {
   return (

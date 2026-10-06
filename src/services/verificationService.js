@@ -7,7 +7,7 @@ import {
 } from "discord.js";
 import { TempbanRecord, VerificationConfig } from "../db/models/index.js";
 import { makeEmbed, COLORS } from "../core/embeds.js";
-import { formatServerVariables, parseServerVariables } from "../utils/templateParser.js";
+import { formatServerVariables } from "../utils/templateParser.js";
 import { sendModLog } from "../utils/modLog.js";
 
 /**

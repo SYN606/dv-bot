@@ -2,7 +2,7 @@ import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
-import { analyzeMemberPermissions, PERMISSION_RISKS } from "../../utils/permissionsData.js";
+import { analyzeMemberPermissions } from "../../utils/permissionsData.js";
 import { isBotAdmin } from "../../core/permissions.js";
 
 const slashBuilder = new SlashCommandBuilder()

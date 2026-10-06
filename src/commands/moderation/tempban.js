@@ -3,7 +3,7 @@ import { createCommand } from "../../core/command.js";
 import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import { getTempbanConfig } from "../../db/helpers/tempban.js";
-import { executeTempban, parseDuration, formatDuration } from "../../services/tempbanService.js";
+import { executeTempban, parseDuration } from "../../services/tempbanService.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("tempban")

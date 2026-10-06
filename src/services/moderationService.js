@@ -1,4 +1,3 @@
-import { PermissionFlagsBits } from "discord.js";
 import { makeEmbed, COLORS } from "../core/embeds.js";
 import { sendModLog } from "../utils/modLog.js";
 import { PunishmentRecord } from "../db/models/index.js";

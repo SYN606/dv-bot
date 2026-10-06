@@ -3,10 +3,8 @@ import {
   deactivateTempban,
   getExpiredTempbans,
   getTempbanConfig,
-  setTempbanConfig,
-  removeTempbanConfig,
 } from "../db/helpers/tempban.js";
-import { TempbanRecord, VerificationConfig } from "../db/models/index.js";
+import { VerificationConfig } from "../db/models/index.js";
 import { sendModLog } from "../utils/modLog.js";
 import { makeEmbed, COLORS } from "../core/embeds.js";
 import { logger } from "../utils/logger.js";

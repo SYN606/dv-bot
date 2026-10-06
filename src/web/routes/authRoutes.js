@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { getCookie, setCookie } from "hono/cookie";
-import { verifySessionToken, fetchDiscordGuilds, createSessionToken } from "../auth.js";
+import { getCookie } from "hono/cookie";
+import { verifySessionToken, fetchDiscordGuilds } from "../auth.js";
 
 export const authRoutes = new Hono();
 
