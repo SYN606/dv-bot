@@ -72,7 +72,7 @@ export default {
 
     // Format the list
     const fields = [];
-    
+
     // Group them or list them (limit to 25 fields for Discord embed limits)
     for (const record of allRecords.slice(0, 25)) {
       fields.push({

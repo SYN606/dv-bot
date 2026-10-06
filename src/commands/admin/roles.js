@@ -3,6 +3,7 @@ import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import { sendModLog } from "../../utils/modLog.js";
+import { isBotAdmin } from "../../core/permissions.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("role")
@@ -82,14 +83,17 @@ export default createCommand({
       ctx.interaction?.options?.getUser?.("user")?.id || ctx.options?.user;
     const roleId =
       ctx.interaction?.options?.getRole?.("role")?.id || ctx.options?.role;
-    const silent = Boolean(ctx.interaction?.options?.getBoolean?.("silent"));
+    const silent = Boolean(
+      ctx.interaction?.options?.getBoolean?.("silent") ?? ctx.options?.silent
+    );
 
     if (!targetUserId || !roleId) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Invalid Arguments",
-            description: "Both **user** and **role** options are required.\n\n`/role add <user> <role>`\n`/role remove <user> <role>`",
+            description:
+              "Both **user** and **role** options are required.\n\n`/role add <user> <role>`\n`/role remove <user> <role>`",
             level: "WARNING",
           }),
         ],
@@ -97,11 +101,20 @@ export default createCommand({
       });
     }
 
-    // Resolve Role
-    const role =
-      ctx.interaction?.options?.getRole?.("role") ||
-      guild.roles.cache.get(roleId) ||
-      (await guild.roles.fetch(roleId).catch(() => null));
+    // Ensure guild roles are populated to prevent false hierarchy errors
+    if (
+      typeof guild.roles?.fetch === "function" &&
+      guild.roles?.cache &&
+      (guild.roles.cache.size <= 2 || !guild.roles.cache.has(roleId))
+    ) {
+      await guild.roles.fetch().catch(() => null);
+    }
+
+    // Resolve Role (prefer cached Role instance for accurate position and helper methods)
+    let role =
+      guild.roles?.cache?.get?.(roleId) ||
+      (await guild.roles?.fetch?.(roleId).catch(() => null)) ||
+      ctx.interaction?.options?.getRole?.("role");
 
     if (!role) {
       return await ctx.reply({
@@ -136,7 +149,7 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "Managed Role",
-            description: `The role ${role} is automatically managed by an integration (bot, nitro booster, or application) and cannot be manually assigned or removed.`,
+            description: `The role <@&${role.id}> is automatically managed by an integration (bot, nitro booster, or application) and cannot be manually assigned or removed.`,
             level: "ERROR",
           }),
         ],
@@ -147,9 +160,9 @@ export default createCommand({
     // Resolve Member
     let targetMember =
       ctx.interaction?.options?.getMember?.("user") ||
-      guild.members.cache.get(targetUserId);
+      guild.members?.cache?.get?.(targetUserId);
 
-    if (!targetMember) {
+    if (!targetMember && guild.members?.fetch) {
       targetMember = await guild.members.fetch(targetUserId).catch(() => null);
     }
 
@@ -168,7 +181,8 @@ export default createCommand({
 
     // Check Bot Permissions & Hierarchy
     const botMember =
-      guild.members.me || (await guild.members.fetchMe().catch(() => null));
+      guild.members?.me ||
+      (guild.members?.fetchMe ? await guild.members.fetchMe().catch(() => null) : null);
 
     if (!botMember) {
       return await ctx.reply({
@@ -183,7 +197,7 @@ export default createCommand({
       });
     }
 
-    if (!botMember.permissions.has(PermissionFlagsBits.ManageRoles)) {
+    if (!botMember.permissions?.has(PermissionFlagsBits.ManageRoles)) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
@@ -197,12 +211,13 @@ export default createCommand({
     }
 
     // 1. Can Bot Manage this Role?
-    if (role.position >= botMember.roles.highest.position) {
+    const botHighestRole = botMember.roles?.highest;
+    if (botHighestRole && role.position >= botHighestRole.position) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Hierarchy Error",
-            description: `I cannot manage ${role} because its position is higher than or equal to my highest role (${botMember.roles.highest}).`,
+            description: `I cannot manage <@&${role.id}> because its position is higher than or equal to my highest role (<@&${botHighestRole.id}>).`,
             level: "ERROR",
           }),
         ],
@@ -212,12 +227,16 @@ export default createCommand({
 
     // 2. Can Moderator Manage this Role? (Server owner bypasses hierarchy)
     const isOwner = guild.ownerId === user.id;
-    if (!isOwner && member?.roles?.highest && role.position >= member.roles.highest.position) {
+    const invokerMember =
+      member || (guild.members?.fetch ? await guild.members.fetch(user.id).catch(() => null) : null);
+    const invokerHighest = invokerMember?.roles?.highest;
+
+    if (!isOwner && invokerHighest && role.position >= invokerHighest.position) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `You cannot manage ${role} because its position is higher than or equal to your highest role (${member.roles.highest}).`,
+            description: `You cannot manage <@&${role.id}> because its position is higher than or equal to your highest role (<@&${invokerHighest.id}>).`,
             level: "ERROR",
           }),
         ],
@@ -239,18 +258,24 @@ export default createCommand({
       });
     }
 
+    const isModeratorAdmin =
+      isOwner ||
+      invokerMember?.permissions?.has(PermissionFlagsBits.Administrator) ||
+      (await isBotAdmin(ctx));
+
+    // Non-admin moderators cannot manage roles for someone with a strictly higher role
     if (
-      !isOwner &&
+      !isModeratorAdmin &&
       targetMember.id !== user.id &&
-      member?.roles?.highest &&
+      invokerHighest &&
       targetMember.roles?.highest &&
-      targetMember.roles.highest.position >= member.roles.highest.position
+      targetMember.roles.highest.position > invokerHighest.position
     ) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `You cannot manage roles for ${targetMember} because they have an equal or higher role than you (${targetMember.roles.highest}).`,
+            description: `You cannot manage roles for ${targetMember} because they have a higher role than you (<@&${targetMember.roles.highest.id}>).`,
             level: "ERROR",
           }),
         ],
@@ -258,15 +283,18 @@ export default createCommand({
       });
     }
 
-    // Check Role Presence
-    const hasRole = targetMember.roles.cache.has(role.id);
+    // Check Role Presence (check both cache and raw _roles for accuracy)
+    const hasRole = Boolean(
+      targetMember.roles?.cache?.has?.(role.id) ||
+      (Array.isArray(targetMember._roles) && targetMember._roles.includes(role.id))
+    );
 
     if (sub === "add" && hasRole) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Already Has Role",
-            description: `${targetMember} already has the ${role} role.`,
+            description: `${targetMember} already has the <@&${role.id}> role.`,
             level: "WARNING",
           }),
         ],
@@ -279,7 +307,7 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "Missing Role",
-            description: `${targetMember} does not have the ${role} role.`,
+            description: `${targetMember} does not have the <@&${role.id}> role.`,
             level: "WARNING",
           }),
         ],
@@ -294,9 +322,9 @@ export default createCommand({
 
     try {
       if (sub === "add") {
-        await targetMember.roles.add(role, auditReason);
+        await targetMember.roles.add(role.id, auditReason);
       } else {
-        await targetMember.roles.remove(role, auditReason);
+        await targetMember.roles.remove(role.id, auditReason);
       }
     } catch (err) {
       console.error(`[ROLE ${sub.toUpperCase()} ERROR]:`, err);
@@ -304,11 +332,10 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "Role Operation Failed",
-            description: `Failed to ${sub === "add" ? "assign" : "remove"} ${role}: ${err?.message || "Discord API error"}.`,
+            description: `Failed to ${sub === "add" ? "assign" : "remove"} <@&${role.id}>: ${err?.message || "Discord API error"}.`,
             level: "ERROR",
           }),
         ],
-        ephemeral: true,
       });
     }
 
@@ -318,7 +345,7 @@ export default createCommand({
         guild,
         category: "ADMIN",
         title: sub === "add" ? "Role Assigned" : "Role Removed",
-        description: `${user} ${sub === "add" ? "assigned" : "removed"} the ${role} role ${sub === "add" ? "to" : "from"} ${targetMember}.`,
+        description: `${user} ${sub === "add" ? "assigned" : "removed"} the <@&${role.id}> role ${sub === "add" ? "to" : "from"} ${targetMember}.`,
         level: "INFO",
         actor: user,
         extraFields: {
@@ -341,9 +368,9 @@ export default createCommand({
           author: { name: "Role Management", iconURL: authorIcon },
           title: sub === "add" ? "Role Assigned" : "Role Removed",
           description:
-            `${successIcon} Successfully ${sub === "add" ? "assigned" : "removed"} ${role} ${sub === "add" ? "to" : "from"} ${targetMember}.\n\n` +
+            `${successIcon} Successfully ${sub === "add" ? "assigned" : "removed"} <@&${role.id}> ${sub === "add" ? "to" : "from"} ${targetMember}.\n\n` +
             `➡️ **Member:** ${targetMember} (\`${memberTag}\`)\n` +
-            `➡️ **Role:** ${role} (\`${role.name}\`)\n` +
+            `➡️ **Role:** <@&${role.id}> (\`${role.name}\`)\n` +
             `➡️ **Moderator:** ${user}`,
           level: "SUCCESS",
           headerDivider: false,
