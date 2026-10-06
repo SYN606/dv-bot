@@ -130,16 +130,20 @@ if [ ! -f "src/web/dist/index.html" ]; then
   exit 1
 fi
 
-# 7. Run Test Suite
-log_deploy "🧪 Running test suite..."
-TEST_START="$(date +%s)"
-if bun test tests/ --timeout 10000 2>&1 | tee -a "$DEPLOY_LOG"; then
-  TEST_DURATION=$(( $(date +%s) - TEST_START ))
-  log_deploy "✅ All tests passed in ${TEST_DURATION}s."
+# 7. Run Test Suite (if tests present)
+if [ -d "tests" ] && [ -n "$(ls -A tests 2>/dev/null)" ]; then
+  log_deploy "🧪 Running test suite..."
+  TEST_START="$(date +%s)"
+  if bun test tests/ --timeout 10000 2>&1 | tee -a "$DEPLOY_LOG"; then
+    TEST_DURATION=$(( $(date +%s) - TEST_START ))
+    log_deploy "✅ All tests passed in ${TEST_DURATION}s."
+  else
+    TEST_DURATION=$(( $(date +%s) - TEST_START ))
+    log_deploy "❌ Tests FAILED in ${TEST_DURATION}s. Aborting deployment to prevent broken state."
+    exit 1
+  fi
 else
-  TEST_DURATION=$(( $(date +%s) - TEST_START ))
-  log_deploy "❌ Tests FAILED in ${TEST_DURATION}s. Aborting deployment to prevent broken state."
-  exit 1
+  log_deploy "ℹ️ Test suite directory not present. Skipping pre-flight tests."
 fi
 
 log_deploy "=========================================================="
