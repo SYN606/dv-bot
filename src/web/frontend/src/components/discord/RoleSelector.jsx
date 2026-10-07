@@ -64,7 +64,13 @@ export default function RoleSelector({ roles = [], value, onChange, multiple = f
 
   const filtered = roles.filter(r => {
     if (!search) return true;
-    return r.name.toLowerCase().includes(search.toLowerCase());
+    const cleanSearch = search.trim();
+    const mentionMatch = cleanSearch.match(/^<@&?(\d+)>$/);
+    if (mentionMatch) {
+      return r.id === mentionMatch[1];
+    }
+    const stripped = cleanSearch.startsWith("@") ? cleanSearch.slice(1).toLowerCase() : cleanSearch.toLowerCase();
+    return r.name.toLowerCase().includes(stripped) || r.id === cleanSearch;
   });
 
   const getDisplayText = () => {

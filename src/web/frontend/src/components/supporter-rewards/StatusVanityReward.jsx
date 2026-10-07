@@ -76,7 +76,7 @@ export default function StatusVanityReward({ guildId, roles, channels, config, o
           <textarea
             value={config.vanity_message || ""}
             onChange={(e) => onChange("vanity_message", e.target.value)}
-            placeholder="Thanks {user.mention} for representing the server with {role.mention}!"
+            placeholder="Thanks {user.mention} for representing the server!"
             className="w-full min-h-25 px-4 py-3 bg-slate-900/80 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors resize-none"
           />
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
@@ -91,11 +91,11 @@ export default function StatusVanityReward({ guildId, roles, channels, config, o
             </button>
             <button
               type="button"
-              onClick={() => onChange("vanity_message", (config.vanity_message || "") + " {role.mention}")}
+              onClick={() => onChange("vanity_message", (config.vanity_message || "") + " {role.name}")}
               className="font-mono bg-white/5 hover:bg-white/10 px-1.5 py-0.5 rounded text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
-              title="Mention reward role"
+              title="Role name (without ping)"
             >
-              {`{role.mention}`}
+              {`{role.name}`}
             </button>
             <button
               type="button"
