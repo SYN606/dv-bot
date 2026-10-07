@@ -39,10 +39,15 @@ export default {
     const supporterWorker = new SupporterWorker(client);
     supporterWorker.start();
 
-    // 5. Pre-warm Guild Members & Presences for instant automatic role detection
-    for (const guild of client.guilds.cache.values()) {
-      guild.members.fetch({ withPresences: true }).catch(() => null);
-    }
+    // 5. Safely Stagger Member & Presence Pre-warming in the background without flooding Gateway
+    (async () => {
+      for (const guild of client.guilds.cache.values()) {
+        try {
+          await guild.members.fetch({ withPresences: true }).catch(() => null);
+          await new Promise((r) => setTimeout(r, 1500)); // 1.5s delay between guilds to respect Gateway limits
+        } catch {}
+      }
+    })();
 
     logger.info("[STARTUP] All background workers and services active. Bot is fully online.");
   },

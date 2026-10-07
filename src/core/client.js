@@ -55,8 +55,14 @@ export class DVClient extends Client {
     });
 
     // Suppress AsyncEventEmitter memory leak warnings for high-listener bots
-    this.setMaxListeners(50);
-    if (this.rest) this.rest.setMaxListeners(50);
+    if (this.rest) {
+      this.rest.setMaxListeners(50);
+      this.rest.on("rateLimited", (info) => {
+        logger.warn(
+          `[DISCORD REST RATE LIMITED] Route: ${info.route || info.url || "unknown"} | Retry-After: ${info.timeToReset || info.retryAfter || 0}ms | Global: ${Boolean(info.global)}`
+        );
+      });
+    }
     if (this.ws && typeof this.ws.setMaxListeners === "function") {
       this.ws.setMaxListeners(50);
     }

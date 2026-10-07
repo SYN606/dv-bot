@@ -227,6 +227,7 @@ export default createCommand({
         } catch {
           failedCount++;
         }
+        await new Promise((r) => setTimeout(r, 60)); // Safe pacing to respect voice member PATCH limits
       }
     }
 
