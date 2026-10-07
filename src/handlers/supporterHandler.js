@@ -16,11 +16,20 @@ function checkDangerousPermissions(role) {
   return false;
 }
 
-function formatMessage(template, member) {
+function formatMessage(template, member, role = null) {
   let result = template || "Thank you {user.mention} for supporting us!";
   result = result.replace(/\{user\.mention\}/gi, `<@${member.id}>`);
-  result = result.replace(/\{user\.name\}/gi, member.user.username);
-  result = result.replace(/\{server\.name\}/gi, member.guild.name);
+  result = result.replace(/\{user\.name\}/gi, member.user?.username || member.displayName || "User");
+  result = result.replace(/\{server\.name\}/gi, member.guild?.name || "Server");
+  if (role) {
+    result = result.replace(/\{role\.mention\}/gi, `<@&${role.id}>`);
+    result = result.replace(/\{role\.name\}/gi, role.name || "Role");
+    result = result.replace(/\{role\}/gi, `<@&${role.id}>`);
+  } else {
+    result = result.replace(/\{role\.mention\}/gi, "");
+    result = result.replace(/\{role\.name\}/gi, "");
+    result = result.replace(/\{role\}/gi, "");
+  }
   return result;
 }
 
@@ -75,7 +84,7 @@ export async function checkGuildTag(member) {
             }
           }
           
-          const msg = formatMessage(config.clan_message, member);
+          const msg = formatMessage(config.clan_message, member, role);
           await channel.send({ content: msg }).catch(() => {});
         }
       }
@@ -143,7 +152,7 @@ export async function checkVanityStatus(oldPresence, newPresence) {
             }
           }
           
-          const msg = formatMessage(config.vanity_message, member);
+          const msg = formatMessage(config.vanity_message, member, role);
           await channel.send({ content: msg }).catch(() => {});
         }
       }

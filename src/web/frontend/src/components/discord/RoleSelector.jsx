@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, Shield } from "lucide-react";
+import { Search, Shield, X } from "lucide-react";
 import {
   useFloating,
   autoUpdate,
@@ -97,7 +97,29 @@ export default function RoleSelector({ roles = [], value, onChange, multiple = f
         }`}
       >
         <span className="truncate font-medium">{getDisplayText()}</span>
-        <Shield className={`w-4 h-4 shrink-0 transition-colors ${open ? "text-indigo-400" : "text-slate-500"}`} />
+        <div className="flex items-center gap-1.5 shrink-0">
+          {Boolean(multiple ? value?.length : value) && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelect(multiple ? [] : "");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  handleSelect(multiple ? [] : "");
+                }
+              }}
+              className="p-1 hover:bg-white/10 rounded-md text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+              title="Reset role selection"
+            >
+              <X className="w-3.5 h-3.5" />
+            </span>
+          )}
+          <Shield className={`w-4 h-4 transition-colors ${open ? "text-indigo-400" : "text-slate-500"}`} />
+        </div>
       </button>
 
       {open && (

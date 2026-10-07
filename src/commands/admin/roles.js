@@ -37,16 +37,28 @@ const slashBuilder = new SlashCommandBuilder()
       .addBooleanOption((opt) =>
         opt.setName("silent").setDescription("Make the response visible only to you").setRequired(false)
       )
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("reset")
+      .setDescription("Reset and remove all assignable roles from a member")
+      .addUserOption((opt) =>
+        opt.setName("user").setDescription("The member whose roles to reset").setRequired(true)
+      )
+      .addBooleanOption((opt) =>
+        opt.setName("silent").setDescription("Make the response visible only to you").setRequired(false)
+      )
   );
 
 export default createCommand({
   name: "role",
-  description: "Manage server roles (assign or remove roles from members).",
+  description: "Manage server roles (assign, remove, or reset roles for members).",
   category: "Admin",
-  usage: "<add|remove> <user> <role> [silent]",
+  usage: "<add|remove|reset> <user> [role] [silent]",
   examples: [
     "/role add user:@User role:@Member",
     "/role remove user:@User role:@Muted silent:True",
+    "/role reset user:@User",
   ],
   slashOnly: true,
   modOnly: true,
@@ -71,12 +83,12 @@ export default createCommand({
     }
 
     const sub = ctx.subcommand || ctx.interaction?.options?.getSubcommand?.(false);
-    if (sub !== "add" && sub !== "remove") {
+    if (sub !== "add" && sub !== "remove" && sub !== "reset") {
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Invalid Usage",
-            description: "Please specify either `/role add` or `/role remove`.",
+            description: "Please specify `/role add`, `/role remove`, or `/role reset`.",
             level: "ERROR",
           }),
         ],
@@ -92,17 +104,185 @@ export default createCommand({
       ctx.interaction?.options?.getBoolean?.("silent") ?? ctx.options?.silent
     );
 
-    if (!targetUserId || !roleId) {
+    if (!targetUserId || (sub !== "reset" && !roleId)) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Invalid Arguments",
             description:
-              "Both **user** and **role** options are required.\n\n`/role add <user> <role>`\n`/role remove <user> <role>`",
+              sub === "reset"
+                ? "The **user** option is required.\n\n`/role reset <user>`"
+                : "Both **user** and **role** options are required.\n\n`/role add <user> <role>`\n`/role remove <user> <role>`",
             level: "WARNING",
           }),
         ],
         ephemeral: true,
+      });
+    }
+
+    // Handle Subcommand: RESET
+    if (sub === "reset") {
+      let targetMember =
+        ctx.interaction?.options?.getMember?.("user") ||
+        guild.members?.cache?.get?.(targetUserId);
+
+      if (!targetMember && guild.members?.fetch) {
+        targetMember = await guild.members.fetch(targetUserId).catch(() => null);
+      }
+
+      if (!targetMember) {
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "Member Not Found",
+              description: "The specified user is not a member of this server.",
+              level: "ERROR",
+            }),
+          ],
+          ephemeral: true,
+        });
+      }
+
+      const botMember =
+        guild.members?.me ||
+        (guild.members?.fetchMe ? await guild.members.fetchMe().catch(() => null) : null);
+
+      if (!botMember) {
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "Error",
+              description: "Could not verify bot permissions in this guild.",
+              level: "ERROR",
+            }),
+          ],
+          ephemeral: true,
+        });
+      }
+
+      if (!botMember.permissions?.has(PermissionFlagsBits.ManageRoles)) {
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "Missing Permissions",
+              description: "I need the **Manage Roles** permission to modify member roles.",
+              level: "ERROR",
+            }),
+          ],
+          ephemeral: true,
+        });
+      }
+
+      const isServerOwner = guild.ownerId === user.id;
+      const isSuperUser = isBotAdmin(user.id);
+      const invokerMember = member || (await guild.members?.fetch?.(user.id).catch(() => null));
+      const invokerHighestPos = invokerMember?.roles?.highest?.position ?? 0;
+      const targetHighestPos = targetMember.roles?.highest?.position ?? 0;
+      const botHighestPos = botMember.roles?.highest?.position ?? 0;
+
+      if (!isServerOwner && !isSuperUser && targetHighestPos >= invokerHighestPos && targetMember.id !== user.id) {
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "Hierarchy Restriction",
+              description: "You cannot reset roles for a member who has equal or higher roles than you.",
+              level: "ERROR",
+            }),
+          ],
+          ephemeral: true,
+        });
+      }
+
+      if (targetHighestPos >= botHighestPos && targetMember.id === guild.ownerId) {
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "Hierarchy Restriction",
+              description: "I cannot modify roles for the server owner.",
+              level: "ERROR",
+            }),
+          ],
+          ephemeral: true,
+        });
+      }
+
+      const targetRoleIds = [...(targetMember.roles?.cache?.keys?.() || [])].filter(
+        (id) => id !== guild.id
+      );
+      const rolesToRemove = [];
+      const skippedRoles = [];
+
+      for (const rId of targetRoleIds) {
+        const r = guild.roles?.cache?.get?.(rId);
+        if (!r) continue;
+        if (r.managed || r.position >= botHighestPos || (!isServerOwner && !isSuperUser && r.position >= invokerHighestPos)) {
+          skippedRoles.push(r);
+        } else {
+          rolesToRemove.push(r);
+        }
+      }
+
+      if (rolesToRemove.length === 0) {
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "No Roles To Reset",
+              description: `${targetMember} has no removable roles that can be modified by me.`,
+              level: "WARNING",
+            }),
+          ],
+          ephemeral: true,
+        });
+      }
+
+      await ctx.defer({ ephemeral: silent });
+      const auditReason = `Roles reset by ${user.tag || user.username} (${user.id})`;
+
+      try {
+        await targetMember.roles.remove(rolesToRemove.map((r) => r.id), auditReason);
+      } catch (err) {
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "Role Reset Failed",
+              description: `Failed to reset roles: ${err?.message || "Discord API error"}.`,
+              level: "ERROR",
+            }),
+          ],
+        });
+      }
+
+      try {
+        await sendModLog({
+          guild,
+          category: "ROLE",
+          title: "Roles Reset",
+          description: `<@${user.id}> reset **${rolesToRemove.length}** roles from ${targetMember}.`,
+          level: "WARNING",
+          actor: user,
+          target: targetMember.user || targetMember,
+          extraFields: {
+            "Reset Count": `${rolesToRemove.length} roles`,
+            "Removed Roles": rolesToRemove.map((r) => `<@&${r.id}>`).join(", ") || "None",
+          },
+        });
+      } catch (_) {}
+
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            author: { name: "Role Management", iconURL: guild.iconURL?.() || undefined },
+            title: "Roles Reset",
+            description:
+              `${EMOJIS.get("success") || "✅"} Successfully reset **${rolesToRemove.length}** roles from ${targetMember}.\n\n` +
+              `➡️ **Member:** ${targetMember} (\`${targetMember.user?.tag || targetMember.id}\`)\n` +
+              `➡️ **Removed Roles:** ${rolesToRemove.map((r) => `<@&${r.id}>`).join(" ")}\n` +
+              (skippedRoles.length > 0 ? `⚠️ **Retained (Managed/Higher):** ${skippedRoles.map((r) => `<@&${r.id}>`).join(" ")}\n` : "") +
+              `➡️ **Moderator:** ${user}`,
+            level: "SUCCESS",
+          }),
+        ],
+        ephemeral: silent,
       });
     }
 
