@@ -21,7 +21,7 @@ import {
   removeTempbanConfig,
 } from "../../db/helpers/tempban.js";
 import { getAllWarningPunishmentConfigs, setWarningPunishmentConfig, removeWarningPunishmentConfig } from "../../db/helpers/warningPunishments.js";
-import { ModerationLogConfig, VCRoleConfig } from "../../db/models/index.js";
+import { ModerationLogConfig, VCRoleConfig, AutoRoleConfig } from "../../db/models/index.js";
 import { apiCache } from "./cache.js";
 
 export const moderationRoutes = new Hono();
@@ -240,20 +240,24 @@ moderationRoutes.get("/guilds/:guildId/config", async (c) => {
     return c.json(cached);
   }
 
-  const [modlog, vcrole, tempbanCfg] = await Promise.all([
+  const [modlog, vcrole, autorole, tempbanCfg] = await Promise.all([
     ModerationLogConfig.findByPk(guildId),
     VCRoleConfig.findByPk(guildId),
+    AutoRoleConfig.findByPk(guildId),
     getTempbanConfig(guildId),
   ]);
 
   const payload = {
     modlog,
     vcrole,
+    autorole,
     tempban: tempbanCfg,
     modLogChannelId: modlog?.channel_id ? String(modlog.channel_id) : "",
     log_channel_id: modlog?.channel_id ? String(modlog.channel_id) : "",
     vcRoleId: vcrole?.role_id ? String(vcrole.role_id) : "",
     vc_role_id: vcrole?.role_id ? String(vcrole.role_id) : "",
+    autoRoleId: autorole?.role_id ? String(autorole.role_id) : "",
+    auto_role_id: autorole?.role_id ? String(autorole.role_id) : "",
     tempbanRoleId: tempbanCfg?.role_id ? String(tempbanCfg.role_id) : "",
     tempban_role_id: tempbanCfg?.role_id ? String(tempbanCfg.role_id) : "",
   };
@@ -270,6 +274,9 @@ moderationRoutes.post("/guilds/:guildId/config", async (c) => {
   const vcRoleId = body.vc_role_id !== undefined
     ? body.vc_role_id
     : (body.vcRoleId !== undefined ? body.vcRoleId : body.vc_role);
+  const autoRoleId = body.auto_role_id !== undefined
+    ? body.auto_role_id
+    : (body.autoRoleId !== undefined ? body.autoRoleId : body.auto_role);
   const tempbanRoleId = body.tempban_role_id !== undefined
     ? body.tempban_role_id
     : (body.tempbanRoleId !== undefined ? body.tempbanRoleId : body.tempban_role);
@@ -287,6 +294,14 @@ moderationRoutes.post("/guilds/:guildId/config", async (c) => {
       await VCRoleConfig.upsert({ guild_id: guildId, role_id: String(vcRoleId) });
     } else {
       await VCRoleConfig.destroy({ where: { guild_id: guildId } });
+    }
+  }
+
+  if (autoRoleId !== undefined) {
+    if (autoRoleId) {
+      await AutoRoleConfig.upsert({ guild_id: guildId, role_id: String(autoRoleId) });
+    } else {
+      await AutoRoleConfig.destroy({ where: { guild_id: guildId } });
     }
   }
 

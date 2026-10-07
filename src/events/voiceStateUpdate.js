@@ -1,5 +1,6 @@
 import { VCRoleConfig } from "../db/models/index.js";
 import { recordVoiceActivity } from "../db/helpers/analytics.js";
+import { checkMemberSupporter } from "../handlers/supporterHandler.js";
 
 const activeVoiceSessions = new Map(); // `${guildId}:${userId}` -> timestamp
 
@@ -13,6 +14,9 @@ export default {
     const guildId = guild.id;
     const userId = member.id;
     const sessionKey = `${guildId}:${userId}`;
+
+    // Supporter Rewards Check (Passive evaluation)
+    checkMemberSupporter(member).catch(() => {});
 
     // 1. VC Role Management
     try {

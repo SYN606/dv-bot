@@ -182,6 +182,13 @@ export const vcRoleConfig = sqliteTable("vc_role_config", {
   updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
 });
 
+export const autoRoleConfig = sqliteTable("auto_role_config", {
+  guild_id: text("guild_id").primaryKey(),
+  role_id: text("role_id").notNull(),
+  created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
+
 export const verificationConfig = sqliteTable("verification_config", {
   guild_id: text("guild_id").primaryKey(),
   enabled: integer("enabled", { mode: "boolean" }).default(false),

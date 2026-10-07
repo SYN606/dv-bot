@@ -4,6 +4,7 @@ import { getGuildMeta, getConfig, saveConfig } from "../../api/client";
 const DEFAULT_CONFIG = {
   modLogChannelId: "",
   vcRoleId: "",
+  autoRoleId: "",
   tempbanRoleId: "",
 };
 
@@ -33,6 +34,7 @@ export function useServerConfig(guildId, showToast) {
         const loadedConfig = {
           modLogChannelId: serverConfig.modLogChannelId || "",
           vcRoleId: serverConfig.vcRoleId || "",
+          autoRoleId: serverConfig.autoRoleId || "",
           tempbanRoleId: serverConfig.tempbanRoleId || "",
         };
         setConfig(loadedConfig);

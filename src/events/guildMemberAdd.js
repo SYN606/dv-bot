@@ -1,7 +1,8 @@
 import { Events } from "discord.js";
-import { VerificationConfig, DailyActivitySnapshot, TempbanRecord } from "../db/models/index.js";
+import { VerificationConfig, DailyActivitySnapshot, TempbanRecord, AutoRoleConfig } from "../db/models/index.js";
 import { getTempbanConfig } from "../db/helpers/tempban.js";
 import { ensureGuild } from "../db/helpers/common.js";
+import { checkMemberSupporter } from "../handlers/supporterHandler.js";
 
 export default {
   name: Events.GuildMemberAdd,
@@ -57,5 +58,24 @@ export default {
     } catch (err) {
       console.error("[AUTO-UNVERIFIED ROLE ERROR]:", err);
     }
+
+    // 4. Default Auto-Role on Join (Server Welcome / Member Role)
+    try {
+      const autoRole = await AutoRoleConfig.findByPk(guildId);
+      if (autoRole && autoRole.role_id) {
+        const role = member.guild.roles.cache.get(String(autoRole.role_id));
+        const botMember = member.guild.members.me;
+        if (role && botMember && role.position < botMember.roles.highest.position) {
+          await member.roles.add(role, "Auto-Role: automatically assigned on server join").catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error("[AUTO-ROLE ON JOIN ERROR]:", err);
+    }
+
+    // 5. Supporter Rewards Check on Join (Clan Tag & Vanity Status)
+    try {
+      await checkMemberSupporter(member);
+    } catch (_) {}
   },
 };

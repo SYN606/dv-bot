@@ -17,6 +17,7 @@ import {
   StickyMessage,
   TagConfig,
   VCRoleConfig,
+  AutoRoleConfig,
   VerificationConfig,
   SupporterConfig,
 } from "./featureModels.js";
@@ -55,6 +56,7 @@ export {
   AdminUser,
   AFK,
   VCRoleConfig,
+  AutoRoleConfig,
   MediaOnlyChannel,
   StickyMessage,
   DisabledCommand,

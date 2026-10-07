@@ -100,11 +100,9 @@ export async function checkGuildTag(member) {
   }
 }
 
-export async function checkVanityStatus(oldPresence, newPresence) {
-  if (!newPresence?.member || !newPresence.guild) return;
-  const member = newPresence.member;
-  const guild = newPresence.guild;
-  if (member.user.bot) return;
+export async function checkMemberVanity(member, presence = null) {
+  if (!member || member.user?.bot || !member.guild) return;
+  const guild = member.guild;
 
   try {
     const config = await getSupporterConfig(guild.id);
@@ -114,11 +112,16 @@ export async function checkVanityStatus(oldPresence, newPresence) {
     const role = guild.roles.cache.get(config.vanity_role_id);
     if (!role) return;
 
-    if (role.position >= guild.members.me.roles.highest.position) return;
+    const botMember = guild.members.me;
+    if (!botMember || role.position >= botMember.roles.highest.position) return;
     if (checkDangerousPermissions(role)) return;
 
     const hasRole = member.roles.cache.has(role.id);
-    const activities = newPresence.activities || [];
+    const activePresence = presence || member.presence;
+
+    if (!activePresence) return;
+
+    const activities = activePresence.activities || [];
     let hasVanityUrl = false;
 
     for (const activity of activities) {
@@ -130,7 +133,7 @@ export async function checkVanityStatus(oldPresence, newPresence) {
       }
     }
 
-    const isOffline = newPresence.status === 'offline' || newPresence.status === 'invisible';
+    const isOffline = activePresence.status === "offline" || activePresence.status === "invisible";
     
     // Ignore offline transitions unless they explicitly removed the vanity while online
     if (isOffline && hasRole) return;
@@ -167,6 +170,71 @@ export async function checkVanityStatus(oldPresence, newPresence) {
     }
 
   } catch (error) {
-    console.error(`[SupporterHandler] Error checking Vanity for ${member.user.tag}:`, error.message);
+    console.error(`[SupporterHandler] Error checking Vanity for ${member.user?.tag || member.id}:`, error.message);
+  }
+}
+
+export async function checkVanityStatus(oldPresence, newPresence) {
+  if (!newPresence?.member || !newPresence.guild) return;
+  await checkMemberVanity(newPresence.member, newPresence);
+}
+
+export async function checkMemberSupporter(member) {
+  if (!member || member.user?.bot || !member.guild) return;
+  await Promise.allSettled([
+    checkMemberVanity(member),
+    checkGuildTag(member),
+  ]);
+}
+
+export async function syncAllSupporters(client) {
+  for (const guild of client.guilds.cache.values()) {
+    try {
+      const config = await getSupporterConfig(guild.id);
+      if (!config || !config.enabled) continue;
+      if (!config.vanity_role_id && !config.clan_role_id) continue;
+
+      const members = guild.members.cache.values();
+      for (const member of members) {
+        if (!member.user.bot) {
+          await checkMemberSupporter(member).catch(() => {});
+        }
+      }
+    } catch {}
+  }
+}
+
+export class SupporterWorker {
+  constructor(client, intervalMs = 60000) {
+    this.client = client;
+    this.intervalMs = intervalMs;
+    this.timer = null;
+    this.isProcessing = false;
+  }
+
+  start() {
+    if (!this.timer) {
+      this.timer = setInterval(() => this.check(), this.intervalMs);
+      setTimeout(() => this.check(), 5000);
+    }
+  }
+
+  stop() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  }
+
+  async check() {
+    if (this.isProcessing) return;
+    this.isProcessing = true;
+    try {
+      await syncAllSupporters(this.client);
+    } catch (err) {
+      console.error("[SupporterWorker] Sync error:", err);
+    } finally {
+      this.isProcessing = false;
+    }
   }
 }

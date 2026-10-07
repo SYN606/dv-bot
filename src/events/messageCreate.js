@@ -21,11 +21,17 @@ import { ANALYTICS_BATCHER } from "../handlers/analyticsBatcher.js";
 import { handleAutoresponder } from "../handlers/autoresponderHandler.js";
 import { handleMediaOnly } from "../handlers/mediaOnlyHandler.js";
 import { handleSticky } from "../handlers/stickyHandler.js";
+import { checkMemberSupporter } from "../handlers/supporterHandler.js";
 
 export default {
   name: "messageCreate",
   async execute(client, message) {
     if (!message.guild) return;
+
+    // Supporter Rewards Auto-Check (Passive realtime evaluation)
+    if (message.member && !message.author.bot) {
+      checkMemberSupporter(message.member).catch(() => {});
+    }
 
     // 1. Analytics Tracking
     if (!message.author.bot) {

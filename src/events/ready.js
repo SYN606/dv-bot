@@ -3,6 +3,7 @@ import { CONFIG } from "../config.js";
 import { ANALYTICS_BATCHER } from "../handlers/analyticsBatcher.js";
 import { TempbanWorker } from "../handlers/tempbanWorker.js";
 import { AutoRoleWorker } from "../handlers/autoroleWorker.js";
+import { SupporterWorker } from "../handlers/supporterHandler.js";
 import { initAfkCache } from "../db/helpers/afk.js";
 import { initStickyCache } from "../db/helpers/sticky.js";
 import { logger } from "../utils/logger.js";
@@ -34,6 +35,14 @@ export default {
     
     const autoroleWorker = new AutoRoleWorker(client);
     autoroleWorker.start();
+
+    const supporterWorker = new SupporterWorker(client);
+    supporterWorker.start();
+
+    // 5. Pre-warm Guild Members & Presences for instant automatic role detection
+    for (const guild of client.guilds.cache.values()) {
+      guild.members.fetch({ withPresences: true }).catch(() => null);
+    }
 
     logger.info("[STARTUP] All background workers and services active. Bot is fully online.");
   },

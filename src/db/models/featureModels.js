@@ -10,6 +10,7 @@ import {
   stickyMessages,
   tagConfig,
   vcRoleConfig,
+  autoRoleConfig,
   verificationConfig,
   supporterConfig,
 } from "../schema/sqlite.js";
@@ -20,6 +21,7 @@ export const StickyMessage = createModel("StickyMessage", stickyMessages, "id");
 export const DisabledCommand = createModel("DisabledCommand", disabledCommands, "id");
 export const RestrictedCommand = createModel("RestrictedCommand", restrictedCommands, "id");
 export const VCRoleConfig = createModel("VCRoleConfig", vcRoleConfig, "guild_id");
+export const AutoRoleConfig = createModel("AutoRoleConfig", autoRoleConfig, "guild_id");
 export const VerificationConfig = createModel("VerificationConfig", verificationConfig, "guild_id");
 export const ModerationLogConfig = createModel("ModerationLogConfig", moderationLogConfig, "guild_id");
 export const TagConfig = createModel("TagConfig", tagConfig, "guild_id");
