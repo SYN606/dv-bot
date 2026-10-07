@@ -393,6 +393,32 @@ function ensureSqliteSchema(sqlite) {
     sqlite.exec("ALTER TABLE afk ADD COLUMN mentions TEXT;");
   } catch (_) {}
 
+  try {
+    sqlite.exec("ALTER TABLE auto_role_reward_config ADD COLUMN enabled INTEGER DEFAULT 0;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE auto_role_reward_config ADD COLUMN announcement_channel_id TEXT;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE auto_role_reward_config ADD COLUMN top_chat_role_1 TEXT;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE auto_role_reward_config ADD COLUMN top_chat_role_2 TEXT;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE auto_role_reward_config ADD COLUMN top_chat_role_3 TEXT;");
+  } catch (_) {}
+
+  try {
+    sqlite.exec("ALTER TABLE supporter_config ADD COLUMN enabled INTEGER DEFAULT 0;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE supporter_config ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE supporter_config ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP;");
+  } catch (_) {}
+
   // Migrate warning_punishment_config: add columns missing from earlier schema versions
   try {
     sqlite.exec("ALTER TABLE warning_punishment_config ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;");

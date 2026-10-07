@@ -18,7 +18,9 @@ export async function getSupporterConfig(guildId) {
   }
 
   const record = await SupporterConfig.findOne({ where: { guild_id: gId } });
-  const data = record ? record.get({ plain: true }) : null;
+  const data = record
+    ? (typeof record.get === "function" ? record.get({ plain: true }) : (record.toJSON ? record.toJSON() : record))
+    : null;
   supporterCache.set(gId, data);
   return data;
 }
@@ -44,9 +46,16 @@ export async function setSupporterConfig(guildId, data) {
   });
 
   if (!created) {
-    await record.update(defaults);
+    if (typeof record.update === "function") {
+      await record.update(defaults);
+    } else {
+      Object.assign(record, defaults);
+      if (typeof record.save === "function") {
+        await record.save();
+      }
+    }
   }
 
   clearSupporterCache(gId);
-  return record.get({ plain: true });
+  return typeof record.get === "function" ? record.get({ plain: true }) : (record.toJSON ? record.toJSON() : record);
 }

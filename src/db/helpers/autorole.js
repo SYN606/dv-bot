@@ -18,7 +18,9 @@ export async function getAutoRoleConfig(guildId) {
   }
 
   const record = await AutoRoleRewardConfig.findOne({ where: { guild_id: gId } });
-  const data = record ? record.get({ plain: true }) : null;
+  const data = record
+    ? (typeof record.get === "function" ? record.get({ plain: true }) : (record.toJSON ? record.toJSON() : record))
+    : null;
   configCache.set(gId, data);
   return data;
 }
@@ -44,11 +46,18 @@ export async function setAutoRoleConfig(guildId, data) {
   });
 
   if (!created) {
-    await record.update(defaults);
+    if (typeof record.update === "function") {
+      await record.update(defaults);
+    } else {
+      Object.assign(record, defaults);
+      if (typeof record.save === "function") {
+        await record.save();
+      }
+    }
   }
 
   clearAutoRoleCache(gId);
-  return record.get({ plain: true });
+  return typeof record.get === "function" ? record.get({ plain: true }) : (record.toJSON ? record.toJSON() : record);
 }
 
 export async function getAutoRoleBlacklist(guildId) {

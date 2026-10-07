@@ -219,6 +219,49 @@ export class ModelInstance {
     return this;
   }
 
+  get(options) {
+    if (typeof options === "string") {
+      return this[options];
+    }
+    if (options && options.plain) {
+      return this.toJSON();
+    }
+    return this.toJSON();
+  }
+
+  set(key, val) {
+    if (typeof key === "object" && key !== null) {
+      for (const [k, v] of Object.entries(key)) {
+        this[k] = v;
+      }
+    } else if (typeof key === "string") {
+      this[key] = val;
+    }
+    return this;
+  }
+
+  async update(values) {
+    if (values && typeof values === "object") {
+      for (const [key, value] of Object.entries(values)) {
+        this[key] = value;
+      }
+    }
+    await this.save();
+    return this;
+  }
+
+  async reload() {
+    const pk = this._model.primaryKey;
+    const pkVal = this[pk];
+    if (pkVal !== undefined && pkVal !== null) {
+      const refreshed = await this._model.findByPk(pkVal);
+      if (refreshed) {
+        Object.assign(this, refreshed);
+      }
+    }
+    return this;
+  }
+
   async destroy() {
     const pk = this._model.primaryKey;
     const pkVal = this[pk];
