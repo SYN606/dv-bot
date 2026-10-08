@@ -175,11 +175,48 @@ export class DVClient extends Client {
       logger.info(`[SYNC] Registering ${slashPayloads.length} application commands...`);
 
       if (["dev", "development", "test"].includes(CONFIG.ENV) && CONFIG.DEV_GUILD_ID && this.user) {
-        await rest.put(
-          Routes.applicationGuildCommands(this.user.id, CONFIG.DEV_GUILD_ID),
-          { body: slashPayloads }
-        );
-        logger.info(`[SYNC] Synced ${slashPayloads.length} guild commands to ${CONFIG.DEV_GUILD_ID}.`);
+        const rawGuilds = Array.isArray(CONFIG.DEV_GUILD_ID)
+          ? CONFIG.DEV_GUILD_ID
+          : String(CONFIG.DEV_GUILD_ID).split(/[,\s;]+/);
+        const guildIds = rawGuilds.map((id) => String(id).trim()).filter((id) => /^\d{17,20}$/.test(id));
+
+        if (guildIds.length > 0) {
+          let syncedGuilds = 0;
+          for (const guildId of guildIds) {
+            if (this.guilds?.cache?.size > 0 && !this.guilds.cache.has(guildId)) {
+              logger.warn(`[SYNC] Bot is not currently in dev guild ${guildId}. Skipping guild command sync for this ID.`);
+              continue;
+            }
+
+            try {
+              await rest.put(
+                Routes.applicationGuildCommands(this.user.id, guildId),
+                { body: slashPayloads }
+              );
+              syncedGuilds++;
+              logger.info(`[SYNC] Synced ${slashPayloads.length} guild commands to guild ${guildId}.`);
+            } catch (guildErr) {
+              logger.error(`[SYNC ERROR] Failed to register guild commands for ${guildId}:`, guildErr);
+              if (guildErr.code === 50001 || guildErr.status === 403) {
+                logger.warn(
+                  `[SYNC] Guild ${guildId} returned Missing Access (50001). ` +
+                  `Ensure the bot was invited to this server with the 'applications.commands' OAuth2 scope:\n` +
+                  `  https://discord.com/oauth2/authorize?client_id=${this.user.id}&scope=bot%20applications.commands&permissions=8`
+                );
+              }
+            }
+          }
+
+          if (syncedGuilds === 0) {
+            logger.warn(`[SYNC] No dev guilds were successfully updated. Falling back to global application commands registration...`);
+            await rest.put(Routes.applicationCommands(this.user.id), {
+              body: slashPayloads,
+            });
+            logger.info(`[SYNC] Synced ${slashPayloads.length} global application commands as fallback.`);
+          }
+        } else {
+          logger.warn(`[SYNC] DEV_GUILD_ID was provided but contained no valid snowflake IDs: ${CONFIG.DEV_GUILD_ID}`);
+        }
       } else if (this.user) {
         await rest.put(Routes.applicationCommands(this.user.id), {
           body: slashPayloads,

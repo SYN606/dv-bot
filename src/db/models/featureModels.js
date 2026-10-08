@@ -13,6 +13,9 @@ import {
   autoRoleConfig,
   verificationConfig,
   supporterConfig,
+  messageDrafts,
+  messageTemplates,
+  messageHistory,
 } from "../schema/sqlite.js";
 
 export const AFK = createModel("AFK", afk, "id");
@@ -32,3 +35,6 @@ export const ChannelPermissionSnapshot = createModel(
   channelPermissionSnapshots,
   "id"
 );
+export const MessageDraft = createModel("MessageDraft", messageDrafts, "id");
+export const MessageTemplate = createModel("MessageTemplate", messageTemplates, "id");
+export const MessageHistory = createModel("MessageHistory", messageHistory, "id");

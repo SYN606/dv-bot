@@ -20,6 +20,9 @@ import {
   AutoRoleConfig,
   VerificationConfig,
   SupporterConfig,
+  MessageDraft,
+  MessageTemplate,
+  MessageHistory,
 } from "./featureModels.js";
 import {
   AutoResponder,
@@ -67,6 +70,9 @@ export {
   TagConfig,
   AutoRoleRewardConfig,
   SupporterConfig,
+  MessageDraft,
+  MessageTemplate,
+  MessageHistory,
   TempbanConfig,
   TempbanRecord,
   WarningRecord,

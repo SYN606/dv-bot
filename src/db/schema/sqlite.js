@@ -469,7 +469,78 @@ export const supporterConfig = sqliteTable("supporter_config", {
   vanity_role_id: text("vanity_role_id"),
   vanity_channel_id: text("vanity_channel_id"),
   vanity_message: text("vanity_message"),
+  clan_tag: text("clan_tag"),
   clan_role_id: text("clan_role_id"),
   clan_channel_id: text("clan_channel_id"),
   clan_message: text("clan_message"),
+  created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
 });
+
+// 6. Message Studio Models
+export const messageDrafts = sqliteTable(
+  "message_drafts",
+  {
+    id: text("id").primaryKey(),
+    guild_id: text("guild_id").notNull(),
+    name: text("name").notNull().default("Untitled Message"),
+    mode: text("mode").notNull().default("normal"),
+    content: text("content").default(""),
+    embeds: text("embeds").default("[]"),
+    attachments: text("attachments").default("[]"),
+    channel_id: text("channel_id"),
+    reply_config: text("reply_config").default("{}"),
+    mention_config: text("mention_config").default("{}"),
+    created_by: text("created_by"),
+    revision: integer("revision", { mode: "number" }).default(1),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+    updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    guildIdx: index("idx_message_drafts_guild").on(table.guild_id),
+  })
+);
+
+export const messageTemplates = sqliteTable(
+  "message_templates",
+  {
+    id: text("id").primaryKey(),
+    guild_id: text("guild_id").notNull(),
+    name: text("name").notNull(),
+    description: text("description").default(""),
+    category: text("category").default("General"),
+    mode: text("mode").notNull().default("normal"),
+    content: text("content").default(""),
+    embeds: text("embeds").default("[]"),
+    attachments: text("attachments").default("[]"),
+    mention_config: text("mention_config").default("{}"),
+    created_by: text("created_by"),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+    updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    guildIdx: index("idx_message_templates_guild").on(table.guild_id),
+  })
+);
+
+export const messageHistory = sqliteTable(
+  "message_history",
+  {
+    id: text("id").primaryKey(),
+    guild_id: text("guild_id").notNull(),
+    message_id: text("message_id"),
+    channel_id: text("channel_id").notNull(),
+    user_id: text("user_id"),
+    source_type: text("source_type").default("direct"),
+    source_id: text("source_id"),
+    payload: text("payload").notNull(),
+    status: text("status").notNull().default("delivered"),
+    error_message: text("error_message"),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+    updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    guildCreatedIdx: index("idx_message_history_guild").on(table.guild_id, table.created_at),
+    guildMsgIdx: index("idx_message_history_msg").on(table.guild_id, table.message_id),
+  })
+);

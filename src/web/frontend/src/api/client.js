@@ -444,3 +444,126 @@ export async function removeWarningPunishment(guildId, warnCount) {
   invalidatePath(`/api/guilds/${guildId}/warning_punishments`);
   return result;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Message Studio API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getMessageStudioChannels(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/message-studio/channels`);
+}
+
+export async function getMessageStudioDrafts(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/message-studio/drafts`);
+}
+
+export async function getMessageStudioDraft(guildId, draftId) {
+  return fetchApi(`/api/guilds/${guildId}/message-studio/drafts/${draftId}`);
+}
+
+export async function saveMessageStudioDraft(guildId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/message-studio/drafts`, {
+    method: "POST",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/message-studio/drafts`);
+  return result;
+}
+
+export async function deleteMessageStudioDraft(guildId, draftId) {
+  const result = await fetchApi(`/api/guilds/${guildId}/message-studio/drafts/${draftId}`, {
+    method: "DELETE",
+  });
+  invalidatePath(`/api/guilds/${guildId}/message-studio/drafts`);
+  return result;
+}
+
+export async function getMessageStudioTemplates(guildId, { category, search } = {}) {
+  const params = new URLSearchParams();
+  if (category && category !== "All") params.append("category", category);
+  if (search) params.append("search", search);
+  const q = params.toString() ? `?${params.toString()}` : "";
+  return fetchApi(`/api/guilds/${guildId}/message-studio/templates${q}`);
+}
+
+export async function getMessageStudioTemplate(guildId, templateId) {
+  return fetchApi(`/api/guilds/${guildId}/message-studio/templates/${templateId}`);
+}
+
+export async function createMessageStudioTemplate(guildId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/message-studio/templates`, {
+    method: "POST",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/message-studio/templates`);
+  return result;
+}
+
+export async function updateMessageStudioTemplate(guildId, templateId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/message-studio/templates/${templateId}`, {
+    method: "PUT",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/message-studio/templates`);
+  return result;
+}
+
+export async function duplicateMessageStudioTemplate(guildId, templateId) {
+  const result = await fetchApi(`/api/guilds/${guildId}/message-studio/templates/${templateId}/duplicate`, {
+    method: "POST",
+  });
+  invalidatePath(`/api/guilds/${guildId}/message-studio/templates`);
+  return result;
+}
+
+export async function deleteMessageStudioTemplate(guildId, templateId) {
+  const result = await fetchApi(`/api/guilds/${guildId}/message-studio/templates/${templateId}`, {
+    method: "DELETE",
+  });
+  invalidatePath(`/api/guilds/${guildId}/message-studio/templates`);
+  return result;
+}
+
+export async function validateMessageStudioMessage(guildId, payload) {
+  return fetchApi(`/api/guilds/${guildId}/message-studio/validate`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function validateMessageStudioReply(guildId, urlOrConfig) {
+  return fetchApi(`/api/guilds/${guildId}/message-studio/validate-reply`, {
+    method: "POST",
+    body: typeof urlOrConfig === "string" ? { url: urlOrConfig } : urlOrConfig,
+  });
+}
+
+export async function publishMessageStudioMessage(guildId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/message-studio/publish`, {
+    method: "POST",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/message-studio/history`);
+  return result;
+}
+
+export async function getMessageStudioHistory(guildId, { limit = 50, offset = 0 } = {}) {
+  return fetchApi(`/api/guilds/${guildId}/message-studio/history?limit=${limit}&offset=${offset}`);
+}
+
+export async function editMessageStudioPublishedMessage(guildId, messageId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/message-studio/messages/${messageId}`, {
+    method: "PUT",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/message-studio/history`);
+  return result;
+}
+
+export async function deleteMessageStudioPublishedMessage(guildId, messageId, channelId) {
+  const result = await fetchApi(`/api/guilds/${guildId}/message-studio/messages/${messageId}?channel_id=${channelId}`, {
+    method: "DELETE",
+  });
+  invalidatePath(`/api/guilds/${guildId}/message-studio/history`);
+  return result;
+}

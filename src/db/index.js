@@ -394,7 +394,68 @@ function ensureSqliteSchema(sqlite) {
       vc_seconds INTEGER DEFAULT 0,
       UNIQUE(guild_id, day_of_week, hour_of_day)
     );
+
+    CREATE TABLE IF NOT EXISTS message_drafts (
+      id TEXT PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      name TEXT NOT NULL DEFAULT 'Untitled Message',
+      mode TEXT NOT NULL DEFAULT 'normal',
+      content TEXT DEFAULT '',
+      embeds TEXT DEFAULT '[]',
+      attachments TEXT DEFAULT '[]',
+      channel_id TEXT,
+      reply_config TEXT DEFAULT '{}',
+      mention_config TEXT DEFAULT '{}',
+      created_by TEXT,
+      revision INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS message_templates (
+      id TEXT PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      category TEXT DEFAULT 'General',
+      mode TEXT NOT NULL DEFAULT 'normal',
+      content TEXT DEFAULT '',
+      embeds TEXT DEFAULT '[]',
+      attachments TEXT DEFAULT '[]',
+      mention_config TEXT DEFAULT '{}',
+      created_by TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS message_history (
+      id TEXT PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      message_id TEXT,
+      channel_id TEXT NOT NULL,
+      user_id TEXT,
+      source_type TEXT DEFAULT 'direct',
+      source_id TEXT,
+      payload TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'delivered',
+      error_message TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_message_drafts_guild ON message_drafts (guild_id);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_message_templates_guild ON message_templates (guild_id);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_message_history_guild ON message_history (guild_id, created_at);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_message_history_msg ON message_history (guild_id, message_id);");
+  } catch (_) {}
 
   try {
     sqlite.exec("ALTER TABLE afk ADD COLUMN mentions TEXT;");

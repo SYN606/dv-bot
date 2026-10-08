@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, TrendingUp, ShieldCheck, Pin, Image as ImageIcon,
-  Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award
+  Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award, PenTool
 } from "lucide-react";
 import SuperuserBadge from "../ui/SuperuserBadge";
 import { getDiscordAvatarUrl } from "../../utils/discord";
@@ -30,6 +30,7 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
     {
       group: "CONTENT",
       items: [
+        { id: "message_studio", label: "Message Studio", icon: PenTool, path: `/dashboard/${currentGuild.id}/message-studio` },
         { id: "sticky", label: "Sticky Messages", icon: Pin, path: `/dashboard/${currentGuild.id}/sticky` },
         { id: "media_only", label: "Media-Only Channels", icon: ImageIcon, path: `/dashboard/${currentGuild.id}/media-only` }
       ]

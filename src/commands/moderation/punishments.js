@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { PunishmentRecord, WarningRecord, TempbanRecord } from "../../db/models/index.js";
 import { EMOJIS } from "../../core/emojis.js";
@@ -7,6 +7,7 @@ export default {
   data: new SlashCommandBuilder()
     .setName("punishments")
     .setDescription("View all punishments and warnings for a user")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
     .addUserOption((opt) =>
       opt.setName("user").setDescription("The user to lookup").setRequired(true)
     ),
