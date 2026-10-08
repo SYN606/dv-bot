@@ -57,8 +57,6 @@ export default createCommand({
       });
     }
 
-    await guild.members.fetch().catch(() => {});
-
     // For prefix commands, deduce subcommand
     let subcommand = "member";
     if (interaction) {
@@ -163,6 +161,11 @@ export default createCommand({
     }
 
     if (subcommand === "server") {
+      await ctx.defer().catch(() => {});
+      if (guild.members.cache.size < (guild.memberCount || 0)) {
+        await guild.members.fetch().catch(() => {});
+      }
+
       let criticalUsers = 0;
       let highUsers = 0;
       let adminRoles = 0;

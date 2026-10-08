@@ -200,8 +200,7 @@ export async function processExpiredTempbans(client) {
   for (const record of expired) {
     const guild = client.guilds.cache.get(String(record.guild_id));
     if (!guild) {
-      record.active = false;
-      await record.save();
+      await deactivateTempban(record.guild_id, record.user_id);
       continue;
     }
 

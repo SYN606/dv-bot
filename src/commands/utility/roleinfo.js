@@ -7,6 +7,8 @@ const slashBuilder = new SlashCommandBuilder()
   .setDescription("Get detailed statistics, member count, and permissions for a role.")
   .addRoleOption((opt) => opt.setName("role").setDescription("The role you want to inspect.").setRequired(true));
 
+const memberFetchThrottle = new Map(); // guildId -> timestamp
+
 export default createCommand({
   name: "roleinfo",
   description: "Get detailed statistics, member count, and permissions for a role.",
@@ -61,11 +63,16 @@ export default createCommand({
       });
     }
 
-    // Force fetch all members to ensure role.members cache is fully accurate
-    try {
-      await guild.members.fetch();
-    } catch (e) {
-      // Ignored if large server and disabled intents
+    // Fetch members only if cache is incomplete and throttled (1 per 2 mins per guild)
+    const lastFetch = memberFetchThrottle.get(guild.id) || 0;
+    const now = Date.now();
+    if (guild.members.cache.size < (guild.memberCount || 0) && now - lastFetch > 120000) {
+      memberFetchThrottle.set(guild.id, now);
+      try {
+        await guild.members.fetch();
+      } catch (e) {
+        // Ignored if large server and disabled intents
+      }
     }
 
     const totalMembers = targetRole.members.size;
