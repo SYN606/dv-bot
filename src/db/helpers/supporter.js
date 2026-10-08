@@ -35,6 +35,7 @@ export async function setSupporterConfig(guildId, data) {
     vanity_role_id: data.vanity_role_id || "",
     vanity_channel_id: data.vanity_channel_id || "",
     vanity_message: data.vanity_message || "",
+    clan_tag: data.clan_tag || "",
     clan_role_id: data.clan_role_id || "",
     clan_channel_id: data.clan_channel_id || "",
     clan_message: data.clan_message || "",

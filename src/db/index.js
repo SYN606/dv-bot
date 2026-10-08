@@ -195,6 +195,13 @@ function ensureSqliteSchema(sqlite) {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS auto_role_config (
+      guild_id TEXT PRIMARY KEY,
+      role_id TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS verification_config (
       guild_id TEXT PRIMARY KEY,
       enabled INTEGER DEFAULT 0,
@@ -413,10 +420,16 @@ function ensureSqliteSchema(sqlite) {
     sqlite.exec("ALTER TABLE supporter_config ADD COLUMN enabled INTEGER DEFAULT 0;");
   } catch (_) {}
   try {
+    sqlite.exec("ALTER TABLE supporter_config ADD COLUMN clan_tag TEXT;");
+  } catch (_) {}
+  try {
     sqlite.exec("ALTER TABLE supporter_config ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;");
   } catch (_) {}
   try {
     sqlite.exec("ALTER TABLE supporter_config ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP;");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE TABLE IF NOT EXISTS auto_role_config (guild_id TEXT PRIMARY KEY, role_id TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);");
   } catch (_) {}
 
   // Migrate warning_punishment_config: add columns missing from earlier schema versions

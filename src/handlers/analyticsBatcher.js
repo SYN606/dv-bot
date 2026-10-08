@@ -40,22 +40,20 @@ export class AnalyticsBatcher {
     const entries = Array.from(this.messageBuffer.entries());
     this.messageBuffer.clear();
 
-    // High-concurrency non-blocking batch execution
-    await Promise.all(
-      entries.map(async ([key, count]) => {
-        const [guildId, userId, channelId] = key.split(":");
-        try {
-          await recordMessageActivity(
-            guildId,
-            userId,
-            channelId === "default" ? null : channelId,
-            count
-          );
-        } catch (err) {
-          logger.error(`[ANALYTICS] Failed to flush messages for ${key}:`, err);
-        }
-      })
-    );
+    // Sequential execution avoids SQLite write-lock contention and unique constraint races
+    for (const [key, count] of entries) {
+      const [guildId, userId, channelId] = key.split(":");
+      try {
+        await recordMessageActivity(
+          guildId,
+          userId,
+          channelId === "default" ? null : channelId,
+          count
+        );
+      } catch (err) {
+        logger.error(`[ANALYTICS] Failed to flush messages for ${key}:`, err);
+      }
+    }
   }
 }
 

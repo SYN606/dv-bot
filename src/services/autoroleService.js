@@ -132,14 +132,11 @@ export async function processWeeklyAutoRoles(client) {
 
       await channel.send({ embeds: [embed] }).catch(() => {});
 
-      // Reset the weekly stats for this guild
-      for (const m of allMembers) {
-        if (m.weekly_messages > 0 || m.weekly_vc_seconds > 0) {
-          m.weekly_messages = 0;
-          m.weekly_vc_seconds = 0;
-          await m.save().catch(() => {});
-        }
-      }
+      // Atomically reset weekly stats for this guild
+      await MemberAnalytics.update(
+        { weekly_messages: 0, weekly_vc_seconds: 0 },
+        { where: { guild_id: guild.id } }
+      ).catch(() => {});
       
     } catch (err) {
       logger.error(`[AutoRoleService] Error processing guild ${guild.id}: ${err.message}`);

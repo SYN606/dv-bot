@@ -405,8 +405,24 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
       }
 
       const createData = { ...defaults, ...where };
-      const created = await ModelClass.create(createData);
-      return [created, true];
+      try {
+        const created = await ModelClass.create(createData);
+        return [created, true];
+      } catch (err) {
+        const msg = String(err?.message || "");
+        if (
+          msg.includes("UNIQUE constraint failed") ||
+          err?.code === "SQLITE_CONSTRAINT_UNIQUE" ||
+          err?.code === "ER_DUP_ENTRY" ||
+          err?.code === "23505"
+        ) {
+          const fallback = await ModelClass.findOne({ where });
+          if (fallback) {
+            return [fallback, false];
+          }
+        }
+        throw err;
+      }
     }
 
     static async create(data) {
