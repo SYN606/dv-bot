@@ -8,7 +8,6 @@ export default function SaveTemplateModal({
   initialName = "",
 }) {
   const [name, setName] = useState(initialName || "Announcement Template");
-  const [category, setCategory] = useState("General");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -35,8 +34,8 @@ export default function SaveTemplateModal({
     try {
       await onSaveTemplate({
         name: name.trim(),
-        category: category.trim() || "General",
         description: description.trim(),
+        category: "General",
       });
       onClose();
     } catch (err) {
@@ -83,21 +82,6 @@ export default function SaveTemplateModal({
               placeholder="e.g. Weekly Update Template"
               className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/10 text-white text-xs placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/10 text-white text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="General">General</option>
-              <option value="Announcements">Announcements</option>
-              <option value="Rules">Rules</option>
-              <option value="Events">Events</option>
-              <option value="Welcome">Welcome</option>
-            </select>
           </div>
 
           <div>

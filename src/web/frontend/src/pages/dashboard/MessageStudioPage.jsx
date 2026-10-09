@@ -23,6 +23,8 @@ export default function MessageStudioPage({ showToast }) {
     publishMessage,
     editPublishedMessage,
     deletePublishedMessage,
+    deleteHistoryEntry,
+    clearHistory,
     refresh,
   } = useMessageStudio(guildId, showToast);
 
@@ -80,6 +82,8 @@ export default function MessageStudioPage({ showToast }) {
         onPublishMessage={publishMessage}
         onEditPublishedMessage={editPublishedMessage}
         onDeletePublishedMessage={deletePublishedMessage}
+        onDeleteHistoryEntry={deleteHistoryEntry}
+        onClearHistory={clearHistory}
         showToast={showToast}
       />
     </div>

@@ -358,3 +358,34 @@ export async function updateHistoryStatus(guildId, identifier, status, { errorMe
 
   return formatHistory(row);
 }
+
+export async function deleteHistoryEntry(guildId, historyId) {
+  const gId = String(guildId);
+  const idStr = String(historyId);
+
+  let row = await MessageHistory.findOne({
+    where: { guild_id: gId, id: idStr },
+  });
+
+  if (!row) {
+    row = await MessageHistory.findOne({
+      where: { guild_id: gId, message_id: idStr },
+    });
+  }
+
+  if (!row) return false;
+  await row.destroy();
+  return true;
+}
+
+export async function clearHistory(guildId, { status = null } = {}) {
+  const gId = String(guildId);
+  await ensureGuild(gId);
+  const where = { guild_id: gId };
+  if (status) {
+    where.status = String(status);
+  }
+  await MessageHistory.destroy({ where });
+  return true;
+}
+

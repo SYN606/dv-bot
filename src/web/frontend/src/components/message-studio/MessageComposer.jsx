@@ -4,7 +4,6 @@ import {
   Save,
   Bookmark,
   FilePlus,
-  Sliders,
   PenTool,
   Eye,
   Layers,
@@ -13,6 +12,12 @@ import {
   Check,
   AlertCircle,
   Hash,
+  History,
+  FileEdit,
+  CornerUpLeft,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import ChannelSelector from "../discord/ChannelSelector";
 import NormalMessageEditor from "./NormalMessageEditor";
@@ -56,8 +61,16 @@ export default function MessageComposer({
   onPublishMessage,
   onEditPublishedMessage,
   onDeletePublishedMessage,
+  onDeleteHistoryEntry,
+  onClearHistory,
   showToast,
 }) {
+  // Navigation View Tab: "editor" | "history" | "templates" | "drafts"
+  const [activeTab, setActiveTab] = useState("editor");
+
+  // Mobile Sub-view in Editor tab: "composer" | "preview"
+  const [mobileEditorView, setMobileEditorView] = useState("composer");
+
   // Main Message State
   const [currentDraftId, setCurrentDraftId] = useState(null);
   const [revision, setRevision] = useState(1);
@@ -67,6 +80,7 @@ export default function MessageComposer({
   const [embeds, setEmbeds] = useState([DEFAULT_EMBED]);
   const [attachments, setAttachments] = useState([]);
   const [channelId, setChannelId] = useState(channels[0]?.id || "");
+  const [showReplyBox, setShowReplyBox] = useState(false);
   const [replyConfig, setReplyConfig] = useState({
     enabled: false,
     message_url: "",
@@ -76,9 +90,7 @@ export default function MessageComposer({
     preview: null,
   });
 
-  // UI States
-  const [leftTab, setLeftTab] = useState("drafts"); // "drafts" | "templates" | "history"
-  const [mobileTab, setMobileTab] = useState("editor"); // "config" | "editor" | "preview"
+  // UI & Validation States
   const [saveStatus, setSaveStatus] = useState("saved"); // "saved" | "unsaved" | "saving"
   const [validationErrors, setValidationErrors] = useState([]);
 
@@ -93,6 +105,13 @@ export default function MessageComposer({
       setChannelId(channels[0].id);
     }
   }, [channels, channelId]);
+
+  // Keep reply box open if reply is enabled
+  useEffect(() => {
+    if (replyConfig.enabled) {
+      setShowReplyBox(true);
+    }
+  }, [replyConfig.enabled]);
 
   // Mark unsaved on edits
   const isInitialMount = useRef(true);
@@ -120,7 +139,7 @@ export default function MessageComposer({
         if (res?.conflict) {
           showToast?.("Conflict: Draft was updated in another window.", "warning");
         } else if (savedDraft?.id) {
-          setRevision(savedDraft.revision || (revision + 1));
+          setRevision(savedDraft.revision || revision + 1);
           setSaveStatus("saved");
         }
       } catch {
@@ -222,7 +241,9 @@ export default function MessageComposer({
       mention_user: false,
       preview: null,
     });
+    setShowReplyBox(false);
     setSaveStatus("saved");
+    setActiveTab("editor");
     showToast?.("Created fresh message canvas.", "info");
   };
 
@@ -236,9 +257,12 @@ export default function MessageComposer({
     setEmbeds(Array.isArray(draft.embeds) && draft.embeds.length > 0 ? draft.embeds : [DEFAULT_EMBED]);
     setAttachments(Array.isArray(draft.attachments) ? draft.attachments : []);
     if (draft.channel_id) setChannelId(draft.channel_id);
-    if (draft.reply_config) setReplyConfig(draft.reply_config);
+    if (draft.reply_config) {
+      setReplyConfig(draft.reply_config);
+      if (draft.reply_config.enabled) setShowReplyBox(true);
+    }
     setSaveStatus("saved");
-    setMobileTab("editor");
+    setActiveTab("editor");
     showToast?.(`Loaded draft "${draft.name}".`, "success");
   };
 
@@ -250,7 +274,7 @@ export default function MessageComposer({
     setEmbeds(Array.isArray(tpl.embeds) && tpl.embeds.length > 0 ? tpl.embeds : [DEFAULT_EMBED]);
     setAttachments(Array.isArray(tpl.attachments) ? tpl.attachments : []);
     setSaveStatus("unsaved");
-    setMobileTab("editor");
+    setActiveTab("editor");
     showToast?.(`Loaded template "${tpl.name}".`, "success");
   };
 
@@ -262,11 +286,14 @@ export default function MessageComposer({
     if (payload.content !== undefined) setContent(payload.content);
     if (Array.isArray(payload.embeds)) setEmbeds(payload.embeds.length > 0 ? payload.embeds : [DEFAULT_EMBED]);
     if (Array.isArray(payload.attachments)) setAttachments(payload.attachments);
-    if (payload.reply_config) setReplyConfig(payload.reply_config);
+    if (payload.reply_config) {
+      setReplyConfig(payload.reply_config);
+      if (payload.reply_config.enabled) setShowReplyBox(true);
+    }
     if (payload.channel_id) setChannelId(payload.channel_id);
     setSaveStatus("unsaved");
-    setMobileTab("editor");
-    showToast?.("Restored payload into message composer.", "info");
+    setActiveTab("editor");
+    showToast?.("Restored message into Message Editor.", "info");
   };
 
   // Explicit Save Draft action
@@ -284,7 +311,7 @@ export default function MessageComposer({
         showToast?.("Conflict: Draft was updated in another session.", "error");
       } else if (savedDraft?.id) {
         setCurrentDraftId(savedDraft.id);
-        setRevision(savedDraft.revision || (revision + 1));
+        setRevision(savedDraft.revision || revision + 1);
         setSaveStatus("saved");
         showToast?.("Draft saved successfully.", "success");
       }
@@ -299,8 +326,8 @@ export default function MessageComposer({
     const payload = {
       ...getCurrentPayload(),
       name: templateMeta.name,
-      category: templateMeta.category,
-      description: templateMeta.description,
+      description: templateMeta.description || "",
+      category: templateMeta.category || "General",
     };
     await onCreateTemplate(payload);
     showToast?.(`Saved template "${templateMeta.name}".`, "success");
@@ -323,7 +350,9 @@ export default function MessageComposer({
 
   return (
     <div className="flex flex-col h-full space-y-4">
-      {/* Top Action Bar */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 1. Header Toolbar */}
+      {/* ───────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-3xl glass-panel border border-white/5 bg-slate-900/60 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-indigo-600/15 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
@@ -332,9 +361,6 @@ export default function MessageComposer({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-base font-extrabold text-white tracking-tight">Message Studio</h1>
-              <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-[10px] font-mono font-bold uppercase tracking-wider border border-indigo-500/20">
-                PRO COMPOSER
-              </span>
               {saveStatus === "saving" && (
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-mono border border-amber-500/20">
                   <div className="w-2 h-2 rounded-full border border-amber-400 border-t-transparent animate-spin" />
@@ -354,19 +380,19 @@ export default function MessageComposer({
               )}
             </div>
             <p className="text-xs text-slate-400">
-              Visual Noctaly-grade Discord message & embed builder
+              Clean, visual Discord message builder, history & templates
             </p>
           </div>
         </div>
 
-        {/* Global Toolbar Actions */}
-        <div className="flex items-center gap-2">
+        {/* Global Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
           {/* New Canvas */}
           <button
             type="button"
             onClick={handleNewMessage}
             className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors border border-white/5"
-            title="Start new blank message"
+            title="Start fresh blank message"
           >
             <FilePlus className="w-4 h-4" />
             <span className="hidden sm:inline">New</span>
@@ -378,6 +404,7 @@ export default function MessageComposer({
             disabled={saveStatus === "saving"}
             onClick={handleManualSaveDraft}
             className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors border border-white/5"
+            title="Save draft"
           >
             <Save className="w-4 h-4 text-indigo-400" />
             <span className="hidden sm:inline">Save Draft</span>
@@ -388,19 +415,20 @@ export default function MessageComposer({
             type="button"
             onClick={() => setIsSaveTemplateModalOpen(true)}
             className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors border border-white/5"
+            title="Save as reusable template"
           >
             <Bookmark className="w-4 h-4 text-emerald-400" />
             <span className="hidden sm:inline">Template</span>
           </button>
 
-          {/* Publish Button */}
+          {/* Send / Publish Button */}
           <button
             type="button"
             onClick={() => {
               if (validateCurrentState()) {
                 setIsPublishModalOpen(true);
               } else {
-                showToast?.("Please check requirements before publishing.", "error");
+                showToast?.("Please complete all message requirements before sending.", "error");
               }
             }}
             className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold inline-flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all"
@@ -411,254 +439,359 @@ export default function MessageComposer({
         </div>
       </div>
 
-      {/* Mobile Tab Switcher */}
-      <div className="lg:hidden flex rounded-2xl bg-slate-900/80 p-1 border border-white/5">
-        <button
-          type="button"
-          onClick={() => setMobileTab("config")}
-          className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-            mobileTab === "config" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
-          }`}
-        >
-          <Sliders className="w-3.5 h-3.5" />
-          <span>Config</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setMobileTab("editor")}
-          className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-            mobileTab === "editor" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
-          }`}
-        >
-          <PenTool className="w-3.5 h-3.5" />
-          <span>Editor</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setMobileTab("preview")}
-          className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-            mobileTab === "preview" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
-          }`}
-        >
-          <Eye className="w-3.5 h-3.5" />
-          <span>Preview</span>
-        </button>
-      </div>
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 2. Primary Navigation Bar */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-2 p-1.5 rounded-2xl bg-slate-900/80 border border-white/5">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none w-full sm:w-auto">
+          {/* Editor Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("editor")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+              activeTab === "editor"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                : "text-slate-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <PenTool className="w-3.5 h-3.5" />
+            <span>Message Editor</span>
+          </button>
 
-      {/* Main 3-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
-        {/* Left Column: Configuration & Saved Libraries (3 cols) */}
-        <div
-          className={`lg:col-span-3 space-y-4 overflow-y-auto pr-1 ${
-            mobileTab !== "config" ? "hidden lg:block" : "block"
-          }`}
-        >
-          {/* Message Settings Card */}
-          <div className="p-4 rounded-3xl glass-panel bg-slate-900/60 border border-white/5 space-y-4">
-            <span className="text-xs font-bold text-slate-300 uppercase tracking-wide block">
-              Message Configuration
+          {/* History Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+              activeTab === "history"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                : "text-slate-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>Message History</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${
+                activeTab === "history" ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
+              }`}
+            >
+              {history.length}
             </span>
+          </button>
 
-            {/* Message Name */}
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1">Message Name</label>
-              <input
-                type="text"
-                value={messageName}
-                onChange={(e) => setMessageName(e.target.value)}
-                placeholder="Message name..."
-                maxLength={100}
-                className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-white/10 text-white text-xs placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
-              />
-            </div>
+          {/* Templates Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("templates")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+              activeTab === "templates"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                : "text-slate-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Bookmark className="w-3.5 h-3.5" />
+            <span>Templates</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${
+                activeTab === "templates" ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
+              }`}
+            >
+              {templates.length}
+            </span>
+          </button>
 
-            {/* Mode Selector */}
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1.5">Message Format</label>
-              <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-950 border border-white/5">
-                <button
-                  type="button"
-                  onClick={() => setMode("normal")}
-                  className={`py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    mode === "normal"
-                      ? "bg-indigo-600 text-white shadow"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  Normal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode("embed")}
-                  className={`py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    mode === "embed"
-                      ? "bg-indigo-600 text-white shadow"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  Embed
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode("hybrid")}
-                  className={`py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    mode === "hybrid"
-                      ? "bg-indigo-600 text-white shadow"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  Hybrid
-                </button>
-              </div>
-            </div>
+          {/* Drafts Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("drafts")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+              activeTab === "drafts"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                : "text-slate-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <FileEdit className="w-3.5 h-3.5" />
+            <span>Drafts</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${
+                activeTab === "drafts" ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
+              }`}
+            >
+              {drafts.length}
+            </span>
+          </button>
+        </div>
 
-            {/* Destination Channel Selector */}
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1.5">Target Channel</label>
-              <ChannelSelector
-                channels={channels}
-                value={channelId}
-                onChange={setChannelId}
-                placeholder="Select text channel..."
-              />
-            </div>
+        {/* Mobile toggle between composer & live preview when on editor tab */}
+        {activeTab === "editor" && (
+          <div className="lg:hidden flex rounded-xl bg-slate-950 p-1 border border-white/5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setMobileEditorView("composer")}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                mobileEditorView === "composer"
+                  ? "bg-indigo-600 text-white"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Editor
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileEditorView("preview")}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                mobileEditorView === "preview"
+                  ? "bg-indigo-600 text-white"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Preview
+            </button>
           </div>
-
-          {/* Reply Settings */}
-          <ReplyMessageSelector
-            guildId={guildId}
-            replyConfig={replyConfig}
-            onChangeReplyConfig={setReplyConfig}
-            currentChannelId={channelId}
-            onSelectChannel={setChannelId}
-          />
-
-          {/* Saved Libraries Accordion / Tabs */}
-          <div className="p-4 rounded-3xl glass-panel bg-slate-900/60 border border-white/5 space-y-3">
-            <div className="flex rounded-xl bg-slate-950 p-1 border border-white/5">
-              <button
-                type="button"
-                onClick={() => setLeftTab("drafts")}
-                className={`flex-1 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
-                  leftTab === "drafts" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                Drafts ({drafts.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setLeftTab("templates")}
-                className={`flex-1 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
-                  leftTab === "templates"
-                    ? "bg-indigo-600 text-white"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                Templates ({templates.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setLeftTab("history")}
-                className={`flex-1 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
-                  leftTab === "history"
-                    ? "bg-indigo-600 text-white"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                History
-              </button>
-            </div>
-
-            {leftTab === "drafts" && (
-              <MessageDraftLibrary
-                drafts={drafts}
-                onLoadDraft={handleLoadDraft}
-                onDeleteDraft={onDeleteDraft}
-                onNewDraft={handleNewMessage}
-                activeDraftId={currentDraftId}
-              />
-            )}
-
-            {leftTab === "templates" && (
-              <MessageTemplateLibrary
-                templates={templates}
-                onLoadTemplate={handleLoadTemplate}
-                onDuplicateTemplate={onDuplicateTemplate}
-                onDeleteTemplate={onDeleteTemplate}
-                onOpenSaveTemplateModal={() => setIsSaveTemplateModalOpen(true)}
-              />
-            )}
-
-            {leftTab === "history" && (
-              <MessageHistory
-                history={history}
-                channels={channels}
-                onLoadPayload={handleLoadPayload}
-                onOpenEditModal={(item) => setEditingHistoryItem(item)}
-                onDeleteMessage={onDeletePublishedMessage}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Center Column: Visual Editor (5 cols) */}
-        <div
-          className={`lg:col-span-5 space-y-4 overflow-y-auto pr-1 ${
-            mobileTab !== "editor" ? "hidden lg:block" : "block"
-          }`}
-        >
-          {/* Validation Errors Notice */}
-          <MessageValidationSummary errors={validationErrors} />
-
-          {/* Normal Message Editor (shown in normal & hybrid modes) */}
-          {(mode === "normal" || mode === "hybrid") && (
-            <div className="p-4 rounded-3xl glass-panel bg-slate-900/60 border border-white/5 space-y-3">
-              <div className="flex items-center gap-2 pb-2 border-b border-white/5">
-                <MessageSquare className="w-4 h-4 text-indigo-400" />
-                <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">
-                  Text Content
-                </span>
-              </div>
-              <NormalMessageEditor
-                content={content}
-                onChangeContent={setContent}
-                attachments={attachments}
-                onChangeAttachments={setAttachments}
-              />
-            </div>
-          )}
-
-          {/* Embed Message Editor (shown in embed & hybrid modes) */}
-          {(mode === "embed" || mode === "hybrid") && (
-            <div className="p-4 rounded-3xl glass-panel bg-slate-900/60 border border-white/5 space-y-3">
-              <div className="flex items-center gap-2 pb-2 border-b border-white/5">
-                <Layers className="w-4 h-4 text-indigo-400" />
-                <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">
-                  Rich Embeds ({embeds.length}/10)
-                </span>
-              </div>
-              <EmbedEditor embeds={embeds} onChangeEmbeds={setEmbeds} />
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Live Client Preview (4 cols, sticky on desktop) */}
-        <div
-          className={`lg:col-span-4 lg:sticky lg:top-4 self-start max-h-[calc(100vh-3rem)] flex flex-col ${
-            mobileTab !== "preview" ? "hidden lg:block" : "block"
-          }`}
-        >
-          <DiscordMessagePreview
-            content={content}
-            mode={mode}
-            embeds={embeds}
-            attachments={attachments}
-            replyData={replyConfig?.preview}
-            botInfo={botInfo}
-            channelName={selectedChannel?.name || "general"}
-          />
-        </div>
+        )}
       </div>
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 3. Main Body Views */}
+      {/* ───────────────────────────────────────────────────────────── */}
+
+      {/* VIEW: MESSAGE EDITOR */}
+      {activeTab === "editor" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
+          {/* Left Column: Focused Composer (7 cols on lg) */}
+          <div
+            className={`lg:col-span-7 space-y-4 overflow-y-auto pr-1 ${
+              mobileEditorView === "preview" ? "hidden lg:block" : "block"
+            }`}
+          >
+            {/* Top Setup Card: Name, Mode & Channel */}
+            <div className="p-4 rounded-3xl glass-panel bg-slate-900/70 border border-white/5 space-y-3.5">
+              {/* Row 1: Message Name & Format Segment */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Message Name Input */}
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Message Title
+                  </label>
+                  <input
+                    type="text"
+                    value={messageName}
+                    onChange={(e) => setMessageName(e.target.value)}
+                    placeholder="e.g. Server Announcement"
+                    maxLength={100}
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-white/10 text-white text-xs font-bold placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {/* Message Format Selector */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Format Mode
+                  </label>
+                  <div className="inline-flex p-1 rounded-xl bg-slate-950 border border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => setMode("normal")}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        mode === "normal"
+                          ? "bg-indigo-600 text-white shadow"
+                          : "text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      Normal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode("embed")}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        mode === "embed"
+                          ? "bg-indigo-600 text-white shadow"
+                          : "text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      Embed
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode("hybrid")}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        mode === "hybrid"
+                          ? "bg-indigo-600 text-white shadow"
+                          : "text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      Hybrid
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2: Destination Channel & Reply Toggle Button */}
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pt-2 border-t border-white/5">
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Destination Channel
+                  </label>
+                  <ChannelSelector
+                    channels={channels}
+                    value={channelId}
+                    onChange={setChannelId}
+                    placeholder="Select text channel..."
+                  />
+                </div>
+
+                {/* Reply Toggle */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowReplyBox(!showReplyBox)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${
+                      replyConfig.enabled
+                        ? "bg-indigo-600/15 text-indigo-400 border-indigo-500/30"
+                        : showReplyBox
+                        ? "bg-slate-800 text-white border-white/10"
+                        : "bg-slate-950 text-slate-400 hover:text-white border-white/5"
+                    }`}
+                  >
+                    <CornerUpLeft className="w-3.5 h-3.5" />
+                    <span>{replyConfig.enabled ? "Reply Active" : "Add Reply"}</span>
+                    {showReplyBox ? (
+                      <ChevronUp className="w-3 h-3 ml-0.5" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3 ml-0.5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Collapsible Reply Configuration Card */}
+              {showReplyBox && (
+                <div className="pt-2">
+                  <ReplyMessageSelector
+                    guildId={guildId}
+                    replyConfig={replyConfig}
+                    onChangeReplyConfig={setReplyConfig}
+                    currentChannelId={channelId}
+                    onSelectChannel={setChannelId}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Validation Errors Notice */}
+            <MessageValidationSummary errors={validationErrors} />
+
+            {/* Normal Text Message Editor */}
+            {(mode === "normal" || mode === "hybrid") && (
+              <div className="p-4 rounded-3xl glass-panel bg-slate-900/70 border border-white/5 space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b border-white/5">
+                  <MessageSquare className="w-4 h-4 text-indigo-400" />
+                  <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">
+                    Text Content
+                  </span>
+                </div>
+                <NormalMessageEditor
+                  content={content}
+                  onChangeContent={setContent}
+                  attachments={attachments}
+                  onChangeAttachments={setAttachments}
+                />
+              </div>
+            )}
+
+            {/* Embed Message Editor */}
+            {(mode === "embed" || mode === "hybrid") && (
+              <div className="p-4 rounded-3xl glass-panel bg-slate-900/70 border border-white/5 space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b border-white/5">
+                  <Layers className="w-4 h-4 text-indigo-400" />
+                  <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">
+                    Rich Embeds ({embeds.length}/10)
+                  </span>
+                </div>
+                <EmbedEditor embeds={embeds} onChangeEmbeds={setEmbeds} />
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Live Discord Client Preview (5 cols on lg, sticky) */}
+          <div
+            className={`lg:col-span-5 lg:sticky lg:top-4 self-start max-h-[calc(100vh-5rem)] flex flex-col space-y-3 ${
+              mobileEditorView === "composer" ? "hidden lg:flex" : "flex"
+            }`}
+          >
+            <DiscordMessagePreview
+              content={content}
+              mode={mode}
+              embeds={embeds}
+              attachments={attachments}
+              replyData={replyConfig?.preview}
+              botInfo={botInfo}
+              channelName={selectedChannel?.name || "general"}
+            />
+
+            {/* Quick Send CTA */}
+            <button
+              type="button"
+              onClick={() => {
+                if (validateCurrentState()) {
+                  setIsPublishModalOpen(true);
+                } else {
+                  showToast?.("Please complete all message requirements before sending.", "error");
+                }
+              }}
+              className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold inline-flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all"
+            >
+              <Send className="w-4 h-4" />
+              <span>Send Now to #{selectedChannel?.name || "channel"}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW: MESSAGE HISTORY */}
+      {activeTab === "history" && (
+        <div className="p-6 rounded-3xl glass-panel bg-slate-900/70 border border-white/5">
+          <MessageHistory
+            history={history}
+            channels={channels}
+            onLoadPayload={handleLoadPayload}
+            onOpenEditModal={(item) => setEditingHistoryItem(item)}
+            onDeleteMessage={onDeletePublishedMessage}
+            onDeleteHistoryEntry={onDeleteHistoryEntry}
+            onClearHistory={onClearHistory}
+          />
+        </div>
+      )}
+
+      {/* VIEW: SAVED TEMPLATES */}
+      {activeTab === "templates" && (
+        <div className="p-6 rounded-3xl glass-panel bg-slate-900/70 border border-white/5">
+          <MessageTemplateLibrary
+            templates={templates}
+            onLoadTemplate={handleLoadTemplate}
+            onDuplicateTemplate={onDuplicateTemplate}
+            onDeleteTemplate={onDeleteTemplate}
+            onOpenSaveTemplateModal={() => setIsSaveTemplateModalOpen(true)}
+          />
+        </div>
+      )}
+
+      {/* VIEW: SAVED DRAFTS */}
+      {activeTab === "drafts" && (
+        <div className="p-6 rounded-3xl glass-panel bg-slate-900/70 border border-white/5">
+          <MessageDraftLibrary
+            drafts={drafts}
+            onLoadDraft={handleLoadDraft}
+            onDeleteDraft={onDeleteDraft}
+            onNewDraft={handleNewMessage}
+            activeDraftId={currentDraftId}
+          />
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 4. Modals */}
+      {/* ───────────────────────────────────────────────────────────── */}
 
       {/* Publish Dialog */}
       <PublishDialog

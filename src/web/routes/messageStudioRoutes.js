@@ -13,6 +13,8 @@ import {
   deleteTemplate,
   listHistory,
   getHistoryEntry,
+  deleteHistoryEntry,
+  clearHistory,
 } from "../../db/helpers/messageStudio.js";
 import {
   validateMessage,
@@ -356,11 +358,14 @@ messageStudioRoutes.delete("/guilds/:guildId/message-studio/messages/:messageId"
     return c.json({ error: "channel_id query parameter is required." }, 400);
   }
 
+  const removeHistory = c.req.query("remove_history") === "true";
+
   const result = await deletePublishedMessage({
     client,
     guildId,
     channelId,
     messageId,
+    removeFromHistory: removeHistory,
   });
 
   if (!result.success) {
@@ -369,4 +374,26 @@ messageStudioRoutes.delete("/guilds/:guildId/message-studio/messages/:messageId"
 
   invalidateStudioCaches(guildId, "history");
   return c.json(result);
+});
+
+messageStudioRoutes.delete("/guilds/:guildId/message-studio/history/:historyId", async (c) => {
+  const guildId = c.req.param("guildId");
+  const historyId = c.req.param("historyId");
+
+  const deleted = await deleteHistoryEntry(guildId, historyId);
+  if (!deleted) {
+    return c.json({ error: "History entry not found." }, 404);
+  }
+
+  invalidateStudioCaches(guildId, "history");
+  return c.json({ success: true });
+});
+
+messageStudioRoutes.delete("/guilds/:guildId/message-studio/history", async (c) => {
+  const guildId = c.req.param("guildId");
+  const status = c.req.query("status") || null;
+
+  await clearHistory(guildId, { status });
+  invalidateStudioCaches(guildId, "history");
+  return c.json({ success: true });
 });

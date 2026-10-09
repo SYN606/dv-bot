@@ -560,10 +560,46 @@ export async function editMessageStudioPublishedMessage(guildId, messageId, payl
   return result;
 }
 
-export async function deleteMessageStudioPublishedMessage(guildId, messageId, channelId) {
-  const result = await fetchApi(`/api/guilds/${guildId}/message-studio/messages/${messageId}?channel_id=${channelId}`, {
-    method: "DELETE",
-  });
+export async function deleteMessageStudioPublishedMessage(
+  guildId,
+  messageId,
+  channelId,
+  { removeHistory = false } = {}
+) {
+  const query = new URLSearchParams({
+    channel_id: channelId,
+    remove_history: String(Boolean(removeHistory)),
+  }).toString();
+  const result = await fetchApi(
+    `/api/guilds/${guildId}/message-studio/messages/${messageId}?${query}`,
+    {
+      method: "DELETE",
+    }
+  );
   invalidatePath(`/api/guilds/${guildId}/message-studio/history`);
   return result;
 }
+
+export async function deleteMessageStudioHistoryEntry(guildId, historyId) {
+  const result = await fetchApi(
+    `/api/guilds/${guildId}/message-studio/history/${historyId}`,
+    {
+      method: "DELETE",
+    }
+  );
+  invalidatePath(`/api/guilds/${guildId}/message-studio/history`);
+  return result;
+}
+
+export async function clearMessageStudioHistory(guildId, status = null) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  const result = await fetchApi(
+    `/api/guilds/${guildId}/message-studio/history${query}`,
+    {
+      method: "DELETE",
+    }
+  );
+  invalidatePath(`/api/guilds/${guildId}/message-studio/history`);
+  return result;
+}
+

@@ -3,7 +3,7 @@ import {
   PermissionFlagsBits,
   ChannelType,
 } from "discord.js";
-import { recordHistory, updateHistoryStatus } from "../db/helpers/messageStudio.js";
+import { recordHistory, updateHistoryStatus, deleteHistoryEntry } from "../db/helpers/messageStudio.js";
 import { logger } from "../utils/logger.js";
 
 // Discord Constraints
@@ -819,6 +819,7 @@ export async function deletePublishedMessage({
   guildId,
   channelId,
   messageId,
+  removeFromHistory = false,
 }) {
   const gId = String(guildId);
   const cId = String(channelId);
@@ -836,25 +837,33 @@ export async function deletePublishedMessage({
   try {
     message = await channel.messages.fetch(mId);
   } catch (err) {
-    // If already deleted in Discord, mark as deleted in history anyway
-    await updateHistoryStatus(gId, mId, "deleted").catch(() => {});
+    // If already deleted in Discord, mark as deleted or delete history record
+    if (removeFromHistory) {
+      await deleteHistoryEntry(gId, mId).catch(() => {});
+    } else {
+      await updateHistoryStatus(gId, mId, "deleted").catch(() => {});
+    }
     return { success: true, alreadyDeleted: true };
   }
 
   const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
-  const isOwnMessage = message.author.id === client.user.id;
+  const isOwnMessage = message.author?.id === client.user?.id;
   const hasManageMessages = channel.permissionsFor(botMember)?.has(PermissionFlagsBits.ManageMessages);
 
   if (!isOwnMessage && !hasManageMessages) {
     return {
       success: false,
-      error: "Bot lacks permissions to delete this message.",
+      error: "Bot lacks permissions (Manage Messages) to delete this message in Discord.",
     };
   }
 
   try {
     await message.delete();
-    await updateHistoryStatus(gId, mId, "deleted").catch(() => {});
+    if (removeFromHistory) {
+      await deleteHistoryEntry(gId, mId).catch(() => {});
+    } else {
+      await updateHistoryStatus(gId, mId, "deleted").catch(() => {});
+    }
     return { success: true };
   } catch (err) {
     return {

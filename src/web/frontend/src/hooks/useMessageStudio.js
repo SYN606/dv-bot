@@ -13,6 +13,8 @@ import {
   getMessageStudioHistory,
   editMessageStudioPublishedMessage,
   deleteMessageStudioPublishedMessage,
+  deleteMessageStudioHistoryEntry,
+  clearMessageStudioHistory,
 } from "../api/client";
 
 export function useMessageStudio(guildId, showToast) {
@@ -166,18 +168,65 @@ export function useMessageStudio(guildId, showToast) {
     }
   };
 
-  const handleDeletePublishedMessage = async (messageId, channelId) => {
+  const handleDeletePublishedMessage = async (
+    messageId,
+    channelId,
+    { historyId = null, removeFromHistory = false } = {}
+  ) => {
     try {
-      await deleteMessageStudioPublishedMessage(guildId, messageId, channelId);
-      // Mark as deleted in local history
-      setHistory((prev) =>
-        prev.map((h) =>
-          h.message_id === messageId ? { ...h, status: "deleted" } : h
-        )
-      );
-      showToast?.("Live message deleted from Discord.", "success");
+      const result = await deleteMessageStudioPublishedMessage(guildId, messageId, channelId, {
+        removeHistory: removeFromHistory,
+      });
+      if (removeFromHistory) {
+        setHistory((prev) =>
+          prev.filter((h) => h.message_id !== messageId && h.id !== historyId)
+        );
+        showToast?.("Message deleted from Discord and removed from history.", "success");
+      } else {
+        setHistory((prev) =>
+          prev.map((h) =>
+            h.message_id === messageId || (historyId && h.id === historyId)
+              ? { ...h, status: "deleted" }
+              : h
+          )
+        );
+        showToast?.("Live message deleted from Discord.", "success");
+      }
+      return result;
     } catch (err) {
       showToast?.(err?.message || "Failed to delete live message.", "error");
+      throw err;
+    }
+  };
+
+  const handleDeleteHistoryEntry = async (historyId) => {
+    try {
+      await deleteMessageStudioHistoryEntry(guildId, historyId);
+      setHistory((prev) => prev.filter((h) => h.id !== historyId));
+      showToast?.("Record removed from history.", "info");
+      return true;
+    } catch (err) {
+      showToast?.(err?.message || "Failed to remove history record.", "error");
+      throw err;
+    }
+  };
+
+  const handleClearHistory = async (status = null) => {
+    try {
+      await clearMessageStudioHistory(guildId, status);
+      if (status) {
+        setHistory((prev) => prev.filter((h) => h.status !== status));
+      } else {
+        setHistory([]);
+      }
+      showToast?.(
+        status ? `Cleared ${status} history logs.` : "Cleared all message history.",
+        "info"
+      );
+      return true;
+    } catch (err) {
+      showToast?.(err?.message || "Failed to clear history.", "error");
+      throw err;
     }
   };
 
@@ -197,6 +246,8 @@ export function useMessageStudio(guildId, showToast) {
     publishMessage: handlePublishMessage,
     editPublishedMessage: handleEditPublishedMessage,
     deletePublishedMessage: handleDeletePublishedMessage,
+    deleteHistoryEntry: handleDeleteHistoryEntry,
+    clearHistory: handleClearHistory,
     refresh: fetchAll,
   };
 }
