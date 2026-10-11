@@ -544,3 +544,82 @@ export const messageHistory = sqliteTable(
     guildMsgIdx: index("idx_message_history_msg").on(table.guild_id, table.message_id),
   })
 );
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Music Subsystem Tables
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const musicSettings = sqliteTable("music_settings", {
+  guild_id: text("guild_id").primaryKey(),
+  enabled: integer("enabled").notNull().default(1),
+  dj_role_id: text("dj_role_id"),
+  dj_only: integer("dj_only").notNull().default(0),
+  default_volume: integer("default_volume").notNull().default(80),
+  max_volume: integer("max_volume").notNull().default(150),
+  mode_247: integer("mode_247").notNull().default(0),
+  voice_channel_id: text("voice_channel_id"),
+  text_channel_id: text("text_channel_id"),
+  autoplay: integer("autoplay").notNull().default(0),
+  default_loop: text("default_loop").notNull().default("off"),
+  vote_skip: integer("vote_skip").notNull().default(0),
+  vote_skip_threshold: integer("vote_skip_threshold").notNull().default(50),
+  created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
+
+export const musicPlaylists = sqliteTable(
+  "music_playlists",
+  {
+    id: text("id").primaryKey(),
+    user_id: text("user_id").notNull(),
+    guild_id: text("guild_id"),
+    name: text("name").notNull(),
+    description: text("description").default(""),
+    is_private: integer("is_private").notNull().default(0),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+    updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    userIdx: index("idx_music_playlists_user").on(table.user_id),
+    guildIdx: index("idx_music_playlists_guild").on(table.guild_id),
+  })
+);
+
+export const musicPlaylistTracks = sqliteTable(
+  "music_playlist_tracks",
+  {
+    id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+    playlist_id: text("playlist_id").notNull(),
+    position: integer("position").notNull().default(0),
+    title: text("title").notNull(),
+    author: text("author").notNull(),
+    uri: text("uri").notNull(),
+    identifier: text("identifier").notNull(),
+    source_name: text("source_name").notNull().default("unknown"),
+    duration: integer("duration").notNull().default(0),
+    thumbnail: text("thumbnail"),
+    track_data: text("track_data").notNull(),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    playlistIdx: index("idx_music_playlist_tracks_playlist").on(table.playlist_id, table.position),
+  })
+);
+
+export const musicHistory = sqliteTable(
+  "music_history",
+  {
+    id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+    guild_id: text("guild_id").notNull(),
+    title: text("title").notNull(),
+    author: text("author").notNull(),
+    uri: text("uri").notNull(),
+    duration: integer("duration").notNull().default(0),
+    played_by: text("played_by").notNull(),
+    played_at: text("played_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    guildHistoryIdx: index("idx_music_history_guild").on(table.guild_id, table.played_at),
+  })
+);
+

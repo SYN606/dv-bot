@@ -31,6 +31,7 @@ const SupporterRewardsPage = lazy(() => import("../pages/dashboard/SupporterRewa
 const AutoRoleRewardsPage = lazy(() => import("../pages/dashboard/AutoRoleRewardsPage"));
 const WarningPunishmentsPage = lazy(() => import("../pages/dashboard/WarningPunishmentsPage"));
 const MessageStudioPage = lazy(() => import("../pages/dashboard/MessageStudioPage"));
+const MusicPage = lazy(() => import("../pages/dashboard/MusicPage"));
 
 export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
   return (
@@ -76,6 +77,7 @@ export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
           <Route path="commands" element={<CommandsPage showToast={showToast} />} />
           <Route path="sticky" element={<StickyPage showToast={showToast} />} />
           <Route path="message-studio" element={<MessageStudioPage showToast={showToast} />} />
+          <Route path="music" element={<MusicPage showToast={showToast} />} />
           <Route path="autoresponder" element={<AutoresponderPage showToast={showToast} />} />
           <Route path="config" element={<ConfigPage showToast={showToast} />} />
           <Route path="permissions" element={<PermissionsAuditPage showToast={showToast} />} />

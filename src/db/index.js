@@ -442,6 +442,61 @@ function ensureSqliteSchema(sqlite) {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS music_settings (
+      guild_id TEXT PRIMARY KEY,
+      enabled INTEGER DEFAULT 1,
+      dj_role_id TEXT,
+      dj_only INTEGER DEFAULT 0,
+      default_volume INTEGER DEFAULT 80,
+      max_volume INTEGER DEFAULT 150,
+      mode_247 INTEGER DEFAULT 0,
+      voice_channel_id TEXT,
+      text_channel_id TEXT,
+      autoplay INTEGER DEFAULT 0,
+      default_loop TEXT DEFAULT 'off',
+      vote_skip INTEGER DEFAULT 0,
+      vote_skip_threshold INTEGER DEFAULT 50,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS music_playlists (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      guild_id TEXT,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      is_private INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS music_playlist_tracks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      playlist_id TEXT NOT NULL,
+      position INTEGER DEFAULT 0,
+      title TEXT NOT NULL,
+      author TEXT NOT NULL,
+      uri TEXT NOT NULL,
+      identifier TEXT NOT NULL,
+      source_name TEXT DEFAULT 'unknown',
+      duration INTEGER DEFAULT 0,
+      thumbnail TEXT,
+      track_data TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS music_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      author TEXT NOT NULL,
+      uri TEXT NOT NULL,
+      duration INTEGER DEFAULT 0,
+      played_by TEXT NOT NULL,
+      played_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   try {
@@ -452,6 +507,18 @@ function ensureSqliteSchema(sqlite) {
   } catch (_) {}
   try {
     sqlite.exec("CREATE INDEX IF NOT EXISTS idx_message_history_guild ON message_history (guild_id, created_at);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_music_playlists_user ON music_playlists (user_id);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_music_playlists_guild ON music_playlists (guild_id);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_music_playlist_tracks_playlist ON music_playlist_tracks (playlist_id, position);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_music_history_guild ON music_history (guild_id, played_at);");
   } catch (_) {}
   try {
     sqlite.exec("CREATE INDEX IF NOT EXISTS idx_message_history_msg ON message_history (guild_id, message_id);");

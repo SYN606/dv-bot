@@ -16,6 +16,10 @@ import {
   messageDrafts,
   messageTemplates,
   messageHistory,
+  musicSettings,
+  musicPlaylists,
+  musicPlaylistTracks,
+  musicHistory,
 } from "../schema/sqlite.js";
 
 export const AFK = createModel("AFK", afk, "id");
@@ -38,3 +42,8 @@ export const ChannelPermissionSnapshot = createModel(
 export const MessageDraft = createModel("MessageDraft", messageDrafts, "id");
 export const MessageTemplate = createModel("MessageTemplate", messageTemplates, "id");
 export const MessageHistory = createModel("MessageHistory", messageHistory, "id");
+export const MusicSettings = createModel("MusicSettings", musicSettings, "guild_id");
+export const MusicPlaylist = createModel("MusicPlaylist", musicPlaylists, "id");
+export const MusicPlaylistTrack = createModel("MusicPlaylistTrack", musicPlaylistTracks, "id");
+export const MusicHistory = createModel("MusicHistory", musicHistory, "id");
+

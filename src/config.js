@@ -76,6 +76,18 @@ export const CONFIG = {
   AFK_IMAGE_URL: process.env.AFK_IMAGE_URL || null,
   MENTION_GIF_URL: process.env.MENTION_GIF_URL || null,
 
+  // Music & Lavalink v4 Configuration
+  MUSIC_ENABLED: (process.env.MUSIC_ENABLED || "true").toLowerCase() === "true",
+  LAVALINK_HOST: process.env.LAVALINK_HOST || "127.0.0.1",
+  LAVALINK_PORT: parseInt(process.env.LAVALINK_PORT || "2333", 10),
+  LAVALINK_PASSWORD: process.env.LAVALINK_PASSWORD || "youshallnotpass",
+  LAVALINK_SECURE: (process.env.LAVALINK_SECURE || "false").toLowerCase() === "true",
+  MUSIC_DEFAULT_VOLUME: Math.min(Math.max(1, parseInt(process.env.MUSIC_DEFAULT_VOLUME || "80", 10)), 150),
+  MUSIC_MAX_VOLUME: Math.min(Math.max(50, parseInt(process.env.MUSIC_MAX_VOLUME || "150", 10)), 200),
+  MUSIC_MAX_QUEUE_SIZE: parseInt(process.env.MUSIC_MAX_QUEUE_SIZE || "250", 10),
+  MUSIC_IDLE_TIMEOUT: parseInt(process.env.MUSIC_IDLE_TIMEOUT || "180", 10), // in seconds
+  MUSIC_DEFAULT_247: (process.env.MUSIC_DEFAULT_247 || "false").toLowerCase() === "true",
+
   ROOT_DIR,
 };
 

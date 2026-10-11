@@ -23,6 +23,10 @@ import {
   MessageDraft,
   MessageTemplate,
   MessageHistory,
+  MusicSettings,
+  MusicPlaylist,
+  MusicPlaylistTrack,
+  MusicHistory,
 } from "./featureModels.js";
 import {
   AutoResponder,
@@ -73,6 +77,10 @@ export {
   MessageDraft,
   MessageTemplate,
   MessageHistory,
+  MusicSettings,
+  MusicPlaylist,
+  MusicPlaylistTrack,
+  MusicHistory,
   TempbanConfig,
   TempbanRecord,
   WarningRecord,

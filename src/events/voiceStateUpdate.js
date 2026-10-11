@@ -7,6 +7,11 @@ const activeVoiceSessions = new Map(); // `${guildId}:${userId}` -> timestamp
 export default {
   name: "voiceStateUpdate",
   async execute(client, oldState, newState) {
+    // 0. Forward voice state update to Music subsystem (handles bot leaves, user leaves, idle timers)
+    if (client.music) {
+      client.music.handleVoiceStateUpdate(oldState, newState).catch(() => {});
+    }
+
     const guild = newState.guild || oldState.guild;
     const member = newState.member || oldState.member;
     if (!guild || !member || member.user.bot) return;

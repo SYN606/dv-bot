@@ -603,3 +603,89 @@ export async function clearMessageStudioHistory(guildId, status = null) {
   return result;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Music Subsystem API
+// ──────────────────────────────────────────────────────────────────────────────
+
+export async function getMusicPlayer(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/music/player`, { skipCache: true });
+}
+
+export async function musicPlayerAction(guildId, action, payload = {}) {
+  return fetchApi(`/api/guilds/${guildId}/music/player/${action}`, {
+    method: "POST",
+    body: payload,
+    skipCache: true,
+  });
+}
+
+export async function getMusicQueue(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/music/queue`, { skipCache: true });
+}
+
+export async function removeMusicQueueTrack(guildId, index) {
+  return fetchApi(`/api/guilds/${guildId}/music/queue/${index}`, {
+    method: "DELETE",
+    skipCache: true,
+  });
+}
+
+export async function moveMusicQueueTrack(guildId, from, to) {
+  return fetchApi(`/api/guilds/${guildId}/music/queue/move`, {
+    method: "POST",
+    body: { from, to },
+    skipCache: true,
+  });
+}
+
+export async function clearMusicQueue(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/music/queue`, {
+    method: "DELETE",
+    skipCache: true,
+  });
+}
+
+export async function getMusicSettings(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/music/settings`);
+}
+
+export async function updateMusicSettings(guildId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/music/settings`, {
+    method: "PATCH",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/music/settings`);
+  return result;
+}
+
+export async function getMusicHistory(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/music/history`, { skipCache: true });
+}
+
+export async function getMusicPlaylists(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/music/playlists`, { skipCache: true });
+}
+
+export async function createMusicPlaylist(guildId, payload) {
+  return fetchApi(`/api/guilds/${guildId}/music/playlists`, {
+    method: "POST",
+    body: payload,
+    skipCache: true,
+  });
+}
+
+export async function deleteMusicPlaylist(guildId, playlistId) {
+  return fetchApi(`/api/guilds/${guildId}/music/playlists/${playlistId}`, {
+    method: "DELETE",
+    skipCache: true,
+  });
+}
+
+export async function loadMusicPlaylist(guildId, playlistId) {
+  return fetchApi(`/api/guilds/${guildId}/music/playlists/${playlistId}/load`, {
+    method: "POST",
+    skipCache: true,
+  });
+}
+
+

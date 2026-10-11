@@ -1,0 +1,34 @@
+[Unit]
+Description=Lavalink v4 Audio Server for Digital Vigital Bot
+Documentation=https://lavalink.dev
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lavalink
+Group=lavalink
+WorkingDirectory=/opt/lavalink
+ExecStart=/usr/bin/java -Xmx1G -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:+ParallelRefProcEnabled -jar /opt/lavalink/Lavalink.jar
+Restart=always
+RestartSec=5s
+
+# Security Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictRealtime=true
+
+# Resource Limits
+LimitNOFILE=65535
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=lavalink
+
+[Install]
+WantedBy=multi-user.target

@@ -11,6 +11,7 @@ import {
 } from "discord.js";
 import { CONFIG } from "../config.js";
 import { logger } from "../utils/logger.js";
+import { MusicManager } from "../music/MusicManager.js";
 
 export class DVClient extends Client {
   constructor() {
@@ -79,6 +80,7 @@ export class DVClient extends Client {
     this.aliases = new Collection();
     this.components = new Collection();
     this.cooldowns = new Collection();
+    this.music = new MusicManager(this);
   }
 
   async loadCommands(dir = path.join(CONFIG.ROOT_DIR, "src", "commands")) {
@@ -154,6 +156,7 @@ export class DVClient extends Client {
     const { registerVerificationComponent } = await import("../components/verifyButton.js");
     registerCommandControlComponents(this);
     registerVerificationComponent(this);
+    this.components.set("music", (interaction) => this.music.interactionHandler.handle(interaction));
     logger.info(`[CLIENT] Registered ${this.components.size} interaction component handlers.`);
   }
 
@@ -233,6 +236,7 @@ export class DVClient extends Client {
       logger.warn("[CLIENT] DISCORD_TOKEN is missing. Bot cannot login.");
       return;
     }
+    this.music.init();
     await this.login(CONFIG.TOKEN);
   }
 }

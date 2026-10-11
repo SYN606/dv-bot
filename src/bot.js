@@ -80,6 +80,13 @@ async function handleShutdown(signal) {
       global.viteServerProcess.kill();
       logger.info("[SHUTDOWN] Vite Dev Server stopped.");
     }
+    if (client.music?.players) {
+      for (const player of client.music.players.values()) {
+        try {
+          await player.destroy(true);
+        } catch {}
+      }
+    }
     await ANALYTICS_BATCHER.stop();
     await closeDb();
     client.destroy();
