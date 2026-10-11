@@ -203,5 +203,4 @@ coverage/
 
 # OS artifacts
 .DS_Store
-tests/
 *.txt
