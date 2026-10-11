@@ -99,12 +99,14 @@ export default createCommand({
 
     // Join Position (if member)
     let joinPosition = "Unknown";
-    if (targetMember) {
-      const sortedMembers = Array.from(guild.members.cache.values()).sort((a, b) => (a.joinedTimestamp || 0) - (b.joinedTimestamp || 0));
-      const index = sortedMembers.findIndex((m) => m.id === targetMember.id);
-      if (index !== -1) {
-        joinPosition = index + 1;
+    if (targetMember && targetMember.joinedTimestamp) {
+      let position = 1;
+      for (const m of guild.members.cache.values()) {
+        if (m.joinedTimestamp && m.joinedTimestamp < targetMember.joinedTimestamp) {
+          position++;
+        }
       }
+      joinPosition = position;
     }
 
     // Roles (if member)

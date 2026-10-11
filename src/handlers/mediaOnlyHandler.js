@@ -25,20 +25,34 @@ const MOD_LOG_COOLDOWN_MS = 30000;
 const warningThrottle = new Map();
 const WARNING_COOLDOWN_MS = 8000;
 
+// Decay timers tracking: key "${guildId}:${userId}" -> timeoutId
+const decayTimers = new Map();
+
 /**
- * Decays user violations after 5 minutes (300 seconds)
+ * Decays user violations after 5 minutes (300 seconds) using a single debounced timer
  */
 function scheduleViolationDecay(guildId, userId) {
   const key = `${guildId}:${userId}`;
-  setTimeout(() => {
+
+  // If a decay timer is already scheduled for this user, clear it to reset the window cleanly
+  if (decayTimers.has(key)) {
+    clearTimeout(decayTimers.get(key));
+  }
+
+  const timeoutId = setTimeout(() => {
+    decayTimers.delete(key);
     const current = mediaViolationCounter.get(key) || 0;
     if (current <= 1) {
       mediaViolationCounter.delete(key);
       modLogThrottle.delete(key);
     } else {
       mediaViolationCounter.set(key, current - 1);
+      scheduleViolationDecay(guildId, userId);
     }
   }, 300000);
+
+  if (timeoutId.unref) timeoutId.unref();
+  decayTimers.set(key, timeoutId);
 }
 
 /**

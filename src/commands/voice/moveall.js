@@ -209,15 +209,13 @@ export default createCommand({
     const startTime = Date.now();
     let movedCount = 0;
     let failedCount = 0;
-    let index = 0;
-
-    // Concurrently move members using a parallel worker pool (10 concurrent workers)
+    const queue = [...activeMembers];
     const CONCURRENCY = 10;
     const workerCount = Math.min(CONCURRENCY, activeMembers.length);
 
     async function moveWorker() {
-      while (index < activeMembers.length) {
-        const m = activeMembers[index++];
+      while (queue.length > 0) {
+        const m = queue.shift();
         if (!m || m.voice?.channelId !== source.id) {
           continue;
         }

@@ -5,12 +5,13 @@
 export function rateLimiter(options = {}) {
   const windowMs = options.windowMs || 60 * 1000; // 1 minute
   const maxRequests = options.maxRequests || 100; // Max requests per IP per window
+  const MAX_IPS = 5000;
 
   // ip -> { count, startTime }
   const store = new Map();
 
   // Prune expired records to prevent memory leak
-  setInterval(() => {
+  const pruneTimer = setInterval(() => {
     const now = Date.now();
     for (const [ip, data] of store.entries()) {
       if (now - data.startTime > windowMs) {
@@ -18,18 +19,22 @@ export function rateLimiter(options = {}) {
       }
     }
   }, windowMs);
+  if (pruneTimer.unref) pruneTimer.unref();
 
   return async (c, next) => {
-    // Get IP from Cloudflare header or default remote address
-    const ip =
-      c.req.header("cf-connecting-ip") ||
-      c.req.header("x-forwarded-for") ||
-      "127.0.0.1";
+    // Get IP safely: if x-forwarded-for has multiple, grab the first client IP
+    const rawForwarded = c.req.header("x-forwarded-for");
+    const forwardedIp = rawForwarded ? rawForwarded.split(",")[0].trim() : null;
+    const ip = c.req.header("cf-connecting-ip") || forwardedIp || "127.0.0.1";
 
     const now = Date.now();
     let record = store.get(ip);
 
     if (!record) {
+      if (store.size >= MAX_IPS) {
+        const oldest = store.keys().next().value;
+        if (oldest) store.delete(oldest);
+      }
       record = { count: 1, startTime: now };
       store.set(ip, record);
     } else {

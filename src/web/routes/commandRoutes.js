@@ -309,6 +309,7 @@ commandRoutes.get("/guilds/:guildId/sticky", async (c) => {
       content: r.sticky_content,
       sticky_content: r.sticky_content,
       counter: r.counter || 0,
+      repins: r.counter || 0,
       last_message_id: r.last_message_id ? String(r.last_message_id) : null,
       created_at: r.created_at,
       updated_at: r.updated_at,

@@ -10,3 +10,6 @@ export { commandRoutes } from "./commandRoutes.js";
 export { aclRoutes } from "./aclRoutes.js";
 export { analyticsRoutes } from "./analyticsRoutes.js";
 export { permissionsRoutes } from "./permissionsRoutes.js";
+export { supporterRoutes } from "./supporterRoutes.js";
+export { autoroleRoutes } from "./autoroleRoutes.js";
+export { messageStudioRoutes } from "./messageStudioRoutes.js";

@@ -1,11 +1,11 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import Toast from "../../components/ui/Toast";
 
 const ToastContext = createContext(null);
 
-
 export function ToastProvider({ children }) {
   const [toast, setToast] = useState({ message: "", type: "success", visible: false });
+  const timerRef = useRef(null);
 
   const showToast = useCallback((messageOrObj, type = "success") => {
     let message;
@@ -20,9 +20,14 @@ export function ToastProvider({ children }) {
       message = messageOrObj;
     }
 
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+
     setToast({ message, type: resolvedType, visible: true });
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       setToast((prev) => ({ ...prev, visible: false }));
+      timerRef.current = null;
     }, 3500);
   }, []);
 

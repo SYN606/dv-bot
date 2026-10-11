@@ -61,9 +61,10 @@ autoresponderRoutes.get("/guilds/:guildId/autoresponder", async (c) => {
 
 // 2. Fetch Single Autoresponder Rule by ID
 autoresponderRoutes.get("/guilds/:guildId/autoresponder/:id", async (c) => {
+  const guildId = c.req.param("guildId");
   const id = c.req.param("id");
   const rule = await getRuleById(Number(id));
-  if (!rule) {
+  if (!rule || String(rule.guild_id) !== String(guildId)) {
     return c.json({ error: "Autoresponder rule not found." }, 404);
   }
   return c.json(formatRule(rule));
@@ -270,6 +271,12 @@ autoresponderRoutes.post("/guilds/:guildId/autoresponder/:id/toggle", async (c) 
 autoresponderRoutes.delete("/guilds/:guildId/autoresponder/:id", async (c) => {
   const guildId = c.req.param("guildId");
   const id = c.req.param("id");
+
+  const existingRule = await getRuleById(Number(id));
+  if (!existingRule || String(existingRule.guild_id) !== String(guildId)) {
+    return c.json({ error: "Autoresponder rule not found." }, 404);
+  }
+
   await clearResponderReactions(id);
   const deleted = await deleteAutoresponder(guildId, id);
 

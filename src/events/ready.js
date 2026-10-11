@@ -39,12 +39,21 @@ export default {
     const supporterWorker = new SupporterWorker(client);
     supporterWorker.start();
 
+    // Attach worker references for clean graceful shutdown
+    client.workers = {
+      tempbanWorker,
+      autoroleWorker,
+      supporterWorker,
+    };
+
     // 5. Safely Stagger Member & Presence Pre-warming in the background without flooding Gateway
     (async () => {
+      // Only prewarm small guilds or skip heavy presence requests to prevent Gateway 429s
       for (const guild of client.guilds.cache.values()) {
+        if ((guild.memberCount || 0) > 2500) continue; // Skip full pre-fetch on massive guilds
         try {
-          await guild.members.fetch({ withPresences: true }).catch(() => null);
-          await new Promise((r) => setTimeout(r, 1500)); // 1.5s delay between guilds to respect Gateway limits
+          await guild.members.fetch().catch(() => null);
+          await new Promise((r) => setTimeout(r, 2500)); // 2.5s delay between guilds to respect Gateway limits
         } catch {}
       }
     })();

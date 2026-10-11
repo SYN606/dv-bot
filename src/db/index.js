@@ -456,6 +456,24 @@ function ensureSqliteSchema(sqlite) {
   try {
     sqlite.exec("CREATE INDEX IF NOT EXISTS idx_message_history_msg ON message_history (guild_id, message_id);");
   } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings (guild_id, user_id);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_punishment_records_guild_user ON punishment_records (guild_id, user_id);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_tempban_records_active ON tempban_records (guild_id, user_id, active);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_channel_restrictions_lookup ON channel_restrictions (guild_id, channel_id);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_admin_roles_lookup ON admin_roles (guild_id);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_admin_users_lookup ON admin_users (guild_id);");
+  } catch (_) {}
 
   try {
     sqlite.exec("ALTER TABLE afk ADD COLUMN mentions TEXT;");

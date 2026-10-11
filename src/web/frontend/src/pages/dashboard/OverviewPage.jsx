@@ -29,26 +29,29 @@ export default function OverviewPage({ showToast }) {
     let isMounted = true;
     setLoading(true);
 
-    Promise.all([
-      getGuildMeta(guildId).catch(() => null),
-      getVerification(guildId).catch(() => null),
-      getMediaOnly(guildId).catch(() => []),
-      getSticky(guildId).catch(() => []),
-      getAutoresponders(guildId).catch(() => []),
-      getAdminRoles(guildId).catch(() => [])
-    ]).then(([metaData, verData, medData, stiData, autData, admData]) => {
-      if (isMounted) {
-        setMeta(metaData);
-        setModules({
-          verification: verData?.enabled ? verData : null,
-          media: Array.isArray(medData) ? medData : [],
-          sticky: Array.isArray(stiData) ? stiData : [],
-          autoresponder: Array.isArray(autData) ? autData : [],
-          adminRoles: Array.isArray(admData) ? admData : []
-        });
-        setLoading(false);
-      }
-    });
+      Promise.all([
+        getGuildMeta(guildId).catch(() => null),
+        getVerification(guildId).catch(() => null),
+        getMediaOnly(guildId).catch(() => []),
+        getSticky(guildId).catch(() => null),
+        getAutoresponders(guildId).catch(() => []),
+        getAdminRoles(guildId).catch(() => null)
+      ]).then(([metaData, verData, medData, stiData, autData, admData]) => {
+        if (isMounted) {
+          const stickyArray = Array.isArray(stiData) ? stiData : (stiData?.stickyList || []);
+          const adminRolesArray = Array.isArray(admData) ? admData : (admData?.adminRoles || []);
+
+          setMeta(metaData);
+          setModules({
+            verification: verData?.enabled ? verData : null,
+            media: Array.isArray(medData) ? medData : [],
+            sticky: stickyArray,
+            autoresponder: Array.isArray(autData) ? autData : [],
+            adminRoles: adminRolesArray
+          });
+          setLoading(false);
+        }
+      });
 
     return () => { isMounted = false; };
   }, [guildId]);

@@ -4,7 +4,7 @@ import { checkVanityStatus } from "../handlers/supporterHandler.js";
 export default {
   name: Events.PresenceUpdate,
   once: false,
-  async execute(oldPresence, newPresence) {
+  async execute(client, oldPresence, newPresence) {
     if (!newPresence?.member || !newPresence.guild || newPresence.member.user?.bot) return;
 
     // Filter out irrelevant presence events (e.g. game activity, Spotify tracks) to avoid rate limits

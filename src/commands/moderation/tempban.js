@@ -30,34 +30,37 @@ export default createCommand({
     const { guild, user: moderator, member: modMember } = ctx;
     if (!guild) return;
 
-    const config = await getTempbanConfig(guild.id);
-    const isolationRoleId = config?.role_id ? String(config.role_id) : null;
-    const isolationRole = isolationRoleId ? guild.roles.cache.get(isolationRoleId) : null;
+    await ctx.defer({ ephemeral: true });
 
-    if (!isolationRole) {
-      const dashboardUrl = process.env.DASHBOARD_URL || "https://digitalvigital.com/dashboard";
-      return await ctx.reply({
-        embeds: [
-          makeEmbed({
-            title: "Configuration Missing",
-            description: `${EMOJIS.get("fail") || "❌"} The Tempban Isolation Role has not been configured.\n\n` +
-                         `Administrators must configure this module from the **[Web Dashboard](${dashboardUrl}/${guild.id})** before it can be used.`,
-            level: "ERROR",
-            color: COLORS.ERROR,
-          }),
-        ],
-        ephemeral: true,
-      });
-    }
+    try {
+      const config = await getTempbanConfig(guild.id);
+      const isolationRoleId = config?.role_id ? String(config.role_id) : null;
+      const isolationRole = isolationRoleId ? guild.roles.cache.get(isolationRoleId) : null;
 
-    let targetUserId = ctx.options.user;
-    if (!targetUserId && !ctx.isInteraction) {
-      const rawUser = ctx.options._args?.[0];
-      if (rawUser) targetUserId = rawUser.replace(/[<@!>]/g, "");
-    }
+      if (!isolationRole) {
+        const dashboardUrl = process.env.DASHBOARD_URL || "https://digitalvigital.com/dashboard";
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "Configuration Missing",
+              description: `${EMOJIS.get("fail") || "❌"} The Tempban Isolation Role has not been configured.\n\n` +
+                           `Administrators must configure this module from the **[Web Dashboard](${dashboardUrl}/${guild.id})** before it can be used.`,
+              level: "ERROR",
+              color: COLORS.ERROR,
+            }),
+          ],
+          ephemeral: true,
+        });
+      }
 
-    if (!targetUserId) {
-      return await ctx.reply({
+      let targetUserId = ctx.options.user;
+      if (!targetUserId && !ctx.isInteraction) {
+        const rawUser = ctx.options._args?.[0];
+        if (rawUser) targetUserId = rawUser.replace(/[<@!>]/g, "");
+      }
+
+      if (!targetUserId) {
+        return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Missing Argument",
@@ -104,8 +107,6 @@ export default createCommand({
     const durationSeconds = parseDuration(rawDuration) || parseDuration("10m");
     const reasonStr = reason || "No reason provided";
 
-    await ctx.defer({ ephemeral: false });
-
     const result = await executeTempban({
       guild,
       moderator,
@@ -129,6 +130,12 @@ export default createCommand({
     } else {
       return await ctx.reply({
         embeds: [makeEmbed({ title: "Execution Error", description: "Failed to apply tempban isolation.", level: "ERROR" })]
+      });
+    }
+    } catch (err) {
+      return await ctx.reply({
+        embeds: [makeEmbed({ title: "Command Error", description: err.message || "An unexpected error occurred.", level: "ERROR" })],
+        ephemeral: true,
       });
     }
   },

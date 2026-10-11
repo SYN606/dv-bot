@@ -80,6 +80,11 @@ async function handleShutdown(signal) {
       global.viteServerProcess.kill();
       logger.info("[SHUTDOWN] Vite Dev Server stopped.");
     }
+    if (client.workers) {
+      client.workers.tempbanWorker?.stop();
+      client.workers.autoroleWorker?.stop();
+      client.workers.supporterWorker?.stop();
+    }
     await ANALYTICS_BATCHER.stop();
     await closeDb();
     client.destroy();

@@ -3,6 +3,19 @@ import { recordVoiceActivity } from "../db/helpers/analytics.js";
 import { checkMemberSupporter } from "../handlers/supporterHandler.js";
 
 const activeVoiceSessions = new Map(); // `${guildId}:${userId}` -> timestamp
+const MAX_VOICE_SESSIONS = 5000;
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours max session duration
+
+// Periodic sweeper for orphaned/disconnected sessions
+const voiceCleanupInterval = setInterval(() => {
+  const now = Date.now();
+  for (const [key, startTime] of activeVoiceSessions.entries()) {
+    if (now - startTime > SESSION_TTL_MS) {
+      activeVoiceSessions.delete(key);
+    }
+  }
+}, 60 * 60 * 1000);
+if (voiceCleanupInterval.unref) voiceCleanupInterval.unref();
 
 export default {
   name: "voiceStateUpdate",

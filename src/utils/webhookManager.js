@@ -1,6 +1,7 @@
 import { PermissionFlagsBits } from "discord.js";
 
 const WEBHOOK_NAME = "DV Sticky Manager";
+const MAX_WEBHOOK_CACHE_SIZE = 500;
 const webhookCache = new Map(); // channelId -> Webhook
 const channelLocks = new Map(); // channelId -> Promise lock
 const channelCooldowns = new Map(); // channelId -> timestamp
@@ -54,6 +55,10 @@ export async function getOrCreateStickyWebhook(channel, name = WEBHOOK_NAME) {
       reason: "Automated Sticky & Media Channel Notice Engine",
     });
 
+    if (webhookCache.size >= MAX_WEBHOOK_CACHE_SIZE) {
+      const oldestKey = webhookCache.keys().next().value;
+      if (oldestKey) webhookCache.delete(oldestKey);
+    }
     webhookCache.set(channelId, newWebhook);
     return newWebhook;
   } catch (err) {

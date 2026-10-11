@@ -5,6 +5,8 @@ import { EMOJIS } from "../../core/emojis.js";
 import { analyzeMemberPermissions } from "../../utils/permissionsData.js";
 import { isBotAdmin } from "../../core/permissions.js";
 
+const permscanFetchThrottle = new Map(); // guildId -> timestamp
+
 const slashBuilder = new SlashCommandBuilder()
   .setName("permscan")
   .setDescription("Run a security audit on a member or the entire server.")
@@ -162,7 +164,14 @@ export default createCommand({
 
     if (subcommand === "server") {
       await ctx.defer().catch(() => {});
-      if (guild.members.cache.size < (guild.memberCount || 0)) {
+      const now = Date.now();
+      const lastFetch = permscanFetchThrottle.get(guild.id) || 0;
+      if (
+        (guild.memberCount || 0) <= 5000 &&
+        guild.members.cache.size < (guild.memberCount || 0) &&
+        now - lastFetch > 180000
+      ) {
+        permscanFetchThrottle.set(guild.id, now);
         await guild.members.fetch().catch(() => {});
       }
 

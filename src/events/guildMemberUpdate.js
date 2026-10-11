@@ -4,7 +4,8 @@ import { checkGuildTag } from "../handlers/supporterHandler.js";
 export default {
   name: Events.GuildMemberUpdate,
   once: false,
-  async execute(oldMember, newMember) {
+  async execute(client, oldMember, newMember) {
+    if (!oldMember || !newMember) return;
     const avatarChanged = oldMember.avatar !== newMember.avatar;
     const bannerChanged = oldMember.banner !== newMember.banner;
     

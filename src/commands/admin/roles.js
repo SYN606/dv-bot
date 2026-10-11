@@ -174,7 +174,7 @@ export default createCommand({
       }
 
       const isServerOwner = guild.ownerId === user.id;
-      const isSuperUser = isBotAdmin(user.id);
+      const isSuperUser = (await isBotAdmin(ctx)) || (await isBotAdmin(user.id));
       const invokerMember = member || (await guild.members?.fetch?.(user.id).catch(() => null));
       const invokerHighestPos = invokerMember?.roles?.highest?.position ?? 0;
       const targetHighestPos = targetMember.roles?.highest?.position ?? 0;

@@ -102,46 +102,50 @@ export default createCommand({
   slashBuilder,
 
   async autocomplete(interaction) {
-    if (!interaction.guild) return await interaction.respond([]);
+    if (!interaction.guild) return await interaction.respond([]).catch(() => {});
 
-    const focused = interaction.options.getFocused(true);
-    if (focused.name !== "command") return await interaction.respond([]);
+    try {
+      const focused = interaction.options.getFocused(true);
+      if (focused.name !== "command") return await interaction.respond([]).catch(() => {});
 
-    const subcommand = interaction.options.getSubcommand(false);
-    const targetChannelId = interaction.options.getChannel("channel")?.id || interaction.channelId;
-    const query = focused.value.trim().toLowerCase();
+      const subcommand = interaction.options.getSubcommand(false);
+      const targetChannelId = interaction.options.getChannel("channel")?.id || interaction.channelId;
+      const query = focused.value.trim().toLowerCase();
 
-    const client = interaction.client;
-    const disabled = await getDisabledCommands(interaction.guild.id, targetChannelId);
-    const disabledSet = new Set(disabled.map((d) => d.toLowerCase()));
+      const client = interaction.client;
+      const disabled = await getDisabledCommands(interaction.guild.id, targetChannelId).catch(() => []);
+      const disabledSet = new Set(disabled.map((d) => d.toLowerCase()));
 
-    const choices = [];
+      const choices = [];
 
-    if (subcommand === "disable") {
-      const all = [];
-      for (const cmd of client.commands.values()) {
-        const name = cmd.name.toLowerCase();
-        if (PROTECTED_COMMANDS.has(name) || disabledSet.has(name)) continue;
-        all.push(name);
-      }
-      all.sort();
+      if (subcommand === "disable") {
+        const all = [];
+        for (const cmd of client.commands.values()) {
+          const name = cmd.name.toLowerCase();
+          if (PROTECTED_COMMANDS.has(name) || disabledSet.has(name)) continue;
+          all.push(name);
+        }
+        all.sort();
 
-      for (const name of all) {
-        if (!query || name.includes(query)) {
-          choices.push({ name: `/${name}`, value: name });
-          if (choices.length >= 25) break;
+        for (const name of all) {
+          if (!query || name.includes(query)) {
+            choices.push({ name: `/${name}`, value: name });
+            if (choices.length >= 25) break;
+          }
+        }
+      } else if (subcommand === "enable") {
+        for (const name of disabled.sort()) {
+          if (!query || name.toLowerCase().includes(query)) {
+            choices.push({ name: `/${name}`, value: name });
+            if (choices.length >= 25) break;
+          }
         }
       }
-    } else if (subcommand === "enable") {
-      for (const name of disabled.sort()) {
-        if (!query || name.toLowerCase().includes(query)) {
-          choices.push({ name: `/${name}`, value: name });
-          if (choices.length >= 25) break;
-        }
-      }
+
+      await interaction.respond(choices).catch(() => {});
+    } catch {
+      await interaction.respond([]).catch(() => {});
     }
-
-    await interaction.respond(choices);
   },
 
   async execute(ctx) {

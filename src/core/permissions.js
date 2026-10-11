@@ -1,5 +1,6 @@
 import { PermissionFlagsBits } from "discord.js";
 import { getAdminRoles, getAdminUsers } from "../db/helpers/adminRoles.js";
+import { CONFIG } from "../config.js";
 
 export const PROTECTED_COMMANDS = new Set([
   "help",
@@ -10,11 +11,16 @@ export const PROTECTED_COMMANDS = new Set([
 ]);
 
 function extractMemberAndGuild(target) {
-  if (!target) return { member: null, guild: null };
+  if (!target) return { member: null, guild: null, user: null };
+
+  // If already a user ID string
+  if (typeof target === "string") {
+    return { member: null, guild: null, user: { id: target } };
+  }
 
   // Context or Interaction
   const guild = target.guild || null;
-  const member = target.member || (target.author && guild ? guild.members.cache.get(target.author.id) : null);
+  const member = target.member || (target.author && guild ? guild.members?.cache?.get(target.author.id) : null);
   const user = target.user || target.author || (member ? member.user : null);
 
   return { member, guild, user };
@@ -22,9 +28,14 @@ function extractMemberAndGuild(target) {
 
 export async function isBotAdmin(target) {
   const { member, guild, user } = extractMemberAndGuild(target);
-  if (!guild || !member) return false;
+  const targetUserId = user?.id || member?.id;
 
-  const targetUserId = user?.id || member.id;
+  // 0. Global Superusers
+  if (targetUserId && CONFIG.SUPERUSERS?.includes(String(targetUserId))) {
+    return true;
+  }
+
+  if (!guild || !member) return false;
 
   // 1. Guild Owner always has full authority
   if (guild.ownerId === targetUserId) {

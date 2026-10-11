@@ -244,14 +244,20 @@ export async function getServerRetentionStats(guildId, days = 7) {
     totalVcSeconds += Number(s.total_vc_seconds || 0);
   }
 
-  // If daily snapshots haven't accumulated yet, fallback to active members totals for baseline
+  // If daily snapshots haven't accumulated yet, fallback to active members totals for baseline using SQL SUM
   if (totalMessages === 0 && totalVcSeconds === 0) {
-    const allMembers = await MemberAnalytics.findAll({
-      where: { guild_id: gId, is_active: true },
-    });
-    for (const m of allMembers) {
-      totalMessages += Number(m.total_messages || 0);
-      totalVcSeconds += Number(m.total_vc_seconds || 0);
+    try {
+      const msgSum = await MemberAnalytics.sum("total_messages", {
+        where: { guild_id: gId, is_active: true },
+      });
+      const vcSum = await MemberAnalytics.sum("total_vc_seconds", {
+        where: { guild_id: gId, is_active: true },
+      });
+      totalMessages = Number(msgSum || 0);
+      totalVcSeconds = Number(vcSum || 0);
+    } catch {
+      totalMessages = 0;
+      totalVcSeconds = 0;
     }
   }
 

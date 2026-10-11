@@ -93,5 +93,17 @@ export function parseServerVariables(text, guildOrOptions, channel, config, user
 }
 
 export const SERVER_VARIABLES_LIST = [
+  { key: "{server}", desc: "Server Name", example: "Digital Vigital" },
+  { key: "{server.id}", desc: "Server ID", example: "1033451129364811929" },
+  { key: "{memberCount}", desc: "Total Member Count", example: "1,250" },
+  { key: "{owner}", desc: "Server Owner Mention", example: "@Owner" },
+  { key: "{owner.name}", desc: "Server Owner Username", example: "Admin" },
+  { key: "{channel}", desc: "Current Channel Mention", example: "#general" },
   { key: "{verifiedRole}", desc: "Verified Role Mention", example: "@Verified" },
+  { key: "{unverifiedRole}", desc: "Unverified Role Mention", example: "@Unverified" },
+  { key: "{rules}", desc: "Rules Channel Mention", example: "#rules" },
+  { key: "{boosts}", desc: "Server Boost Count", example: "7" },
+  { key: "{boostTier}", desc: "Server Boost Tier", example: "Level 2" },
+  { key: "{user}", desc: "User Mention", example: "@User" },
+  { key: "{user.name}", desc: "User Username", example: "JaneDoe" },
 ];

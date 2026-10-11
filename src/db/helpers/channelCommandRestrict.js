@@ -136,30 +136,32 @@ export async function bulkRestrictCommands(guildId, channelId, commandNames, sco
   }
 
   let count = 0;
-  for (const cmd of toAdd) {
-    const [record, created] = await RestrictedCommand.findOrCreate({
-      where: {
-        guild_id: gId,
-        channel_id: cId,
-        command_name: cmd,
-      },
-      defaults: {
-        guild_id: gId,
-        channel_id: cId,
-        command_name: cmd,
-        restriction_scope: scope.toLowerCase(),
-      },
-    });
+  await Promise.all(
+    toAdd.map(async (cmd) => {
+      const [record, created] = await RestrictedCommand.findOrCreate({
+        where: {
+          guild_id: gId,
+          channel_id: cId,
+          command_name: cmd,
+        },
+        defaults: {
+          guild_id: gId,
+          channel_id: cId,
+          command_name: cmd,
+          restriction_scope: scope.toLowerCase(),
+        },
+      });
 
-    if (created || record.restriction_scope !== scope.toLowerCase()) {
-      if (!created) {
-        record.restriction_scope = scope.toLowerCase();
-        await record.save();
+      if (created || record.restriction_scope !== scope.toLowerCase()) {
+        if (!created) {
+          record.restriction_scope = scope.toLowerCase();
+          await record.save();
+        }
+        count++;
       }
-      count++;
-    }
-    invalidateRestrictCache(gId, cId, cmd);
-  }
+      invalidateRestrictCache(gId, cId, cmd);
+    })
+  );
 
   return { restrictedCount: toAdd.length, newRestrictions: count, skipped };
 }

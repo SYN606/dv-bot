@@ -1,16 +1,18 @@
 import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { createCommand } from "../../core/command.js";
 import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { PunishmentRecord, WarningRecord, TempbanRecord } from "../../db/models/index.js";
 import { EMOJIS } from "../../core/emojis.js";
 
-export default {
-  data: new SlashCommandBuilder()
-    .setName("punishments")
-    .setDescription("View all punishments and warnings for a user")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
-    .addUserOption((opt) =>
-      opt.setName("user").setDescription("The user to lookup").setRequired(true)
-    ),
+const slashBuilder = new SlashCommandBuilder()
+  .setName("punishments")
+  .setDescription("View all punishments and warnings for a user")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+  .addUserOption((opt) =>
+    opt.setName("user").setDescription("The user to lookup").setRequired(true)
+  );
+
+export default createCommand({
   name: "punishments",
   description: "View all punishments and warnings for a user",
   usage: "<user>",
@@ -19,51 +21,62 @@ export default {
     "dvpunishments @User",
   ],
   category: "Moderation",
-  adminOnly: true,
+  modOnly: true,
   requiredPermission: PermissionFlagsBits.ModerateMembers,
-  permissions: ["ModerateMembers"],
   aliases: ["history", "infractions"],
+  slashBuilder,
 
-  async execute({ interaction, message, args, guild }) {
-    const targetUser = interaction ? interaction.options.getUser("user") : message.mentions.users.first() || (args[0] ? await guild.client.users.fetch(args[0]).catch(() => null) : null);
+  async execute(ctx) {
+    const { interaction, message, guild, client } = ctx;
+    if (!guild) return;
+
+    let targetUser = ctx.options.user;
+
+    if (!targetUser && !ctx.isInteraction) {
+      targetUser = message?.mentions?.users?.first();
+      if (!targetUser && ctx.options._args?.[0]) {
+        const rawId = ctx.options._args[0].replace(/[<@!>]/g, "");
+        targetUser = await client.users.fetch(rawId).catch(() => null);
+      }
+    }
 
     if (!targetUser) {
-      return (interaction || message).reply({
+      return await ctx.reply({
         content: "Please provide a valid user to lookup.",
         ephemeral: true,
       });
     }
 
-    if (interaction) await interaction.deferReply();
+    await ctx.defer({ ephemeral: false });
 
     const [punishments, warnings, tempbans] = await Promise.all([
-      PunishmentRecord.findAll({ where: { guild_id: String(guild.id), user_id: String(targetUser.id) } }),
-      WarningRecord.findAll({ where: { guild_id: String(guild.id), user_id: String(targetUser.id) } }),
-      TempbanRecord.findAll({ where: { guild_id: String(guild.id), user_id: String(targetUser.id) } }),
+      PunishmentRecord.findAll({ where: { guild_id: String(guild.id), user_id: String(targetUser.id) } }).catch(() => []),
+      WarningRecord.findAll({ where: { guild_id: String(guild.id), user_id: String(targetUser.id) } }).catch(() => []),
+      TempbanRecord.findAll({ where: { guild_id: String(guild.id), user_id: String(targetUser.id) } }).catch(() => []),
     ]);
 
     const allRecords = [
-      ...punishments.map(p => ({
+      ...punishments.map((p) => ({
         type: p.action_type.toUpperCase(),
         reason: p.reason,
         moderator_id: p.moderator_id,
         date: new Date(p.created_at),
-        emoji: p.action_type === 'ban' ? '🔨' : p.action_type === 'kick' ? '👢' : '⏳'
+        emoji: p.action_type === "ban" ? "🔨" : p.action_type === "kick" ? "👢" : "⏳",
       })),
-      ...warnings.map(w => ({
-        type: 'WARNING',
+      ...warnings.map((w) => ({
+        type: "WARNING",
         reason: w.reason,
         moderator_id: w.moderator_id,
         date: new Date(w.created_at),
-        emoji: '⚠️'
+        emoji: "⚠️",
       })),
-      ...tempbans.map(t => ({
-        type: 'TEMPBAN',
+      ...tempbans.map((t) => ({
+        type: "TEMPBAN",
         reason: t.tempban_reason || "No reason provided",
         moderator_id: t.moderator_id,
         date: new Date(t.created_at),
-        emoji: '⏲️'
-      }))
+        emoji: "⏲️",
+      })),
     ].sort((a, b) => b.date - a.date);
 
     if (allRecords.length === 0) {
@@ -71,35 +84,29 @@ export default {
         title: `Punishment History: ${targetUser.username}`,
         description: `${EMOJIS.get("success") || "✅"} This user has a clean record. No punishments found.`,
         color: COLORS.SUCCESS,
-        thumbnail: targetUser.displayAvatarURL()
+        thumbnail: targetUser.displayAvatarURL(),
       });
-      return (interaction || message).reply({ embeds: [emptyEmbed] });
+      return await ctx.reply({ embeds: [emptyEmbed] });
     }
 
-    // Format the list
+    // Format the list (limit to 25 fields for Discord embed limits)
     const fields = [];
-
-    // Group them or list them (limit to 25 fields for Discord embed limits)
     for (const record of allRecords.slice(0, 25)) {
       fields.push({
         name: `${record.emoji} ${record.type} - <t:${Math.floor(record.date.getTime() / 1000)}:d>`,
-        value: `**Reason:** ${record.reason}\n**Mod:** <@${record.moderator_id}>`,
-        inline: false
+        value: `**Reason:** ${record.reason || "No reason provided"}\n**Mod:** <@${record.moderator_id}>`,
+        inline: false,
       });
     }
 
     const embed = makeEmbed({
       title: `Punishment History: ${targetUser.username}`,
-      description: `Total Infractions: **${allRecords.length}**\n${allRecords.length > 25 ? '*Showing latest 25 records*' : ''}`,
+      description: `Total Infractions: **${allRecords.length}**\n${allRecords.length > 25 ? "*Showing latest 25 records*" : ""}`,
       color: COLORS.WARNING,
       thumbnail: targetUser.displayAvatarURL(),
-      fields
+      fields,
     });
 
-    if (interaction) {
-      await interaction.editReply({ embeds: [embed] });
-    } else {
-      await message.reply({ embeds: [embed] });
-    }
+    await ctx.reply({ embeds: [embed] });
   },
-};
+});

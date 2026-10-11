@@ -139,7 +139,7 @@ export function useStickyNotices(guildId, showToast) {
   };
 
   const totalRepins = useMemo(() => {
-    return notices.reduce((acc, curr) => acc + (curr.repins || 0), 0);
+    return notices.reduce((acc, curr) => acc + (curr.repins || curr.counter || 0), 0);
   }, [notices]);
 
   return {

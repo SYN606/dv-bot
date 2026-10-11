@@ -82,13 +82,21 @@ export function createSessionToken(data) {
 
 export function verifySessionToken(token) {
   if (!token || typeof token !== "string" || !token.includes(".")) return null;
-  const [payload, signature] = token.split(".");
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const [payload, signature] = parts;
+
   const expectedSig = crypto
     .createHmac("sha256", CONFIG.SESSION_SECRET)
     .update(payload)
     .digest("base64url");
 
-  if (signature !== expectedSig) return null;
+  const sigBuf = Buffer.from(signature, "utf-8");
+  const expectedBuf = Buffer.from(expectedSig, "utf-8");
+
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+    return null;
+  }
 
   try {
     const decoded = Buffer.from(payload, "base64url").toString("utf-8");

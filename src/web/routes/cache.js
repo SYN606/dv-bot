@@ -4,12 +4,14 @@
  * with immediate consistency on writes.
  */
 export class ApiCache {
-  constructor(defaultTtlMs = 30000) {
+  constructor(defaultTtlMs = 30000, maxCapacity = 2000) {
     this.store = new Map();
     this.defaultTtlMs = defaultTtlMs;
+    this.maxCapacity = maxCapacity;
 
     // Background sweeper to prevent memory leaks from one-off requested keys
-    setInterval(() => this.prune(), 60000);
+    const pruneTimer = setInterval(() => this.prune(), 60000);
+    if (pruneTimer.unref) pruneTimer.unref();
   }
 
   prune() {
@@ -32,6 +34,10 @@ export class ApiCache {
   }
 
   set(key, value, ttlMs = this.defaultTtlMs) {
+    if (this.store.size >= this.maxCapacity) {
+      const oldestKey = this.store.keys().next().value;
+      if (oldestKey) this.store.delete(oldestKey);
+    }
     this.store.set(key, {
       value,
       expiresAt: Date.now() + ttlMs,
