@@ -17,40 +17,17 @@ export default createCommand({
   usage: "<role>",
   examples: [
     "/roleinfo role:@Moderator",
-    "dvroleinfo @Moderator",
   ],
+  slashOnly: true,
   slashBuilder,
-  aliases: ["rinfo", "role-info"],
 
   async execute(ctx) {
-    const { guild, interaction, message, user } = ctx;
+    if (!ctx.isInteraction) return;
+
+    const { guild, interaction, user } = ctx;
     if (!guild) return;
 
     let targetRole = ctx.options.role;
-    
-    // Fallback for prefix command usage
-    if (!ctx.isInteraction) {
-      if (message) {
-        try {
-          await message.delete().catch(() => {});
-        } catch (err) {}
-      }
-
-      if (!targetRole) {
-        const rawRole = ctx.options._args?.[0];
-        if (rawRole) {
-          const roleId = rawRole.replace(/[<@&>]/g, "");
-          targetRole = guild.roles.cache.get(roleId) || guild.roles.cache.find(r => r.name.toLowerCase() === rawRole.toLowerCase());
-        }
-      }
-
-      if (!targetRole) {
-        return await ctx.reply({
-          embeds: [makeEmbed({ title: "Usage", description: "`/roleinfo <role>`", level: "INFO" })],
-          ephemeral: true,
-        });
-      }
-    }
 
     if (typeof targetRole === "string") {
       targetRole = guild.roles.cache.get(targetRole);

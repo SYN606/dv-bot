@@ -11,25 +11,18 @@ export default createCommand({
   name: "serverinfo",
   description: "Display comprehensive, beautifully formatted information about the server.",
   category: "Utility",
-  adminOnly: true,
-  aliases: ["si", "server", "guildinfo", "ginfo"],
   usage: "",
   examples: [
     "/serverinfo",
-    "dvserverinfo",
   ],
+  slashOnly: true,
   slashBuilder,
 
   async execute(ctx) {
-    const { guild, message, interaction } = ctx;
-    if (!guild) return;
+    if (!ctx.isInteraction) return;
 
-    // Optional text-invocation cleanup
-    if (message) {
-      try {
-        await message.delete().catch(() => {});
-      } catch (err) {}
-    }
+    const { guild, interaction } = ctx;
+    if (!guild) return;
 
     // 1. Emoji Fetching with Safe Defaults
     const arrow_icon = EMOJIS.get("arrow_point") || "▶";
@@ -103,7 +96,7 @@ export default createCommand({
     const icon_url = guild.iconURL({ size: 1024, extension: "png" });
     const banner_url = guild.bannerURL({ size: 1024, extension: "png" });
     const description = guild.description || "No server description provided.";
-    const authorUser = interaction ? interaction.user : message.author;
+    const authorUser = ctx.user || interaction?.user;
 
     const embed = makeEmbed({
       title: `Server Information: ${guild.name}`,

@@ -13,6 +13,18 @@ export const ACTIVITY_TYPE_MAP = {
 };
 
 /**
+ * Formats a number into a compact human-readable string (e.g., 1120 -> "1.1k", 1200000 -> "1.2m").
+ */
+export function formatCompact(num) {
+  if (num == null || isNaN(num)) return "0";
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    compactDisplay: "short",
+    maximumFractionDigits: 1,
+  }).format(num).toLowerCase();
+}
+
+/**
  * Initializes and manages the bot presence and rotating activity states.
  * Supports static text override via BOT_ACTIVITY_TEXT or automatic cycling.
  */
@@ -25,7 +37,6 @@ export function startPresence(client) {
   }
 
   const prefix = CONFIG.PREFIX || "ts";
-  const botName = CONFIG.BOT_NAME || "Digital Vigil";
   const customText = CONFIG.BOT_ACTIVITY_TEXT;
   const rawType = (CONFIG.BOT_ACTIVITY_TYPE || "LISTENING").toUpperCase();
   const activityType = ACTIVITY_TYPE_MAP[rawType] ?? ActivityType.Listening;
@@ -49,13 +60,19 @@ export function startPresence(client) {
   const updateStatus = () => {
     try {
       if (!client.user) return;
-      const guildCount = client.guilds.cache.size || 0;
-      const userCount = client.guilds.cache.reduce((acc, g) => acc + (g.memberCount || 0), 0);
+      const guildCount = client.guilds?.cache?.size || 0;
+      let rawUserCount = 0;
+      if (client.guilds?.cache) {
+        for (const guild of client.guilds.cache.values()) {
+          rawUserCount += (guild.memberCount || 0);
+        }
+      }
+      const userCount = formatCompact(rawUserCount);
 
       const rotation = [
         { name: `${prefix}help | /help`, type: ActivityType.Listening },
         { name: `🛡️ Moderation & Server Security`, type: ActivityType.Watching },
-        { name: `over ${guildCount} servers • ${userCount} users`, type: ActivityType.Watching },
+        { name: `over ${guildCount} servers • ${userCount} members`, type: ActivityType.Watching },
         { name: `bot.digitalvigital.fun`, type: ActivityType.Listening },
       ];
 
@@ -71,9 +88,10 @@ export function startPresence(client) {
     }
   };
 
-  // Run immediately and then rotate every 2 minutes
+  // Run immediately and then rotate slowly every 4 to 5 hours (default: 4.5 hours)
   updateStatus();
-  presenceInterval = setInterval(updateStatus, 120_000);
+  const ROTATION_INTERVAL_MS = (CONFIG.PRESENCE_ROTATE_HOURS ? Number(CONFIG.PRESENCE_ROTATE_HOURS) : 4.5) * 60 * 60 * 1000;
+  presenceInterval = setInterval(updateStatus, ROTATION_INTERVAL_MS);
 }
 
 /**
