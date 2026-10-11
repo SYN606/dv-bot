@@ -46,7 +46,11 @@ export async function fetchDiscordUser(accessToken) {
   const res = await fetch(`${DISCORD_API}/users/@me`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) throw new Error("Failed to fetch Discord user");
+  if (!res.ok) {
+    const err = new Error(`Failed to fetch Discord user (Status: ${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
   return await res.json();
 }
 
@@ -54,7 +58,13 @@ export async function fetchDiscordGuilds(accessToken) {
   const res = await fetch(`${DISCORD_API}/users/@me/guilds`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) throw new Error("Failed to fetch Discord guilds");
+  if (!res.ok) {
+    const retryAfter = res.headers.get("retry-after") || res.headers.get("x-ratelimit-reset-after");
+    const err = new Error(`Failed to fetch Discord guilds (Status: ${res.status}${retryAfter ? `, Retry-After: ${retryAfter}s` : ""})`);
+    err.status = res.status;
+    err.retryAfter = retryAfter ? parseFloat(retryAfter) : null;
+    throw err;
+  }
   return await res.json();
 }
 

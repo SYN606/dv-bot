@@ -1,6 +1,7 @@
-import { getCookie } from "hono/cookie";
+import { getCookie, deleteCookie } from "hono/cookie";
 import { verifySessionToken, fetchDiscordGuilds } from "../auth.js";
 import { apiCache } from "../routes/cache.js";
+import { logger } from "../../utils/logger.js";
 
 // Permission bitmasks
 const ADMINISTRATOR = 0x8;
@@ -32,11 +33,44 @@ export async function requireAuth(c, next) {
       }));
       apiCache.set(`user_guilds:${session.user.id}`, userGuilds, 1000 * 60 * 60);
     } catch (err) {
-      console.error("[AUTH MIDDLEWARE] Failed to fetch user guilds:", err);
-      if (c.req.path.startsWith("/api/")) {
-        return c.json({ error: "Failed to restore server list from Discord." }, 500);
+      if (err.status === 429) {
+        // Discord API Rate Limited (@me/guilds): Fallback to bot client cache without kicking out user
+        const client = c.get("discordClient");
+        const fallbackGuilds = [];
+        if (client?.guilds?.cache) {
+          for (const guild of client.guilds.cache.values()) {
+            const member = guild.members.cache.get(session.user.id);
+            if (member) {
+              const isAdmin = member.permissions?.has(8n) || member.permissions?.has(32n) || guild.ownerId === session.user.id;
+              fallbackGuilds.push({
+                id: guild.id,
+                name: guild.name,
+                icon: guild.icon,
+                permissions: isAdmin ? "8" : "0",
+                owner: guild.ownerId === session.user.id,
+              });
+            }
+          }
+        }
+        userGuilds = fallbackGuilds;
+        // Cache fallback for 30 seconds to ride out the rate limit window
+        apiCache.set(`user_guilds:${session.user.id}`, userGuilds, 30000);
+        logger.warn(`[AUTH MIDDLEWARE] Discord API rate limited (@me/guilds). Using client guild cache fallback for user ${session.user.id}.`);
+      } else if (err.status === 401 || err.message?.includes("401")) {
+        deleteCookie(c, "dv_session");
+        apiCache.delete(`user_guilds:${session.user.id}`);
+        logger.warn(`[AUTH] Session access token expired for user ${session.user.id}. Cookie cleared.`);
+        if (c.req.path.startsWith("/api/")) {
+          return c.json({ error: "Session expired. Please log in again.", code: "SESSION_EXPIRED" }, 401);
+        }
+        return c.redirect("/auth/login");
+      } else {
+        logger.warn(`[AUTH MIDDLEWARE] Could not fetch Discord guilds for ${session.user.id}:`, err.message);
+        if (c.req.path.startsWith("/api/")) {
+          return c.json({ error: "Failed to restore server list from Discord." }, 500);
+        }
+        return c.redirect("/auth/login");
       }
-      return c.redirect("/auth/login");
     }
   }
 
