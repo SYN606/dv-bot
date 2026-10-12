@@ -3,61 +3,14 @@
  * Uses bun:test (native bun test runner)
  * Run: bun test tests/
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach, mock } from "bun:test";
-import { Database } from "bun:sqlite";
-import { drizzle } from "drizzle-orm/bun-sqlite";
-import * as schema from "../src/db/schema/sqlite.js";
+import { describe, it, expect, beforeAll, beforeEach } from "bun:test";
+import { getDb } from "../src/db/index.js";
+import { warningPunishmentConfig } from "../src/db/schema/sqlite.js";
+import { inArray } from "drizzle-orm";
 
-// --- In-memory DB for isolated tests ---
-let rawDb;
-let db;
-
-mock.module("../src/db/index.js", () => {
-  return {
-    getDb: () => db,
-  };
-});
-
+// Ensure DB schema is loaded
 beforeAll(() => {
-  rawDb = new Database(":memory:");
-
-  rawDb.exec(`
-    CREATE TABLE IF NOT EXISTS guilds (
-      guild_id TEXT PRIMARY KEY,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS users (
-      user_id TEXT PRIMARY KEY,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS warnings (
-      warn_id INTEGER PRIMARY KEY AUTOINCREMENT,
-      guild_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      moderator_id TEXT NOT NULL,
-      reason TEXT DEFAULT 'No reason provided',
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS warning_punishment_config (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      guild_id TEXT NOT NULL,
-      warn_count INTEGER NOT NULL,
-      action_type TEXT NOT NULL,
-      duration INTEGER,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(guild_id, warn_count)
-    );
-  `);
-
-  db = drizzle(rawDb, { schema });
-});
-
-afterAll(() => {
-  if (rawDb) rawDb.close();
+  getDb();
 });
 
 // --- Warning Punishment Config tests ---
@@ -74,8 +27,12 @@ describe("warningPunishments helper", () => {
 
   const GUILD = "111111111111111111";
 
-  beforeEach(() => {
-    rawDb.exec("DELETE FROM warning_punishment_config");
+  beforeEach(async () => {
+    const db = getDb();
+    await db
+      .delete(warningPunishmentConfig)
+      .where(inArray(warningPunishmentConfig.guild_id, [GUILD, "GUILD_A", "GUILD_B"]))
+      .run();
   });
 
   it("should insert a new punishment config", async () => {
