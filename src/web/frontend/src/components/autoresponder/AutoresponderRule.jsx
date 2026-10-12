@@ -34,23 +34,25 @@ export default function AutoresponderRule({ rule, isEditing, onEdit, onToggle, o
       <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-start">
         <div className="space-y-3 min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-white truncate wrap-break-word font-sans">{rule.trigger}</span>
+            <span className="text-lg font-bold text-white truncate wrap-break-word font-sans">
+              {rule.trigger || rule.trigger_phrase}
+            </span>
             {!rule.enabled && (
               <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400">Disabled</span>
             )}
           </div>
           
           <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-500">
-            <span className="uppercase text-slate-400 font-semibold">{rule.matchMode}</span>
+            <span className="uppercase text-slate-400 font-semibold">{rule.matchMode || rule.match_type || "contains"}</span>
             <span>•</span>
-            <span>{rule.cooldown}s cooldown</span>
-            {rule.deleteTrigger && (
+            <span>{rule.cooldown ?? 0}s cooldown</span>
+            {(rule.deleteTrigger ?? rule.delete_trigger) && (
               <>
                 <span>•</span>
                 <span>Auto-delete</span>
               </>
             )}
-            {rule.ignoreBots && (
+            {(rule.ignoreBots ?? rule.ignore_bots) && (
               <>
                 <span>•</span>
                 <span>Ignore bots</span>
@@ -58,21 +60,21 @@ export default function AutoresponderRule({ rule, isEditing, onEdit, onToggle, o
             )}
           </div>
 
-          {(rule.reply || rule.embedTitle) && (
+          {(rule.reply || rule.reply_content || rule.embedTitle || rule.embed_title) && (
             <div className="text-sm text-slate-300 bg-slate-900/50 p-3 rounded-lg border border-white/5 wrap-break-word">
-              {rule.isEmbed && (
+              {(rule.isEmbed ?? rule.is_embed) && (
                 <div className="mb-1 text-xs font-mono text-indigo-400 uppercase tracking-widest">[ Embed ]</div>
               )}
-              {rule.isEmbed && rule.embedTitle && (
-                <div className="font-bold mb-1">{rule.embedTitle}</div>
+              {(rule.isEmbed ?? rule.is_embed) && (rule.embedTitle || rule.embed_title) && (
+                <div className="font-bold mb-1">{rule.embedTitle || rule.embed_title}</div>
               )}
-              <div className="whitespace-pre-wrap opacity-90">{rule.reply}</div>
+              <div className="whitespace-pre-wrap opacity-90">{rule.reply || rule.reply_content}</div>
             </div>
           )}
 
-          {rule.reactions?.length > 0 && (
+          {(rule.reactions?.length > 0 || rule.emoji_reactions?.length > 0) && (
             <div className="flex flex-wrap gap-1.5 mt-2">
-              {rule.reactions.map((emojiStr, i) => (
+              {(rule.reactions || rule.emoji_reactions || []).map((emojiStr, i) => (
                 <EmojiBadge key={i} emoji={emojiStr} size="sm" />
               ))}
             </div>

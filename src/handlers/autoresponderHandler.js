@@ -1,25 +1,34 @@
 import { parseEmoji } from "discord.js";
-import { getGuildAutoresponders } from "../db/helpers/autoresponder.js";
+import { getGuildAutoresponders, hasGuildAutoresponders } from "../db/helpers/autoresponder.js";
 import { makeEmbed } from "../core/embeds.js";
 
-// Cooldown tracking: `${responderId}:${userId}` -> timestamp (seconds)
+// Cooldown tracking: `${responderId}:${userId}` -> timestamp (ms)
 export const responderCooldowns = new Map();
-const MAX_COOLDOWNS = 5000;
+const MAX_COOLDOWNS = 10000;
 
-// Channel burst debounce to prevent 429 spam: `${responderId}:${channelId}` -> timestamp (seconds)
+// Channel burst debounce: `${channelId}` -> timestamp (ms)
+// Global per-channel message spacing minimum to prevent bot 429 rate limit spikes
 export const channelBurstCooldowns = new Map();
 
-// ReDoS prevention & compiled RegExp cache
+// Compiled rule metadata cache per guild: guildId -> CompiledRule[]
+const guildCompiledRulesCache = new Map();
+
+// Compiled regex cache for pattern matching: pattern -> RegExp
 const regexCache = new Map();
-const MAX_REGEX_CACHE = 500;
+const MAX_REGEX_CACHE = 1000;
 
 function getCompiledRegex(patternStr) {
-  if (typeof patternStr !== "string" || patternStr.length > 250) return null;
+  if (typeof patternStr !== "string" || patternStr.length > 300) return null;
   if (regexCache.has(patternStr)) return regexCache.get(patternStr);
   try {
     const compiled = new RegExp(patternStr, "i");
     if (regexCache.size >= MAX_REGEX_CACHE) {
-      regexCache.clear();
+      // Evict oldest 20% instead of nuclear clear to preserve hot items
+      let evicted = 0;
+      for (const k of regexCache.keys()) {
+        regexCache.delete(k);
+        if (++evicted >= 200) break;
+      }
     }
     regexCache.set(patternStr, compiled);
     return compiled;
@@ -29,215 +38,309 @@ function getCompiledRegex(patternStr) {
 }
 
 /**
- * Replaces rich template variables within autoresponder response messages
+ * Pre-processes raw DB rules into pre-compiled, fast-path match structs
  */
+function compileGuildRules(rawRules) {
+  if (!Array.isArray(rawRules) || rawRules.length === 0) return [];
+
+  return rawRules
+    .filter((r) => r.enabled)
+    .map((r) => {
+      const triggerRaw = (r.trigger_phrase || "").trim();
+      const matchType = String(r.match_type || "contains").toLowerCase();
+      const triggerLower = triggerRaw.toLowerCase();
+
+      let regex = null;
+      if (matchType === "regex") {
+        regex = getCompiledRegex(triggerRaw);
+      }
+
+      // Pre-extract reaction targets once instead of doing parseEmoji on hot loop
+      const reactions = (r.reactions || []).slice(0, 3).map((rx) => {
+        const raw = typeof rx === "string" ? rx : rx?.emoji || rx?.dataValues?.emoji || "";
+        if (!raw) return null;
+        const parsed = parseEmoji(raw);
+        return parsed?.id || parsed?.name || raw;
+      }).filter(Boolean);
+
+      return {
+        id: r.responder_id,
+        triggerRaw,
+        triggerLower,
+        matchType,
+        regex,
+        replyContent: r.reply_content || "",
+        embedTitle: r.embed_title || null,
+        isEmbed: Boolean(r.is_embed),
+        imageUrl: r.image_url || null,
+        cooldownMs: Math.max(0, Number(r.cooldown || 0)) * 1000,
+        ignoreBots: r.ignore_bots !== false,
+        deleteTrigger: Boolean(r.delete_trigger),
+        reactions,
+      };
+    });
+}
+
+/**
+ * Returns compiled rules for a guild from the compiled cache or creates them
+ */
+export function getCompiledGuildRules(guildId, rawRules) {
+  const gId = String(guildId);
+  if (guildCompiledRulesCache.has(gId)) {
+    return guildCompiledRulesCache.get(gId);
+  }
+  const compiled = compileGuildRules(rawRules);
+  guildCompiledRulesCache.set(gId, compiled);
+  return compiled;
+}
+
+/**
+ * Invalidate compiled rules cache for a guild
+ */
+export function invalidateCompiledRules(guildId = null) {
+  if (guildId) {
+    guildCompiledRulesCache.delete(String(guildId));
+  } else {
+    guildCompiledRulesCache.clear();
+  }
+}
+
+/**
+ * High-performance, single-pass variable replacer using token regex.
+ * Zero redundant string allocations.
+ */
+const VAR_REGEX = /\{(user(?:\.mention|\.name|\.tag|\.id|\.avatar)?|username|mention|avatar|server(?:\.name|\.id|\.memberCount|\.owner|\.boosts)?|guild(?:\.name|\.id)?|members?|member_count|memberCount|owner(?:\.mention|\.id)?|boosts?|boost_count|channel(?:\.mention|\.name|\.plain)?)\}/gi;
+
 export function formatAutoresponderText(text, message) {
   if (!text || typeof text !== "string") return "";
+  if (!text.includes("{")) return text; // Fast return when no variables exist
 
   const guild = message.guild;
   const author = message.author;
   const channel = message.channel;
 
-  const serverName = guild?.name || "Server";
-  const serverId = guild?.id ? String(guild.id) : "";
-  const memberCount = typeof guild?.memberCount === "number"
-    ? guild.memberCount.toLocaleString()
-    : "0";
-  const ownerId = guild?.ownerId ? String(guild.ownerId) : "";
-  const ownerMention = ownerId ? `<@${ownerId}>` : "@Owner";
-  const boosts = guild?.premiumSubscriptionCount !== undefined ? String(guild.premiumSubscriptionCount) : "0";
+  return text.replace(VAR_REGEX, (match, token) => {
+    const key = token.toLowerCase();
+    switch (key) {
+      // User tokens
+      case "user":
+      case "user.mention":
+      case "mention":
+        return author ? `<@${author.id}>` : "@user";
+      case "user.name":
+      case "username":
+        return author?.username || "User";
+      case "user.tag":
+        return author?.tag || author?.username || "User";
+      case "user.id":
+        return author?.id ? String(author.id) : "";
+      case "user.avatar":
+      case "avatar":
+        return typeof author?.displayAvatarURL === "function" ? author.displayAvatarURL() : "";
 
-  const userMention = author ? `<@${author.id}>` : "@user";
-  const userName = author?.username || "User";
-  const userTag = author?.tag || author?.username || "User";
-  const userId = author?.id ? String(author.id) : "";
-  const userAvatar = typeof author?.displayAvatarURL === "function" ? author.displayAvatarURL() : "";
+      // Server / Guild tokens
+      case "server":
+      case "server.name":
+      case "guild":
+      case "guild.name":
+        return guild?.name || "Server";
+      case "server.id":
+      case "guild.id":
+        return guild?.id ? String(guild.id) : "";
+      case "membercount":
+      case "member_count":
+      case "members":
+      case "server.membercount":
+        return typeof guild?.memberCount === "number" ? guild.memberCount.toLocaleString() : "0";
+      case "owner":
+      case "owner.mention":
+      case "server.owner":
+        return guild?.ownerId ? `<@${guild.ownerId}>` : "@Owner";
+      case "owner.id":
+        return guild?.ownerId ? String(guild.ownerId) : "";
+      case "boosts":
+      case "boost_count":
+      case "server.boosts":
+        return guild?.premiumSubscriptionCount !== undefined ? String(guild.premiumSubscriptionCount) : "0";
 
-  const channelMention = channel?.id ? `<#${channel.id}>` : (channel?.name ? `#${channel.name}` : "");
-  const channelName = channel?.name ? `#${channel.name}` : "";
+      // Channel tokens
+      case "channel":
+      case "channel.mention":
+        return channel?.id ? `<#${channel.id}>` : channel?.name ? `#${channel.name}` : "";
+      case "channel.name":
+      case "channel.plain":
+        return channel?.name ? `#${channel.name}` : "";
 
-  const replacements = [
-    // User variables
-    [/\{user\.mention\}|\{user\}|\{mention\}/gi, userMention],
-    [/\{user\.name\}|\{username\}/gi, userName],
-    [/\{user\.tag\}/gi, userTag],
-    [/\{user\.id\}/gi, userId],
-    [/\{user\.avatar\}|\{avatar\}/gi, userAvatar],
-
-    // Server variables
-    [/\{server\.name\}|\{guild\.name\}|\{server\}|\{guild\}/gi, serverName],
-    [/\{server\.id\}|\{guild\.id\}/gi, serverId],
-    [/\{memberCount\}|\{member_count\}|\{server\.memberCount\}|\{members\}/gi, memberCount],
-    [/\{owner\.mention\}|\{owner\.id\}|\{owner\}|\{server\.owner\}/gi, ownerMention],
-    [/\{boosts\}|\{boost_count\}|\{server\.boosts\}/gi, boosts],
-
-    // Channel variables
-    [/\{channel\.mention\}|\{channel\}/gi, channelMention],
-    [/\{channel\.name\}|\{channel\.plain\}/gi, channelName],
-  ];
-
-  let result = text;
-  for (const [pattern, val] of replacements) {
-    result = result.replace(pattern, val);
-  }
-
-  return result;
+      default:
+        return match;
+    }
+  });
 }
 
 /**
- * Handles incoming messages for matching autoresponders
+ * Handles incoming messages for matching autoresponders with zero-alloc fast path,
+ * non-blocking async execution, and 429 rate limit mitigation.
  * @param {import("discord.js").Message} message
  * @returns {Promise<boolean>} true if an autoresponder was executed
  */
 export async function handleAutoresponder(message) {
   if (!message.guild || !message.content) return false;
 
-  // Prevent bot feedback loops & webhook triggering
+  // 1. Instant zero-cost guard rails
   if (message.author.id === message.client?.user?.id) return false;
   if (message.webhookId || message.system) return false;
 
-  const responders = await getGuildAutoresponders(message.guild.id);
-  if (!responders || responders.length === 0) return false;
+  const guildId = message.guild.id;
+
+  // Zero-query memory gate: if guild has no autoresponders, bail in 0.001ms
+  if (!hasGuildAutoresponders(guildId)) return false;
+
+  const rawRules = await getGuildAutoresponders(guildId);
+  if (!rawRules || rawRules.length === 0) return false;
+
+  // Compile or retrieve cached rule index
+  const rules = getCompiledGuildRules(guildId, rawRules);
+  if (rules.length === 0) return false;
 
   const rawContent = message.content.trim();
   const lowerContent = rawContent.toLowerCase();
+  const now = Date.now();
+  const isBot = Boolean(message.author.bot);
+  const channelId = message.channel.id;
+  const authorId = message.author.id;
 
-  for (const ar of responders) {
-    if (!ar.enabled) continue;
-    if (ar.ignore_bots && message.author.bot) continue;
+  // 2. Pattern Matching Loop (Ultra-fast synchronous evaluation)
+  for (let idx = 0; idx < rules.length; idx++) {
+    const ar = rules[idx];
+    if (ar.ignoreBots && isBot) continue;
 
-    const cdKey = `${ar.responder_id}:${message.author.id}`;
-    const now = Date.now() / 1000;
-
-    // 1. Cooldown Gate
-    if (ar.cooldown > 0) {
+    // Per-User Cooldown Gate
+    const cdKey = `${ar.id}:${authorId}`;
+    if (ar.cooldownMs > 0) {
       const lastTriggered = responderCooldowns.get(cdKey) || 0;
-      if (now - lastTriggered < ar.cooldown) {
+      if (now - lastTriggered < ar.cooldownMs) {
         continue;
       }
     }
 
-    // Channel burst protection (minimum 2s cooldown per rule per channel to prevent 429)
-    const channelKey = `${ar.responder_id}:${message.channel.id}`;
+    // Channel Burst Rate-Limit Protection (Minimum 1.5s per channel debounce)
+    const channelKey = `${ar.id}:${channelId}`;
     const lastChannelTrigger = channelBurstCooldowns.get(channelKey) || 0;
-    if (process.env.NODE_ENV !== "test" && now - lastChannelTrigger < 2) {
+    if (process.env.NODE_ENV !== "test" && now - lastChannelTrigger < 1500) {
       continue;
     }
 
-    const triggerRaw = (ar.trigger_phrase || "").trim();
-    const triggerLower = triggerRaw.toLowerCase();
+    // Pattern Matching Matrix
     let matched = false;
-
-    // 2. Pattern Matching Matrix
-    switch (ar.match_type) {
+    switch (ar.matchType) {
       case "exact":
-        matched = lowerContent === triggerLower;
+        matched = lowerContent === ar.triggerLower;
         break;
       case "startswith":
-        matched = lowerContent.startsWith(triggerLower);
+        matched = lowerContent.startsWith(ar.triggerLower);
         break;
       case "endswith":
-        matched = lowerContent.endsWith(triggerLower);
+        matched = lowerContent.endsWith(ar.triggerLower);
         break;
-      case "regex": {
-        const regex = getCompiledRegex(triggerRaw);
-        if (regex) {
-          matched = regex.test(rawContent);
+      case "regex":
+        if (ar.regex) {
+          matched = ar.regex.test(rawContent);
         }
         break;
-      }
       case "contains":
       default:
-        matched = lowerContent.includes(triggerLower);
+        matched = lowerContent.includes(ar.triggerLower);
         break;
     }
 
     if (!matched) continue;
 
-    // 3. Consume Cooldowns Upon Confirmed Match
+    // 3. Mark Cooldowns immediately to prevent concurrent race triggers
     channelBurstCooldowns.set(channelKey, now);
-    
-    // Prune channelBurstCooldowns
-    if (channelBurstCooldowns.size >= MAX_COOLDOWNS) {
-      const cutoff = now - 10;
+    if (ar.cooldownMs > 0) {
+      responderCooldowns.set(cdKey, now);
+    }
+
+    // Memory Maintenance: Prune stale cooldown entries if Map exceeds limit
+    if (responderCooldowns.size > MAX_COOLDOWNS) {
+      const cutoff = now - 600000; // 10 minutes ago
+      let purged = 0;
+      for (const [k, t] of responderCooldowns.entries()) {
+        if (t < cutoff) responderCooldowns.delete(k);
+        if (++purged >= 1000) break;
+      }
+    }
+    if (channelBurstCooldowns.size > MAX_COOLDOWNS) {
+      const cutoff = now - 60000; // 1 minute ago
       for (const [k, t] of channelBurstCooldowns.entries()) {
         if (t < cutoff) channelBurstCooldowns.delete(k);
       }
     }
 
-    if (ar.cooldown > 0) {
-      responderCooldowns.set(cdKey, now);
-
-      // Memory maintenance: prune aged entries if cache grows large
-      if (responderCooldowns.size >= MAX_COOLDOWNS) {
-        const cutoff = now - 300;
-        for (const [k, t] of responderCooldowns.entries()) {
-          if (t < cutoff) responderCooldowns.delete(k);
-        }
-      }
-    }
-
-    const formattedContent = formatAutoresponderText(ar.reply_content, message);
-    const formattedTitle = ar.embed_title ? formatAutoresponderText(ar.embed_title, message) : null;
-    const hasTextOrEmbed = Boolean(formattedContent || formattedTitle);
-
-    // 4. Dispatch Response (Embed or Text)
-    if (ar.is_embed && hasTextOrEmbed) {
-      const embed = makeEmbed({
-        title: formattedTitle || "Auto Response",
-        description: formattedContent || undefined,
-        image: ar.image_url || null,
-        level: "INFO",
-      });
-
-      if (ar.delete_trigger) {
-        await message.channel.send({ embeds: [embed] }).catch(() => {});
-      } else {
-        await message.reply({ embeds: [embed], allowedMentions: { repliedUser: false } }).catch(() => {
-          return message.channel.send({ embeds: [embed] }).catch(() => {});
-        });
-      }
-    } else if (formattedContent) {
-      if (ar.delete_trigger) {
-        await message.channel.send(formattedContent).catch(() => {});
-      } else {
-        await message.reply({ content: formattedContent, allowedMentions: { repliedUser: false } }).catch(() => {
-          return message.channel.send(formattedContent).catch(() => {});
-        });
-      }
-    }
-
-    // 5. Dispatch Reactions (Throttled with 250ms spacing to prevent 429 rate limit)
-    const reactions = (ar.reactions || []).slice(0, 3);
-    if (reactions.length > 0 && !ar.delete_trigger) {
-      for (let i = 0; i < reactions.length; i++) {
-        const r = reactions[i];
-        const rawEmoji = typeof r === "string" ? r : (r?.emoji || r?.dataValues?.emoji || "");
-        if (!rawEmoji) continue;
-
-        try {
-          if (i > 0) {
-            await new Promise((resolve) => setTimeout(resolve, 250));
-          }
-
-          const parsed = parseEmoji(rawEmoji);
-          const reactTarget = parsed?.id || parsed?.name || rawEmoji;
-          await message.react(reactTarget).catch((err) => {
-            if (err?.status === 429) throw err;
-          });
-        } catch (err) {
-          if (err?.status === 429) break; // Break from loop on rate limit
-        }
-      }
-    }
-
-    // 6. Delete Trigger Message If Configured
-    if (ar.delete_trigger && message.deletable) {
-      await message.delete().catch(() => {});
-    }
-
+    // 4. Non-Blocking Concurrent Dispatch (fire and handle without delaying caller)
+    dispatchAutoresponderAction(message, ar).catch(() => {});
     return true;
   }
 
   return false;
 }
+
+/**
+ * Dispatches response embed/text and reactions with backpressure throttling
+ */
+async function dispatchAutoresponderAction(message, rule) {
+  const formattedContent = formatAutoresponderText(rule.replyContent, message);
+  const formattedTitle = rule.embedTitle ? formatAutoresponderText(rule.embedTitle, message) : null;
+  const hasTextOrEmbed = Boolean(formattedContent || formattedTitle);
+
+  // A. Message Dispatch
+  if (rule.isEmbed && hasTextOrEmbed) {
+    const embed = makeEmbed({
+      title: formattedTitle || "Auto Response",
+      description: formattedContent || undefined,
+      image: rule.imageUrl || null,
+      level: "INFO",
+    });
+
+    if (rule.deleteTrigger) {
+      await message.channel.send({ embeds: [embed] }).catch(() => {});
+    } else {
+      await message.reply({ embeds: [embed], allowedMentions: { repliedUser: false } }).catch(() => {
+        return message.channel.send({ embeds: [embed] }).catch(() => {});
+      });
+    }
+  } else if (formattedContent) {
+    if (rule.deleteTrigger) {
+      await message.channel.send(formattedContent).catch(() => {});
+    } else {
+      await message.reply({ content: formattedContent, allowedMentions: { repliedUser: false } }).catch(() => {
+        return message.channel.send(formattedContent).catch(() => {});
+      });
+    }
+  }
+
+  // B. Emoji Reactions Dispatch (Throttled with 300ms pacing and safe abort on 429)
+  if (rule.reactions.length > 0 && !rule.deleteTrigger) {
+    for (let i = 0; i < rule.reactions.length; i++) {
+      const reactTarget = rule.reactions[i];
+      if (!reactTarget) continue;
+
+      try {
+        if (i > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
+        await message.react(reactTarget).catch((err) => {
+          if (err?.status === 429) throw err;
+        });
+      } catch (err) {
+        if (err?.status === 429) break; // Cease reactions immediately if Discord signals rate limit
+      }
+    }
+  }
+
+  // C. Delete Trigger Message
+  if (rule.deleteTrigger && message.deletable) {
+    await message.delete().catch(() => {});
+  }
+}
+

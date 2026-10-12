@@ -11,11 +11,12 @@ export function validateAutoresponder(form) {
     }
   }
 
-  const hasReply = form.reply && form.reply.trim().length > 0;
-  const hasReactions = form.reactions && form.reactions.length > 0;
+  const hasReply = Boolean(form.reply && form.reply.trim().length > 0);
+  const hasEmbedTitle = Boolean(form.isEmbed && form.embedTitle && form.embedTitle.trim().length > 0);
+  const hasReactions = Boolean(Array.isArray(form.reactions) && form.reactions.length > 0);
 
-  if (!hasReply && !hasReactions) {
-    errors.reply = "You must provide a reply message or at least one reaction.";
+  if (!hasReply && !hasEmbedTitle && !hasReactions) {
+    errors.reply = "You must provide a reply message, embed, or at least one reaction.";
   }
 
   if (form.isEmbed && form.imageUrl) {

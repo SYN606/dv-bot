@@ -28,14 +28,19 @@ export function useAutoresponders(guildId, showToast) {
 
   const saveRule = async (ruleData) => {
     try {
-      const updatedRule = await saveAutoresponder(guildId, ruleData);
-      setRules((prev) => {
-        const exists = prev.find((r) => r.id === updatedRule.id);
-        if (exists) {
-          return prev.map((r) => (r.id === updatedRule.id ? updatedRule : r));
-        }
-        return [...prev, updatedRule];
-      });
+      const response = await saveAutoresponder(guildId, ruleData);
+      const savedRule = response?.responder || response?.rule || (response?.id ? response : null);
+      if (savedRule && savedRule.id) {
+        setRules((prev) => {
+          const exists = prev.find((r) => r.id === savedRule.id);
+          if (exists) {
+            return prev.map((r) => (r.id === savedRule.id ? { ...r, ...savedRule } : r));
+          }
+          return [...prev, savedRule];
+        });
+      } else {
+        await fetchRules();
+      }
       showToast?.({ title: "Success", message: "Autoresponder saved successfully", type: "success" });
       return true;
     } catch (err) {

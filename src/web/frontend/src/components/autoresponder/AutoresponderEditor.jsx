@@ -28,7 +28,22 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
       setForm({
         ...INITIAL_RULE,
         ...editRule,
-        reactions: Array.isArray(editRule.reactions) ? editRule.reactions : [],
+        id: editRule.id || editRule.responder_id,
+        responder_id: editRule.responder_id || editRule.id,
+        trigger: editRule.trigger ?? editRule.trigger_phrase ?? "",
+        reply: editRule.reply ?? editRule.reply_content ?? "",
+        matchMode: editRule.matchMode ?? editRule.match_mode ?? editRule.match_type ?? "contains",
+        isEmbed: Boolean(editRule.isEmbed ?? editRule.is_embed),
+        embedTitle: editRule.embedTitle ?? editRule.embed_title ?? "",
+        imageUrl: editRule.imageUrl ?? editRule.image_url ?? "",
+        cooldown: Number(editRule.cooldown || 0),
+        deleteTrigger: Boolean(editRule.deleteTrigger ?? editRule.delete_trigger),
+        ignoreBots: editRule.ignoreBots !== undefined ? Boolean(editRule.ignoreBots) : (editRule.ignore_bots !== undefined ? Boolean(editRule.ignore_bots) : true),
+        reactions: Array.isArray(editRule.reactions)
+          ? editRule.reactions
+          : Array.isArray(editRule.emoji_reactions)
+          ? editRule.emoji_reactions
+          : [],
       });
     } else {
       setForm(INITIAL_RULE);
@@ -100,7 +115,7 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
                     type="button"
                     onClick={() => handleChange("matchMode", mode)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
-                      form.matchMode === mode
+                      String(form.matchMode || "contains").toLowerCase() === mode.toLowerCase()
                         ? "bg-indigo-500 text-white border-indigo-500 shadow-lg shadow-indigo-500/20"
                         : "bg-slate-900 text-slate-400 border-white/5 hover:bg-slate-800"
                     }`}

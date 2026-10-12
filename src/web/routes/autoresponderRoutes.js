@@ -170,10 +170,11 @@ autoresponderRoutes.post("/guilds/:guildId/autoresponder", async (c) => {
       ignore_bots: ignoreBots,
       enabled,
     });
-    await setResponderReactions(responderId, reactionList);
-    responder = { responder_id: Number(responderId), trigger_phrase: trigger, reply_content: reply };
+    await setResponderReactions(responderId, reactionList, guildId);
+    const updatedRule = await getRuleById(Number(responderId));
+    responder = updatedRule ? formatRule(updatedRule) : { responder_id: Number(responderId), id: Number(responderId), trigger_phrase: trigger, reply_content: reply };
   } else {
-    responder = await upsertAutoresponder(guildId, {
+    const created = await upsertAutoresponder(guildId, {
       trigger_phrase: trigger,
       match_type: matchType,
       reply_content: reply || null,
@@ -186,8 +187,10 @@ autoresponderRoutes.post("/guilds/:guildId/autoresponder", async (c) => {
       enabled,
     });
     if (reactionList.length > 0) {
-      await setResponderReactions(responder.responder_id, reactionList);
+      await setResponderReactions(created.responder_id, reactionList, guildId);
     }
+    const fullRule = await getRuleById(created.responder_id);
+    responder = fullRule ? formatRule(fullRule) : formatRule(created);
   }
 
   // Invalidate cache immediately on write
@@ -196,7 +199,9 @@ autoresponderRoutes.post("/guilds/:guildId/autoresponder", async (c) => {
   return c.json({
     success: true,
     responder,
-    id: responder.responder_id,
+    rule: responder,
+    ...responder,
+    id: responder.responder_id || responder.id,
     isUpdate: Boolean(responderId),
   });
 });
@@ -243,12 +248,18 @@ autoresponderRoutes.put("/guilds/:guildId/autoresponder/:id", async (c) => {
     return c.json({ error: "Autoresponder rule not found or could not be updated." }, 404);
   }
 
-  await setResponderReactions(id, reactionList);
+  await setResponderReactions(id, reactionList, guildId);
   apiCache.delete(`guild:${guildId}:autoresponders`);
+
+  const fullRule = await getRuleById(Number(id));
+  const formatted = fullRule ? formatRule(fullRule) : { id: Number(id), responder_id: Number(id) };
 
   return c.json({
     success: true,
     id: Number(id),
+    responder: formatted,
+    rule: formatted,
+    ...formatted,
     message: "Autoresponder rule updated successfully.",
   });
 });

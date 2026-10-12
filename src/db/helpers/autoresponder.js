@@ -1,26 +1,74 @@
 import { AutoResponder, AutoResponderReaction } from "../models/index.js";
 import { ensureGuild } from "./common.js";
+import { invalidateCompiledRules } from "../../handlers/autoresponderHandler.js";
 
 const autoresponderCache = new Map();
+const activeAutoresponderGuilds = new Set();
+
+export async function initAutoresponderCache() {
+  try {
+    const rules = await AutoResponder.findAll({
+      include: [{ model: AutoResponderReaction, as: "reactions" }],
+    });
+    activeAutoresponderGuilds.clear();
+    autoresponderCache.clear();
+    invalidateCompiledRules();
+    for (const r of rules) {
+      if (!r.guild_id) continue;
+      const gId = String(r.guild_id);
+      activeAutoresponderGuilds.add(gId);
+      if (!autoresponderCache.has(gId)) {
+        autoresponderCache.set(gId, []);
+      }
+      autoresponderCache.get(gId).push(r);
+    }
+  } catch (err) {
+    console.error("[AUTORESPONDER CACHE INIT ERROR]:", err);
+  }
+}
 
 export function invalidateAutoresponderCache(guildId = null) {
   if (guildId) {
-    autoresponderCache.delete(String(guildId));
+    const gId = String(guildId);
+    autoresponderCache.delete(gId);
+    invalidateCompiledRules(gId);
+    // Mark guild in active set so next read will re-fetch and re-evaluate
+    activeAutoresponderGuilds.add(gId);
   } else {
     autoresponderCache.clear();
+    activeAutoresponderGuilds.clear();
+    invalidateCompiledRules();
   }
+}
+
+export function hasGuildAutoresponders(guildId) {
+  const gId = String(guildId);
+  return activeAutoresponderGuilds.has(gId);
 }
 
 export async function getGuildAutoresponders(guildId) {
   const gId = String(guildId);
+  // Fast path: if the guild has never configured autoresponders and isn't marked, return empty array immediately
   if (autoresponderCache.has(gId)) {
     return autoresponderCache.get(gId);
+  }
+
+  // If the pre-warmed set knows there are no rules for this guild, return empty array without querying DB
+  if (!activeAutoresponderGuilds.has(gId) && autoresponderCache.size > 0) {
+    autoresponderCache.set(gId, []);
+    return [];
   }
 
   const rules = await AutoResponder.findAll({
     where: { guild_id: gId },
     include: [{ model: AutoResponderReaction, as: "reactions" }],
   });
+
+  if (rules.length > 0) {
+    activeAutoresponderGuilds.add(gId);
+  } else {
+    activeAutoresponderGuilds.delete(gId);
+  }
 
   autoresponderCache.set(gId, rules);
   return rules;
@@ -83,7 +131,7 @@ export async function toggleAutoresponder(guildId, responderId) {
   return rule.enabled;
 }
 
-export async function setResponderReactions(responderId, emojiList) {
+export async function setResponderReactions(responderId, emojiList, guildId = null) {
   const id = Number(responderId);
   await AutoResponderReaction.destroy({
     where: { responder_id: id },
@@ -103,7 +151,7 @@ export async function setResponderReactions(responderId, emojiList) {
     }
   }
 
-  invalidateAutoresponderCache();
+  invalidateAutoresponderCache(guildId);
 }
 
 export async function addResponderReaction(responderId, emoji) {

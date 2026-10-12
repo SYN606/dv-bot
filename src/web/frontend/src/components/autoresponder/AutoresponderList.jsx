@@ -12,7 +12,9 @@ export default function AutoresponderList({ rules, loading, onEdit, onToggle, on
       if (filter === "disabled" && r.enabled) return false;
       if (!search.trim()) return true;
       const term = search.toLowerCase();
-      return r.trigger?.toLowerCase().includes(term) || r.reply?.toLowerCase().includes(term);
+      const triggerText = (r.trigger || r.trigger_phrase || "").toLowerCase();
+      const replyText = (r.reply || r.reply_content || r.embedTitle || r.embed_title || "").toLowerCase();
+      return triggerText.includes(term) || replyText.includes(term);
     });
   }, [rules, search, filter]);
 
