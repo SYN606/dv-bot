@@ -104,10 +104,10 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-2 space-y-5 overflow-y-auto min-h-0 scrollbar-thin">
+        <nav className="flex-1 px-2.5 py-1.5 space-y-3.5 overflow-y-auto min-h-0 scrollbar-thin">
           {navGroups.map((group) => (
             <div key={group.group}>
-              <div className="px-3 mb-2 text-[10px] font-mono tracking-widest text-slate-500 uppercase">{group.group}</div>
+              <div className="px-2.5 mb-1 text-[9px] font-mono tracking-widest text-slate-500 uppercase">{group.group}</div>
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon;
@@ -118,13 +118,13 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
                       key={item.id}
                       to={item.path}
                       onClick={() => setMobileOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all ${
+                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                         isActive
                           ? "bg-white/10 text-white shadow-sm border border-white/10"
                           : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
                       }`}
                     >
-                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-brand-crimson" : "text-slate-500"}`} />
+                      <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-brand-crimson" : "text-slate-500"}`} />
                       <span className="truncate">{item.label}</span>
                     </Link>
                   );

@@ -44,7 +44,7 @@ export default function AutoresponderPage({ showToast }) {
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-5xl mx-auto animate-in fade-in duration-500">
+    <div className="w-full space-y-6 animate-in fade-in duration-300">
       <AutoresponderHeader 
         activeCount={activeCount} 
         totalCount={rules.length} 

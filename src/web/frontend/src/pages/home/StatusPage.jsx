@@ -132,10 +132,10 @@ export default function StatusPage({ user, botInfo }) {
 
       <Navbar user={user} botInfo={botInfo} />
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-24 relative z-10 space-y-12">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-16 relative z-10 space-y-8">
         
         {/* ── HERO BANNER: STATUS CAPSULE & HEADLINE ── */}
-        <section className="relative pt-6 sm:pt-10 flex flex-col items-start gap-6">
+        <section className="relative pt-2 sm:pt-4 flex flex-col items-start gap-4">
           
           {/* Top Live Pill & Refresh trigger */}
           <div className="flex flex-wrap items-center justify-between w-full gap-4">
@@ -195,91 +195,91 @@ export default function StatusPage({ user, botInfo }) {
         </section>
 
         {/* ── KEY METRICS CARDS (Reference Charcoal Glass Style) ── */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           
           {/* Card 1: Servers */}
-          <div className="relative rounded-2xl p-5 sm:p-6 bg-[#0a0a0b]/80 border border-white/10 backdrop-blur-xl shadow-xl flex flex-col justify-between overflow-hidden group hover:border-white/20 transition-all duration-300">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-crimson/5 rounded-full blur-2xl group-hover:bg-brand-crimson/10 transition-all pointer-events-none" />
-            <div className="flex items-center justify-between text-slate-400 text-xs font-mono uppercase tracking-wider mb-3">
+          <div className="relative rounded-xl p-4 sm:p-4.5 bg-[#0a0a0b]/80 border border-white/10 backdrop-blur-xl shadow-lg flex flex-col justify-between overflow-hidden group hover:border-white/20 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-brand-crimson/5 rounded-full blur-xl group-hover:bg-brand-crimson/10 transition-all pointer-events-none" />
+            <div className="flex items-center justify-between text-slate-400 text-[11px] font-mono uppercase tracking-wider mb-2">
               <span className="flex items-center gap-1.5">
-                <Server className="w-4 h-4 text-brand-crimson" />
+                <Server className="w-3.5 h-3.5 text-brand-crimson" />
                 Active Guilds
               </span>
-              <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">ONLINE</span>
+              <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">ONLINE</span>
             </div>
             <div>
-              <div className="text-3xl sm:text-4xl font-display font-semibold text-white tracking-tight">
+              <div className="text-2xl sm:text-3xl font-display font-semibold text-white tracking-tight">
                 {servers.toLocaleString()}
               </div>
-              <div className="text-xs text-slate-400 font-mono mt-1">
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5">
                 Connected Discord servers
               </div>
             </div>
           </div>
 
           {/* Card 2: Total Members */}
-          <div className="relative rounded-2xl p-5 sm:p-6 bg-[#0a0a0b]/80 border border-white/10 backdrop-blur-xl shadow-xl flex flex-col justify-between overflow-hidden group hover:border-white/20 transition-all duration-300">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-violet/5 rounded-full blur-2xl group-hover:bg-brand-violet/10 transition-all pointer-events-none" />
-            <div className="flex items-center justify-between text-slate-400 text-xs font-mono uppercase tracking-wider mb-3">
+          <div className="relative rounded-xl p-4 sm:p-4.5 bg-[#0a0a0b]/80 border border-white/10 backdrop-blur-xl shadow-lg flex flex-col justify-between overflow-hidden group hover:border-white/20 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-brand-violet/5 rounded-full blur-xl group-hover:bg-brand-violet/10 transition-all pointer-events-none" />
+            <div className="flex items-center justify-between text-slate-400 text-[11px] font-mono uppercase tracking-wider mb-2">
               <span className="flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-brand-violet" />
+                <Users className="w-3.5 h-3.5 text-brand-violet" />
                 Audience Reach
               </span>
-              <span className="text-[10px] text-brand-violet font-bold bg-brand-violet/10 px-1.5 py-0.5 rounded">
+              <span className="text-[9px] text-brand-violet font-bold bg-brand-violet/10 px-1.5 py-0.5 rounded">
                 ~{formatCompact(members)}
               </span>
             </div>
             <div>
-              <div className="text-3xl sm:text-4xl font-display font-semibold text-white tracking-tight">
+              <div className="text-2xl sm:text-3xl font-display font-semibold text-white tracking-tight">
                 {members.toLocaleString()}
               </div>
-              <div className="text-xs text-slate-400 font-mono mt-1">
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5">
                 Across all synced guilds
               </div>
             </div>
           </div>
 
           {/* Card 3: Gateway Latency */}
-          <div className="relative rounded-2xl p-5 sm:p-6 bg-[#0a0a0b]/80 border border-white/10 backdrop-blur-xl shadow-xl flex flex-col justify-between overflow-hidden group hover:border-white/20 transition-all duration-300">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-cyan/5 rounded-full blur-2xl group-hover:bg-brand-cyan/10 transition-all pointer-events-none" />
-            <div className="flex items-center justify-between text-slate-400 text-xs font-mono uppercase tracking-wider mb-3">
+          <div className="relative rounded-xl p-4 sm:p-4.5 bg-[#0a0a0b]/80 border border-white/10 backdrop-blur-xl shadow-lg flex flex-col justify-between overflow-hidden group hover:border-white/20 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-brand-cyan/5 rounded-full blur-xl group-hover:bg-brand-cyan/10 transition-all pointer-events-none" />
+            <div className="flex items-center justify-between text-slate-400 text-[11px] font-mono uppercase tracking-wider mb-2">
               <span className="flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-brand-cyan" />
+                <Zap className="w-3.5 h-3.5 text-brand-cyan" />
                 Gateway Latency
               </span>
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                 ping < 120 ? "text-emerald-400 bg-emerald-500/10" : "text-amber-400 bg-amber-500/10"
               }`}>
                 {ping < 120 ? "OPTIMAL" : "FAIR"}
               </span>
             </div>
             <div>
-              <div className="text-3xl sm:text-4xl font-display font-semibold text-white tracking-tight">
-                {ping}<span className="text-lg sm:text-xl font-normal text-slate-400 ml-1">ms</span>
+              <div className="text-2xl sm:text-3xl font-display font-semibold text-white tracking-tight">
+                {ping}<span className="text-base sm:text-lg font-normal text-slate-400 ml-1">ms</span>
               </div>
-              <div className="text-xs text-slate-400 font-mono mt-1">
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5">
                 Real-time WebSocket heartbeat
               </div>
             </div>
           </div>
 
           {/* Card 4: Process Uptime */}
-          <div className="relative rounded-2xl p-5 sm:p-6 bg-[#0a0a0b]/80 border border-white/10 backdrop-blur-xl shadow-xl flex flex-col justify-between overflow-hidden group hover:border-white/20 transition-all duration-300">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-orange/5 rounded-full blur-2xl group-hover:bg-brand-orange/10 transition-all pointer-events-none" />
-            <div className="flex items-center justify-between text-slate-400 text-xs font-mono uppercase tracking-wider mb-3">
+          <div className="relative rounded-xl p-4 sm:p-4.5 bg-[#0a0a0b]/80 border border-white/10 backdrop-blur-xl shadow-lg flex flex-col justify-between overflow-hidden group hover:border-white/20 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-brand-orange/5 rounded-full blur-xl group-hover:bg-brand-orange/10 transition-all pointer-events-none" />
+            <div className="flex items-center justify-between text-slate-400 text-[11px] font-mono uppercase tracking-wider mb-2">
               <span className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-brand-orange" />
+                <Clock className="w-3.5 h-3.5 text-brand-orange" />
                 Core Uptime
               </span>
-              <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+              <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
                 99.99%
               </span>
             </div>
             <div>
-              <div className="text-2xl sm:text-3xl font-display font-semibold text-white tracking-tight">
+              <div className="text-xl sm:text-2xl font-display font-semibold text-white tracking-tight">
                 {formatUptime(uptimeSeconds)}
               </div>
-              <div className="text-xs text-slate-400 font-mono mt-1">
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5">
                 Zero crash downtime observed
               </div>
             </div>

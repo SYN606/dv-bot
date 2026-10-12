@@ -7,20 +7,20 @@ export default function AutoresponderRule({ rule, isEditing, onEdit, onToggle, o
 
   if (isDeleting) {
     return (
-      <div className="glass-panel p-5 rounded-2xl border border-brand-crimson/50 bg-brand-crimson/5 space-y-4">
-        <div className="text-sm text-slate-200">
-          Delete autoresponder for <span className="font-mono text-brand-crimson font-bold">"{rule.trigger}"</span>?
+      <div className="glass-panel p-3.5 rounded-xl border border-brand-crimson/50 bg-brand-crimson/5 space-y-3">
+        <div className="text-xs text-slate-200">
+          Delete autoresponder for <span className="font-mono text-brand-crimson font-bold">"{rule.trigger || rule.trigger_phrase}"</span>?
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => onDelete(rule.id)}
-            className="px-4 py-1.5 rounded-lg bg-brand-crimson hover:bg-brand-crimson-dark text-white text-xs font-semibold transition-colors"
+            className="px-3 py-1 rounded-md bg-brand-crimson hover:bg-brand-crimson-dark text-white text-xs font-semibold transition-colors"
           >
             Confirm Delete
           </button>
           <button
             onClick={() => setIsDeleting(false)}
-            className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-colors border border-white/10"
+            className="px-3 py-1 rounded-md bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-colors border border-white/10"
           >
             Cancel
           </button>
@@ -30,19 +30,19 @@ export default function AutoresponderRule({ rule, isEditing, onEdit, onToggle, o
   }
 
   return (
-    <div className={`glass-card p-5 rounded-2xl border transition-colors ${isEditing ? "border-indigo-500/50 bg-indigo-500/5" : "border-white/5 hover:bg-white/2"}`}>
-      <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-start">
-        <div className="space-y-3 min-w-0 flex-1">
+    <div className={`glass-card p-3.5 sm:p-4 rounded-xl border transition-colors ${isEditing ? "border-indigo-500/50 bg-indigo-500/5" : "border-white/5 hover:bg-white/2"}`}>
+      <div className="flex flex-col sm:flex-row gap-3 justify-between sm:items-start">
+        <div className="space-y-2 min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-white truncate wrap-break-word font-sans">
+            <span className="text-base font-bold text-white truncate wrap-break-word font-sans">
               {rule.trigger || rule.trigger_phrase}
             </span>
             {!rule.enabled && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400">Disabled</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400">Disabled</span>
             )}
           </div>
           
-          <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-500">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-500">
             <span className="uppercase text-slate-400 font-semibold">{rule.matchMode || rule.match_type || "contains"}</span>
             <span>•</span>
             <span>{rule.cooldown ?? 0}s cooldown</span>

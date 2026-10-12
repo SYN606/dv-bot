@@ -94,40 +94,40 @@ export default function OverviewPage({ showToast }) {
   );
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 font-body">
+    <div className="w-full space-y-5 animate-in fade-in duration-300 font-body">
       
       {/* Hero Section */}
-      <div className="relative overflow-hidden glass-panel p-8 sm:p-10 rounded-3xl border border-white/10 shrink-0 bg-slate-900/60">
-        <div className="absolute -bottom-10 -right-4 text-9xl font-display text-brand-crimson opacity-[0.03] select-none pointer-events-none leading-none">नियंत्रण</div>
+      <div className="relative overflow-hidden glass-panel p-5 sm:p-6 rounded-2xl border border-white/10 shrink-0 bg-slate-900/60">
+        <div className="absolute -bottom-10 -right-4 text-8xl font-display text-brand-crimson opacity-[0.03] select-none pointer-events-none leading-none">नियंत्रण</div>
         
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-6 h-6 rounded bg-brand-crimson flex items-center justify-center font-bold text-white text-[10px] font-mono shadow-lg">DV</div>
-              <span className="text-xs font-mono text-slate-400 tracking-widest uppercase">Command Center</span>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-5 h-5 rounded bg-brand-crimson flex items-center justify-center font-bold text-white text-[9px] font-mono shadow-md">DV</div>
+              <span className="text-[10px] font-mono text-slate-400 tracking-widest uppercase">Command Center</span>
             </div>
-            <div className="flex items-center gap-3 flex-wrap mb-2">
-              <h1 className="text-4xl sm:text-5xl font-display font-bold text-white tracking-tight">नमस्ते, {user?.username}.</h1>
-              {user?.isSuperuser && <SuperuserBadge size="md" />}
+            <div className="flex items-center gap-2.5 flex-wrap mb-1">
+              <h1 className="text-2xl sm:text-3xl font-display font-bold text-white tracking-tight">नमस्ते, {user?.username}.</h1>
+              {user?.isSuperuser && <SuperuserBadge size="sm" />}
             </div>
-            <p className="text-slate-400 text-lg">Your community command center for <span className="text-slate-200 font-semibold">{currentGuild?.name}</span>.</p>
+            <p className="text-slate-400 text-sm">Your community command center for <span className="text-slate-200 font-semibold">{currentGuild?.name}</span>.</p>
           </div>
           
           {/* Server Badge */}
           {guild && (
-            <div className="glass-card p-4 rounded-2xl flex items-center gap-4 shrink-0 shadow-2xl bg-black/40 backdrop-blur-xl border border-white/5">
-              <div className="w-14 h-14 rounded-full border-2 border-white/10 p-0.5 overflow-hidden bg-slate-900">
+            <div className="glass-card p-3 rounded-xl flex items-center gap-3 shrink-0 shadow-lg bg-black/40 backdrop-blur-xl border border-white/5">
+              <div className="w-11 h-11 rounded-full border border-white/10 p-0.5 overflow-hidden bg-slate-900">
                 {guild.icon ? (
                   <img src={guild.icon} alt={guild.name} className="w-full h-full object-cover rounded-full" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center font-bold text-slate-400">{guild.name.slice(0,2).toUpperCase()}</div>
+                  <div className="w-full h-full flex items-center justify-center font-bold text-xs text-slate-400">{guild.name.slice(0,2).toUpperCase()}</div>
                 )}
               </div>
               <div>
-                <h3 className="font-semibold text-white leading-tight mb-1">{guild.name}</h3>
-                <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
-                  <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-brand-crimson" /> {guild.memberCount.toLocaleString()}</span>
-                  <span className="flex items-center gap-1"><Hash className="w-3.5 h-3.5 text-slate-500" /> {meta.channels?.length || 0}</span>
+                <h3 className="font-semibold text-xs text-white leading-tight mb-0.5">{guild.name}</h3>
+                <div className="flex items-center gap-2.5 text-[11px] font-mono text-slate-400">
+                  <span className="flex items-center gap-1"><Users className="w-3 h-3 text-brand-crimson" /> {guild.memberCount.toLocaleString()}</span>
+                  <span className="flex items-center gap-1"><Hash className="w-3 h-3 text-slate-500" /> {meta.channels?.length || 0}</span>
                 </div>
               </div>
             </div>
@@ -135,9 +135,9 @@ export default function OverviewPage({ showToast }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left Column: Modules */}
-        <div className="lg:col-span-2 space-y-10">
+        <div className="lg:col-span-2 space-y-6">
           
           <section>
             <h2 className="text-sm font-display text-brand-crimson tracking-wider mb-5 flex items-center gap-3">
