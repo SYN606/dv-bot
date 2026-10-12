@@ -8,6 +8,7 @@ import RouteLoader from "./RouteLoader";
 
 // ── Public pages: small, but lazy to shrink initial bundle ─────────────────
 const HomePage = lazy(() => import("../pages/home/HomePage"));
+const StatusPage = lazy(() => import("../pages/home/StatusPage"));
 const DocumentationPage = lazy(() => import("../pages/home/DocumentationPage"));
 const ErrorPage = lazy(() => import("../pages/home/ErrorPage"));
 const TermsPage = lazy(() => import("../pages/legal/TermsPage"));
@@ -38,6 +39,7 @@ export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<HomePage user={user} botInfo={botInfo} />} />
+        <Route path="/status" element={<StatusPage user={user} botInfo={botInfo} />} />
         <Route path="/docs" element={<DocumentationPage user={user} botInfo={botInfo} />} />
         <Route path="/documentation" element={<DocumentationPage user={user} botInfo={botInfo} />} />
 

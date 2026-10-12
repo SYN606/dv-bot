@@ -175,6 +175,7 @@ export function createWebApp(client = null) {
     app.get("/terms-of-service", devProxy);
     app.get("/privacy", devProxy);
     app.get("/privacy-policy", devProxy);
+    app.get("/status", devProxy);
     app.get("/error", devProxy);
   }
 
@@ -242,6 +243,7 @@ export function createWebApp(client = null) {
   app.get("/terms-of-service", serveSpa);
   app.get("/privacy", serveSpa);
   app.get("/privacy-policy", serveSpa);
+  app.get("/status", serveSpa);
   app.get("/error", serveSpa);
 
   // 3. Fallbacks

@@ -149,6 +149,10 @@ export async function getBotInfo() {
   return fetchApi("/api/bot");
 }
 
+export async function getSystemStatus() {
+  return fetchApi("/api/status");
+}
+
 // Guild Metadata
 
 export async function getGuildMeta(guildId) {
