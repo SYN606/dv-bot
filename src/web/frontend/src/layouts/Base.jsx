@@ -20,7 +20,7 @@ export default function Base({
   hideFooter = false,
   customSidebar = null,
   customNavbar = null,
-  maxWidth = "max-w-6xl",
+  maxWidth = "max-w-7xl",
   className = ""
 }) {
   const { guildId } = useParams();
@@ -127,7 +127,7 @@ export default function Base({
 
         {/* Independently Scrollable Page Content */}
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col focus:outline-none">
-          <main className={`p-3 sm:p-6 ${maxWidth} w-full mx-auto flex-1 ${className}`}>
+          <main className={`p-4 sm:p-6 lg:p-8 ${maxWidth} w-full mx-auto flex-1 ${className}`}>
             {children || <Outlet context={{ user, botInfo, currentGuild: activeGuild }} />}
           </main>
 

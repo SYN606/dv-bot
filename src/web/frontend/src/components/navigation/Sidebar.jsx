@@ -73,7 +73,7 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
               <img src={botAvatar} alt="DV" className="w-full h-full object-cover rounded-full" />
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-sm tracking-tight text-slate-100 uppercase">DV Command</span>
+              <span className="font-display font-medium text-base tracking-wider text-slate-100 uppercase">DV Command</span>
               <span className="text-[10px] font-mono text-brand-crimson tracking-wider">SYSTEM ACTIVE</span>
             </div>
           </Link>

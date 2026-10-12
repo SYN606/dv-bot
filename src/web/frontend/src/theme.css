@@ -6,8 +6,17 @@
 
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Samarkan';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Samarkan'), local('SAMARKAN'), url('https://fonts.cdnfonts.com/s/5790/SAMARN__.woff') format('woff');
+}
+
 @theme {
-  --font-display: "Tiro Devanagari Hindi", serif;
+  --font-display: "Samarkan", "Tiro Devanagari Hindi", serif;
+  --font-smarkan: "Samarkan", "Tiro Devanagari Hindi", serif;
   --font-body: "Inter", -apple-system, sans-serif;
   --font-sans: "Inter", -apple-system, sans-serif; /* fallback */
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
@@ -85,6 +94,14 @@ body {
   color: #ffffff;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-smarkan {
+  font-family: var(--font-smarkan);
 }
 
 .glass-panel {

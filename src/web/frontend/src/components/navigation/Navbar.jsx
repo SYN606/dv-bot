@@ -17,7 +17,7 @@ export default function Navbar({ user, botInfo }) {
             <img src={botAvatar} alt="DV" className="w-full h-full object-cover rounded-full" />
           </div>
           <div className="flex flex-col">
-            <span className="font-extrabold text-sm tracking-tight text-slate-100 uppercase hidden sm:block">Digital Vigital</span>
+            <span className="font-display font-medium text-base tracking-wider text-slate-100 uppercase hidden sm:block">Digital Vigital</span>
             <span className="text-[10px] font-mono text-brand-crimson tracking-wider hidden sm:block">COMMUNITY</span>
           </div>
         </Link>

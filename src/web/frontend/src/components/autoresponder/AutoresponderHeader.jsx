@@ -9,7 +9,7 @@ export default function AutoresponderHeader({ activeCount, totalCount, loading, 
           <span className="text-xs font-display text-brand-crimson tracking-wider">स्वचालन</span>
           <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest opacity-80">/ Autoresponder</span>
         </div>
-        <h1 className="text-2xl font-bold text-white tracking-tight mb-1">Autoresponder</h1>
+        <h1 className="text-2xl font-bold font-display text-white tracking-wide mb-1">Autoresponder</h1>
         <p className="text-xs text-slate-400">Automatically reply or react when messages match configured triggers.</p>
       </div>
 

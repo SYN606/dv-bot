@@ -208,7 +208,7 @@ export default function StatusPage({ user, botInfo }) {
               <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">ONLINE</span>
             </div>
             <div>
-              <div className="text-2xl sm:text-3xl font-display font-semibold text-white tracking-tight">
+              <div className="text-2xl sm:text-3xl font-sans font-bold text-white tracking-tight">
                 {servers.toLocaleString()}
               </div>
               <div className="text-[11px] text-slate-400 font-mono mt-0.5">
@@ -230,7 +230,7 @@ export default function StatusPage({ user, botInfo }) {
               </span>
             </div>
             <div>
-              <div className="text-2xl sm:text-3xl font-display font-semibold text-white tracking-tight">
+              <div className="text-2xl sm:text-3xl font-sans font-bold text-white tracking-tight">
                 {members.toLocaleString()}
               </div>
               <div className="text-[11px] text-slate-400 font-mono mt-0.5">
@@ -254,7 +254,7 @@ export default function StatusPage({ user, botInfo }) {
               </span>
             </div>
             <div>
-              <div className="text-2xl sm:text-3xl font-display font-semibold text-white tracking-tight">
+              <div className="text-2xl sm:text-3xl font-sans font-bold text-white tracking-tight">
                 {ping}<span className="text-base sm:text-lg font-normal text-slate-400 ml-1">ms</span>
               </div>
               <div className="text-[11px] text-slate-400 font-mono mt-0.5">
@@ -276,7 +276,7 @@ export default function StatusPage({ user, botInfo }) {
               </span>
             </div>
             <div>
-              <div className="text-xl sm:text-2xl font-display font-semibold text-white tracking-tight">
+              <div className="text-xl sm:text-2xl font-sans font-bold text-white tracking-tight">
                 {formatUptime(uptimeSeconds)}
               </div>
               <div className="text-[11px] text-slate-400 font-mono mt-0.5">
