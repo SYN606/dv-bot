@@ -29,16 +29,30 @@ export default createCommand({
       });
     }
 
-    const reason = ctx.options.reason || ctx.options.raw || "AFK";
+    const rawReason = ctx.options.reason || ctx.options.raw || "AFK";
+    const reason = rawReason.slice(0, 200).replace(/[`\r\n]+/g, " ").trim() || "AFK";
 
     let originalNick = ctx.member?.nickname || null;
+    const botMember = ctx.guild.members?.me || ctx.guild.me;
+    const isOwner = ctx.guild.ownerId === ctx.user.id;
+    const botHasHigherRole =
+      botMember?.roles?.highest && ctx.member?.roles?.highest
+        ? botMember.roles.highest.position > ctx.member.roles.highest.position
+        : false;
+
     if (
       ctx.member &&
-      ctx.guild?.members?.me?.permissions?.has("ManageNicknames") &&
+      !isOwner &&
+      botMember?.permissions?.has("ManageNicknames") &&
+      botHasHigherRole &&
       !ctx.member.permissions.has("Administrator")
     ) {
-      const newNick = `[AFK] ${ctx.member.displayName}`.slice(0, 32);
-      await ctx.member.setNickname(newNick).catch(() => {});
+      // Strip off any existing [AFK] prefix from displayName to prevent nested [AFK] [AFK] tags
+      const cleanName = ctx.member.displayName.replace(/^(\[AFK\]\s*)+/i, "").trim();
+      const newNick = `[AFK] ${cleanName}`.slice(0, 32);
+      if (ctx.member.displayName !== newNick) {
+        await ctx.member.setNickname(newNick).catch(() => {});
+      }
     }
 
     await setAfkStatus(ctx.user.id, ctx.guild.id, reason, originalNick);

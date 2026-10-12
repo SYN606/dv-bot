@@ -480,6 +480,10 @@ function ensureSqliteSchema(sqlite) {
   } catch (_) {}
 
   try {
+    sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_afk_guild_user_unique ON afk (guild_id, user_id);");
+  } catch (_) {}
+
+  try {
     sqlite.exec("ALTER TABLE auto_role_reward_config ADD COLUMN enabled INTEGER DEFAULT 0;");
   } catch (_) {}
   try {

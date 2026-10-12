@@ -42,8 +42,16 @@ export default {
     const wasMediaDeleted = await handleMediaOnly(message);
     if (wasMediaDeleted) return;
 
+    const prefix = (CONFIG.PREFIX || "ts").toLowerCase();
+    const rawContent = (message.content || "").trim();
+    const isAfkCommand =
+      rawContent.toLowerCase().startsWith(`${prefix}afk`) ||
+      rawContent.toLowerCase().startsWith("dvafk") ||
+      rawContent.toLowerCase() === `${prefix} afk` ||
+      rawContent.toLowerCase().startsWith(`${prefix} afk `);
+
     // 3. AFK Notifications & Return
-    await handleAfk(message);
+    await handleAfk(message, { skipAuthorReturn: isAfkCommand });
 
     // 4. Autoresponder Matching
     await handleAutoresponder(message);
@@ -53,9 +61,6 @@ export default {
 
     // 6. Mention & Prefix Command Execution
     if (message.author.bot) return;
-
-    const prefix = (CONFIG.PREFIX || "ts").toLowerCase();
-    const rawContent = message.content.trim();
 
     // A. Check for direct Bot Mention (@Bot)
     const mentionRegex = new RegExp(`^<@!?${client.user.id}>(?:\\s+)?`);
