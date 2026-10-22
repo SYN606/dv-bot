@@ -173,8 +173,19 @@ export function createWebApp(client = null) {
     }
   });
 
-  app.get("/auth/logout", (c) => {
+  app.all("/auth/logout", async (c) => {
+    const sessionCookie = getCookie(c, "dv_session");
+    if (sessionCookie) {
+      const session = verifySessionToken(sessionCookie);
+      if (session?.user?.id) {
+        const { apiCache } = await import("./routes/cache.js");
+        apiCache.delete(`user_guilds:${session.user.id}`);
+      }
+    }
     deleteCookie(c, "dv_session", { path: "/" });
+    if (c.req.header("accept")?.includes("application/json")) {
+      return c.json({ success: true, redirect: "/" });
+    }
     return c.redirect("/");
   });
 

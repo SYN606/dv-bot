@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, TrendingUp, ShieldCheck, Pin, Image as ImageIcon,
-  Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award, PenTool
+  Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award, PenTool, LogOut
 } from "lucide-react";
 import SuperuserBadge from "../ui/SuperuserBadge";
 import { getDiscordAvatarUrl } from "../../utils/discord";
@@ -136,25 +136,36 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
 
         {/* User Profile Card */}
         {user && (
-          <div className="p-2.5 mx-3 mb-2 rounded-xl bg-slate-900/80 border border-white/5 flex items-center gap-2.5 shrink-0 shadow-sm">
-            <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 shrink-0 bg-slate-950">
-              <img
-                src={getDiscordAvatarUrl(user)}
-                alt={user.username || "User"}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-semibold text-slate-200 truncate">
-                  {user.global_name || user.username}
-                </span>
-                {user.isSuperuser && <SuperuserBadge size="sm" />}
+          <div className="p-2.5 mx-3 mb-2 rounded-xl bg-slate-900/80 border border-white/5 flex items-center justify-between gap-2.5 shrink-0 shadow-sm">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 shrink-0 bg-slate-950">
+                <img
+                  src={getDiscordAvatarUrl(user)}
+                  alt={user.username || "User"}
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <span className="text-[10px] text-slate-500 font-mono block truncate">
-                @{user.username}
-              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-semibold text-slate-200 truncate">
+                    {user.global_name || user.username}
+                  </span>
+                  {user.isSuperuser && <SuperuserBadge size="sm" />}
+                </div>
+                <span className="text-[10px] text-slate-500 font-mono block truncate">
+                  @{user.username}
+                </span>
+              </div>
             </div>
+
+            <a
+              href="/auth/logout"
+              title="Log out"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+              aria-label="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </a>
           </div>
         )}
 

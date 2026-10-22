@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getCookie } from "hono/cookie";
+import { getCookie, deleteCookie } from "hono/cookie";
 import { verifySessionToken, fetchDiscordGuilds } from "../auth.js";
 
 export const authRoutes = new Hono();
@@ -91,6 +91,23 @@ authRoutes.get("/me", async (c) => {
     isSuperuser,
     guilds: Array.from(guildsMap.values()),
   });
+});
+
+// Logout session endpoint
+authRoutes.all("/logout", async (c) => {
+  const sessionCookie = getCookie(c, "dv_session");
+  if (sessionCookie) {
+    const session = verifySessionToken(sessionCookie);
+    if (session?.user?.id) {
+      const { apiCache } = await import("./cache.js");
+      apiCache.delete(`user_guilds:${session.user.id}`);
+    }
+  }
+  deleteCookie(c, "dv_session", { path: "/" });
+  if (c.req.header("accept")?.includes("application/json")) {
+    return c.json({ success: true, redirect: "/" });
+  }
+  return c.redirect("/");
 });
 
 // Sync / Refresh User Guilds from Discord API
