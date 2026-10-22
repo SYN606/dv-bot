@@ -7,6 +7,7 @@ import { SupporterWorker } from "../handlers/supporterHandler.js";
 import { initAfkCache } from "../db/helpers/afk.js";
 import { initStickyCache } from "../db/helpers/sticky.js";
 import { initAutoresponderCache } from "../db/helpers/autoresponder.js";
+import { restoreActiveChannelLocks } from "../services/channelLockService.js";
 import { logger } from "../utils/logger.js";
 
 import { startPresence } from "../core/presence.js";
@@ -28,6 +29,7 @@ export default {
     // 3. Pre-warm Hot-path zero-query filter caches
     await Promise.all([initAfkCache(), initStickyCache(), initAutoresponderCache()]);
     logger.info("[CACHE] Hot-path AFK, Sticky, and Autoresponder caches pre-warmed.");
+    await restoreActiveChannelLocks(client).catch(() => {});
 
     // 4. Start Background Workers
     ANALYTICS_BATCHER.start();

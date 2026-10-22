@@ -49,7 +49,8 @@ export async function checkGuildTag(member) {
     const config = await getSupporterConfig(guild.id);
     if (!config || !config.enabled || !config.clan_role_id || !config.clan_tag) return false;
 
-    const clanTag = config.clan_tag.toLowerCase();
+    const clanTag = (config.clan_tag || "").trim().toLowerCase();
+    if (clanTag.length < 2) return false;
     const role = guild.roles.cache.get(config.clan_role_id);
     if (!role) return false;
 
@@ -68,7 +69,7 @@ export async function checkGuildTag(member) {
         primary = cached.primary;
       } else if (member.client?.users?.fetch) {
         // Fetch only if uncached and store with 30-min TTL
-        const user = await member.client.users.fetch(member.id, { force: false }).catch(() => null);
+        const user = member.user || null;
         primary = user?.clan || user?.primaryGuild || user?.primary_guild || null;
         userClanCache.set(member.id, { primary, timestamp: now });
 
@@ -280,7 +281,7 @@ export async function syncAllSupporters(client) {
           await new Promise((r) => setTimeout(r, 350));
         } else {
           // Cooperative yield to keep event loop free
-          await new Promise((r) => setTimeout(r, 20));
+          await new Promise((r) => setImmediate(r));
         }
       }
     } catch (err) {

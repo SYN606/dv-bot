@@ -1,10 +1,19 @@
 import { processWeeklyAutoRoles } from "../services/autoroleService.js";
+import { getSystemMeta, setSystemMeta } from "../db/helpers/common.js";
 import { logger } from "../utils/logger.js";
+
+function getIsoWeekString(date = new Date()) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
 
 /**
  * AutoRole Worker: Microservice worker that triggers weekly rollover of leaderboards.
- * For production, this should ideally be triggered by a Cron Job once a week.
- * Here we provide a manual trigger or a long interval check.
+ * Deduplicated via ISO calendar week in system_meta to guarantee strictly one execution per week.
  */
 export class AutoRoleWorker {
   constructor(client) {
@@ -12,14 +21,14 @@ export class AutoRoleWorker {
     this.timer = null;
     this.isProcessing = false;
     
-    // Check every hour if it's Sunday at midnight (UTC)
-    this.intervalMs = 60 * 60 * 1000;
+    // Check every 10 minutes to reliably detect Sunday midnight UTC window
+    this.intervalMs = 10 * 60 * 1000;
   }
 
   start() {
     if (!this.timer) {
       this.timer = setInterval(() => this.check(), this.intervalMs);
-      // Run once on startup to check
+      // Run initial check on startup
       this.check();
     }
   }
@@ -36,11 +45,23 @@ export class AutoRoleWorker {
     this.isProcessing = true;
     try {
       const now = new Date();
-      // Example: If it's Sunday (0) and hour is 0 (Midnight UTC)
+      // Only execute on Sunday (0) between 00:00 and 00:59 UTC
       if (now.getUTCDay() === 0 && now.getUTCHours() === 0) {
-        logger.info("[AutoRoleWorker] Triggering weekly rollover...");
+        const currentWeekKey = getIsoWeekString(now);
+        const lastRollover = await getSystemMeta("last_autorole_rollover_week");
+
+        if (lastRollover === currentWeekKey) {
+          // Already performed for this calendar week, skip cleanly
+          return;
+        }
+
+        logger.info(`[AutoRoleWorker] Triggering weekly rollover for week ${currentWeekKey}...`);
         await processWeeklyAutoRoles(this.client);
+        await setSystemMeta("last_autorole_rollover_week", currentWeekKey);
+        logger.info(`[AutoRoleWorker] Successfully completed weekly rollover for week ${currentWeekKey}.`);
       }
+    } catch (err) {
+      logger.error("[AutoRoleWorker] Error during check:", err);
     } finally {
       this.isProcessing = false;
     }

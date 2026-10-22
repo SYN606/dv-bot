@@ -170,6 +170,18 @@ export async function verifyMember({ guild, user, member, config }) {
     }
   }
 
+  // Assign join auto-role upon completing verification if configured
+  try {
+    const { AutoRoleConfig } = await import("../db/models/index.js");
+    const autoRole = await AutoRoleConfig.findByPk(String(guild.id));
+    if (autoRole && autoRole.role_id) {
+      const joinRole = guild.roles.cache.get(String(autoRole.role_id));
+      if (joinRole && botMember && joinRole.position < botMember.roles.highest.position) {
+        await member.roles.add(joinRole, "Auto-Role: assigned upon completing verification").catch(() => {});
+      }
+    }
+  } catch (_) {}
+
   // Custom log channel if configured
   if (config.log_channel_id) {
     let logChannel = guild.channels?.cache?.get(String(config.log_channel_id));

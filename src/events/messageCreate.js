@@ -75,9 +75,9 @@ export default {
       commandString = afterMention;
     } else if (rawContent.toLowerCase().startsWith(prefix)) {
       commandString = rawContent.slice(prefix.length).trim();
-    } else if (rawContent.startsWith("!")) {
-      // Graceful fallback for traditional '!'
-      commandString = rawContent.slice(1).trim();
+
+
+
     }
 
     if (commandString === null) return;

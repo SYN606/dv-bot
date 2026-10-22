@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op } from "../models/index.js";
 import { TempbanConfig, TempbanRecord } from "../models/index.js";
 import { ensureGuild, ensureGuildAndUser, ensureUser } from "./common.js";
 

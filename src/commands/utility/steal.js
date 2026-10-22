@@ -56,7 +56,7 @@ export default createCommand({
 
     const botMember = guild.members.me;
     const canManageExpressions = botMember?.permissions?.has(
-      PermissionFlagsBits.ManageGuildExpressions || PermissionFlagsBits.ManageEmojisAndStickers
+      PermissionFlagsBits.ManageGuildExpressions | PermissionFlagsBits.ManageEmojisAndStickers
     );
 
     if (!canManageExpressions) {

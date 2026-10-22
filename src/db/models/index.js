@@ -23,6 +23,7 @@ import {
   MessageDraft,
   MessageTemplate,
   MessageHistory,
+  SystemMeta,
 } from "./featureModels.js";
 import {
   AutoResponder,
@@ -73,6 +74,7 @@ export {
   MessageDraft,
   MessageTemplate,
   MessageHistory,
+  SystemMeta,
   TempbanConfig,
   TempbanRecord,
   WarningRecord,

@@ -261,6 +261,12 @@ function ensureSqliteSchema(sqlite) {
       clan_message TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS system_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS channel_permission_snapshots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       guild_id TEXT NOT NULL,
@@ -268,6 +274,7 @@ function ensureSqliteSchema(sqlite) {
       target_id TEXT NOT NULL,
       permission_name TEXT NOT NULL,
       permission_value INTEGER,
+      expires_at TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -512,6 +519,8 @@ function ensureSqliteSchema(sqlite) {
     sqlite.exec("ALTER TABLE supporter_config ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP;");
   } catch (_) {}
   try {
+    sqlite.exec("ALTER TABLE channel_permission_snapshots ADD COLUMN expires_at TEXT;");
+    sqlite.exec("CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);");
     sqlite.exec("CREATE TABLE IF NOT EXISTS auto_role_config (guild_id TEXT PRIMARY KEY, role_id TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);");
   } catch (_) {}
 

@@ -30,7 +30,7 @@ export default createCommand({
     const { guild, user: moderator, member: modMember } = ctx;
     if (!guild) return;
 
-    await ctx.defer({ ephemeral: true });
+    await ctx.defer({ ephemeral: false });
 
     try {
       const config = await getTempbanConfig(guild.id);

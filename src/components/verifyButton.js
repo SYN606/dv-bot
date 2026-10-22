@@ -14,6 +14,18 @@ import { VerificationService } from "../services/index.js";
 const pendingVerifications = new Set();
 const captchaChallenges = new Map(); // key: `${guildId}:${userId}`, value: { code, expires }
 
+function pruneCaptchaChallenges() {
+  const now = Date.now();
+  for (const [key, item] of captchaChallenges.entries()) {
+    if (now > item.expires) {
+      captchaChallenges.delete(key);
+    }
+  }
+}
+
+const captchaSweeper = setInterval(pruneCaptchaChallenges, 60000);
+if (captchaSweeper.unref) captchaSweeper.unref();
+
 function generateCaptchaCode(length = 6) {
   const chars = "23456789abcdefghkmnpqrstuvwxyz";
   let res = "";
@@ -187,6 +199,7 @@ export function registerVerificationComponent(client) {
     // Challenge Mode: Interactive Captcha Modal
     if (config.mode === "captcha") {
       const code = generateCaptchaCode(6);
+      if (captchaChallenges.size > 500) pruneCaptchaChallenges();
       const challengeKey = `${guildId}:${interaction.user.id}`;
       captchaChallenges.set(challengeKey, {
         code,

@@ -45,9 +45,11 @@ export default {
     }
 
     // 3. Automated Verification Gate: Assign Unverified Role
+    let hasVerificationGate = false;
     try {
       const config = await VerificationConfig.findByPk(guildId);
       if (config && config.enabled && config.unverified_role_id) {
+        hasVerificationGate = true;
         const unverifiedRole = member.guild.roles.cache.get(String(config.unverified_role_id));
         const botMember = member.guild.members.me;
 
@@ -60,17 +62,20 @@ export default {
     }
 
     // 4. Default Auto-Role on Join (Server Welcome / Member Role)
-    try {
-      const autoRole = await AutoRoleConfig.findByPk(guildId);
-      if (autoRole && autoRole.role_id) {
-        const role = member.guild.roles.cache.get(String(autoRole.role_id));
-        const botMember = member.guild.members.me;
-        if (role && botMember && role.position < botMember.roles.highest.position) {
-          await member.roles.add(role, "Auto-Role: automatically assigned on server join").catch(() => {});
+    // Only assigned on join if verification gate is inactive to prevent bypassing verification!
+    if (!hasVerificationGate) {
+      try {
+        const autoRole = await AutoRoleConfig.findByPk(guildId);
+        if (autoRole && autoRole.role_id) {
+          const role = member.guild.roles.cache.get(String(autoRole.role_id));
+          const botMember = member.guild.members.me;
+          if (role && botMember && role.position < botMember.roles.highest.position) {
+            await member.roles.add(role, "Auto-Role: automatically assigned on server join").catch(() => {});
+          }
         }
+      } catch (err) {
+        console.error("[AUTO-ROLE ON JOIN ERROR]:", err);
       }
-    } catch (err) {
-      console.error("[AUTO-ROLE ON JOIN ERROR]:", err);
     }
 
     // 5. Supporter Rewards Check on Join (Clan Tag & Vanity Status)

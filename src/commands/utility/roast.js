@@ -106,20 +106,20 @@ class NonRepeatingDeck {
 export const ROAST_DECK = new NonRepeatingDeck(ROASTS);
 
 const slashBuilder = new SlashCommandBuilder()
-  .setName("fuck")
-  .setDescription("Generate a witty, non-repetitive roast for a user")
+  .setName("roast")
+  .setDescription("Roast a user with a witty, lighthearted comeback")
   .addUserOption((opt) => opt.setName("user").setDescription("Target user to roast").setRequired(false));
 
 export default createCommand({
-  name: "fuck",
-  aliases: ["roast", "burn"],
-  description: "Generate a witty, non-repetitive roast for a user",
+  name: "roast",
+  aliases: ["roast", "burn", "fuck"],
+  description: "Roast a user with a witty, lighthearted comeback",
   category: "Utility",
   usage: "[user]",
   examples: [
-    "/fuck",
-    "/fuck user:@Friend",
-    "dvfuck @Friend",
+    "/roast",
+    "/roast user:@Friend",
+    "dvroast @Friend",
   ],
   slashBuilder,
 

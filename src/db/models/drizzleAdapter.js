@@ -33,6 +33,25 @@ export const Op = {
   and: Symbol("and"),
 };
 
+export async function execGet(query) {
+  if (query && typeof query.get === "function") return await query.get();
+  const res = await query;
+  return Array.isArray(res) ? (res[0] || null) : (res || null);
+}
+
+export async function execAll(query) {
+  if (query && typeof query.all === "function") return await query.all();
+  const res = await query;
+  return Array.isArray(res) ? res : (res ? [res] : []);
+}
+
+export async function execRun(query) {
+  if (query && typeof query.run === "function") return await query.run();
+  return await query;
+}
+
+
+
 /**
  * Build Drizzle WHERE condition from Sequelize-style where object
  */
@@ -203,14 +222,14 @@ export class ModelInstance {
     }
 
     if (pkVal !== undefined && pkVal !== null) {
-      await db.update(table).set(valuesToUpdate).where(eq(table[pk], pkVal)).run();
+      await execRun(db.update(table).set(valuesToUpdate).where(eq(table[pk], pkVal)));
     } else {
       // Insert if no PK yet
       const payload = {};
       for (const [k, v] of Object.entries(this.toJSON())) {
         payload[k] = v instanceof Date ? v.toISOString() : v;
       }
-      const res = await db.insert(table).values(payload).returning().get();
+      const res = await execGet(db.insert(table).values(payload).returning());
       if (res) {
         Object.assign(this, res);
       }
@@ -269,7 +288,7 @@ export class ModelInstance {
     const table = this._model.table;
 
     if (pkVal !== undefined && pkVal !== null) {
-      await db.delete(table).where(eq(table[pk], pkVal)).run();
+      await execRun(db.delete(table).where(eq(table[pk], pkVal)));
       return 1;
     }
     return 0;
@@ -332,7 +351,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
       const db = getDb();
       const whereCond = eq(table[primaryKey], String(pk));
       let query = db.select().from(table).where(whereCond);
-      const row = await query.get();
+      const row = await execGet(query);
       if (!row) return null;
 
       const instance = new ModelInstance(ModelClass, row);
@@ -356,7 +375,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
         if (orderClause) query = query.orderBy(...orderClause);
       }
 
-      const row = await query.get();
+      const row = await execGet(query);
       if (!row) return null;
 
       const instance = new ModelInstance(ModelClass, row);
@@ -388,7 +407,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
         query = query.offset(queryOpts.offset);
       }
 
-      const rows = await query.all();
+      const rows = await execAll(query);
       const instances = rows.map((r) => new ModelInstance(ModelClass, r));
 
       if (queryOpts.include && Array.isArray(queryOpts.include) && instances.length > 0) {
@@ -448,7 +467,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
         values.updated_at = new Date().toISOString();
       }
 
-      const inserted = await db.insert(table).values(values).returning().get();
+      const inserted = await execGet(db.insert(table).values(values).returning());
       return new ModelInstance(ModelClass, inserted || values);
     }
 
@@ -467,7 +486,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
         return row;
       });
 
-      const inserted = await db.insert(table).values(formatted).returning().all();
+      const inserted = await execAll(db.insert(table).values(formatted).returning());
       return (inserted || formatted).map((r) => new ModelInstance(ModelClass, r));
     }
 
@@ -491,7 +510,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
         query = query.where(whereClause);
       }
 
-      const res = await query.run();
+      const res = await execRun(query);
       const changes = res?.changes ?? (Array.isArray(res) ? res.length : 1);
       return [changes];
     }
@@ -503,7 +522,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
       if (whereClause) {
         query = query.where(whereClause);
       }
-      const res = await query.run();
+      const res = await execRun(query);
       return res?.changes ?? (Array.isArray(res) ? res.length : 1);
     }
 
@@ -533,7 +552,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
         const whereClause = buildWhereClause(table, where);
         if (whereClause) query = query.where(whereClause);
       }
-      const res = await query.get();
+      const res = await execGet(query);
       return Number(res?.count || 0);
     }
 

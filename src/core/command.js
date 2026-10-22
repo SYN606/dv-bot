@@ -45,7 +45,7 @@ export class CommandContext {
       if (this.interaction.replied) {
         return await this.interaction.followUp(payload);
       }
-      return await this.interaction.reply(payload);
+      return await this.interaction.reply({ ...payload, fetchReply: true });
     }
 
     if (this.message) {

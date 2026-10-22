@@ -236,6 +236,7 @@ messageStudioRoutes.post("/guilds/:guildId/message-studio/validate", async (c) =
 messageStudioRoutes.post("/guilds/:guildId/message-studio/validate-reply", async (c) => {
   const guildId = c.req.param("guildId");
   const client = c.get("discordClient");
+  const user = c.get("user");
   const body = await c.req.json().catch(() => ({}));
 
   if (!client) {
@@ -317,6 +318,7 @@ messageStudioRoutes.put("/guilds/:guildId/message-studio/messages/:messageId", a
   const guildId = c.req.param("guildId");
   const messageId = c.req.param("messageId");
   const client = c.get("discordClient");
+  const user = c.get("user");
   const body = await c.req.json().catch(() => ({}));
 
   if (!client) {
@@ -333,6 +335,7 @@ messageStudioRoutes.put("/guilds/:guildId/message-studio/messages/:messageId", a
     guildId,
     channelId,
     messageId,
+    userId: user?.id,
     payload: body.payload || body,
   });
 
@@ -349,6 +352,7 @@ messageStudioRoutes.delete("/guilds/:guildId/message-studio/messages/:messageId"
   const messageId = c.req.param("messageId");
   const channelId = c.req.query("channel_id");
   const client = c.get("discordClient");
+  const user = c.get("user");
 
   if (!client) {
     return c.json({ error: "Discord client is unavailable." }, 503);

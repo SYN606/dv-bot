@@ -176,6 +176,9 @@ export async function lockChannel({ channel, guild, moderator = null, durationSt
 
   const { role: targetRole, usingVerifiedRole, verifiedRoleName } = await resolveTargetRole(guild);
   const durationSeconds = parseDuration(durationStr);
+  if (durationSeconds && durationSeconds > 24 * 86400) {
+    return { error: "Lock duration cannot exceed 24 days." };
+  }
 
   const existingOverwrite = channel.permissionOverwrites.cache.get(targetRole.id);
   const isCurrentlyLocked = existingOverwrite?.deny.has(PermissionFlagsBits.SendMessages);
@@ -207,13 +210,21 @@ export async function lockChannel({ channel, guild, moderator = null, durationSt
         : existingOverwrite?.deny.has(PermissionFlagsBits.SendMessages) ? false
           : null;
 
+    const expiryUnix = durationSeconds ? Math.floor(Date.now() / 1000) + durationSeconds : null;
+    const expiresAtIso = expiryUnix ? new Date(expiryUnix * 1000).toISOString() : null;
+
     await ChannelPermissionSnapshot.create({
       guild_id: String(guild.id),
       channel_id: String(channel.id),
       target_id: String(targetRole.id),
       permission_name: "SendMessages",
       permission_value: prevSendMessages,
+      expires_at: expiresAtIso,
     });
+  } else if (durationSeconds) {
+    const expiryUnix = Math.floor(Date.now() / 1000) + durationSeconds;
+    existingSnapshot.expires_at = new Date(expiryUnix * 1000).toISOString();
+    await existingSnapshot.save();
   }
 
   const auditReason = `Channel locked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
@@ -584,4 +595,47 @@ export async function unhideChannel({ channel, guild, moderator = null, reason =
     usingVerifiedRole,
     verifiedRoleName,
   };
+}
+
+/**
+ * Restores active timed locks after bot reboot or offline period
+ */
+export async function restoreActiveChannelLocks(client) {
+  try {
+    const activeLocks = await ChannelPermissionSnapshot.findAll({
+      where: { permission_name: "SendMessages" },
+    });
+    if (!activeLocks || activeLocks.length === 0) return;
+
+    const now = Date.now();
+    for (const record of activeLocks) {
+      if (!record.expires_at) continue;
+      const expireTime = new Date(record.expires_at).getTime();
+      const guild = client.guilds.cache.get(String(record.guild_id));
+      if (!guild) continue;
+      const channel = guild.channels.cache.get(String(record.channel_id));
+      if (!channel) continue;
+
+      if (now >= expireTime) {
+        await unlockChannel({ channel, guild, moderator: null, reason: "Lock duration expired while offline" });
+        await channel.send({ content: "🔓 **Channel Unlocked**: The temporary lock duration has expired." }).catch(() => {});
+      } else {
+        const remainingMs = expireTime - now;
+        if (unlockTimers.has(channel.id)) {
+          clearTimeout(unlockTimers.get(channel.id));
+        }
+        const timer = setTimeout(async () => {
+          unlockTimers.delete(channel.id);
+          try {
+            await unlockChannel({ channel, guild, moderator: null, reason: "Temporary lock duration expired" });
+            await channel.send({ content: "🔓 **Channel Unlocked**: The temporary lock duration has expired." }).catch(() => {});
+          } catch (_) {}
+        }, remainingMs);
+        if (timer.unref) timer.unref();
+        unlockTimers.set(channel.id, timer);
+      }
+    }
+  } catch (err) {
+    console.error("[channelLockService] Error restoring active channel locks:", err);
+  }
 }

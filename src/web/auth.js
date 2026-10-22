@@ -9,13 +9,16 @@ function getCallbackUrl() {
   return `${base}/auth/callback`;
 }
 
-export function getOAuthUrl() {
+export function getOAuthUrl(state = null) {
   const params = new URLSearchParams({
     client_id: CONFIG.CLIENT_ID,
     redirect_uri: getCallbackUrl(),
     response_type: "code",
     scope: "identify guilds",
   });
+  if (state) {
+    params.set("state", state);
+  }
   return `https://discord.com/oauth2/authorize?${params.toString()}`;
 }
 

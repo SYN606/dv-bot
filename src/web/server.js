@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 import { Hono } from "hono";
@@ -74,17 +75,37 @@ export function createWebApp(client = null) {
       `, 500);
     }
 
-    return c.redirect(getOAuthUrl());
+    const state = crypto.randomBytes(24).toString("hex");
+    setCookie(c, "oauth_state", state, {
+      path: "/",
+      httpOnly: true,
+      secure: CONFIG.COOKIE_SECURE ?? false,
+      sameSite: "Lax",
+      maxAge: 300,
+    });
+
+    return c.redirect(getOAuthUrl(state));
   });
 
   app.get("/auth/callback", async (c) => {
     const code = c.req.query("code");
     const error = c.req.query("error");
+    const state = c.req.query("state");
+    const storedState = getCookie(c, "oauth_state");
+    deleteCookie(c, "oauth_state", { path: "/" });
 
     if (error) {
       return c.html(
         `<div style="font-family:sans-serif;padding:40px;text-align:center;"><h2>Discord Login Error</h2><p>${error}</p><a href="/">Back</a></div>`,
         400
+      );
+    }
+
+    if (!state || !storedState || state !== storedState) {
+      logger.warn("[AUTH] OAuth state mismatch (potential CSRF).");
+      return c.html(
+        `<div style="font-family:sans-serif;padding:40px;text-align:center;"><h2>Invalid State</h2><p>Authentication request expired or invalid. Please try logging in again.</p><a href="/auth/login">Back to Login</a></div>`,
+        403
       );
     }
 

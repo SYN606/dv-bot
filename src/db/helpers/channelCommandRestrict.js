@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op } from "../models/index.js";
 import { RestrictedCommand } from "../models/index.js";
 import { ensureGuild } from "./common.js";
 import { PROTECTED_COMMANDS } from "../../core/permissions.js";

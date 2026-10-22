@@ -247,6 +247,7 @@ export const channelPermissionSnapshots = sqliteTable(
     target_id: text("target_id").notNull(),
     permission_name: text("permission_name").notNull(),
     permission_value: integer("permission_value", { mode: "boolean" }),
+    expires_at: text("expires_at"),
     created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
     updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
   },
@@ -259,6 +260,12 @@ export const channelPermissionSnapshots = sqliteTable(
     ),
   })
 );
+
+export const systemMeta = sqliteTable("system_meta", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
 
 // 3. Moderation Models
 export const tempbanConfig = sqliteTable("tempban_config", {

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { Op } from "sequelize";
+import { Op } from "../../db/models/index.js";
 import { DailyActivitySnapshot } from "../../db/models/index.js";
 import {
   getLeaderboard,

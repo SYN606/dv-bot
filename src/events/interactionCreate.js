@@ -11,6 +11,7 @@ import {
 import { isExecutionAllowed } from "../db/helpers/acl.js";
 import { isCommandRestricted } from "../db/helpers/channelCommandRestrict.js";
 import { isCommandGloballyDisabled } from "../db/helpers/guildCommandDisable.js";
+import { handleInteractionAfkReturn } from "../handlers/afkHandler.js";
 
 export default {
   name: "interactionCreate",
@@ -212,6 +213,7 @@ export default {
     });
 
     try {
+      await handleInteractionAfkReturn(interaction).catch(() => {});
       await command.execute(ctx);
     } catch (err) {
       console.error(`[EXECUTION ERROR] In slash '/${commandName}':`, err);

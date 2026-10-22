@@ -1,8 +1,42 @@
-import { Guild, User } from "../models/index.js";
+import { Guild, User, SystemMeta } from "../models/index.js";
 
 const guildCache = new Set();
 const userCache = new Set();
+const metaCache = new Map();
 const MAX_CACHE_ENTRIES = 10000;
+
+export async function getSystemMeta(key) {
+  const k = String(key);
+  if (metaCache.has(k)) return metaCache.get(k);
+  try {
+    const record = await SystemMeta.findByPk(k);
+    const val = record ? record.value : null;
+    metaCache.set(k, val);
+    return val;
+  } catch {
+    return null;
+  }
+}
+
+export async function setSystemMeta(key, value) {
+  const k = String(key);
+  const v = String(value);
+  try {
+    const [record, created] = await SystemMeta.findOrCreate({
+      where: { key: k },
+      defaults: { key: k, value: v },
+    });
+    if (!created) {
+      record.value = v;
+      await record.save();
+    }
+    metaCache.set(k, v);
+    return v;
+  } catch (err) {
+    metaCache.set(k, v);
+    return v;
+  }
+}
 
 export async function ensureGuild(guildId) {
   const gId = String(guildId);
@@ -37,4 +71,5 @@ export async function ensureGuildAndUser(guildId, userId) {
 export function clearEntityCache() {
   guildCache.clear();
   userCache.clear();
+  metaCache.clear();
 }

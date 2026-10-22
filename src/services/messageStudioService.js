@@ -450,7 +450,7 @@ export async function verifyAndFetchReply(client, currentGuildId, replyInput) {
 // 3. Serialization to Discord Payload
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function serializeToDiscordPayload(payload) {
+export function serializeToDiscordPayload(payload, { canMentionEveryone = false } = {}) {
   const mode = payload.mode || "normal";
   const discordOptions = {};
 
@@ -579,7 +579,7 @@ export function serializeToDiscordPayload(payload) {
   const allowUsers = mentionConfig.allowUsers !== undefined ? Boolean(mentionConfig.allowUsers) : true;
   if (allowUsers || mentionConfig.parseUsers) allowed.parse.push("users");
   if (mentionConfig.allowRoles || mentionConfig.parseRoles) allowed.parse.push("roles");
-  if (mentionConfig.allowEveryone || mentionConfig.parseEveryone) allowed.parse.push("everyone");
+  if (canMentionEveryone && (mentionConfig.allowEveryone || mentionConfig.parseEveryone)) allowed.parse.push("everyone");
 
   if (Array.isArray(mentionConfig.users) && mentionConfig.users.length > 0) {
     allowed.users = mentionConfig.users;
@@ -699,8 +699,35 @@ export async function publishMessage({
     }
   }
 
+  // 3b. Verify Mention Everyone permission to prevent privilege escalation
+  let canMentionEveryone = false;
+  if (userId) {
+    const { CONFIG } = await import("../config.js");
+    if (CONFIG.SUPERUSERS?.includes(String(userId))) {
+      canMentionEveryone = true;
+    } else {
+      const member = guild.members.cache.get(String(userId)) || (await guild.members.fetch(String(userId)).catch(() => null));
+      if (member && channel.permissionsFor) {
+        const perms = channel.permissionsFor(member);
+        canMentionEveryone = Boolean(
+          perms?.has(PermissionFlagsBits.Administrator) ||
+          perms?.has(PermissionFlagsBits.MentionEveryone)
+        );
+      }
+    }
+  }
+
+  const mentionConfig = payload.mention_config || payload.mentionConfig || {};
+  const requestedEveryone = Boolean(mentionConfig.allowEveryone || mentionConfig.parseEveryone);
+  if (requestedEveryone && !canMentionEveryone) {
+    return {
+      success: false,
+      error: "You lack permission to mention @everyone or @here in this channel.",
+    };
+  }
+
   // 4. Serialize Discord Payload
-  const discordPayload = serializeToDiscordPayload(payload);
+  const discordPayload = serializeToDiscordPayload(payload, { canMentionEveryone });
 
   // 5. Dispatch message to Discord
   let sentMessage = null;
@@ -755,6 +782,7 @@ export async function editPublishedMessage({
   guildId,
   channelId,
   messageId,
+  userId = null,
   payload,
 }) {
   const validation = validateMessage(payload);
@@ -791,7 +819,33 @@ export async function editPublishedMessage({
     };
   }
 
-  const discordPayload = serializeToDiscordPayload(payload);
+  let canMentionEveryone = false;
+  if (userId) {
+    const { CONFIG } = await import("../config.js");
+    if (CONFIG.SUPERUSERS?.includes(String(userId))) {
+      canMentionEveryone = true;
+    } else {
+      const member = guild.members.cache.get(String(userId)) || (await guild.members.fetch(String(userId)).catch(() => null));
+      if (member && channel.permissionsFor) {
+        const perms = channel.permissionsFor(member);
+        canMentionEveryone = Boolean(
+          perms?.has(PermissionFlagsBits.Administrator) ||
+          perms?.has(PermissionFlagsBits.MentionEveryone)
+        );
+      }
+    }
+  }
+
+  const mentionConfig = payload.mention_config || payload.mentionConfig || {};
+  const requestedEveryone = Boolean(mentionConfig.allowEveryone || mentionConfig.parseEveryone);
+  if (requestedEveryone && !canMentionEveryone) {
+    return {
+      success: false,
+      error: "You lack permission to mention @everyone or @here in this channel.",
+    };
+  }
+
+  const discordPayload = serializeToDiscordPayload(payload, { canMentionEveryone });
   // Do not reply when editing
   delete discordPayload.reply;
 
@@ -819,6 +873,7 @@ export async function deletePublishedMessage({
   guildId,
   channelId,
   messageId,
+  userId = null,
   removeFromHistory = false,
 }) {
   const gId = String(guildId);

@@ -208,6 +208,141 @@ async function processAuthorReturn(message, authorAfk, elapsed) {
   }
 }
 
+export async function handleInteractionAfkReturn(interaction) {
+  if (!interaction.guild || !interaction.user || interaction.user.bot) return;
+  if (interaction.commandName?.toLowerCase() === "afk") return;
+
+  const guildId = interaction.guild.id;
+  const userId = interaction.user.id;
+  const now = Date.now();
+
+  const returnLockKey = `${guildId}:${userId}`;
+  const lockExpires = returningUserLocks.get(returnLockKey) || 0;
+  if (now <= lockExpires) return;
+
+  if (!isUserAfkQuick(userId, guildId)) return;
+
+  returningUserLocks.set(returnLockKey, now + RETURN_LOCK_TTL_MS);
+
+  const authorAfk = await getAfkStatus(userId, guildId);
+  if (!authorAfk) {
+    returningUserLocks.delete(returnLockKey);
+    return;
+  }
+
+  const elapsed = Math.floor(now / 1000) - Number(authorAfk.since);
+  if (elapsed < 5) {
+    returningUserLocks.delete(returnLockKey);
+    return;
+  }
+
+  // Remove AFK status
+  await removeAfkStatus(userId, guildId);
+
+  // Restore nickname safely
+  const member = interaction.member;
+  const botMember = interaction.guild.members?.me || interaction.guild.me;
+  const canManageNick =
+    member &&
+    interaction.guild.ownerId !== userId &&
+    botMember?.permissions?.has("ManageNicknames") &&
+    (!botMember.roles?.highest || !member.roles?.highest || botMember.roles.highest.position > member.roles.highest.position);
+
+  if (canManageNick) {
+    const currentNick = member.nickname || member.displayName;
+    if (currentNick && currentNick.startsWith("[AFK]")) {
+      const targetNick = authorAfk.original_nickname || null;
+      await member.setNickname(targetNick).catch(() => {});
+    }
+  }
+
+  // Notify channel
+  if (interaction.channel && typeof interaction.channel.send === "function") {
+    let storedMentions = [];
+    try {
+      storedMentions = typeof authorAfk.mentions === "string"
+        ? JSON.parse(authorAfk.mentions || "[]")
+        : (Array.isArray(authorAfk.mentions) ? authorAfk.mentions : []);
+    } catch (_) {
+      storedMentions = [];
+    }
+
+    const authorAvatar = typeof interaction.user.displayAvatarURL === "function"
+      ? interaction.user.displayAvatarURL({ dynamic: true, size: 256 })
+      : undefined;
+    const guildName = interaction.guild.name || "this server";
+    const authorName = interaction.user.username || interaction.user.tag || "User";
+    const safeReason = (authorAfk.afk_reason || "AFK").replace(/[`\r\n]+/g, " ").slice(0, 200);
+
+    let description =
+      `<@${userId}>, your AFK status in **${guildName}** has been removed.\n\n` +
+      `• **Time Away:** \`${formatDuration(elapsed)}\`\n` +
+      `• **Reason:** \`${safeReason}\``;
+
+    const components = [];
+    if (storedMentions.length > 0) {
+      description += `\n\n**📬 Mentions Received (${storedMentions.length}):**\n`;
+      description += storedMentions
+        .slice(0, 5)
+        .map((m, idx) => {
+          const cleanContent = m.content ? m.content.replace(/\r?\n+/g, " ").trim() : "*Attachment*";
+          const snippet = cleanContent.length > 50 ? `${cleanContent.slice(0, 47)}...` : cleanContent;
+          const timeStr = m.timestamp ? `<t:${m.timestamp}:R>` : "";
+          return `\`${idx + 1}.\` <@${m.author_id}> in <#${m.channel_id}>: *"${snippet}"* ${timeStr}`;
+        })
+        .join("\n");
+
+      if (storedMentions.length > 5) {
+        description += `\n*...and ${storedMentions.length - 5} more mention(s)*`;
+      }
+
+      const buttons = [];
+      storedMentions.slice(0, 5).forEach((m, idx) => {
+        if (m.message_url && (m.message_url.startsWith("https://") || m.message_url.startsWith("http://"))) {
+          const rawChannelName = m.channel_name || `${idx + 1}`;
+          const buttonLabel = `Jump: #${rawChannelName}`.slice(0, 80);
+          buttons.push(
+            new ButtonBuilder()
+              .setLabel(buttonLabel)
+              .setStyle(ButtonStyle.Link)
+              .setURL(m.message_url)
+          );
+        }
+      });
+
+      if (buttons.length > 0) {
+        components.push(new ActionRowBuilder().addComponents(buttons));
+      }
+    } else {
+      description += `\n\n*You received no mentions while you were away.*`;
+    }
+
+    const embed = makeEmbed({
+      author: {
+        name: "Welcome Back!",
+        iconURL: authorAvatar,
+      },
+      title: `${authorName} is no longer AFK`,
+      description,
+      thumbnail: authorAvatar,
+      image: CONFIG.AFK_IMAGE_URL || null,
+      level: "SUCCESS",
+      color: COLORS.DARK,
+      headerDivider: false,
+    });
+
+    const reply = await interaction.channel.send({
+      embeds: [embed],
+      components,
+    }).catch(() => {});
+
+    if (reply) {
+      const timeout = storedMentions.length > 0 ? 45000 : 12000;
+      setTimeout(() => reply.delete().catch(() => {}), timeout);
+    }
+  }
+}
+
 export async function handleAfk(message, { skipAuthorReturn = false } = {}) {
   if (!message.guild || message.author.bot) return;
 
