@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 import { Hono } from "hono";
+import { compress } from "hono/compress";
 import { setCookie, deleteCookie, getCookie } from "hono/cookie";
 import { CONFIG } from "../config.js";
 import {
@@ -17,6 +18,9 @@ import { logger } from "../utils/logger.js";
 
 export function createWebApp(client = null) {
   const app = new Hono();
+
+  // 0. HTTP Compression (gzip/deflate for responses > 1024 bytes)
+  app.use("*", compress());
 
   // Attach discordClient to context
   app.use("*", async (c, next) => {
@@ -196,6 +200,12 @@ export function createWebApp(client = null) {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const distDir = path.resolve(__dirname, "dist");
 
+  // Cache-Control revalidation for SPA HTML entry
+  const HTML_HEADERS = {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-cache, must-revalidate",
+  };
+
   if (CONFIG.ENV === "dev") {
     const devProxy = (c) => c.redirect("http://localhost:5173" + c.req.path);
     app.get("/dashboard", devProxy);
@@ -241,7 +251,7 @@ export function createWebApp(client = null) {
     }
     const indexFile = Bun.file(path.join(distDir, "index.html"));
     return new Response(indexFile, {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      headers: HTML_HEADERS,
     });
   });
 
@@ -253,7 +263,7 @@ export function createWebApp(client = null) {
     }
     const indexFile = Bun.file(path.join(distDir, "index.html"));
     return new Response(indexFile, {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      headers: HTML_HEADERS,
     });
   });
 
@@ -262,7 +272,7 @@ export function createWebApp(client = null) {
     const indexFile = Bun.file(path.join(distDir, "index.html"));
     if (await indexFile.exists()) {
       return new Response(indexFile, {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
+        headers: HTML_HEADERS,
       });
     }
     return c.html("<!DOCTYPE html><html><body><h1>Digital Vigital Dashboard</h1></body></html>");
@@ -286,7 +296,7 @@ export function createWebApp(client = null) {
     const indexFile = Bun.file(path.join(distDir, "index.html"));
     if (await indexFile.exists()) {
       return new Response(indexFile, {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
+        headers: HTML_HEADERS,
       });
     }
     return c.html(`

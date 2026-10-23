@@ -204,3 +204,4 @@ coverage/
 # OS artifacts
 .DS_Store
 *.txt
+audit_output/
