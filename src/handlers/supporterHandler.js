@@ -1,9 +1,87 @@
 import { ActivityType, PermissionFlagsBits } from "discord.js";
 import { getSupporterConfig } from "../db/helpers/supporter.js";
+import { SystemMeta } from "../db/models/index.js";
 
 // LRU Cache for anti-spam (Key: 'guildId:userId', Value: timestamp of last announcement)
 const announcementCooldowns = new Map();
 const COOLDOWN_SECONDS = 3600; // 1 hour cooldown per user per guild
+
+// In-memory cache for fast announcement message lookups: `${type}:${guildId}:${userId}` -> { channelId, messageId }
+const supporterAnnouncementCache = new Map();
+
+export async function saveSupporterAnnouncement(guildId, userId, type, channelId, messageId) {
+  const cacheKey = `${type}:${guildId}:${userId}`;
+  supporterAnnouncementCache.set(cacheKey, { channelId, messageId });
+
+  try {
+    const metaKey = `supporter_${type}_msg:${guildId}:${userId}`;
+    await SystemMeta.upsert({
+      key: metaKey,
+      value: JSON.stringify({ channelId, messageId, savedAt: Date.now() }),
+    });
+  } catch (err) {
+    console.error(`[SupporterHandler] Failed to save announcement meta for ${cacheKey}:`, err?.message);
+  }
+}
+
+export async function deleteSupporterAnnouncement(guild, userId, type = "clan", fallbackChannelId = null) {
+  if (!guild || !userId) return;
+
+  const cacheKey = `${type}:${guild.id}:${userId}`;
+  const metaKey = `supporter_${type}_msg:${guild.id}:${userId}`;
+  let channelId = fallbackChannelId;
+  let messageId = null;
+
+  // 1. Check in-memory cache
+  if (supporterAnnouncementCache.has(cacheKey)) {
+    const cached = supporterAnnouncementCache.get(cacheKey);
+    channelId = cached.channelId || channelId;
+    messageId = cached.messageId;
+    supporterAnnouncementCache.delete(cacheKey);
+  }
+
+  // 2. Check persistent DB storage
+  try {
+    const metaRecord = await SystemMeta.findByPk(metaKey);
+    if (metaRecord?.value) {
+      const parsed = JSON.parse(metaRecord.value);
+      if (parsed.messageId) messageId = parsed.messageId;
+      if (parsed.channelId) channelId = parsed.channelId;
+    }
+    await SystemMeta.destroy({ where: { key: metaKey } });
+  } catch (_) {}
+
+  if (!channelId) return;
+
+  const channel = guild.channels.cache.get(channelId) || (await guild.channels.fetch(channelId).catch(() => null));
+  if (!channel || !channel.isTextBased()) return;
+
+  // 3. Direct fetch and deletion by message ID
+  if (messageId) {
+    const msg = await channel.messages.fetch(messageId).catch(() => null);
+    if (msg) {
+      if (msg.deletable) {
+        await msg.delete().catch(() => {});
+      }
+      return;
+    }
+  }
+
+  // 4. Fallback search: scan recent messages sent by this bot mentioning the user
+  try {
+    const recent = await channel.messages.fetch({ limit: 50 }).catch(() => null);
+    if (recent) {
+      const botMsg = recent.find(
+        (m) =>
+          m.author?.id === guild.client.user?.id &&
+          (m.content.includes(`<@${userId}>`) || m.content.includes(`<@!${userId}>`))
+      );
+      if (botMsg && botMsg.deletable) {
+        await botMsg.delete().catch(() => {});
+      }
+    }
+  } catch (_) {}
+}
 
 // User Clan details cache to eliminate repetitive REST /users/{id} API calls
 const userClanCache = new Map(); // userId -> { primary: object, timestamp: number }
@@ -163,10 +241,14 @@ export async function checkGuildTag(member, force = false) {
           }
           
           const msg = formatMessage(config.clan_message, member, role);
-          await channel.send({
+          const sent = await channel.send({
             content: msg,
             allowedMentions: { parse: ["users"], roles: [] }
           }).catch(() => {});
+
+          if (sent?.id) {
+            await saveSupporterAnnouncement(guild.id, member.id, "clan", channel.id, sent.id);
+          }
         }
       }
       return true;
@@ -174,6 +256,8 @@ export async function checkGuildTag(member, force = false) {
       await member.roles.remove(role, "User no longer has guild tag").catch((err) => {
         console.error(`[GuildTag] Failed to remove role from ${member.user?.tag || member.id}:`, err?.message);
       });
+      announcementCooldowns.delete(`${guild.id}:${member.id}:clan`);
+      await deleteSupporterAnnouncement(guild, member.id, "clan", config.clan_channel_id);
       return true;
     }
 
@@ -242,15 +326,21 @@ export async function checkMemberVanity(member, presence = null) {
           }
           
           const msg = formatMessage(config.vanity_message, member, role);
-          await channel.send({
+          const sent = await channel.send({
             content: msg,
             allowedMentions: { parse: ["users"], roles: [] }
           }).catch(() => {});
+
+          if (sent?.id) {
+            await saveSupporterAnnouncement(guild.id, member.id, "vanity", channel.id, sent.id);
+          }
         }
       }
       return true;
     } else if (!hasVanityUrl && hasRole && !isOffline) {
       await member.roles.remove(role, "Vanity removed from status").catch(() => {});
+      announcementCooldowns.delete(`${guild.id}:${member.id}:vanity`);
+      await deleteSupporterAnnouncement(guild, member.id, "vanity", config.vanity_channel_id);
       return true;
     }
 

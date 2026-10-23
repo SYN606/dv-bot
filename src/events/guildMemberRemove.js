@@ -1,6 +1,7 @@
 import { Events } from "discord.js";
 import { DailyActivitySnapshot, MemberAnalytics } from "../db/models/index.js";
 import { ensureGuild } from "../db/helpers/common.js";
+import { deleteSupporterAnnouncement } from "../handlers/supporterHandler.js";
 
 export default {
   name: Events.GuildMemberRemove,
@@ -36,5 +37,13 @@ export default {
     } catch (err) {
       console.error("[MEMBER REMOVE ANALYTICS ERROR]:", err);
     }
+
+    // Supporter announcement cleanup on leave
+    try {
+      await Promise.allSettled([
+        deleteSupporterAnnouncement(member.guild, userId, "clan"),
+        deleteSupporterAnnouncement(member.guild, userId, "vanity"),
+      ]);
+    } catch (_) {}
   },
 };
