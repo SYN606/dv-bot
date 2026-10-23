@@ -1,6 +1,5 @@
-import { ActivityType } from "discord.js";
+import { ActivityType, PermissionFlagsBits } from "discord.js";
 import { getSupporterConfig } from "../db/helpers/supporter.js";
-import { PERMISSION_RISKS } from "../utils/permissionsData.js";
 
 // LRU Cache for anti-spam (Key: 'guildId:userId', Value: timestamp of last announcement)
 const announcementCooldowns = new Map();
@@ -10,18 +9,35 @@ const COOLDOWN_SECONDS = 3600; // 1 hour cooldown per user per guild
 const userClanCache = new Map(); // userId -> { primary: object, timestamp: number }
 const CLAN_CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache TTL
 
+export function clearUserClanCache(userId = null) {
+  if (userId) {
+    userClanCache.delete(String(userId));
+  } else {
+    userClanCache.clear();
+  }
+}
+
 // Member evaluation cooldown to avoid repeatedly evaluating the same user on high-frequency chat
 const memberEvalCooldowns = new Map(); // `${guildId}:${userId}` -> timestamp
 const MEMBER_EVAL_COOLDOWN = 180 * 1000; // 3 minutes cooldown
 
+const RESTRICTED_PERMISSIONS = [
+  PermissionFlagsBits.KickMembers,
+  PermissionFlagsBits.BanMembers,
+  PermissionFlagsBits.Administrator,
+  PermissionFlagsBits.ManageChannels,
+  PermissionFlagsBits.ManageGuild,
+  PermissionFlagsBits.MentionEveryone,
+  PermissionFlagsBits.ManageRoles,
+  PermissionFlagsBits.ManageWebhooks,
+  PermissionFlagsBits.ManageEvents,
+  PermissionFlagsBits.ModerateMembers,
+  PermissionFlagsBits.ManageExpressions || PermissionFlagsBits.ManageGuildExpressions,
+].filter(Boolean);
+
 function checkDangerousPermissions(role) {
-  for (const key of Object.keys(PERMISSION_RISKS)) {
-    const permData = PERMISSION_RISKS[key];
-    if (role.permissions.has(permData.flag)) {
-      return true; // Has dangerous permission
-    }
-  }
-  return false;
+  if (!role?.permissions) return true;
+  return RESTRICTED_PERMISSIONS.some((p) => role.permissions.has(p));
 }
 
 function formatMessage(template, member, role = null) {
@@ -41,58 +57,80 @@ function formatMessage(template, member, role = null) {
   return result;
 }
 
-export async function checkGuildTag(member) {
+export async function checkGuildTag(member, force = false) {
   if (!member || member.user?.bot || !member.guild) return false;
   const guild = member.guild;
 
   try {
     const config = await getSupporterConfig(guild.id);
-    if (!config || !config.enabled || !config.clan_role_id || !config.clan_tag) return false;
+    if (!config || !config.enabled || !config.clan_role_id) return false;
 
-    const clanTag = (config.clan_tag || "").trim().toLowerCase();
-    if (clanTag.length < 2) return false;
     const role = guild.roles.cache.get(config.clan_role_id);
     if (!role) return false;
 
-    const botMember = guild.members.me;
+    const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
     if (!botMember || role.position >= botMember.roles.highest.position) return false;
     if (checkDangerousPermissions(role)) return false;
 
-    // Check directly from cached member.user first without hitting Discord REST API
-    let primary = member.user?.clan || member.user?.primaryGuild || member.user?.primary_guild || null;
-    
-    // Fallback to cached user clan lookup before ever calling REST API
-    if (!primary) {
-      const cached = userClanCache.get(member.id);
+    // Fetch user or retrieve from cache to access clan/primaryGuild payload
+    let user = member.user;
+    let primary = user?.primaryGuild || user?.primary_guild || user?.clan || null;
+
+    if (!primary || force) {
       const now = Date.now();
-      if (cached && (now - cached.timestamp < CLAN_CACHE_TTL)) {
+      const cached = userClanCache.get(member.id);
+      if (!force && cached && (now - cached.timestamp < CLAN_CACHE_TTL)) {
         primary = cached.primary;
       } else if (member.client?.users?.fetch) {
-        // Fetch only if uncached and store with 30-min TTL
-        const user = member.user || null;
-        primary = user?.clan || user?.primaryGuild || user?.primary_guild || null;
-        userClanCache.set(member.id, { primary, timestamp: now });
+        const fetched = await member.client.users.fetch(member.id, { force: Boolean(force) }).catch(() => null);
+        if (fetched) {
+          user = fetched;
+          primary = fetched.primaryGuild || fetched.primary_guild || fetched.clan || null;
+          userClanCache.set(member.id, { primary, timestamp: now });
 
-        if (userClanCache.size > 10000) {
-          const cutoff = now - CLAN_CACHE_TTL;
-          for (const [k, v] of userClanCache.entries()) {
-            if (v.timestamp < cutoff) userClanCache.delete(k);
+          if (userClanCache.size > 10000) {
+            const cutoff = now - CLAN_CACHE_TTL;
+            for (const [k, v] of userClanCache.entries()) {
+              if (v.timestamp < cutoff) userClanCache.delete(k);
+            }
           }
         }
       }
     }
 
     let hasTag = false;
-    if (primary && (primary.identityGuildId === guild.id || primary.id === guild.id || primary.guildId === guild.id)) {
-      if (primary.identityEnabled !== false) {
+
+    // 1. Direct Discord Server Tag (Clan) Identity check
+    if (primary) {
+      const identityGuildId = String(
+        primary.identityGuildId ||
+        primary.identity_guild_id ||
+        primary.id ||
+        primary.guildId ||
+        primary.guild_id ||
+        ""
+      );
+
+      const isIdentityEnabled = primary.identityEnabled !== false && primary.identity_enabled !== false;
+
+      if (identityGuildId === String(guild.id) && isIdentityEnabled) {
         hasTag = true;
+      }
+
+      // Also match if primary clan's tag equals the configured clan_tag (e.g. tag badge text)
+      const configuredTag = (config.clan_tag || "").trim().toLowerCase();
+      if (!hasTag && configuredTag && primary.tag) {
+        if (String(primary.tag).toLowerCase() === configuredTag && isIdentityEnabled) {
+          hasTag = true;
+        }
       }
     }
 
-    // Also check member displayName or username for clan tag
-    if (!hasTag) {
-      const displayName = member.displayName || member.user?.username || "";
-      if (displayName.toLowerCase().includes(clanTag)) {
+    // 2. Fallback: check member displayName or username if a text clan_tag is configured
+    const configuredTag = (config.clan_tag || "").trim().toLowerCase();
+    if (!hasTag && configuredTag && configuredTag.length >= 2) {
+      const displayName = (member.displayName || member.user?.username || "").toLowerCase();
+      if (displayName.includes(configuredTag)) {
         hasTag = true;
       }
     }
@@ -104,7 +142,9 @@ export async function checkGuildTag(member) {
     }
 
     if (hasTag && !hasRole) {
-      await member.roles.add(role, "User equipped guild tag").catch(() => {});
+      await member.roles.add(role, "User equipped guild tag").catch((err) => {
+        console.error(`[GuildTag] Failed to add role to ${member.user?.tag || member.id}:`, err?.message);
+      });
       
       const cdKey = `${guild.id}:${member.id}:clan`;
       const now = Date.now() / 1000;
@@ -131,7 +171,9 @@ export async function checkGuildTag(member) {
       }
       return true;
     } else if (!hasTag && hasRole) {
-      await member.roles.remove(role, "User no longer has guild tag").catch(() => {});
+      await member.roles.remove(role, "User no longer has guild tag").catch((err) => {
+        console.error(`[GuildTag] Failed to remove role from ${member.user?.tag || member.id}:`, err?.message);
+      });
       return true;
     }
 
@@ -153,7 +195,7 @@ export async function checkMemberVanity(member, presence = null) {
     const role = guild.roles.cache.get(config.vanity_role_id);
     if (!role) return false;
 
-    const botMember = guild.members.me;
+    const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
     if (!botMember || role.position >= botMember.roles.highest.position) return false;
     if (checkDangerousPermissions(role)) return false;
 
@@ -245,7 +287,7 @@ export async function checkMemberSupporter(member, force = false) {
 
   await Promise.allSettled([
     checkMemberVanity(member),
-    checkGuildTag(member),
+    checkGuildTag(member, force),
   ]);
 }
 
@@ -270,7 +312,7 @@ export async function syncAllSupporters(client) {
           if (changed) roleChanged = true;
         }
         if (config.clan_role_id) {
-          const changed = await checkGuildTag(member).catch(() => false);
+          const changed = await checkGuildTag(member, false).catch(() => false);
           if (changed) roleChanged = true;
         }
 

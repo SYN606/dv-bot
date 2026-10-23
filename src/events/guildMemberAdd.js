@@ -80,7 +80,7 @@ export default {
 
     // 5. Supporter Rewards Check on Join (Clan Tag & Vanity Status)
     try {
-      await checkMemberSupporter(member);
+      await checkMemberSupporter(member, true);
     } catch (_) {}
   },
 };

@@ -205,9 +205,8 @@ export async function verifyMember({ guild, user, member, config }) {
       }
       await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
     }
-  }
-
-  // Mod log
+  } else {
+    // Fallback to general mod log only if dedicated verification log channel is not configured
   await sendModLog({
     guild,
     category: "VERIFICATION",
@@ -221,6 +220,7 @@ export async function verifyMember({ guild, user, member, config }) {
       AccountAge: `${Math.floor(ageCheck.ageHours)}h`,
     },
   });
+  }
 
   return { success: true, verifiedRole };
 }
