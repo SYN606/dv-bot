@@ -162,7 +162,8 @@ All channel security tools are **verification-aware** and interact properly with
 | `/afk` | `[Slash & Prefix]` | Everyone | `/afk [reason]` | `dvafk [reason]` | Set your Away-From-Keyboard status; auto-responds when mentioned and cleans on return. |
 | `/avatar` | `[Slash & Prefix]` | Everyone | `/avatar [user]` | `dvavatar [user]` | Display high-resolution user avatar with direct download links. |
 | `/banner` | `[Slash & Prefix]` | Everyone | `/banner [user]` | `dvbanner [user]` | Display high-resolution user profile banner. |
-| `/fuck` | `[Slash & Prefix]` | Everyone | `/fuck [user]` | `dvfuck [user]` | Generate a witty, 100% non-repetitive roast deck draw against a user. |
+| `/nick` | `[Slash & Prefix]` | Everyone / Manage Nicknames | `/nick <nickname> [user]` | `dvnick [user] <nickname>` | Change or reset a nickname (self-rename for everyone; renaming others requires Manage Nicknames). |
+| `/roast` | `[Slash & Prefix]` | Everyone | `/roast [user]` | `dvroast [user]` | Generate a witty, 100% non-repetitive roast deck draw against a user (aliases: `/fuck`, `/burn`). |
 | `/help` | `[Slash & Prefix]` | Everyone | `/help [command]` | `dvhelp [command]` | Interactive directory browser with dropdown category selection and detailed syntax introspection. |
 | `/ping` | `[Slash & Prefix]` | Everyone | `/ping` | `dvping` | Real-time diagnostic telemetry: WebSocket heartbeat, HTTP latency, and database query timings. |
 | `/roleinfo` | `[Slash & Prefix]` | Administrator | `/roleinfo <role>` | `dvroleinfo <role>` | Deep inspection of a role: member count, permissions, color, and creation date. |
@@ -171,6 +172,21 @@ All channel security tools are **verification-aware** and interact properly with
 
 ### Utility Examples:
 ```bash
+# Rename yourself:
+/nick nickname:Ace
+dvnick Ace
+
+# Reset your own nickname:
+/nick nickname:reset
+
+# Rename another member (moderator):
+/nick user:@Member nickname:NewName
+dvnick @Member NewName
+
+# Roast a friend:
+/roast user:@Friend
+dvroast @Friend
+
 # Set AFK status:
 /afk reason:Studying for finals
 
