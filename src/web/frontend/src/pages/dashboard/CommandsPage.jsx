@@ -132,7 +132,7 @@ export default function CommandsPage({ showToast }) {
 
   if (loading && commands.length === 0) {
     return (
-      <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-8">
+      <div className="w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
         <div className="h-24 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
         <div className="h-32 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
         <div className="h-32 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
@@ -145,8 +145,11 @@ export default function CommandsPage({ showToast }) {
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-5xl mx-auto animate-in fade-in duration-500 pb-24">
-      <CommandHeader />
+    <div className="w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500 pb-24">
+      <CommandHeader
+        totalCommands={stats?.total || 0}
+        activeCommands={stats?.active || 0}
+      />
 
       <CommandScopeSelector
         guildId={guildId}
@@ -169,6 +172,8 @@ export default function CommandsPage({ showToast }) {
         statusFilter={statusFilter}
         setStatusFilter={setStatusFilter}
         categories={categoryFilters}
+        totalActive={stats?.active || 0}
+        totalDisabled={stats?.disabled || 0}
         onOpenBulkConfirm={(enable) => setConfirmBulk({ open: true, enable })}
         isBulkPending={isBulkPending}
       />
