@@ -410,27 +410,85 @@ commandRoutes.post("/guilds/:guildId/commands/bulk_toggle", async (c) => {
   });
 });
 
-// Reset Channel Overrides
-commandRoutes.post("/guilds/:guildId/commands/reset_channel", async (c) => {
-  const guildId = c.req.param("guildId");
+// Reset All Commands to Default: Completely wipe all disabled_commands, restricted_commands, and channel_restrictions for this guild
+commandRoutes.post("/guilds/:guildId/commands/reset_all", async (c) => {
+  const guildId = String(c.req.param("guildId"));
   const body = await c.req.json().catch(() => ({}));
   const rawChannel = body.channel_id || body.channelId;
   const channel_id = (rawChannel && rawChannel !== "global" && rawChannel !== "null") ? String(rawChannel) : null;
   const client = c.get("discordClient");
 
-  if (!channel_id) {
-    return c.json({ error: "channel_id is required to reset channel restrictions." }, 400);
-  }
-
-  const { RestrictedCommand } = await import("../../db/models/index.js");
+  const { DisabledCommand, RestrictedCommand, ChannelRestriction } = await import("../../db/models/index.js");
   const { clearGuildRestrictCache } = await import("../../db/helpers/channelCommandRestrict.js");
+  const { invalidateGuildCommandCache } = await import("../../db/helpers/guildCommandDisable.js");
+  const { invalidateAclCache } = await import("../../db/helpers/acl.js");
 
-  await RestrictedCommand.destroy({
-    where: { guild_id: String(guildId), channel_id: String(channel_id) },
+  // 1. Wipe all guild-wide disabled commands from DB
+  await DisabledCommand.destroy({
+    where: { guild_id: guildId },
   });
 
+  // 2. Wipe all channel-level restricted commands from DB
+  await RestrictedCommand.destroy({
+    where: { guild_id: guildId },
+  });
+
+  // 3. Wipe all channel restriction rules from DB
+  await ChannelRestriction.destroy({
+    where: { guild_id: guildId },
+  });
+
+  // 4. Invalidate all fast-path memory caches
+  invalidateGuildCommandCache(guildId);
   clearGuildRestrictCache(guildId);
-  apiCache.delete(`guild:${guildId}:disabled_cmds:${channel_id}`);
+  invalidateAclCache(guildId);
+
+  // 5. Invalidate web API cache
+  apiCache.delete(`guild:${guildId}:guild_disabled_cmds`);
+  apiCache.delete(`guild:${guildId}:acl`);
+
+  const state = await getGuildCommandsState(guildId, channel_id, client);
+  return c.json({
+    success: true,
+    resetAll: true,
+    message: "All command permissions, channel restrictions, and database entries have been reset to default.",
+    ...state,
+  });
+});
+
+// Reset Channel Overrides
+commandRoutes.post("/guilds/:guildId/commands/reset_channel", async (c) => {
+  const guildId = String(c.req.param("guildId"));
+  const body = await c.req.json().catch(() => ({}));
+  const rawChannel = body.channel_id || body.channelId;
+  const channel_id = (rawChannel && rawChannel !== "global" && rawChannel !== "null") ? String(rawChannel) : null;
+  const client = c.get("discordClient");
+
+  const { RestrictedCommand, ChannelRestriction } = await import("../../db/models/index.js");
+  const { clearGuildRestrictCache } = await import("../../db/helpers/channelCommandRestrict.js");
+  const { invalidateAclCache } = await import("../../db/helpers/acl.js");
+
+  if (channel_id) {
+    // Delete all channel-level restrictions for this specific channel
+    await RestrictedCommand.destroy({
+      where: { guild_id: guildId, channel_id: channel_id },
+    });
+    await ChannelRestriction.destroy({
+      where: { guild_id: guildId, channel_id: channel_id },
+    });
+    apiCache.delete(`guild:${guildId}:disabled_cmds:${channel_id}`);
+  } else {
+    // If no channel specified, reset all channel restrictions
+    await RestrictedCommand.destroy({
+      where: { guild_id: guildId },
+    });
+    await ChannelRestriction.destroy({
+      where: { guild_id: guildId },
+    });
+  }
+
+  clearGuildRestrictCache(guildId);
+  invalidateAclCache(guildId);
 
   const state = await getGuildCommandsState(guildId, channel_id, client);
   return c.json({

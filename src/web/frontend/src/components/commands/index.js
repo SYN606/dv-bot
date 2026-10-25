@@ -4,4 +4,3 @@ export { default as CommandStats } from "./CommandStats";
 export { default as CommandToolbar } from "./CommandToolbar";
 export { default as CommandModule } from "./CommandModule";
 export { default as CommandRow } from "./CommandRow";
-export { default as CommandChannelRuleModal } from "./CommandChannelRuleModal";

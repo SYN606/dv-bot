@@ -12,8 +12,6 @@ import {
   CheckCheck,
   Ban,
   Loader2,
-  SlidersHorizontal,
-  CheckCircle2,
 } from "lucide-react";
 
 function getCategoryIcon(catId) {
@@ -46,19 +44,12 @@ export default function CommandModule({
   onToggleCommand,
   onToggleModule,
   onUnlockGlobal,
-  onOpenChannelRules,
 }) {
   const isModulePending = pendingModules.has(module.id);
 
   // Unprotected commands that can be toggled
   const unprotectedCommands = module.commands.filter((c) => !c.isProtected);
   const canToggleModule = unprotectedCommands.length > 0;
-
-  // Channel rule state for category
-  const catRule = module.channelRule || { mode: "everywhere", channels: [] };
-  const hasCatWhitelist = catRule.mode === "enable_only" && (catRule.channels?.length > 0 || catRule.allowChannels?.length > 0);
-  const hasCatBlacklist = catRule.mode === "disable_only" && (catRule.channels?.length > 0 || catRule.denyChannels?.length > 0);
-  const catChannelCount = catRule.channels?.length || catRule.allowChannels?.length || catRule.denyChannels?.length || 0;
 
   // Active / Disabled count in this module
   const disabledInModule = unprotectedCommands.filter((c) => {
@@ -108,42 +99,9 @@ export default function CommandModule({
           </div>
         </div>
 
-        {/* Category-Wide Controls: Category Rules + Enable All & Disable All options */}
+        {/* Category-Wide Controls: Enable All & Disable All options */}
         {canToggleModule && (
           <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-            {/* Category Channel Rules */}
-            {onOpenChannelRules && (
-              <button
-                type="button"
-                onClick={() => onOpenChannelRules(module, true)}
-                className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
-                  hasCatWhitelist
-                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
-                    : hasCatBlacklist
-                    ? "bg-rose-500/15 text-rose-300 border-rose-500/30 hover:bg-rose-500/25"
-                    : "bg-slate-950 text-slate-300 border-white/10 hover:border-white/20 hover:text-white"
-                }`}
-                title="Configure 'Enable only in' or 'Disable only in' channels for this category"
-              >
-                {hasCatWhitelist ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Only in {catChannelCount} Chs</span>
-                  </>
-                ) : hasCatBlacklist ? (
-                  <>
-                    <Ban className="w-4 h-4 text-rose-400" />
-                    <span>Blocked in {catChannelCount} Chs</span>
-                  </>
-                ) : (
-                  <>
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Category Channels</span>
-                  </>
-                )}
-              </button>
-            )}
-
             {/* Enable All in Module */}
             <button
               type="button"
@@ -199,7 +157,6 @@ export default function CommandModule({
             isPending={pendingCommands.has(cmd.name) || isModulePending}
             onToggle={onToggleCommand}
             onUnlockGlobal={onUnlockGlobal}
-            onOpenChannelRules={onOpenChannelRules}
           />
         ))}
       </div>

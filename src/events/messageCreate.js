@@ -114,7 +114,6 @@ export default {
     }
 
     // B1. Guild-wide command disable check (dashboard toggle & category toggle)
-    const categoryName = command.category ? command.category.toLowerCase() : null;
     const globallyDisabled =
       (await isCommandGloballyDisabled(message.guild.id, resolvedName)) ||
       (categoryName ? await isCommandGloballyDisabled(message.guild.id, `category:${categoryName}`) : false);

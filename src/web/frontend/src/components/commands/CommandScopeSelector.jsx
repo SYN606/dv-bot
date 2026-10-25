@@ -10,6 +10,7 @@ export default function CommandScopeSelector({
   channelDisabledCount = 0,
   guildDisabledCount = 0,
   onResetChannel,
+  onResetAll,
   isResetPending = false,
 }) {
   const isGlobal = selectedChannel === "global";
@@ -27,7 +28,7 @@ export default function CommandScopeSelector({
             <h2 className="text-xl font-bold text-white tracking-tight">Configuration Scope</h2>
           </div>
           <p className="text-xs text-slate-400 mt-1 max-w-xl">
-            Choose whether you are editing default global permissions or creating custom channel overrides.
+            Choose whether you are editing default global permissions or configuring channel-specific permissions.
           </p>
         </div>
 
@@ -90,13 +91,24 @@ export default function CommandScopeSelector({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                You are currently configuring commands for the entire server. Any command disabled here is locked across all channels.
+                You are currently configuring commands for the entire server. Toggling any command or category here applies across all channels.
               </p>
             </div>
           </div>
 
-          <div className="px-4 py-2 rounded-xl bg-slate-900/90 border border-white/10 text-xs text-slate-300 font-mono shrink-0 shadow-sm">
-            Applies to all channels
+          <div className="flex items-center gap-3 shrink-0">
+            {onResetAll && (
+              <button
+                type="button"
+                onClick={onResetAll}
+                disabled={isResetPending}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-rose-500/10 text-slate-300 hover:text-rose-300 border border-white/10 hover:border-rose-500/30 flex items-center gap-2 transition-all shadow-sm disabled:opacity-50"
+                title="Wipe all disabled and restricted commands from the database and restore all commands to default"
+              >
+                <RotateCcw className={`w-4 h-4 text-amber-400 ${isResetPending ? "animate-spin" : ""}`} />
+                <span>Reset to Defaults</span>
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -113,7 +125,7 @@ export default function CommandScopeSelector({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-1 max-w-xl leading-relaxed">
-                Commands disabled here will only be blocked in <span className="text-white font-medium">#{currentChannelObj?.name || "this channel"}</span>. Commands disabled server-wide remain locked globally.
+                Commands disabled here will only be blocked in <span className="text-white font-medium">#{currentChannelObj?.name || "this channel"}</span>. Toggling a switch turns that command on or off for this channel.
               </p>
             </div>
           </div>
@@ -131,18 +143,32 @@ export default function CommandScopeSelector({
               />
             </div>
 
-            {onResetChannel && (
-              <button
-                type="button"
-                onClick={onResetChannel}
-                disabled={isResetPending}
-                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-sm"
-                title="Remove all restrictions from this channel and revert to server defaults"
-              >
-                <RotateCcw className={`w-4 h-4 text-amber-400 ${isResetPending ? "animate-spin" : ""}`} />
-                <span>Reset to Defaults</span>
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {onResetChannel && (
+                <button
+                  type="button"
+                  onClick={onResetChannel}
+                  disabled={isResetPending}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-sm"
+                  title="Remove all restrictions from this channel"
+                >
+                  <RotateCcw className={`w-4 h-4 text-amber-400 ${isResetPending ? "animate-spin" : ""}`} />
+                  <span>Reset Channel</span>
+                </button>
+              )}
+
+              {onResetAll && (
+                <button
+                  type="button"
+                  onClick={onResetAll}
+                  disabled={isResetPending}
+                  className="px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-rose-400 transition-colors"
+                  title="Wipe all database entries and restore everything to default"
+                >
+                  Reset All
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

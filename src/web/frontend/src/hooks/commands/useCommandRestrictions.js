@@ -6,6 +6,7 @@ import {
   toggleCommandModule,
   bulkToggleCommands,
   resetChannelRestrictions,
+  resetAllCommandRestrictions,
   setCommandChannelRule,
   clearCommandChannelRule,
 } from "../../api/client";
@@ -254,6 +255,42 @@ export function useCommandRestrictions(guildId, showToast) {
     }
   };
 
+  // Reset ALL permissions & restrictions across the entire server, wiping all DB entries
+  const handleResetAll = async () => {
+    setIsBulkPending(true);
+    try {
+      const res = await resetAllCommandRestrictions(guildId);
+      if (res && res.commands) {
+        setData({
+          commands: res.commands || [],
+          disabled: res.disabled || [],
+          guildDisabled: res.guildDisabled || [],
+          channelDisabled: res.channelDisabled || [],
+          channelRules: res.channelRules || {},
+          modules: res.modules || [],
+          scope: res.scope || (selectedChannel === "global" ? "guild" : "channel"),
+          channelId: res.channelId || null,
+          stats: res.stats || data.stats,
+        });
+      } else {
+        await fetchCommands();
+      }
+
+      showToast?.({
+        title: "All Permissions Reset",
+        message: "All command restrictions and custom toggles have been removed from the database.",
+        type: "success",
+      });
+      return true;
+    } catch (err) {
+      console.error(err);
+      showToast?.({ title: "Error", message: err.message || "Failed to reset all permissions.", type: "error" });
+      return false;
+    } finally {
+      setIsBulkPending(false);
+    }
+  };
+
   // Set "enable only in" or "disable only in" channel rule for command or category
   const handleSaveChannelRule = async (feature, mode, channelList) => {
     setIsBulkPending(true);
@@ -361,6 +398,7 @@ export function useCommandRestrictions(guildId, showToast) {
     handleToggleModule,
     handleBulkToggle,
     handleResetChannel,
+    handleResetAll,
     handleSaveChannelRule,
     handleClearChannelRule,
   };

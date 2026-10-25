@@ -301,6 +301,15 @@ export async function resetChannelRestrictions(guildId, channelId) {
   return result;
 }
 
+export async function resetAllCommandRestrictions(guildId) {
+  const result = await fetchApi(`/api/guilds/${guildId}/commands/reset_all`, {
+    method: "POST",
+    body: {},
+  });
+  invalidatePath(`/api/guilds/${guildId}/commands`);
+  return result;
+}
+
 export async function setCommandChannelRule(guildId, payload) {
   const result = await fetchApi(`/api/guilds/${guildId}/commands/channel_rule`, {
     method: "POST",

@@ -8,7 +8,6 @@ import {
   CommandStats,
   CommandToolbar,
   CommandModule,
-  CommandChannelRuleModal,
 } from "../../components/commands";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
@@ -18,7 +17,8 @@ export default function CommandsPage({ showToast }) {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [confirmBulk, setConfirmBulk] = useState({ open: false, enable: true });
-  const [channelRuleModal, setChannelRuleModal] = useState({ open: false, target: null, isCategory: false });
+  const [confirmResetAll, setConfirmResetAll] = useState(false);
+  const [confirmResetChannel, setConfirmResetChannel] = useState(false);
 
   const {
     channels,
@@ -40,7 +40,7 @@ export default function CommandsPage({ showToast }) {
     handleToggleModule,
     handleBulkToggle,
     handleResetChannel,
-    handleSaveChannelRule,
+    handleResetAll,
   } = useCommandRestrictions(guildId, showToast);
 
   const isChannelScope = selectedChannel !== "global";
@@ -161,7 +161,8 @@ export default function CommandsPage({ showToast }) {
         setSelectedChannel={setSelectedChannel}
         channelDisabledCount={channelDisabled.length}
         guildDisabledCount={guildDisabled.length}
-        onResetChannel={isChannelScope ? handleResetChannel : null}
+        onResetChannel={isChannelScope ? () => setConfirmResetChannel(true) : null}
+        onResetAll={() => setConfirmResetAll(true)}
         isResetPending={isBulkPending}
       />
 
@@ -213,24 +214,10 @@ export default function CommandsPage({ showToast }) {
               onToggleCommand={handleToggleCommand}
               onToggleModule={handleToggleModule}
               onUnlockGlobal={(cmdName) => handleToggleCommand(cmdName, true, true)}
-              onOpenChannelRules={(target, isCat) =>
-                setChannelRuleModal({ open: true, target, isCategory: isCat })
-              }
             />
           ))
         )}
       </div>
-
-      {/* Interactive Channel Availability Rule Modal ("Enable only in" / "Disable only in") */}
-      <CommandChannelRuleModal
-        isOpen={channelRuleModal.open}
-        onClose={() => setChannelRuleModal({ open: false, target: null, isCategory: false })}
-        target={channelRuleModal.target}
-        isCategory={channelRuleModal.isCategory}
-        channels={channels}
-        onSave={handleSaveChannelRule}
-        isPending={isBulkPending}
-      />
 
       {/* Global Bulk Enable / Disable Confirmation Dialog */}
       <ConfirmDialog
@@ -251,9 +238,39 @@ export default function CommandsPage({ showToast }) {
               }? Non-administrators will be able to execute these commands.`
             : `Are you sure you want to disable all configurable commands ${
                 isChannelScope ? "for this channel" : "server-wide"
-              }? Protected core commands (like /help, /command) will remain accessible.`
+              }? Protected core commands (like /help) will remain accessible.`
         }
         confirmText={confirmBulk.enable ? "Enable All" : "Disable All"}
+      />
+
+      {/* Reset ALL to Defaults Confirmation Dialog (Wipes all database records) */}
+      <ConfirmDialog
+        open={confirmResetAll}
+        onClose={() => setConfirmResetAll(false)}
+        onConfirm={async () => {
+          setConfirmResetAll(false);
+          await handleResetAll();
+        }}
+        isPending={isBulkPending}
+        isDestructive={true}
+        title="Reset All Commands to Default?"
+        description="This will permanently delete all custom command disables and channel restrictions from the database. All commands across all channels will be restored to enabled by default."
+        confirmText="Reset Everything to Default"
+      />
+
+      {/* Reset Channel Overrides Confirmation Dialog */}
+      <ConfirmDialog
+        open={confirmResetChannel}
+        onClose={() => setConfirmResetChannel(false)}
+        onConfirm={async () => {
+          setConfirmResetChannel(false);
+          await handleResetChannel();
+        }}
+        isPending={isBulkPending}
+        isDestructive={true}
+        title="Reset Channel Restrictions?"
+        description="This will remove all channel-specific overrides from this channel and revert it to match your server-wide policy."
+        confirmText="Reset Channel"
       />
     </div>
   );

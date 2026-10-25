@@ -1,5 +1,5 @@
 import React from "react";
-import { Lock, Loader2, Check, X, Unlock, Terminal, SlidersHorizontal, CheckCircle2, Ban } from "lucide-react";
+import { Lock, Loader2, Check, X, Unlock } from "lucide-react";
 import Switch from "../ui/Switch";
 
 export default function CommandRow({
@@ -10,15 +10,10 @@ export default function CommandRow({
   isPending,
   onToggle,
   onUnlockGlobal,
-  onOpenChannelRules,
 }) {
   const isProtected = Boolean(command.isProtected);
   const blockedByGlobal = isChannelScope && isGloballyDisabled;
   const isEnabled = !isDisabledInScope && !blockedByGlobal;
-  const channelRule = command.channelRule || { mode: "everywhere", channels: [] };
-  const hasWhitelist = channelRule.mode === "enable_only" && (channelRule.channels?.length > 0 || channelRule.allowChannels?.length > 0);
-  const hasBlacklist = channelRule.mode === "disable_only" && (channelRule.channels?.length > 0 || channelRule.denyChannels?.length > 0);
-  const ruleChannelCount = (channelRule.channels?.length || channelRule.allowChannels?.length || channelRule.denyChannels?.length || 0);
 
   return (
     <div
@@ -58,7 +53,13 @@ export default function CommandRow({
                   : "text-rose-400 bg-rose-500/10 border-rose-500/20"
               }`}
             >
-              {isEnabled ? "Enabled" : isChannelScope ? "Blocked in Channel" : "Disabled"}
+              {isEnabled
+                ? isChannelScope
+                  ? "Active in Channel"
+                  : "Active Server-Wide"
+                : isChannelScope
+                ? "Blocked in Channel"
+                : "Disabled Server-Wide"}
             </span>
           )}
         </div>
@@ -121,62 +122,25 @@ export default function CommandRow({
         {command.description || "No description provided."}
       </p>
 
-      {/* Bottom Footer: Aliases & Channel Rules Button */}
-      <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          {command.aliases && command.aliases.length > 0 && (
-            <>
-              <span className="text-[11px] text-slate-500 font-mono font-medium">aliases:</span>
-              {command.aliases.slice(0, 3).map((alias) => (
-                <span
-                  key={alias}
-                  className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-slate-400 border border-white/5"
-                >
-                  {alias}
-                </span>
-              ))}
-              {command.aliases.length > 3 && (
-                <span className="text-[10px] text-slate-500 font-mono">
-                  +{command.aliases.length - 3}
-                </span>
-              )}
-            </>
+      {/* Bottom Footer: Aliases */}
+      {command.aliases && command.aliases.length > 0 && (
+        <div className="pt-3 border-t border-white/5 flex items-center gap-2 flex-wrap">
+          <span className="text-[11px] text-slate-500 font-mono font-medium">aliases:</span>
+          {command.aliases.slice(0, 4).map((alias) => (
+            <span
+              key={alias}
+              className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-slate-400 border border-white/5"
+            >
+              {alias}
+            </span>
+          ))}
+          {command.aliases.length > 4 && (
+            <span className="text-[10px] text-slate-500 font-mono">
+              +{command.aliases.length - 4} more
+            </span>
           )}
         </div>
-
-        {/* Channel Restrictions Rule Indicator & Action */}
-        {!isProtected && onOpenChannelRules && (
-          <button
-            type="button"
-            onClick={() => onOpenChannelRules(command, false)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition-all border shadow-sm ${
-              hasWhitelist
-                ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
-                : hasBlacklist
-                ? "bg-rose-500/15 text-rose-300 border-rose-500/30 hover:bg-rose-500/25"
-                : "bg-slate-900/90 text-slate-400 border-white/10 hover:text-white hover:border-white/20 hover:bg-white/5"
-            }`}
-            title="Configure 'Enable only in' or 'Disable only in' channels"
-          >
-            {hasWhitelist ? (
-              <>
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Only in {ruleChannelCount} Chs</span>
-              </>
-            ) : hasBlacklist ? (
-              <>
-                <Ban className="w-3.5 h-3.5 text-rose-400" />
-                <span>Blocked in {ruleChannelCount} Chs</span>
-              </>
-            ) : (
-              <>
-                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
-                <span>Channels (All)</span>
-              </>
-            )}
-          </button>
-        )}
-      </div>
+      )}
     </div>
   );
 }
