@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { getGuildMeta, getCommands, toggleCommand, toggleCommandModule } from "../../api/client";
+import {
+  getGuildMeta,
+  getCommands,
+  toggleCommand,
+  toggleCommandModule,
+  bulkToggleCommands,
+  resetChannelRestrictions,
+} from "../../api/client";
 
 export function useCommandRestrictions(guildId, showToast) {
   const [selectedChannel, setSelectedChannel] = useState("global");
@@ -7,20 +14,24 @@ export function useCommandRestrictions(guildId, showToast) {
   const [data, setData] = useState({
     commands: [],
     disabled: [],
+    guildDisabled: [],
+    channelDisabled: [],
     modules: [],
-    stats: { total: 0, active: 0, disabled: 0, protected: 0 },
+    scope: "guild",
+    stats: { total: 0, active: 0, disabled: 0, protected: 0, guildDisabledCount: 0, channelDisabledCount: 0 },
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pendingCommands, setPendingCommands] = useState(new Set());
   const [pendingModules, setPendingModules] = useState(new Set());
+  const [isBulkPending, setIsBulkPending] = useState(false);
 
   // 1. Fetch Channels
   useEffect(() => {
     if (!guildId) return;
     getGuildMeta(guildId)
       .then((meta) => {
-        const textChannels = (meta.channels || []).filter((ch) => ch.type === 0 || ch.type === undefined);
+        const textChannels = (meta.channels || []).filter((ch) => ch.type === 0 || ch.type === 5 || ch.type === undefined);
         setChannels(textChannels.length > 0 ? textChannels : meta.channels || []);
       })
       .catch((err) => {
@@ -30,19 +41,25 @@ export function useCommandRestrictions(guildId, showToast) {
 
   // 2. Fetch Commands
   const fetchCommands = useCallback(async () => {
-    if (!guildId || !selectedChannel) return;
+    if (!guildId) return;
     setLoading(true);
     try {
       const res = await getCommands(guildId, selectedChannel);
       setData({
         commands: res.commands || [],
         disabled: res.disabled || [],
+        guildDisabled: res.guildDisabled || [],
+        channelDisabled: res.channelDisabled || [],
         modules: res.modules || [],
+        scope: res.scope || (selectedChannel === "global" ? "guild" : "channel"),
+        channelId: res.channelId || null,
         stats: res.stats || {
           total: (res.commands || []).length,
           active: Math.max(0, (res.commands || []).length - (res.disabled || []).length),
           disabled: (res.disabled || []).length,
           protected: (res.commands || []).filter((c) => c.isProtected).length,
+          guildDisabledCount: (res.guildDisabled || []).length,
+          channelDisabledCount: (res.channelDisabled || []).length,
         },
       });
       setError(null);
@@ -59,38 +76,39 @@ export function useCommandRestrictions(guildId, showToast) {
     fetchCommands();
   }, [fetchCommands]);
 
-  const handleToggleCommand = async (commandName, currentlyDisabled) => {
+  // Toggle single command (supports forceGlobal = true to enable/disable globally even in channel view)
+  const handleToggleCommand = async (commandName, currentlyDisabled, forceGlobal = false) => {
     const nextEnable = currentlyDisabled;
-    setPendingCommands(prev => new Set(prev).add(commandName));
-    
+    setPendingCommands((prev) => new Set(prev).add(commandName));
+
+    const targetChannel = forceGlobal ? null : (selectedChannel === "global" ? null : selectedChannel);
+
     try {
-      await toggleCommand(guildId, {
-        channelId: selectedChannel === "global" ? null : selectedChannel,
+      const res = await toggleCommand(guildId, {
+        channelId: targetChannel,
         commandName,
         enable: nextEnable,
       });
-      
-      // Optimistic update
-      setData(prev => {
-        const nextDisabled = nextEnable 
-          ? prev.disabled.filter(c => c !== commandName)
-          : [...prev.disabled, commandName];
-        
-        return {
-          ...prev,
-          disabled: nextDisabled,
-          stats: {
-            ...prev.stats,
-            active: Math.max(0, prev.commands.length - nextDisabled.length),
-            disabled: nextDisabled.length
-          }
-        };
-      });
-      
-      showToast?.({ 
-        title: "Success", 
-        message: `Command /${commandName} ${nextEnable ? "enabled" : "disabled"}`, 
-        type: "success" 
+
+      if (res && res.commands) {
+        setData({
+          commands: res.commands || [],
+          disabled: res.disabled || [],
+          guildDisabled: res.guildDisabled || [],
+          channelDisabled: res.channelDisabled || [],
+          modules: res.modules || [],
+          scope: res.scope || (selectedChannel === "global" ? "guild" : "channel"),
+          channelId: res.channelId || null,
+          stats: res.stats || data.stats,
+        });
+      } else {
+        await fetchCommands();
+      }
+
+      showToast?.({
+        title: "Success",
+        message: `Command /${commandName} ${nextEnable ? "enabled" : "disabled"} ${targetChannel ? "in channel" : "server-wide"}.`,
+        type: "success",
       });
       return true;
     } catch (err) {
@@ -98,7 +116,7 @@ export function useCommandRestrictions(guildId, showToast) {
       showToast?.({ title: "Error", message: err.message || "Failed to update command.", type: "error" });
       return false;
     } finally {
-      setPendingCommands(prev => {
+      setPendingCommands((prev) => {
         const next = new Set(prev);
         next.delete(commandName);
         return next;
@@ -106,39 +124,129 @@ export function useCommandRestrictions(guildId, showToast) {
     }
   };
 
+  // Toggle entire category
   const handleToggleModule = async (moduleId, shouldEnableAll) => {
-    setPendingModules(prev => new Set(prev).add(moduleId));
-    
+    setPendingModules((prev) => new Set(prev).add(moduleId));
+
+    const targetChannel = selectedChannel === "global" ? null : selectedChannel;
+
     try {
       const res = await toggleCommandModule(guildId, {
-        channelId: selectedChannel === "global" ? null : selectedChannel,
+        channelId: targetChannel,
         category: moduleId,
         enable: shouldEnableAll,
       });
-      
-      // Update from backend response to ensure accuracy
-      setData(prev => ({
-        ...prev,
-        disabled: res.disabled || [],
-        stats: res.stats || prev.stats
-      }));
-      
-      showToast?.({ 
-        title: "Success", 
-        message: `Module ${moduleId} ${shouldEnableAll ? "enabled" : "disabled"}`, 
-        type: "success" 
+
+      if (res && res.commands) {
+        setData({
+          commands: res.commands || [],
+          disabled: res.disabled || [],
+          guildDisabled: res.guildDisabled || [],
+          channelDisabled: res.channelDisabled || [],
+          modules: res.modules || [],
+          scope: res.scope || (selectedChannel === "global" ? "guild" : "channel"),
+          channelId: res.channelId || null,
+          stats: res.stats || data.stats,
+        });
+      } else {
+        await fetchCommands();
+      }
+
+      showToast?.({
+        title: "Success",
+        message: `Category ${moduleId.toUpperCase()} ${shouldEnableAll ? "enabled" : "disabled"} ${targetChannel ? "in channel" : "server-wide"}.`,
+        type: "success",
       });
       return true;
     } catch (err) {
       console.error(err);
-      showToast?.({ title: "Error", message: err.message || "Failed to update module.", type: "error" });
+      showToast?.({ title: "Error", message: err.message || "Failed to update category.", type: "error" });
       return false;
     } finally {
-      setPendingModules(prev => {
+      setPendingModules((prev) => {
         const next = new Set(prev);
         next.delete(moduleId);
         return next;
       });
+    }
+  };
+
+  // Bulk toggle all commands
+  const handleBulkToggle = async (shouldEnableAll) => {
+    setIsBulkPending(true);
+    const targetChannel = selectedChannel === "global" ? null : selectedChannel;
+
+    try {
+      const res = await bulkToggleCommands(guildId, {
+        channelId: targetChannel,
+        enable: shouldEnableAll,
+      });
+
+      if (res && res.commands) {
+        setData({
+          commands: res.commands || [],
+          disabled: res.disabled || [],
+          guildDisabled: res.guildDisabled || [],
+          channelDisabled: res.channelDisabled || [],
+          modules: res.modules || [],
+          scope: res.scope || (selectedChannel === "global" ? "guild" : "channel"),
+          channelId: res.channelId || null,
+          stats: res.stats || data.stats,
+        });
+      } else {
+        await fetchCommands();
+      }
+
+      showToast?.({
+        title: "Success",
+        message: `All commands ${shouldEnableAll ? "enabled" : "disabled"} ${targetChannel ? "in channel" : "server-wide"}.`,
+        type: "success",
+      });
+      return true;
+    } catch (err) {
+      console.error(err);
+      showToast?.({ title: "Error", message: err.message || "Failed bulk update.", type: "error" });
+      return false;
+    } finally {
+      setIsBulkPending(false);
+    }
+  };
+
+  // Reset channel overrides back to global policy
+  const handleResetChannel = async () => {
+    if (!selectedChannel || selectedChannel === "global") return false;
+    setIsBulkPending(true);
+
+    try {
+      const res = await resetChannelRestrictions(guildId, selectedChannel);
+
+      if (res && res.commands) {
+        setData({
+          commands: res.commands || [],
+          disabled: res.disabled || [],
+          guildDisabled: res.guildDisabled || [],
+          channelDisabled: res.channelDisabled || [],
+          modules: res.modules || [],
+          scope: res.scope || "channel",
+          channelId: selectedChannel,
+          stats: res.stats || data.stats,
+        });
+      } else {
+        await fetchCommands();
+      }
+
+      showToast?.({
+        title: "Channel Overrides Cleared",
+        message: "Channel restrictions have been reset to match server-wide policy.",
+        type: "success",
+      });
+      return true;
+    } catch (err) {
+      console.error(err);
+      showToast?.({ title: "Error", message: err.message || "Failed to reset channel.", type: "error" });
+      return false;
+    } finally {
+      setIsBulkPending(false);
     }
   };
 
@@ -151,8 +259,11 @@ export function useCommandRestrictions(guildId, showToast) {
     error,
     pendingCommands,
     pendingModules,
+    isBulkPending,
     refresh: fetchCommands,
     handleToggleCommand,
-    handleToggleModule
+    handleToggleModule,
+    handleBulkToggle,
+    handleResetChannel,
   };
 }

@@ -1,5 +1,5 @@
 // ============================================================================
-// API Transport Layer — Digital Vigital
+// API Transport Layer â€” Digital Vigital
 // ============================================================================
 // Responsibilities:
 //   - fetch with credentials + JSON
@@ -11,15 +11,15 @@
 
 const CACHE_TTL = 15000; // 15 seconds
 
-// Simple TTL cache: url → { data, expires }
+// Simple TTL cache: url â†’ { data, expires }
 const CACHE = new Map();
 
-// In-flight deduplication: url → Promise
+// In-flight deduplication: url â†’ Promise
 const INFLIGHT = new Map();
 
-// ──────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Cache Invalidation Helpers
-// ──────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Invalidate a single exact cache key.
@@ -56,34 +56,34 @@ export function clearCache() {
   INFLIGHT.clear();
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Core Fetch
-// ──────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Core transport. All API calls go through here.
  *
  * Body normalization:
- *   - Pass plain JS objects as `options.body` — this function serializes them.
+ *   - Pass plain JS objects as `options.body` â€” this function serializes them.
  *   - Do NOT pre-stringify bodies before passing to fetchApi.
  */
 export async function fetchApi(endpoint, options = {}) {
   const url = endpoint.startsWith("/") ? endpoint : "/api/" + endpoint;
   const isGet = !options.method || options.method === "GET";
 
-  // ── GET Cache Hit ──
+  // â”€â”€ GET Cache Hit â”€â”€
   if (isGet && CACHE.has(url)) {
     const cached = CACHE.get(url);
     if (Date.now() < cached.expires) return cached.data;
     CACHE.delete(url);
   }
 
-  // ── In-Flight Deduplication for GETs ──
+  // â”€â”€ In-Flight Deduplication for GETs â”€â”€
   if (isGet && INFLIGHT.has(url)) {
     return INFLIGHT.get(url);
   }
 
-  // ── Build Request Config ──
+  // â”€â”€ Build Request Config â”€â”€
   const config = {
     ...options,
     headers: {
@@ -93,17 +93,17 @@ export async function fetchApi(endpoint, options = {}) {
     credentials: "include",
   };
 
-  // Serialize object bodies consistently — callers should pass plain objects
+  // Serialize object bodies consistently â€” callers should pass plain objects
   if (options.body !== undefined && options.body !== null) {
     if (typeof options.body === "object") {
       config.body = JSON.stringify(options.body);
     } else {
-      // Already a string or primitive — pass through (handles edge cases)
+      // Already a string or primitive â€” pass through (handles edge cases)
       config.body = options.body;
     }
   }
 
-  // ── Execute Request ──
+  // â”€â”€ Execute Request â”€â”€
   const requestPromise = fetch(url, config)
     .then(async (response) => {
       const data = await response.json().catch(() => ({}));
@@ -261,7 +261,7 @@ export async function deleteMediaOnly(guildId, channelId) {
 // Command Restrictions
 
 export async function getCommands(guildId, channelId) {
-  const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : "";
+  const query = (channelId && channelId !== "global") ? `?channel_id=${encodeURIComponent(channelId)}` : "";
   return fetchApi(`/api/guilds/${guildId}/commands${query}`);
 }
 
@@ -278,6 +278,24 @@ export async function toggleCommandModule(guildId, payload) {
   const result = await fetchApi(`/api/guilds/${guildId}/commands/module_toggle`, {
     method: "POST",
     body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/commands`);
+  return result;
+}
+
+export async function bulkToggleCommands(guildId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/commands/bulk_toggle`, {
+    method: "POST",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/commands`);
+  return result;
+}
+
+export async function resetChannelRestrictions(guildId, channelId) {
+  const result = await fetchApi(`/api/guilds/${guildId}/commands/reset_channel`, {
+    method: "POST",
+    body: { channel_id: channelId },
   });
   invalidatePath(`/api/guilds/${guildId}/commands`);
   return result;
@@ -401,7 +419,7 @@ export async function getSupporterConfig(guildId) {
 }
 
 export async function setSupporterConfig(guildId, data) {
-  // Pass plain object — fetchApi handles serialization
+  // Pass plain object â€” fetchApi handles serialization
   const result = await fetchApi(`/api/guilds/${guildId}/supporter`, {
     method: "PUT",
     body: data,
@@ -417,7 +435,7 @@ export async function getAutoRoleConfig(guildId) {
 }
 
 export async function setAutoRoleConfig(guildId, payload) {
-  // Pass plain object — fetchApi handles serialization
+  // Pass plain object â€” fetchApi handles serialization
   const result = await fetchApi(`/api/guilds/${guildId}/autorole`, {
     method: "PUT",
     body: payload,
@@ -449,9 +467,9 @@ export async function removeWarningPunishment(guildId, warnCount) {
   return result;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Message Studio API
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getMessageStudioChannels(guildId) {
   return fetchApi(`/api/guilds/${guildId}/message-studio/channels`);

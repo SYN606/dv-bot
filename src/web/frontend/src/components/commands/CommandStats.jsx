@@ -1,12 +1,12 @@
 import React from "react";
 import { Terminal, ShieldAlert, PowerOff, ShieldCheck } from "lucide-react";
 
-export default function CommandStats({ stats }) {
+export default function CommandStats({ stats = {} }) {
   const statItems = [
-    { label: "Total Commands", value: stats.total, icon: <Terminal className="w-4 h-4" />, color: "text-slate-400" },
-    { label: "Active", value: stats.active, icon: <ShieldCheck className="w-4 h-4" />, color: "text-emerald-400" },
-    { label: "Disabled", value: stats.disabled, icon: <PowerOff className="w-4 h-4" />, color: "text-rose-400" },
-    { label: "Protected", value: stats.protected, icon: <ShieldAlert className="w-4 h-4" />, color: "text-indigo-400" },
+    { label: "Total Commands", value: stats?.total ?? 0, icon: <Terminal className="w-4 h-4" />, color: "text-slate-400" },
+    { label: "Active", value: stats?.active ?? 0, icon: <ShieldCheck className="w-4 h-4" />, color: "text-emerald-400" },
+    { label: "Disabled", value: stats?.disabled ?? 0, icon: <PowerOff className="w-4 h-4" />, color: "text-rose-400" },
+    { label: "Protected", value: stats?.protected ?? 0, icon: <ShieldAlert className="w-4 h-4" />, color: "text-indigo-400" },
   ];
 
   return (

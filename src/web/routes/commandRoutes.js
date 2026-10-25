@@ -67,25 +67,31 @@ export const MODULE_METADATA = {
   },
 };
 
-// 1. Command Restrictions List & Info
-commandRoutes.get("/guilds/:guildId/commands", async (c) => {
-  const guildId = c.req.param("guildId");
-  const channelId = c.req.query("channel_id") || c.req.query("channelId");
-  const client = c.get("discordClient");
+// Helper: Build enriched commands state payload
+export async function getGuildCommandsState(guildId, rawChannelId, client) {
+  const channelId =
+    rawChannelId &&
+    rawChannelId !== "global" &&
+    rawChannelId !== "all" &&
+    rawChannelId !== "null" &&
+    rawChannelId !== "undefined"
+      ? String(rawChannelId)
+      : null;
 
-  const allCommands = client
+  const allCommands = client?.commands
     ? Array.from(client.commands.values()).map((cmd) => {
         const cat = (cmd.category || "Utility").toLowerCase();
         return {
           name: cmd.name,
           description: cmd.description || "No description provided.",
           category: cat,
+          aliases: Array.isArray(cmd.aliases) ? cmd.aliases : [],
           isProtected: PROTECTED_COMMANDS.has(cmd.name.toLowerCase()),
         };
       })
     : [];
 
-  // Fetch guild-wide disabled commands (always)
+  // Fetch guild-wide disabled commands
   const guildDisabledCacheKey = `guild:${guildId}:guild_disabled_cmds`;
   let guildDisabled = apiCache.get(guildDisabledCacheKey);
   if (!guildDisabled) {
@@ -105,15 +111,34 @@ commandRoutes.get("/guilds/:guildId/commands", async (c) => {
     }
   }
 
-  // Merge: guild-wide + channel-specific (deduplicated)
-  const disabled = [...new Set([...guildDisabled, ...channelDisabled].map((d) => String(d).toLowerCase()))];
+  const guildDisabledSet = new Set(guildDisabled.map((d) => String(d).toLowerCase()));
+  const channelDisabledSet = new Set(channelDisabled.map((d) => String(d).toLowerCase()));
+
+  // Effective disabled in current scope
+  const disabled = channelId
+    ? [...new Set([...guildDisabled, ...channelDisabled].map((d) => String(d).toLowerCase()))]
+    : guildDisabled.map((d) => String(d).toLowerCase());
 
   const disabledSet = new Set(disabled);
-  const guildDisabledSet = new Set(guildDisabled.map((d) => String(d).toLowerCase()));
+
+  // Enrich commands with per-scope states
+  const enrichedCommands = allCommands.map((cmd) => {
+    const cmdNameLower = cmd.name.toLowerCase();
+    const isGuildOff = guildDisabledSet.has(cmdNameLower);
+    const isChannelOff = channelDisabledSet.has(cmdNameLower);
+    const isOffInScope = channelId ? (isGuildOff || isChannelOff) : isGuildOff;
+
+    return {
+      ...cmd,
+      disabled: isOffInScope,
+      guildDisabled: isGuildOff,
+      channelDisabled: isChannelOff,
+    };
+  });
 
   // Group commands into functional modules
   const categoryMap = new Map();
-  for (const cmd of allCommands) {
+  for (const cmd of enrichedCommands) {
     const catId = cmd.category || "utility";
     if (!categoryMap.has(catId)) {
       const meta = MODULE_METADATA[catId] || {
@@ -128,60 +153,78 @@ commandRoutes.get("/guilds/:guildId/commands", async (c) => {
         icon: meta.icon,
         commands: [],
         total: 0,
+        activeCount: 0,
         disabledCount: 0,
         nonProtectedCount: 0,
         canDisable: false,
         isAllDisabled: false,
+        isAllActive: false,
       });
     }
 
     const mod = categoryMap.get(catId);
-    const cmdNameLower = cmd.name.toLowerCase();
-    mod.commands.push({
-      ...cmd,
-      disabled: disabledSet.has(cmdNameLower),
-      guildDisabled: guildDisabledSet.has(cmdNameLower),
-    });
+    mod.commands.push(cmd);
     mod.total += 1;
     if (!cmd.isProtected) {
       mod.nonProtectedCount += 1;
       mod.canDisable = true;
     }
-    if (disabledSet.has(cmd.name.toLowerCase())) {
+    if (cmd.disabled) {
       mod.disabledCount += 1;
+    } else {
+      mod.activeCount += 1;
     }
   }
 
   for (const mod of categoryMap.values()) {
     mod.isAllDisabled = mod.nonProtectedCount > 0 && mod.disabledCount >= mod.nonProtectedCount;
+    mod.isAllActive = mod.nonProtectedCount > 0 && mod.disabledCount === 0;
   }
 
   const modules = Array.from(categoryMap.values());
-  const totalCount = allCommands.length;
-  const disabledCount = disabled.length;
-  const protectedCount = allCommands.filter((cmd) => cmd.isProtected).length;
+  const totalCount = enrichedCommands.length;
+  const disabledCount = enrichedCommands.filter((c) => c.disabled).length;
+  const protectedCount = enrichedCommands.filter((c) => c.isProtected).length;
   const activeCount = Math.max(0, totalCount - disabledCount);
 
-  return c.json({
-    commands: allCommands,
+  return {
+    commands: enrichedCommands,
     disabled,
     guildDisabled,
+    channelDisabled,
     modules,
+    scope: channelId ? "channel" : "guild",
+    channelId,
     stats: {
       total: totalCount,
       active: activeCount,
       disabled: disabledCount,
       protected: protectedCount,
+      guildDisabledCount: guildDisabled.length,
+      channelDisabledCount: channelDisabled.length,
     },
-  });
+  };
+}
+
+// 1. Command Restrictions List & Info
+commandRoutes.get("/guilds/:guildId/commands", async (c) => {
+  const guildId = c.req.param("guildId");
+  const rawChannel = c.req.query("channel_id") || c.req.query("channelId");
+  const client = c.get("discordClient");
+
+  const state = await getGuildCommandsState(guildId, rawChannel, client);
+  return c.json(state);
 });
 
+// Single Command Toggle
 commandRoutes.post("/guilds/:guildId/commands/toggle", async (c) => {
   const guildId = c.req.param("guildId");
   const body = await c.req.json().catch(() => ({}));
-  const channel_id = body.channel_id || body.channelId;
+  const rawChannel = body.channel_id || body.channelId;
+  const channel_id = (rawChannel && rawChannel !== "global" && rawChannel !== "null") ? String(rawChannel) : null;
   const command_name = (body.command_name || body.commandName || "").toLowerCase().replace(/^\//, "");
   const enable = body.enable !== undefined ? !!body.enable : !body.disabled;
+  const client = c.get("discordClient");
 
   if (!command_name) {
     return c.json({ error: "command_name is required" }, 400);
@@ -191,7 +234,7 @@ commandRoutes.post("/guilds/:guildId/commands/toggle", async (c) => {
     return c.json({ error: "Protected commands cannot be disabled." }, 400);
   }
 
-  // Guild-wide toggle (no channel_id supplied â€” used by the dashboard toggle switch)
+  // Guild-wide toggle
   if (!channel_id) {
     if (enable) {
       await enableCommandGuild(guildId, command_name);
@@ -199,33 +242,40 @@ commandRoutes.post("/guilds/:guildId/commands/toggle", async (c) => {
       await disableCommandGuild(guildId, command_name);
     }
     apiCache.delete(`guild:${guildId}:guild_disabled_cmds`);
-    return c.json({ success: true, command: command_name, enabled: enable, scope: "guild" });
-  }
-
-  // Channel-scoped toggle (legacy â€” used by /command disable in-chat)
-  if (enable) {
-    await enableCommand(guildId, channel_id, command_name);
   } else {
-    await disableCommand(guildId, channel_id, command_name);
+    // Channel-scoped toggle
+    if (enable) {
+      await enableCommand(guildId, channel_id, command_name);
+    } else {
+      await disableCommand(guildId, channel_id, command_name);
+    }
+    apiCache.delete(`guild:${guildId}:disabled_cmds:${channel_id}`);
   }
 
-  apiCache.delete(`guild:${guildId}:disabled_cmds:${channel_id}`);
-  return c.json({ success: true, command: command_name, enabled: enable, scope: "channel", channel_id });
+  const state = await getGuildCommandsState(guildId, channel_id, client);
+  return c.json({
+    success: true,
+    command: command_name,
+    enabled: enable,
+    scope: channel_id ? "channel" : "guild",
+    ...state,
+  });
 });
 
-// Module Bulk Toggle (Enable / Disable entire category â€” guild-wide or channel-scoped)
+// Module Bulk Toggle (Enable / Disable entire category)
 commandRoutes.post("/guilds/:guildId/commands/module_toggle", async (c) => {
   const guildId = c.req.param("guildId");
   const body = await c.req.json().catch(() => ({}));
-  const channel_id = body.channel_id || body.channelId;
+  const rawChannel = body.channel_id || body.channelId;
+  const channel_id = (rawChannel && rawChannel !== "global" && rawChannel !== "null") ? String(rawChannel) : null;
   const category = (body.category || body.module || "").trim().toLowerCase();
   const enable = body.enable !== undefined ? !!body.enable : !body.disabled;
+  const client = c.get("discordClient");
 
   if (!category) {
     return c.json({ error: "category is required" }, 400);
   }
 
-  const client = c.get("discordClient");
   if (!client || !client.commands) {
     return c.json({ error: "Bot client is not available." }, 500);
   }
@@ -256,37 +306,111 @@ commandRoutes.post("/guilds/:guildId/commands/module_toggle", async (c) => {
     return c.json({ error: `No commands found for module '${category}'.` }, 404);
   }
 
-  let result;
-  let scope;
-
   if (!channel_id) {
-    // Guild-wide module toggle (dashboard)
-    scope = "guild";
+    // Guild-wide module toggle
     if (enable) {
-      result = await bulkEnableCommandsGuild(guildId, targetCommands);
+      await bulkEnableCommandsGuild(guildId, [...targetCommands, `category:${category}`]);
     } else {
-      result = await bulkDisableCommandsGuild(guildId, targetCommands);
+      await bulkDisableCommandsGuild(guildId, [...targetCommands, `category:${category}`]);
     }
     apiCache.delete(`guild:${guildId}:guild_disabled_cmds`);
   } else {
-    // Channel-scoped module toggle (in-chat /command)
-    scope = "channel";
+    // Channel-scoped module toggle
     if (enable) {
-      result = await bulkUnrestrictCommands(guildId, channel_id, targetCommands);
+      await bulkUnrestrictCommands(guildId, channel_id, [...targetCommands, `category:${category}`]);
     } else {
-      result = await bulkRestrictCommands(guildId, channel_id, targetCommands);
+      await bulkRestrictCommands(guildId, channel_id, [...targetCommands, `category:${category}`]);
     }
     apiCache.delete(`guild:${guildId}:disabled_cmds:${channel_id}`);
   }
 
+  const state = await getGuildCommandsState(guildId, channel_id, client);
   return c.json({
     success: true,
     category,
     enabled: enable,
-    scope,
+    scope: channel_id ? "channel" : "guild",
     affectedCount: targetCommands.length,
     skippedProtected: protectedSkipped,
-    details: result,
+    ...state,
+  });
+});
+
+// Bulk Toggle All Commands (Server-wide or Channel-wide)
+commandRoutes.post("/guilds/:guildId/commands/bulk_toggle", async (c) => {
+  const guildId = c.req.param("guildId");
+  const body = await c.req.json().catch(() => ({}));
+  const rawChannel = body.channel_id || body.channelId;
+  const channel_id = (rawChannel && rawChannel !== "global" && rawChannel !== "null") ? String(rawChannel) : null;
+  const enable = body.enable !== undefined ? !!body.enable : !body.disabled;
+  const client = c.get("discordClient");
+
+  if (!client || !client.commands) {
+    return c.json({ error: "Bot client is not available." }, 500);
+  }
+
+  const targetCommands = [];
+  for (const cmd of client.commands.values()) {
+    const name = cmd.name.toLowerCase();
+    if (!PROTECTED_COMMANDS.has(name)) {
+      targetCommands.push(name);
+    }
+  }
+
+  if (!channel_id) {
+    if (enable) {
+      await bulkEnableCommandsGuild(guildId, targetCommands);
+    } else {
+      await bulkDisableCommandsGuild(guildId, targetCommands);
+    }
+    apiCache.delete(`guild:${guildId}:guild_disabled_cmds`);
+  } else {
+    if (enable) {
+      await bulkUnrestrictCommands(guildId, channel_id, targetCommands);
+    } else {
+      await bulkRestrictCommands(guildId, channel_id, targetCommands);
+    }
+    apiCache.delete(`guild:${guildId}:disabled_cmds:${channel_id}`);
+  }
+
+  const state = await getGuildCommandsState(guildId, channel_id, client);
+  return c.json({
+    success: true,
+    enabled: enable,
+    scope: channel_id ? "channel" : "guild",
+    affectedCount: targetCommands.length,
+    ...state,
+  });
+});
+
+// Reset Channel Overrides
+commandRoutes.post("/guilds/:guildId/commands/reset_channel", async (c) => {
+  const guildId = c.req.param("guildId");
+  const body = await c.req.json().catch(() => ({}));
+  const rawChannel = body.channel_id || body.channelId;
+  const channel_id = (rawChannel && rawChannel !== "global" && rawChannel !== "null") ? String(rawChannel) : null;
+  const client = c.get("discordClient");
+
+  if (!channel_id) {
+    return c.json({ error: "channel_id is required to reset channel restrictions." }, 400);
+  }
+
+  const { RestrictedCommand } = await import("../../db/models/index.js");
+  const { clearGuildRestrictCache } = await import("../../db/helpers/channelCommandRestrict.js");
+
+  await RestrictedCommand.destroy({
+    where: { guild_id: String(guildId), channel_id: String(channel_id) },
+  });
+
+  clearGuildRestrictCache(guildId);
+  apiCache.delete(`guild:${guildId}:disabled_cmds:${channel_id}`);
+
+  const state = await getGuildCommandsState(guildId, channel_id, client);
+  return c.json({
+    success: true,
+    reset: true,
+    channelId: channel_id,
+    ...state,
   });
 });
 
