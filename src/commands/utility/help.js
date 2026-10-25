@@ -38,6 +38,11 @@ const CATEGORY_META = {
     emoji: "🛠️",
     description: "General utility tools, avatars, server info, and user lookups.",
   },
+  fun: {
+    name: "Fun",
+    emoji: "🎉",
+    description: "Social anime roleplay interactions, ship calculator, and fun commands.",
+  },
   voice: {
     name: "Voice",
     emoji: "🔊",

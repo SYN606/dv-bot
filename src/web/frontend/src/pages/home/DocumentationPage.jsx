@@ -13,12 +13,14 @@ import {
   Volume2,
   Layers,
   BookOpen,
+  Sparkles,
 } from "lucide-react";
 
 const CATEGORY_META = {
   all: { name: "All Commands", icon: Layers },
   moderation: { name: "Moderation", icon: Shield },
   admin: { name: "Administration", icon: Sliders },
+  fun: { name: "Fun & Roleplay", icon: Sparkles },
   utility: { name: "Utility", icon: Wrench },
   channels: { name: "Channels", icon: Hash },
   voice: { name: "Voice Tools", icon: Volume2 },

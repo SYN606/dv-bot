@@ -102,7 +102,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Access Restricted",
-            description: `${EMOJIS.get("warning") || "⚠️"} ${aclCheck.reason}`,
+            description: `${EMOJIS.get("warning") || "âš ï¸"} ${aclCheck.reason}`,
             level: "WARNING",
           }),
         ],
@@ -111,14 +111,17 @@ export default {
       return;
     }
 
-    // B1. Guild-wide command disable check (dashboard toggle)
-    const globallyDisabled = await isCommandGloballyDisabled(message.guild.id, resolvedName);
+    // B1. Guild-wide command disable check (dashboard toggle & category toggle)
+    const categoryName = command.category ? command.category.toLowerCase() : null;
+    const globallyDisabled =
+      (await isCommandGloballyDisabled(message.guild.id, resolvedName)) ||
+      (categoryName ? await isCommandGloballyDisabled(message.guild.id, `category:${categoryName}`) : false);
     if (globallyDisabled && !(await isBotAdmin(message))) {
       const reply = await message.reply({
         embeds: [
           makeEmbed({
             title: "Command Disabled",
-            description: `${EMOJIS.get("fail") || "❌"} This command has been **disabled** in this server by an administrator.`,
+            description: `${EMOJIS.get("fail") || "âŒ"} This command has been **disabled** in this server by an administrator.`,
             level: "ERROR",
           }),
         ],
@@ -128,17 +131,15 @@ export default {
     }
 
     // B2. Channel-specific restriction check
-    const restricted = await isCommandRestricted(
-      message.guild.id,
-      message.channel.id,
-      resolvedName
-    );
+    const restricted =
+      (await isCommandRestricted(message.guild.id, message.channel.id, resolvedName)) ||
+      (categoryName ? await isCommandRestricted(message.guild.id, message.channel.id, `category:${categoryName}`) : false);
     if (restricted && !(await isBotAdmin(message))) {
       const reply = await message.reply({
         embeds: [
           makeEmbed({
             title: "Command Restricted",
-            description: `${EMOJIS.get("fail") || "❌"} This command cannot be used in this channel.\n\n${EMOJIS.get("arrow_point") || "👉"} Please try using it in another channel.`,
+            description: `${EMOJIS.get("fail") || "âŒ"} This command cannot be used in this channel.\n\n${EMOJIS.get("arrow_point") || "ðŸ‘‰"} Please try using it in another channel.`,
             level: "ERROR",
           }),
         ],
@@ -153,7 +154,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `${EMOJIS.get("fail") || "❌"} You require **Administrator** or **Bot Admin** authority to use this command.`,
+            description: `${EMOJIS.get("fail") || "âŒ"} You require **Administrator** or **Bot Admin** authority to use this command.`,
             level: "ERROR",
           }),
         ],
@@ -167,7 +168,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `${EMOJIS.get("fail") || "❌"} You require **Manage Server** or **Config** authority to use this command.`,
+            description: `${EMOJIS.get("fail") || "âŒ"} You require **Manage Server** or **Config** authority to use this command.`,
             level: "ERROR",
           }),
         ],
@@ -181,7 +182,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `${EMOJIS.get("fail") || "❌"} You lack the required moderation permissions to run this command.`,
+            description: `${EMOJIS.get("fail") || "âŒ"} You lack the required moderation permissions to run this command.`,
             level: "ERROR",
           }),
         ],
@@ -197,7 +198,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Rate Limited",
-            description: `${EMOJIS.get("warning") || "⚠️"} You are on cooldown. Please wait **${retry.toFixed(1)}s**.`,
+            description: `${EMOJIS.get("warning") || "âš ï¸"} You are on cooldown. Please wait **${retry.toFixed(1)}s**.`,
             level: "WARNING",
           }),
         ],
@@ -230,7 +231,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Command Error",
-            description: `${EMOJIS.get("fail") || "❌"} An unexpected error occurred while processing this command.`,
+            description: `${EMOJIS.get("fail") || "âŒ"} An unexpected error occurred while processing this command.`,
             level: "ERROR",
           }),
         ],
@@ -250,26 +251,26 @@ async function sendMentionReply(client, message, prefix) {
 
   const embed = makeEmbed({
     author: {
-      name: `${botName} • Moderation & Server Security`,
+      name: `${botName} â€¢ Moderation & Server Security`,
       iconURL: avatar,
     },
-    title: `Hey, ${message.author.username}! 👋`,
+    title: `Hey, ${message.author.username}! ðŸ‘‹`,
     description:
       `I'm **${botName}**, your server's moderation, verification, and security assistant.\n\n` +
-      `• **Default Prefix:** \`${prefix}\`\n` +
-      `• **Commands Directory:** Type **\`${prefix}help\`** or **\`/help\`**\n` +
-      `• **Away-From-Keyboard:** Type **\`${prefix}afk [reason]\`**\n` +
-      `• **Web Configuration:** Manage modlogs & roles on the **[Web Dashboard](${CONFIG.DASHBOARD_URL})**`,
+      `â€¢ **Default Prefix:** \`${prefix}\`\n` +
+      `â€¢ **Commands Directory:** Type **\`${prefix}help\`** or **\`/help\`**\n` +
+      `â€¢ **Away-From-Keyboard:** Type **\`${prefix}afk [reason]\`**\n` +
+      `â€¢ **Web Configuration:** Manage modlogs & roles on the **[Web Dashboard](${CONFIG.DASHBOARD_URL})**`,
     level: "PRIMARY",
     color: COLORS.DARK,
     thumbnail: avatar,
     fields: [
-      { name: "🛡️ Protection", value: "`Active`", inline: true },
-      { name: "📡 Latency", value: `\`${wsPing}ms\``, inline: true },
-      { name: "⚡ Prefix", value: `\`${prefix}\``, inline: true },
+      { name: "ðŸ›¡ï¸ Protection", value: "`Active`", inline: true },
+      { name: "ðŸ“¡ Latency", value: `\`${wsPing}ms\``, inline: true },
+      { name: "âš¡ Prefix", value: `\`${prefix}\``, inline: true },
     ],
     footer: {
-      text: `${botName} • Moderation, Verification & Analytics`,
+      text: `${botName} â€¢ Moderation, Verification & Analytics`,
       iconURL: avatar,
     },
   });

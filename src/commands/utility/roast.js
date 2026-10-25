@@ -114,7 +114,7 @@ export default createCommand({
   name: "roast",
   aliases: ["roast", "burn", "fuck"],
   description: "Roast a user with a witty, lighthearted comeback",
-  category: "Utility",
+  category: "Fun",
   usage: "[user]",
   examples: [
     "/roast",

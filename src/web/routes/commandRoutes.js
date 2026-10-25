@@ -55,6 +55,11 @@ export const MODULE_METADATA = {
     description: "AFK system, user avatars, banners, ping, and server information",
     icon: "Wrench",
   },
+  fun: {
+    name: "Fun & Roleplay",
+    description: "Social anime roleplay interactions, love compatibility ship calculator, and fun commands",
+    icon: "Sparkles",
+  },
   voice: {
     name: "Voice Tools",
     description: "Voice channel dragging, mass move, and automated VC roles",
@@ -186,7 +191,7 @@ commandRoutes.post("/guilds/:guildId/commands/toggle", async (c) => {
     return c.json({ error: "Protected commands cannot be disabled." }, 400);
   }
 
-  // Guild-wide toggle (no channel_id supplied — used by the dashboard toggle switch)
+  // Guild-wide toggle (no channel_id supplied â€” used by the dashboard toggle switch)
   if (!channel_id) {
     if (enable) {
       await enableCommandGuild(guildId, command_name);
@@ -197,7 +202,7 @@ commandRoutes.post("/guilds/:guildId/commands/toggle", async (c) => {
     return c.json({ success: true, command: command_name, enabled: enable, scope: "guild" });
   }
 
-  // Channel-scoped toggle (legacy — used by /command disable in-chat)
+  // Channel-scoped toggle (legacy â€” used by /command disable in-chat)
   if (enable) {
     await enableCommand(guildId, channel_id, command_name);
   } else {
@@ -208,7 +213,7 @@ commandRoutes.post("/guilds/:guildId/commands/toggle", async (c) => {
   return c.json({ success: true, command: command_name, enabled: enable, scope: "channel", channel_id });
 });
 
-// Module Bulk Toggle (Enable / Disable entire category — guild-wide or channel-scoped)
+// Module Bulk Toggle (Enable / Disable entire category â€” guild-wide or channel-scoped)
 commandRoutes.post("/guilds/:guildId/commands/module_toggle", async (c) => {
   const guildId = c.req.param("guildId");
   const body = await c.req.json().catch(() => ({}));
@@ -374,8 +379,8 @@ commandRoutes.post("/guilds/:guildId/sticky", async (c) => {
         const cleanText = imageUrl ? content.replace(imageUrl, "").trim() : content;
 
         const embed = makeEmbed({
-          title: "📌 Sticky Message",
-          description: cleanText ? `${EMOJIS.get("announcement") || "📌"} ${cleanText}` : "📌 **Sticky Notice**",
+          title: "ðŸ“Œ Sticky Message",
+          description: cleanText ? `${EMOJIS.get("announcement") || "ðŸ“Œ"} ${cleanText}` : "ðŸ“Œ **Sticky Notice**",
           image: imageUrl,
           level: "SYSTEM",
         });

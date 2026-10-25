@@ -1,6 +1,6 @@
 import React from "react";
 import CommandRow from "./CommandRow";
-import { Terminal, ShieldAlert, ShieldCheck, BarChart3, Hash, Wrench, Volume2, Power, Loader2 } from "lucide-react";
+import { Terminal, ShieldAlert, ShieldCheck, BarChart3, Hash, Wrench, Volume2, Power, Loader2, Sparkles } from "lucide-react";
 
 function getCategoryIcon(catId) {
   switch (catId?.toLowerCase()) {
@@ -9,6 +9,7 @@ function getCategoryIcon(catId) {
     case "analytics": return <BarChart3 className="w-5 h-5 text-amber-400" />;
     case "channels": return <Hash className="w-5 h-5 text-sky-400" />;
     case "utility": return <Wrench className="w-5 h-5 text-fuchsia-400" />;
+    case "fun": return <Sparkles className="w-5 h-5 text-pink-400" />;
     case "voice": return <Volume2 className="w-5 h-5 text-rose-400" />;
     default: return <Terminal className="w-5 h-5 text-slate-400" />;
   }

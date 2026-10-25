@@ -37,12 +37,12 @@ export default {
         return await interaction.reply({
           embeds: [
             makeEmbed({
-              title: "🔒 Private Bot",
+              title: "ðŸ”’ Private Bot",
               description:
                 `**SYN** is the bot owner. Contact him for an invite.\n\n` +
-                `• **Status:** Private authorization required.\n` +
-                `• **Owner:** SYN (\`syn606\` • [syn606.wtf](https://syn606.wtf))\n` +
-                `• Contact SYN directly to request adding this bot to your server.`,
+                `â€¢ **Status:** Private authorization required.\n` +
+                `â€¢ **Owner:** SYN (\`syn606\` â€¢ [syn606.wtf](https://syn606.wtf))\n` +
+                `â€¢ Contact SYN directly to request adding this bot to your server.`,
               level: "INFO",
               color: COLORS.DARK,
               headerDivider: false,
@@ -74,7 +74,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Unknown Command",
-            description: `${EMOJIS.get("fail") || "❌"} This command is no longer available.`,
+            description: `${EMOJIS.get("fail") || "âŒ"} This command is no longer available.`,
             level: "ERROR",
           }),
         ],
@@ -95,7 +95,7 @@ export default {
           embeds: [
             makeEmbed({
               title: "Access Restricted",
-              description: `${EMOJIS.get("warning") || "⚠️"} ${aclCheck.reason}`,
+              description: `${EMOJIS.get("warning") || "âš ï¸"} ${aclCheck.reason}`,
               level: "WARNING",
             }),
           ],
@@ -103,14 +103,17 @@ export default {
         });
       }
 
-      // B1. Guild-wide command disable check (dashboard toggle)
-      const globallyDisabled = await isCommandGloballyDisabled(interaction.guild.id, commandName);
+      // B1. Guild-wide command disable check (dashboard toggle & category toggle)
+      const categoryName = command.category ? command.category.toLowerCase() : null;
+      const globallyDisabled =
+        (await isCommandGloballyDisabled(interaction.guild.id, commandName)) ||
+        (categoryName ? await isCommandGloballyDisabled(interaction.guild.id, `category:${categoryName}`) : false);
       if (globallyDisabled && !(await isBotAdmin(interaction))) {
         return await interaction.reply({
           embeds: [
             makeEmbed({
               title: "Command Disabled",
-              description: `${EMOJIS.get("fail") || "❌"} This command has been **disabled** in this server by an administrator.`,
+              description: `${EMOJIS.get("fail") || "âŒ"} This command has been **disabled** in this server by an administrator.`,
               level: "ERROR",
             }),
           ],
@@ -119,17 +122,15 @@ export default {
       }
 
       // B2. Channel-specific restriction check
-      const restricted = await isCommandRestricted(
-        interaction.guild.id,
-        interaction.channel.id,
-        commandName
-      );
+      const restricted =
+        (await isCommandRestricted(interaction.guild.id, interaction.channel.id, commandName)) ||
+        (categoryName ? await isCommandRestricted(interaction.guild.id, interaction.channel.id, `category:${categoryName}`) : false);
       if (restricted && !(await isBotAdmin(interaction))) {
         return await interaction.reply({
           embeds: [
             makeEmbed({
               title: "Command Restricted",
-              description: `${EMOJIS.get("warning") || "⚠️"} This command is **not allowed in this channel**.\n\n${EMOJIS.get("arrow_point") || "👉"} Try another channel or contact staff.`,
+              description: `${EMOJIS.get("warning") || "âš ï¸"} This command is **not allowed in this channel**.\n\n${EMOJIS.get("arrow_point") || "ðŸ‘‰"} Try another channel or contact staff.`,
               level: "WARNING",
             }),
           ],
@@ -144,7 +145,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `${EMOJIS.get("fail") || "❌"} You require **Administrator** or **Bot Admin** authority to use this command.`,
+            description: `${EMOJIS.get("fail") || "âŒ"} You require **Administrator** or **Bot Admin** authority to use this command.`,
             level: "ERROR",
           }),
         ],
@@ -157,7 +158,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `${EMOJIS.get("fail") || "❌"} You require **Manage Server** or **Config** authority to use this command.`,
+            description: `${EMOJIS.get("fail") || "âŒ"} You require **Manage Server** or **Config** authority to use this command.`,
             level: "ERROR",
           }),
         ],
@@ -170,7 +171,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `${EMOJIS.get("fail") || "❌"} You lack the required moderation permissions to run this command.`,
+            description: `${EMOJIS.get("fail") || "âŒ"} You lack the required moderation permissions to run this command.`,
             level: "ERROR",
           }),
         ],
@@ -185,7 +186,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Rate Limited",
-            description: `${EMOJIS.get("warning") || "⚠️"} You are on cooldown. Please wait **${retry.toFixed(1)}s**.`,
+            description: `${EMOJIS.get("warning") || "âš ï¸"} You are on cooldown. Please wait **${retry.toFixed(1)}s**.`,
             level: "WARNING",
           }),
         ],
@@ -219,7 +220,7 @@ export default {
       console.error(`[EXECUTION ERROR] In slash '/${commandName}':`, err);
       const errEmbed = makeEmbed({
         title: "Command Error",
-        description: `${EMOJIS.get("fail") || "❌"} An unexpected error occurred while processing this command.`,
+        description: `${EMOJIS.get("fail") || "âŒ"} An unexpected error occurred while processing this command.`,
         level: "ERROR",
       });
 

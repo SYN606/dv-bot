@@ -1,7 +1,7 @@
 import { DisabledCommand } from "../models/index.js";
 import { PROTECTED_COMMANDS } from "../../core/permissions.js";
 
-// In-memory fast-path cache: key = `${guildId}:${commandName}` → boolean
+// In-memory fast-path cache: key = `${guildId}:${commandName}` â†’ boolean
 const disabledCache = new Map();
 
 function normalize(name) {
@@ -26,7 +26,7 @@ export function invalidateGuildCommandCache(guildId, commandName = null) {
 
 /**
  * Check if a command is globally disabled in a guild.
- * Admins are NOT checked here — caller is responsible for bypassing admins.
+ * Admins are NOT checked here â€” caller is responsible for bypassing admins.
  */
 export async function isCommandGloballyDisabled(guildId, commandName) {
   const cmd = normalize(commandName);
@@ -128,9 +128,8 @@ export async function bulkEnableCommandsGuild(guildId, commandNames) {
 
   if (normalized.length === 0) return { enabledCount: 0 };
 
-  const { Op } = await import("sequelize");
   const deleted = await DisabledCommand.destroy({
-    where: { guild_id: gId, command_name: { [Op.in]: normalized } },
+    where: { guild_id: gId, command_name: normalized },
   });
 
   for (const cmd of normalized) invalidateGuildCommandCache(gId, cmd);
