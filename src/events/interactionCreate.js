@@ -84,11 +84,13 @@ export default {
 
     // A. ACL Policy & Channel Restriction Check (Admins bypass)
     if (interaction.guild && interaction.channel) {
+      const categoryName = command.category ? command.category.toLowerCase() : null;
       const aclCheck = await isExecutionAllowed(
         interaction.guild.id,
         interaction.channel.id,
         interaction.member,
-        commandName
+        commandName,
+        categoryName
       );
       if (!aclCheck.allowed) {
         return await interaction.reply({

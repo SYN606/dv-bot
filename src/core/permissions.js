@@ -5,9 +5,6 @@ import { CONFIG } from "../config.js";
 export const PROTECTED_COMMANDS = new Set([
   "help",
   "adminrole",
-  "command",
-  "disable",
-  "enable",
 ]);
 
 function extractMemberAndGuild(target) {

@@ -91,11 +91,13 @@ export default {
     if (!command || command.slashOnly) return;
 
     // A. ACL Policy & Channel Restriction Check (Admins bypass)
+    const categoryName = command.category ? command.category.toLowerCase() : null;
     const aclCheck = await isExecutionAllowed(
       message.guild.id,
       message.channel.id,
       message.member,
-      resolvedName
+      resolvedName,
+      categoryName
     );
     if (!aclCheck.allowed) {
       const reply = await message.reply({

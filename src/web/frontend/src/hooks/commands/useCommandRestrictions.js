@@ -6,6 +6,8 @@ import {
   toggleCommandModule,
   bulkToggleCommands,
   resetChannelRestrictions,
+  setCommandChannelRule,
+  clearCommandChannelRule,
 } from "../../api/client";
 
 export function useCommandRestrictions(guildId, showToast) {
@@ -16,6 +18,7 @@ export function useCommandRestrictions(guildId, showToast) {
     disabled: [],
     guildDisabled: [],
     channelDisabled: [],
+    channelRules: {},
     modules: [],
     scope: "guild",
     stats: { total: 0, active: 0, disabled: 0, protected: 0, guildDisabledCount: 0, channelDisabledCount: 0 },
@@ -50,6 +53,7 @@ export function useCommandRestrictions(guildId, showToast) {
         disabled: res.disabled || [],
         guildDisabled: res.guildDisabled || [],
         channelDisabled: res.channelDisabled || [],
+        channelRules: res.channelRules || {},
         modules: res.modules || [],
         scope: res.scope || (selectedChannel === "global" ? "guild" : "channel"),
         channelId: res.channelId || null,
@@ -250,6 +254,98 @@ export function useCommandRestrictions(guildId, showToast) {
     }
   };
 
+  // Set "enable only in" or "disable only in" channel rule for command or category
+  const handleSaveChannelRule = async (feature, mode, channelList) => {
+    setIsBulkPending(true);
+    try {
+      const res = await setCommandChannelRule(guildId, {
+        feature,
+        mode,
+        channels: channelList,
+        channelId: selectedChannel === "global" ? null : selectedChannel,
+      });
+
+      if (res && res.commands) {
+        setData({
+          commands: res.commands || [],
+          disabled: res.disabled || [],
+          guildDisabled: res.guildDisabled || [],
+          channelDisabled: res.channelDisabled || [],
+          channelRules: res.channelRules || {},
+          modules: res.modules || [],
+          scope: res.scope || (selectedChannel === "global" ? "guild" : "channel"),
+          channelId: res.channelId || null,
+          stats: res.stats || data.stats,
+        });
+      } else {
+        await fetchCommands();
+      }
+
+      const label = feature.startsWith("category:")
+        ? `Category ${feature.replace("category:", "").toUpperCase()}`
+        : `/${feature}`;
+      const modeText =
+        mode === "enable_only"
+          ? "restricted to enabled channels only"
+          : mode === "disable_only"
+          ? "disabled in selected channels"
+          : "reset to all channels";
+
+      showToast?.({
+        title: "Channel Rule Updated",
+        message: `${label} is now ${modeText}.`,
+        type: "success",
+      });
+      return true;
+    } catch (err) {
+      console.error(err);
+      showToast?.({ title: "Error", message: err.message || "Failed to update channel rules.", type: "error" });
+      return false;
+    } finally {
+      setIsBulkPending(false);
+    }
+  };
+
+  // Clear channel rule for command or category
+  const handleClearChannelRule = async (feature) => {
+    setIsBulkPending(true);
+    try {
+      const res = await clearCommandChannelRule(guildId, feature);
+      if (res && res.commands) {
+        setData({
+          commands: res.commands || [],
+          disabled: res.disabled || [],
+          guildDisabled: res.guildDisabled || [],
+          channelDisabled: res.channelDisabled || [],
+          channelRules: res.channelRules || {},
+          modules: res.modules || [],
+          scope: res.scope || (selectedChannel === "global" ? "guild" : "channel"),
+          channelId: res.channelId || null,
+          stats: res.stats || data.stats,
+        });
+      } else {
+        await fetchCommands();
+      }
+
+      const label = feature.startsWith("category:")
+        ? `Category ${feature.replace("category:", "").toUpperCase()}`
+        : `/${feature}`;
+
+      showToast?.({
+        title: "Channel Rules Reset",
+        message: `Restrictions for ${label} have been reset to default.`,
+        type: "success",
+      });
+      return true;
+    } catch (err) {
+      console.error(err);
+      showToast?.({ title: "Error", message: err.message || "Failed to reset channel rules.", type: "error" });
+      return false;
+    } finally {
+      setIsBulkPending(false);
+    }
+  };
+
   return {
     channels,
     selectedChannel,
@@ -265,5 +361,7 @@ export function useCommandRestrictions(guildId, showToast) {
     handleToggleModule,
     handleBulkToggle,
     handleResetChannel,
+    handleSaveChannelRule,
+    handleClearChannelRule,
   };
 }

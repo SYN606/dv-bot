@@ -14,6 +14,11 @@ import {
   bulkDisableCommandsGuild,
   bulkEnableCommandsGuild,
 } from "../../db/helpers/guildCommandDisable.js";
+import {
+  getGuildChannelRules,
+  setChannelRulesForTarget,
+  clearChannelRulesForTarget,
+} from "../../db/helpers/acl.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import {
@@ -121,18 +126,30 @@ export async function getGuildCommandsState(guildId, rawChannelId, client) {
 
   const disabledSet = new Set(disabled);
 
-  // Enrich commands with per-scope states
+  // Fetch active channel rules (enable only in / disable only in)
+  const channelRules = await getGuildChannelRules(guildId);
+
+  // Enrich commands with per-scope states and channel rules
   const enrichedCommands = allCommands.map((cmd) => {
     const cmdNameLower = cmd.name.toLowerCase();
     const isGuildOff = guildDisabledSet.has(cmdNameLower);
     const isChannelOff = channelDisabledSet.has(cmdNameLower);
     const isOffInScope = channelId ? (isGuildOff || isChannelOff) : isGuildOff;
+    const rule = channelRules[cmdNameLower] || {
+      feature: cmdNameLower,
+      isCategory: false,
+      mode: "everywhere",
+      channels: [],
+      allowChannels: [],
+      denyChannels: [],
+    };
 
     return {
       ...cmd,
       disabled: isOffInScope,
       guildDisabled: isGuildOff,
       channelDisabled: isChannelOff,
+      channelRule: rule,
     };
   });
 
@@ -179,6 +196,15 @@ export async function getGuildCommandsState(guildId, rawChannelId, client) {
   for (const mod of categoryMap.values()) {
     mod.isAllDisabled = mod.nonProtectedCount > 0 && mod.disabledCount >= mod.nonProtectedCount;
     mod.isAllActive = mod.nonProtectedCount > 0 && mod.disabledCount === 0;
+    const catRule = channelRules[`category:${mod.id}`] || channelRules[mod.id] || {
+      feature: `category:${mod.id}`,
+      isCategory: true,
+      mode: "everywhere",
+      channels: [],
+      allowChannels: [],
+      denyChannels: [],
+    };
+    mod.channelRule = catRule;
   }
 
   const modules = Array.from(categoryMap.values());
@@ -192,6 +218,7 @@ export async function getGuildCommandsState(guildId, rawChannelId, client) {
     disabled,
     guildDisabled,
     channelDisabled,
+    channelRules,
     modules,
     scope: channelId ? "channel" : "guild",
     channelId,
@@ -410,6 +437,66 @@ commandRoutes.post("/guilds/:guildId/commands/reset_channel", async (c) => {
     success: true,
     reset: true,
     channelId: channel_id,
+    ...state,
+  });
+});
+
+// Set Channel Rule (Enable Only In / Disable Only In / Everywhere) for a command or category
+commandRoutes.post("/guilds/:guildId/commands/channel_rule", async (c) => {
+  const guildId = c.req.param("guildId");
+  const body = await c.req.json().catch(() => ({}));
+  const rawFeature = body.feature || body.target || body.commandName || "";
+  const feature = String(rawFeature).trim().toLowerCase();
+  const mode = String(body.mode || "everywhere").trim().toLowerCase();
+  const channels = Array.isArray(body.channels) ? body.channels : [];
+  const rawChannel = body.channel_id || body.channelId;
+  const client = c.get("discordClient");
+
+  if (!feature) {
+    return c.json({ error: "feature is required (command name or category:name)" }, 400);
+  }
+
+  const bareName = feature.replace(/^category:/, "");
+  if (!feature.startsWith("category:") && PROTECTED_COMMANDS.has(bareName)) {
+    return c.json(
+      { error: `Command '/${bareName}' is a protected core command and cannot have channel restrictions.` },
+      400
+    );
+  }
+
+  await setChannelRulesForTarget(guildId, feature, mode, channels);
+  apiCache.delete(`guild:${guildId}:acl`);
+
+  const state = await getGuildCommandsState(guildId, rawChannel, client);
+  return c.json({
+    success: true,
+    feature,
+    mode,
+    channels,
+    ...state,
+  });
+});
+
+// Clear Channel Rule for a command or category
+commandRoutes.post("/guilds/:guildId/commands/clear_channel_rule", async (c) => {
+  const guildId = c.req.param("guildId");
+  const body = await c.req.json().catch(() => ({}));
+  const rawFeature = body.feature || body.target || body.commandName || "";
+  const feature = String(rawFeature).trim().toLowerCase();
+  const rawChannel = body.channel_id || body.channelId;
+  const client = c.get("discordClient");
+
+  if (!feature) {
+    return c.json({ error: "feature is required" }, 400);
+  }
+
+  await clearChannelRulesForTarget(guildId, feature);
+  apiCache.delete(`guild:${guildId}:acl`);
+
+  const state = await getGuildCommandsState(guildId, rawChannel, client);
+  return c.json({
+    success: true,
+    feature,
     ...state,
   });
 });

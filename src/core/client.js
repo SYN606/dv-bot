@@ -150,9 +150,7 @@ export class DVClient extends Client {
   }
 
   async loadComponents() {
-    const { registerCommandControlComponents } = await import("../components/commandControlView.js");
     const { registerVerificationComponent } = await import("../components/verifyButton.js");
-    registerCommandControlComponents(this);
     registerVerificationComponent(this);
     logger.info(`[CLIENT] Registered ${this.components.size} interaction component handlers.`);
   }

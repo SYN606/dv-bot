@@ -301,6 +301,24 @@ export async function resetChannelRestrictions(guildId, channelId) {
   return result;
 }
 
+export async function setCommandChannelRule(guildId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/commands/channel_rule`, {
+    method: "POST",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/commands`);
+  return result;
+}
+
+export async function clearCommandChannelRule(guildId, feature) {
+  const result = await fetchApi(`/api/guilds/${guildId}/commands/clear_channel_rule`, {
+    method: "POST",
+    body: { feature },
+  });
+  invalidatePath(`/api/guilds/${guildId}/commands`);
+  return result;
+}
+
 // Sticky Messages
 
 export async function getSticky(guildId) {

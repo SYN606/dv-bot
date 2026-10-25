@@ -8,6 +8,7 @@ import {
   CommandStats,
   CommandToolbar,
   CommandModule,
+  CommandChannelRuleModal,
 } from "../../components/commands";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
@@ -17,6 +18,7 @@ export default function CommandsPage({ showToast }) {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [confirmBulk, setConfirmBulk] = useState({ open: false, enable: true });
+  const [channelRuleModal, setChannelRuleModal] = useState({ open: false, target: null, isCategory: false });
 
   const {
     channels,
@@ -38,6 +40,7 @@ export default function CommandsPage({ showToast }) {
     handleToggleModule,
     handleBulkToggle,
     handleResetChannel,
+    handleSaveChannelRule,
   } = useCommandRestrictions(guildId, showToast);
 
   const isChannelScope = selectedChannel !== "global";
@@ -210,10 +213,24 @@ export default function CommandsPage({ showToast }) {
               onToggleCommand={handleToggleCommand}
               onToggleModule={handleToggleModule}
               onUnlockGlobal={(cmdName) => handleToggleCommand(cmdName, true, true)}
+              onOpenChannelRules={(target, isCat) =>
+                setChannelRuleModal({ open: true, target, isCategory: isCat })
+              }
             />
           ))
         )}
       </div>
+
+      {/* Interactive Channel Availability Rule Modal ("Enable only in" / "Disable only in") */}
+      <CommandChannelRuleModal
+        isOpen={channelRuleModal.open}
+        onClose={() => setChannelRuleModal({ open: false, target: null, isCategory: false })}
+        target={channelRuleModal.target}
+        isCategory={channelRuleModal.isCategory}
+        channels={channels}
+        onSave={handleSaveChannelRule}
+        isPending={isBulkPending}
+      />
 
       {/* Global Bulk Enable / Disable Confirmation Dialog */}
       <ConfirmDialog
