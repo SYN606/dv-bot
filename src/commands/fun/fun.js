@@ -10,7 +10,20 @@ import {
 } from "../../db/helpers/guildCommandDisable.js";
 import { sendModLog } from "../../utils/modLog.js";
 
-const FUN_COMMAND_NAMES = ["ship", "kiss", "lick", "lewd", "hug", "pat", "slap", "roast"];
+const FUN_COMMAND_NAMES = [
+  "ship",
+  "kiss",
+  "lick",
+  "lewd",
+  "hug",
+  "pat",
+  "slap",
+  "cuddle",
+  "bite",
+  "poke",
+  "bonk",
+  "roast",
+];
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("fun")
@@ -158,13 +171,17 @@ export default createCommand({
       `### 🎉 Fun & Social Roleplay Suite\n` +
       `${statusText}\n\n` +
       `**Available Commands:**\n` +
-      `• \`${prefix} ship <@user1> [@user2]\` — Calculate love compatibility & couple ship score\n` +
+      `• \`${prefix} ship <@user1> [@user2]\` — Advanced multi-stat love compatibility & couple ship algorithm\n` +
       `• \`${prefix} kiss <@user>\` — Sweet and affectionate anime kiss\n` +
-      `• \`${prefix} lick <@user>\` — Playful anime lick reaction\n` +
-      `• \`${prefix} lewd [@user]\` — Call someone out for being too lewd (anime trope)\n` +
       `• \`${prefix} hug <@user>\` — Warm and comforting embrace\n` +
+      `• \`${prefix} cuddle <@user>\` — Cozy snuggle under a warm blanket\n` +
       `• \`${prefix} pat <@user>\` — Gentle headpats and affection\n` +
+      `• \`${prefix} poke <@user>\` — Playful boop or poke for attention\n` +
+      `• \`${prefix} lick <@user>\` — Playful anime lick reaction\n` +
+      `• \`${prefix} bite <@user>\` — Affectionate nibble or anime bite\n` +
       `• \`${prefix} slap <@user>\` — Dramatic anime slap reaction\n` +
+      `• \`${prefix} bonk <@user>\` — Send someone to horny jail with a squeaky hammer\n` +
+      `• \`${prefix} lewd [@user]\` — Call someone out for being too lewd\n` +
       `• \`${prefix} roast [@user]\` — Witty, lighthearted comeback\n\n` +
       `💡 *Administrators can enable or disable this entire suite anytime with \`${prefix} fun enable\` or \`${prefix} fun disable\`, or via the web dashboard.*`;
 

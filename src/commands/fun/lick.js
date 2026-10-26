@@ -1,11 +1,11 @@
 import { SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
-import { getAnimeActionGif } from "./_animeGifs.js";
+import { getAnimeActionGif, getAndIncrementInteraction, formatInteractionFooter } from "./_animeGifs.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("lick")
-  .setDescription("Playfully lick another user")
+  .setDescription("Playfully lick someone (anime style teasing)")
   .addUserOption((opt) =>
     opt.setName("user").setDescription("The person you want to lick").setRequired(true)
   );
@@ -14,13 +14,13 @@ export default createCommand({
   name: "lick",
   category: "Fun",
   aliases: ["slurp", "taste"],
-  description: "Playfully lick another user",
+  description: "Playfully lick someone (anime style teasing)",
   usage: "<@user>",
   examples: ["/lick user:@Friend", "dv lick @Friend"],
   slashBuilder,
 
   async execute(ctx) {
-    const { client, message, user } = ctx;
+    const { client, message, user, guild } = ctx;
 
     let target = null;
     if (ctx.options.user) {
@@ -39,7 +39,7 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "Lick Who?",
-            description: "Please mention the user you want to playfully lick! 👅\n\n**Example:** `dv lick @Friend`",
+            description: "Please mention someone you'd like to lick! 👅\n\n**Example:** `dv lick @Friend` or `/lick user:@Friend`",
             level: "WARNING",
           }),
         ],
@@ -49,48 +49,35 @@ export default createCommand({
 
     const gifUrl = await getAnimeActionGif("lick");
 
-    // Self-lick
     if (target.id === user.id) {
       const embed = makeEmbed({
-        title: "🐱 Self-Lick!",
-        description: `<@${user.id}> licked their own arm... what did that taste like? 🐾`,
+        title: "👅 Cat Mode Activated!",
+        description: `<@${user.id}> groomed their own paw like a curious anime cat! 🐾✨`,
         level: "PREMIUM",
-        color: 0x9b59b6,
+        color: 0xff9f43,
         image: gifUrl,
-        footer: "Channeling your inner anime cat!",
+        footer: "Nya~ curious feline behavior!",
       });
       return await ctx.reply({ embeds: [embed] });
     }
 
-    // Bot-lick
-    if (target.id === client.user.id) {
-      const embed = makeEmbed({
-        title: "⚡ Static Shock!",
-        description: `Hey <@${user.id}>! Don't lick the bot's circuits, you might get a static zap! ⚡🤖`,
-        level: "WARNING",
-        color: 0xfee75c,
-        image: gifUrl,
-        footer: "Danger: 5V USB current detected",
-      });
-      return await ctx.reply({ embeds: [embed] });
-    }
+    const { count } = getAndIncrementInteraction(guild?.id, user.id, target.id, "lick");
 
-    // Standard user-to-user lick
     const captions = [
-      `<@${user.id}> playfully licked <@${target.id}>! 👅 *slurp*`,
-      `<@${user.id}> gave <@${target.id}> a cheeky anime lick! 🐱✨`,
-      `<@${user.id}> tastes <@${target.id}>... mmm, sweet! 🍭`,
-      `<@${user.id}> sneaks up and licks <@${target.id}>'s cheek! 🐾`,
+      `<@${user.id}> gave <@${target.id}> a playful anime lick on the cheek! *Mlem~* 👅✨`,
+      `*LICK!* <@${user.id}> tasted <@${target.id}>: *“This is the taste of a liar!”* 🕵️‍♂️👅`,
+      `<@${user.id}> playfully licked <@${target.id}>! Pure chaotic teasing energy! 😜`,
+      `<@${user.id}> snuck up and gave <@${target.id}> a mischievous anime lick! 🐾💕`,
     ];
     const caption = captions[Math.floor(Math.random() * captions.length)];
 
     const embed = makeEmbed({
-      title: "👅 Playful Lick!",
+      title: "👅 Playful Anime Lick!",
       description: `### ${caption}`,
       level: "PREMIUM",
-      color: 0x9b59b6,
+      color: 0xff9f43,
       image: gifUrl,
-      footer: "Slurp! Playful vibes only.",
+      footer: formatInteractionFooter(count, "lick"),
     });
 
     return await ctx.reply({ embeds: [embed] });

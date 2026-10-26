@@ -1,11 +1,11 @@
 import { SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
-import { getAnimeActionGif } from "./_animeGifs.js";
+import { getAnimeActionGif, getAndIncrementInteraction, formatInteractionFooter } from "./_animeGifs.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("hug")
-  .setDescription("Give someone a warm, comforting hug")
+  .setDescription("Give someone a warm, comforting anime hug")
   .addUserOption((opt) =>
     opt.setName("user").setDescription("The person you want to hug").setRequired(true)
   );
@@ -13,14 +13,14 @@ const slashBuilder = new SlashCommandBuilder()
 export default createCommand({
   name: "hug",
   category: "Fun",
-  aliases: ["cuddle"],
-  description: "Give someone a warm, comforting hug",
+  aliases: ["embrace", "bearhug"],
+  description: "Give someone a warm, comforting anime hug",
   usage: "<@user>",
   examples: ["/hug user:@Friend", "dv hug @Friend"],
   slashBuilder,
 
   async execute(ctx) {
-    const { client, message, user } = ctx;
+    const { client, message, user, guild } = ctx;
 
     let target = null;
     if (ctx.options.user) {
@@ -39,7 +39,7 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "Hug Who?",
-            description: "Please mention someone you'd like to hug! 🤗\n\n**Example:** `dv hug @Friend`",
+            description: "Please mention someone you'd like to hug! 🤗\n\n**Example:** `dv hug @Friend` or `/hug user:@Friend`",
             level: "WARNING",
           }),
         ],
@@ -51,30 +51,35 @@ export default createCommand({
 
     if (target.id === user.id) {
       const embed = makeEmbed({
-        title: "🤗 Self-Hug!",
+        title: "🤗 Self-Hug & Wholesome Vibes!",
         description: `<@${user.id}> wrapped their arms around themselves... here is a big virtual hug from me too! 🤗💖`,
         level: "PREMIUM",
         color: 0x57f287,
         image: gifUrl,
-        footer: "You are doing great!",
+        footer: "You are doing amazing today!",
       });
       return await ctx.reply({ embeds: [embed] });
     }
 
+    const { count } = getAndIncrementInteraction(guild?.id, user.id, target.id, "hug");
+
     const captions = [
-      `<@${user.id}> gave <@${target.id}> a big, warm, and cozy hug! 🤗✨`,
-      `<@${user.id}> wrapped <@${target.id}> in a tight, comforting embrace! 💖`,
-      `<@${user.id}> squeezed <@${target.id}> with pure warmth and affection! 🌸`,
+      `<@${user.id}> wrapped <@${target.id}> in a big, warm, cozy anime hug! 🤗✨`,
+      `<@${user.id}> squeezed <@${target.id}> tightly and refused to let go! 💖`,
+      `<@${user.id}> gave <@${target.id}> a comforting embrace full of pure love! 🌸`,
+      `<@${user.id}> tackled <@${target.id}> with a super-wholesome surprise hug! 💫`,
+      `<@${user.id}> buried their face into <@${target.id}>'s shoulder for a deep hug! 🥺💕`,
+      `<@${user.id}> provided <@${target.id}> with unlimited free hugs and comfort! 🧸✨`,
     ];
     const caption = captions[Math.floor(Math.random() * captions.length)];
 
     const embed = makeEmbed({
-      title: "🤗 Warm Hug!",
+      title: "🤗 Warm & Wholesome Hug!",
       description: `### ${caption}`,
       level: "PREMIUM",
       color: 0x57f287,
       image: gifUrl,
-      footer: "Spreading warmth and wholesome energy.",
+      footer: formatInteractionFooter(count, "hug"),
     });
 
     return await ctx.reply({ embeds: [embed] });
