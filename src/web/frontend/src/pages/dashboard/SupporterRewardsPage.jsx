@@ -38,18 +38,18 @@ export default function SupporterRewardsPage({ showToast }) {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-8">
-        <div className="h-32 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
+      <div className="w-full space-y-8 animate-pulse">
+        <div className="h-32 glass-panel rounded-3xl border border-white/5"></div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="h-100 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
-          <div className="h-100 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
+          <div className="h-100 glass-panel rounded-3xl border border-white/5"></div>
+          <div className="h-100 glass-panel rounded-3xl border border-white/5"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-5xl mx-auto animate-in fade-in duration-500 pb-32">
+    <div className="w-full space-y-8 animate-in fade-in duration-300 pb-32">
       <SupporterRewardsHeader 
         enabled={config.enabled}
         onToggle={(checked) => updateConfig("enabled", checked)}

@@ -7,7 +7,6 @@ import Toast from "../components/ui/Toast";
 import CommandPalette from "../components/ui/CommandPalette";
 import { Menu } from "lucide-react";
 
-
 export default function Base({
   user,
   botInfo,
@@ -20,7 +19,7 @@ export default function Base({
   hideFooter = false,
   customSidebar = null,
   customNavbar = null,
-  maxWidth = "max-w-7xl",
+  maxWidth = "max-w-[1440px]",
   className = ""
 }) {
   const { guildId } = useParams();
@@ -127,7 +126,7 @@ export default function Base({
 
         {/* Independently Scrollable Page Content */}
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col focus:outline-none">
-          <main className={`p-4 sm:p-6 lg:p-8 ${maxWidth} w-full mx-auto flex-1 ${className}`}>
+          <main className={`px-4 sm:px-8 lg:px-12 py-6 sm:py-8 ${maxWidth} w-full mx-auto flex-1 flex flex-col min-w-0 ${className}`}>
             {children || <Outlet context={{ user, botInfo, currentGuild: activeGuild }} />}
           </main>
 

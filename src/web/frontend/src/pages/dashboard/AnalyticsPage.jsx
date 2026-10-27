@@ -41,7 +41,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+    <div className="w-full space-y-8 animate-in fade-in duration-300 pb-16">
       <AnalyticsHeader 
         timeframe={timeframe} 
         setTimeframe={setTimeframe} 

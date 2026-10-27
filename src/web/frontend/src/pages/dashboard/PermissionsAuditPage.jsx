@@ -74,7 +74,7 @@ export default function PermissionsAuditPage({ showToast }) {
   const roleCount = auditData?.roles?.length || 0;
 
   return (
-    <div className="w-full space-y-6 animate-in fade-in duration-300">
+    <div className="w-full space-y-6 animate-in fade-in duration-300 pb-16">
       {/* 1. Header with Samarkan Hinglish title and Export / Refresh controls */}
       <AuditHeader 
         guildId={guildId} 

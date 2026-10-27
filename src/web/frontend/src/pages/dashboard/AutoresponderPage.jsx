@@ -5,8 +5,6 @@ import { useAutoresponders } from "../../hooks/autoresponder";
 // Components
 import { AutoresponderHeader, AutoresponderEditor, AutoresponderList } from "../../components/autoresponder";
 
-
-
 export default function AutoresponderPage({ showToast }) {
   const { user, botInfo } = useOutletContext() || {};
   const { guildId } = useParams();
@@ -44,7 +42,7 @@ export default function AutoresponderPage({ showToast }) {
   }
 
   return (
-    <div className="w-full space-y-6 animate-in fade-in duration-300">
+    <div className="w-full space-y-8 animate-in fade-in duration-300 pb-16">
       <AutoresponderHeader 
         activeCount={activeCount} 
         totalCount={rules.length} 

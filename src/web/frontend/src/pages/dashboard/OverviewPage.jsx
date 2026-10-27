@@ -94,40 +94,38 @@ export default function OverviewPage({ showToast }) {
   );
 
   return (
-    <div className="w-full space-y-5 animate-in fade-in duration-300 font-body">
+    <div className="w-full space-y-8 animate-in fade-in duration-300 pb-16">
       
       {/* Hero Section */}
-      <div className="relative overflow-hidden glass-panel p-5 sm:p-6 rounded-2xl border border-white/10 shrink-0 bg-slate-900/60">
-        <div className="absolute -bottom-10 -right-4 text-8xl font-display text-brand-crimson opacity-[0.03] select-none pointer-events-none leading-none">नियंत्रण</div>
-        
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+      <div className="relative overflow-hidden glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 shrink-0 bg-slate-900/60 shadow-xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 rounded bg-brand-crimson flex items-center justify-center font-bold text-white text-[9px] font-mono shadow-md">DV</div>
-              <span className="text-[10px] font-mono text-slate-400 tracking-widest uppercase">Command Center</span>
+            <div className="flex items-center gap-2.5 mb-2.5">
+              <div className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 font-bold text-indigo-400 text-[11px] font-mono tracking-wider uppercase">DV Command</div>
+              <span className="text-xs font-mono text-slate-400 tracking-wider uppercase">Mission Control</span>
             </div>
-            <div className="flex items-center gap-2.5 flex-wrap mb-1">
-              <h1 className="text-2xl sm:text-3xl font-display font-bold text-white tracking-tight">नमस्ते, {user?.username}.</h1>
+            <div className="flex items-center gap-3 flex-wrap mb-2">
+              <h1 className="text-2xl sm:text-3xl font-heading font-bold text-white tracking-tight">Welcome back, {user?.username}.</h1>
               {user?.isSuperuser && <SuperuserBadge size="sm" />}
             </div>
-            <p className="text-slate-400 text-sm">Your community command center for <span className="text-slate-200 font-semibold">{currentGuild?.name}</span>.</p>
+            <p className="text-slate-400 text-sm">Community command center for <span className="text-slate-100 font-semibold">{currentGuild?.name}</span>.</p>
           </div>
           
           {/* Server Badge */}
           {guild && (
-            <div className="glass-card p-3 rounded-xl flex items-center gap-3 shrink-0 shadow-lg bg-black/40 backdrop-blur-xl border border-white/5">
-              <div className="w-11 h-11 rounded-full border border-white/10 p-0.5 overflow-hidden bg-slate-900">
+            <div className="glass-card p-3.5 rounded-2xl flex items-center gap-3.5 shrink-0 shadow-lg bg-black/40 backdrop-blur-xl border border-white/10">
+              <div className="w-12 h-12 rounded-xl border border-white/15 p-0.5 overflow-hidden bg-slate-900 shadow-inner">
                 {guild.icon ? (
-                  <img src={guild.icon} alt={guild.name} className="w-full h-full object-cover rounded-full" />
+                  <img src={guild.icon} alt={guild.name} className="w-full h-full object-cover rounded-lg" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center font-bold text-xs text-slate-400">{guild.name.slice(0,2).toUpperCase()}</div>
+                  <div className="w-full h-full flex items-center justify-center font-bold text-xs text-slate-300">{guild.name.slice(0,2).toUpperCase()}</div>
                 )}
               </div>
               <div>
-                <h3 className="font-semibold text-xs text-white leading-tight mb-0.5">{guild.name}</h3>
-                <div className="flex items-center gap-2.5 text-[11px] font-mono text-slate-400">
-                  <span className="flex items-center gap-1"><Users className="w-3 h-3 text-brand-crimson" /> {guild.memberCount.toLocaleString()}</span>
-                  <span className="flex items-center gap-1"><Hash className="w-3 h-3 text-slate-500" /> {meta.channels?.length || 0}</span>
+                <h3 className="font-semibold text-sm text-white leading-tight mb-1">{guild.name}</h3>
+                <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
+                  <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-indigo-400" /> {guild.memberCount.toLocaleString()}</span>
+                  <span className="flex items-center gap-1.5"><Hash className="w-3.5 h-3.5 text-slate-400" /> {meta.channels?.length || 0}</span>
                 </div>
               </div>
             </div>
@@ -135,57 +133,57 @@ export default function OverviewPage({ showToast }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Modules */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-8">
           
           <section>
-            <h2 className="text-sm font-display text-brand-crimson tracking-wider mb-5 flex items-center gap-3">
-              <span className="font-mono text-xs opacity-50">01 /</span> समुदाय <span className="text-slate-500 font-sans font-normal text-[10px] uppercase tracking-widest">Community</span>
+            <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-4 flex items-center gap-2.5 uppercase font-sans">
+              <span className="font-mono text-xs text-indigo-400 font-semibold">01 /</span> Community & Engagement
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <ModuleCard 
-                title="Verification Gate" path={`/dashboard/${guildId}/verification`} icon={ShieldCheck} accent="var(--color-brand-crimson)"
+                title="Verification Gate" path={`/dashboard/${guildId}/verification`} icon={ShieldCheck} accent="var(--color-brand-indigo)"
                 active={!!modules.verification} statusText={modules.verification ? "Active" : "Disabled"}
               />
               <ModuleCard 
-                title="Sticky Messages" path={`/dashboard/${guildId}/sticky`} icon={Pin} accent="var(--color-brand-crimson)"
+                title="Sticky Messages" path={`/dashboard/${guildId}/sticky`} icon={Pin} accent="var(--color-brand-indigo)"
                 active={modules.sticky.length > 0} statusText={modules.sticky.length > 0 ? `${modules.sticky.length} Pins` : "Disabled"}
               />
               <ModuleCard 
-                title="Media-Only Channels" path={`/dashboard/${guildId}/media-only`} icon={ImageIcon} accent="var(--color-brand-crimson)"
+                title="Media-Only Channels" path={`/dashboard/${guildId}/media-only`} icon={ImageIcon} accent="var(--color-brand-indigo)"
                 active={modules.media.length > 0} statusText={modules.media.length > 0 ? `${modules.media.length} Channels` : "Disabled"}
               />
             </div>
           </section>
 
           <section>
-            <h2 className="text-sm font-display text-brand-crimson tracking-wider mb-5 flex items-center gap-3">
-              <span className="font-mono text-xs opacity-50">02 /</span> स्वचालन <span className="text-slate-500 font-sans font-normal text-[10px] uppercase tracking-widest">Automation</span>
+            <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-4 flex items-center gap-2.5 uppercase font-sans">
+              <span className="font-mono text-xs text-indigo-400 font-semibold">02 /</span> Automation & Workflows
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <ModuleCard 
-                title="Autoresponder" path={`/dashboard/${guildId}/autoresponder`} icon={Bot} accent="var(--color-brand-crimson)"
+                title="Autoresponder" path={`/dashboard/${guildId}/autoresponder`} icon={Bot} accent="var(--color-brand-indigo)"
                 active={modules.autoresponder.length > 0} statusText={modules.autoresponder.length > 0 ? `${modules.autoresponder.length} Rules` : "Disabled"}
               />
               <ModuleCard 
-                title="Command Restrictions" path={`/dashboard/${guildId}/commands`} icon={Terminal} accent="var(--color-brand-crimson)"
+                title="Command Restrictions" path={`/dashboard/${guildId}/commands`} icon={Terminal} accent="var(--color-brand-indigo)"
                 active={true} statusText="Configured"
               />
             </div>
           </section>
 
           <section>
-            <h2 className="text-sm font-display text-brand-crimson tracking-wider mb-5 flex items-center gap-3">
-              <span className="font-mono text-xs opacity-50">03 /</span> सुरक्षा <span className="text-slate-500 font-sans font-normal text-[10px] uppercase tracking-widest">Moderation</span>
+            <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-4 flex items-center gap-2.5 uppercase font-sans">
+              <span className="font-mono text-xs text-indigo-400 font-semibold">03 /</span> Moderation & Security
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <ModuleCard 
-                title="Admin Roles" path={`/dashboard/${guildId}/admin-roles`} icon={Shield} accent="var(--color-brand-crimson)"
+                title="Admin Roles" path={`/dashboard/${guildId}/admin-roles`} icon={Shield} accent="var(--color-brand-indigo)"
                 active={modules.adminRoles.length > 0} statusText={modules.adminRoles.length > 0 ? `${modules.adminRoles.length} Roles` : "Disabled"}
               />
               <ModuleCard 
-                title="Permissions Audit" path={`/dashboard/${guildId}/permissions`} icon={ShieldAlert} accent="var(--color-brand-crimson)"
+                title="Permissions Audit" path={`/dashboard/${guildId}/permissions`} icon={ShieldAlert} accent="var(--color-brand-indigo)"
                 active={true} statusText="Monitoring"
               />
             </div>
@@ -195,22 +193,22 @@ export default function OverviewPage({ showToast }) {
         {/* Right Column: Health & Info */}
         <div className="space-y-6">
           <div className="glass-panel p-6 rounded-2xl border border-white/5">
-            <h2 className="text-sm font-display text-slate-300 font-semibold tracking-wider mb-5 flex items-center gap-2">
-              प्रणाली <span className="text-slate-500 font-sans font-normal text-[10px] uppercase tracking-widest">System Health</span>
+            <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-5 flex items-center gap-2 uppercase font-sans">
+              System Health
             </h2>
             
             <div className="space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-white/5">
-                <span className="text-slate-400 text-sm flex items-center gap-2"><Server className="w-4 h-4 text-slate-500"/> Digital Vigital</span>
+                <span className="text-slate-300 text-sm font-medium flex items-center gap-2.5"><Server className="w-4 h-4 text-indigo-400"/> Digital Vigital</span>
                 <StatusIndicator active={true} text="Online" />
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 text-sm">Gateway Ping</span>
-                <span className="text-brand-crimson font-mono text-sm">{botInfo?.ping || 0}ms</span>
+                <span className="text-emerald-400 font-mono text-sm font-semibold">{botInfo?.ping || 0}ms</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 text-sm">Database</span>
-                <span className="text-brand-green font-mono text-sm">Connected</span>
+                <span className="text-emerald-400 font-mono text-sm font-semibold">Connected</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 text-sm">Version</span>
@@ -221,8 +219,8 @@ export default function OverviewPage({ showToast }) {
 
           {guild && (
             <div className="glass-panel p-6 rounded-2xl border border-white/5">
-              <h2 className="text-sm font-display text-slate-300 tracking-wider mb-5 flex items-center gap-2">
-                जानकारी <span className="text-slate-500 font-sans font-normal text-[10px] uppercase tracking-widest">Server Info</span>
+              <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-5 flex items-center gap-2 uppercase font-sans">
+                Server Info
               </h2>
               <div className="space-y-3 font-mono text-xs">
                 <div className="flex justify-between">

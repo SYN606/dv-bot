@@ -38,19 +38,19 @@ export default function MediaOnlyPage({ showToast }) {
 
   if (loading && rules.length === 0) {
     return (
-      <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-8">
-        <div className="h-24 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
-        <div className="h-96 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
+      <div className="w-full space-y-8 animate-pulse">
+        <div className="h-24 glass-panel rounded-3xl border border-white/5"></div>
+        <div className="h-96 glass-panel rounded-3xl border border-white/5"></div>
         <div className="space-y-4">
-          <div className="h-32 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
-          <div className="h-32 glass-panel rounded-3xl border border-white/5 animate-pulse"></div>
+          <div className="h-32 glass-panel rounded-3xl border border-white/5"></div>
+          <div className="h-32 glass-panel rounded-3xl border border-white/5"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-5xl mx-auto animate-in fade-in duration-500 pb-24">
+    <div className="w-full space-y-8 animate-in fade-in duration-300 pb-24">
       <MediaOnlyHeader activeCount={rules.length} />
 
       <MediaRuleEditor 

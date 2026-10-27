@@ -64,30 +64,32 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 w-64 glass-panel border-r border-white/10 flex flex-col z-50 transform transition-transform duration-300 shrink-0 md:sticky md:top-0 md:left-0 md:h-screen select-none ${mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"}`}>
+      <aside className={`fixed inset-y-0 left-0 w-72 glass-panel border-r border-white/[0.08] flex flex-col z-50 transform transition-transform duration-300 shrink-0 md:sticky md:top-0 md:left-0 md:h-screen select-none ${mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"}`}>
         {/* Brand Header */}
-        <div className="p-4 border-b border-white/5 flex items-center justify-between shrink-0 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-2 opacity-[0.03] font-display text-6xl pointer-events-none text-brand-crimson select-none leading-none">डिजिटल</div>
+        <div className="p-4 border-b border-white/[0.06] flex items-center justify-between shrink-0 relative overflow-hidden bg-slate-900/40">
           <Link to="/" className="flex items-center gap-3 group relative z-10" onClick={() => setMobileOpen(false)}>
-            <div className="w-9 h-9 rounded-full overflow-hidden border border-white/10 shadow-lg shrink-0 group-hover:border-brand-crimson/50 transition-colors">
-              <img src={botAvatar} alt="DV" className="w-full h-full object-cover rounded-full" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shadow-md shrink-0 group-hover:border-indigo-500/50 transition-all bg-slate-950">
+              <img src={botAvatar} alt="DV" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col">
-              <span className="font-display font-medium text-base tracking-wider text-slate-100 uppercase">DV Command</span>
-              <span className="text-[10px] font-mono text-brand-crimson tracking-wider">SYSTEM ACTIVE</span>
+              <span className="font-heading font-bold text-base tracking-tight text-white leading-tight">DV Command</span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-[11px] font-mono text-emerald-400 font-semibold tracking-wider uppercase">ONLINE</span>
+              </div>
             </div>
           </Link>
           <div className="flex items-center relative z-10">
-            <button className="md:hidden p-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white" onClick={() => setMobileOpen(false)}>
+            <button className="md:hidden p-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white" onClick={() => setMobileOpen(false)}>
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Server Context Badge */}
-        <div className="p-3 m-3 rounded-xl bg-slate-900/80 border border-white/5 flex items-center gap-3 shrink-0 group relative overflow-hidden">
-          <div className="w-10 h-10 rounded-full border border-white/10 p-0.5 shrink-0 bg-slate-950">
-            <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-slate-800">
+        {/* Server Context Switcher Card */}
+        <div className="p-3 mx-3 my-2.5 rounded-2xl bg-slate-900/70 border border-white/[0.08] flex items-center gap-3 shrink-0 group relative overflow-hidden hover:border-white/15 transition-all">
+          <div className="w-10 h-10 rounded-xl border border-white/10 p-0.5 shrink-0 bg-slate-950 shadow-inner">
+            <div className="w-full h-full rounded-lg overflow-hidden flex items-center justify-center bg-slate-850">
               {currentGuild.icon ? (
                 <img src={`https://cdn.discordapp.com/icons/${currentGuild.id}/${currentGuild.icon}.png`} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -96,19 +98,19 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
             </div>
           </div>
           <div className="flex-1 min-w-0 z-10">
-            <p className="font-semibold text-xs text-slate-200 truncate">{currentGuild.name}</p>
-            <Link to="/dashboard" className="inline-flex items-center gap-1 text-[10px] text-slate-400 hover:text-white font-mono mt-0.5 transition-colors" title="Switch Server">
-              <ArrowLeftRight className="w-3 h-3" /> Change
+            <p className="font-semibold text-sm text-slate-100 truncate leading-snug">{currentGuild.name}</p>
+            <Link to="/dashboard" className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium mt-0.5 transition-colors" title="Switch Server">
+              <ArrowLeftRight className="w-3.5 h-3.5" /> Switch server
             </Link>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-2.5 py-1.5 space-y-3.5 overflow-y-auto min-h-0 scrollbar-thin">
+        {/* Navigation List */}
+        <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto min-h-0 scrollbar-thin">
           {navGroups.map((group) => (
             <div key={group.group}>
-              <div className="px-2.5 mb-1 text-[9px] font-mono tracking-widest text-slate-500 uppercase">{group.group}</div>
-              <div className="space-y-0.5">
+              <div className="px-3 mb-1.5 text-[11px] font-bold tracking-wider text-slate-400 uppercase font-sans">{group.group}</div>
+              <div className="space-y-1">
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path);
@@ -118,14 +120,15 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
                       key={item.id}
                       to={item.path}
                       onClick={() => setMobileOpen(false)}
-                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                         isActive
-                          ? "bg-white/10 text-white shadow-sm border border-white/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                          ? "bg-indigo-600/15 text-white font-semibold border border-indigo-500/30 shadow-sm shadow-indigo-500/10"
+                          : "text-slate-300 hover:text-white hover:bg-white/[0.06] border border-transparent"
                       }`}
                     >
-                      <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-brand-crimson" : "text-slate-500"}`} />
+                      <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? "text-indigo-400" : "text-slate-400"}`} />
                       <span className="truncate">{item.label}</span>
+                      {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400" />}
                     </Link>
                   );
                 })}
@@ -136,9 +139,9 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
 
         {/* User Profile Card */}
         {user && (
-          <div className="p-2.5 mx-3 mb-2 rounded-xl bg-slate-900/80 border border-white/5 flex items-center justify-between gap-2.5 shrink-0 shadow-sm">
+          <div className="p-3 mx-3 mb-2 rounded-2xl bg-slate-900/80 border border-white/[0.08] flex items-center justify-between gap-3 shrink-0 shadow-sm">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 shrink-0 bg-slate-950">
+              <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/10 shrink-0 bg-slate-950 shadow-inner">
                 <img
                   src={getDiscordAvatarUrl(user)}
                   alt={user.username || "User"}
@@ -147,12 +150,12 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-semibold text-slate-200 truncate">
+                  <span className="text-sm font-semibold text-slate-200 truncate leading-snug">
                     {user.global_name || user.username}
                   </span>
                   {user.isSuperuser && <SuperuserBadge size="sm" />}
                 </div>
-                <span className="text-[10px] text-slate-500 font-mono block truncate">
+                <span className="text-xs text-slate-400 font-mono block truncate">
                   @{user.username}
                 </span>
               </div>
@@ -161,7 +164,7 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
             <a
               href="/auth/logout"
               title="Log out"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+              className="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
               aria-label="Logout"
             >
               <LogOut className="w-4 h-4" />
@@ -170,19 +173,19 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
         )}
 
         {/* System Status Footer */}
-        <div className="p-4 border-t border-white/5 bg-slate-900/50 shrink-0">
+        <div className="p-3.5 border-t border-white/[0.06] bg-slate-900/50 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-green opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-status-success"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span className="text-xs font-semibold text-slate-300">Digital Vigital</span>
+              <span className="text-xs font-semibold text-slate-200">Digital Vigital</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-500">Operational</span>
+            <span className="text-xs font-mono text-emerald-400 font-medium">Operational</span>
           </div>
-          <div className="mt-2 text-[10px] text-slate-500 flex justify-between items-center px-1">
-             <span>Press <kbd className="font-mono bg-slate-800 px-1 py-0.5 rounded text-slate-300">Ctrl K</kbd> to search</span>
+          <div className="mt-2 text-xs text-slate-400 flex justify-between items-center px-0.5">
+             <span>Press <kbd className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-[11px] text-slate-200 border border-white/10">Ctrl K</kbd> to search</span>
           </div>
         </div>
       </aside>
