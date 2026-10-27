@@ -16,15 +16,27 @@ export function getDatabaseConfig() {
 
   if (dbType === "sqlite") {
     const isTest = process.env.NODE_ENV === "test" || process.env.BUN_ENV === "test";
-    const dbDir = isTest
+    let dbDir = isTest
       ? path.join(CONFIG.ROOT_DIR, ".DB_DND")
       : (CONFIG.DB_DIR || path.join(CONFIG.ROOT_DIR, ".DB_DND"));
 
-    if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
+    try {
+      if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+      }
+    } catch (err) {
+      if (err.code === "EACCES" || err.code === "EPERM") {
+        logger.warn(`[DB] Access denied to '${dbDir}'. Falling back to local '.DB_DND' directory.`);
+        dbDir = path.join(CONFIG.ROOT_DIR, ".DB_DND");
+        if (!fs.existsSync(dbDir)) {
+          fs.mkdirSync(dbDir, { recursive: true });
+        }
+      } else {
+        throw err;
+      }
     }
     const dbName = isTest ? "test.db" : (CONFIG.SQLITE_NAME || "bot.db");
-    const storage = CONFIG.DB_STORAGE || path.join(dbDir, dbName);
+    const storage = path.join(dbDir, dbName);
     return { dialect: "sqlite", storage };
   }
 
