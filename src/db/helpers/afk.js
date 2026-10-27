@@ -1,8 +1,14 @@
 import { AFK } from "../models/index.js";
 import { ensureGuildAndUser } from "./common.js";
 
-// In-memory zero-query filter and full status cache: `${userId}:${guildId}` -> record
+// In-memory zero-query filter and full status cache:
+// 1. activeAfkUserIds: Set of userIds who are AFK in at least one guild (0ms global negative filter)
+// 2. activeAfkKeys: Set of `${userId}:${guildId}` representing 100% of currently active AFKs
+// 3. userAfkGuildCount: Map of userId -> count of active guilds (O(1) multi-guild lifecycle)
+// 4. afkCache: Bounded LRU cache of full database records to prevent redundant SQLite queries
 const activeAfkUserIds = new Set();
+const activeAfkKeys = new Set();
+const userAfkGuildCount = new Map();
 const afkCache = new Map();
 const MAX_AFK_CACHE = 5000;
 
@@ -17,8 +23,7 @@ export function isUserAfkQuick(userId, guildId) {
   if (!userId || !guildId) return false;
   const uId = String(userId);
   if (!activeAfkUserIds.has(uId)) return false;
-  const key = getAfkCacheKey(uId, String(guildId));
-  return afkCache.has(key);
+  return activeAfkKeys.has(getAfkCacheKey(uId, String(guildId)));
 }
 
 function setBoundedCache(key, value) {
@@ -29,18 +34,44 @@ function setBoundedCache(key, value) {
   afkCache.set(key, value);
 }
 
+function registerAfkActive(uId, gId) {
+  const key = getAfkCacheKey(uId, gId);
+  if (!activeAfkKeys.has(key)) {
+    activeAfkKeys.add(key);
+    const count = (userAfkGuildCount.get(uId) || 0) + 1;
+    userAfkGuildCount.set(uId, count);
+    activeAfkUserIds.add(uId);
+  }
+}
+
+function unregisterAfkActive(uId, gId) {
+  const key = getAfkCacheKey(uId, gId);
+  if (activeAfkKeys.delete(key)) {
+    const count = (userAfkGuildCount.get(uId) || 1) - 1;
+    if (count <= 0) {
+      userAfkGuildCount.delete(uId);
+      activeAfkUserIds.delete(uId);
+    } else {
+      userAfkGuildCount.set(uId, count);
+    }
+  }
+}
+
 export async function initAfkCache() {
   try {
     const records = await AFK.findAll({
-      attributes: ["user_id", "guild_id", "afk_reason", "since", "original_nickname", "mentions"],
+      attributes: ["id", "user_id", "guild_id", "afk_reason", "since", "original_nickname", "mentions"],
     });
     activeAfkUserIds.clear();
+    activeAfkKeys.clear();
+    userAfkGuildCount.clear();
     afkCache.clear();
+
     for (const r of records) {
-      if (!r.guild_id) continue;
+      if (!r.guild_id || !r.user_id) continue;
       const uId = String(r.user_id);
       const gId = String(r.guild_id);
-      activeAfkUserIds.add(uId);
+      registerAfkActive(uId, gId);
       const key = getAfkCacheKey(uId, gId);
       setBoundedCache(key, r);
     }
@@ -56,26 +87,21 @@ export function clearAfkCache(userId = null, guildId = null) {
     const key = getAfkCacheKey(uId, gId);
     afkCache.delete(key);
     mentionQueues.delete(key);
-
-    let hasOtherGuildAfk = false;
-    for (const k of afkCache.keys()) {
-      if (k.startsWith(`${uId}:`)) {
-        hasOtherGuildAfk = true;
-        break;
-      }
-    }
-    if (!hasOtherGuildAfk) activeAfkUserIds.delete(uId);
+    unregisterAfkActive(uId, gId);
   } else if (userId) {
     const uId = String(userId);
-    for (const key of afkCache.keys()) {
+    for (const key of Array.from(activeAfkKeys)) {
       if (key.startsWith(`${uId}:`)) {
+        const [, gId] = key.split(":");
+        unregisterAfkActive(uId, gId);
         afkCache.delete(key);
         mentionQueues.delete(key);
       }
     }
-    activeAfkUserIds.delete(uId);
   } else {
     afkCache.clear();
+    activeAfkKeys.clear();
+    userAfkGuildCount.clear();
     activeAfkUserIds.clear();
     mentionQueues.clear();
   }
@@ -86,20 +112,28 @@ export async function getAfkStatus(userId, guildId) {
   const uId = String(userId);
   const gId = String(guildId);
 
-  // Fast path: 0ms lookup without DB query
+  // Fast path: 0ms lookup without DB query if not in global active set
   if (!activeAfkUserIds.has(uId)) {
     return null;
   }
 
   const key = getAfkCacheKey(uId, gId);
+  // Accurate per-guild active check: if not AFK in this guild, return null without touching DB
+  if (!activeAfkKeys.has(key)) {
+    return null;
+  }
+
   if (afkCache.has(key)) {
     return afkCache.get(key);
   }
 
+  // Cache miss (evicted from LRU cache or initialized without full record): rehydrate from DB
   const record = await AFK.findOne({ where: { user_id: uId, guild_id: gId } });
   if (record) {
     setBoundedCache(key, record);
-    activeAfkUserIds.add(uId);
+    registerAfkActive(uId, gId);
+  } else {
+    unregisterAfkActive(uId, gId);
   }
   return record;
 }
@@ -115,27 +149,13 @@ export async function setAfkStatus(userId, guildId, reason, originalNickname = n
   const existing = await getAfkStatus(uId, gId);
   let nickToSave = originalNickname;
   if (existing && existing.original_nickname !== undefined) {
-    if (nickToSave === null || (typeof nickToSave === "string" && nickToSave.startsWith("[AFK]"))) {
+    if (nickToSave === null || (typeof nickToSave === "string" && /^\[afk\]\s*/i.test(nickToSave))) {
       nickToSave = existing.original_nickname;
     }
   }
 
-  const [record, created] = await AFK.findOrCreate({
-    where: {
-      user_id: uId,
-      guild_id: gId,
-    },
-    defaults: {
-      user_id: uId,
-      guild_id: gId,
-      afk_reason: reason,
-      since: Math.floor(Date.now() / 1000),
-      original_nickname: nickToSave,
-      mentions: "[]",
-    },
-  });
-
-  if (!created) {
+  let record = existing;
+  if (record) {
     record.afk_reason = reason;
     record.since = Math.floor(Date.now() / 1000);
     record.mentions = "[]";
@@ -143,9 +163,25 @@ export async function setAfkStatus(userId, guildId, reason, originalNickname = n
       record.original_nickname = nickToSave;
     }
     await record.save();
+  } else {
+    const [createdRecord] = await AFK.findOrCreate({
+      where: {
+        user_id: uId,
+        guild_id: gId,
+      },
+      defaults: {
+        user_id: uId,
+        guild_id: gId,
+        afk_reason: reason,
+        since: Math.floor(Date.now() / 1000),
+        original_nickname: nickToSave,
+        mentions: "[]",
+      },
+    });
+    record = createdRecord;
   }
 
-  activeAfkUserIds.add(uId);
+  registerAfkActive(uId, gId);
   const key = getAfkCacheKey(uId, gId);
   setBoundedCache(key, record);
 

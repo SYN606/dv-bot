@@ -10,37 +10,46 @@ const RETURN_LOCK_TTL_MS = 5000;
 
 // Mention notification cooldowns per channel: `${guildId}:${targetUserId}:${channelId}` -> timestamp (ms)
 const afkMentionCooldown = new Map();
-const MENTION_COOLDOWN_MS = 30000; // 30s per target user per channel
+const MENTION_COOLDOWN_MS = 30000; // 30s per target user per channel for public announcement
 
 // Direct Message cooldown per user: `${guildId}:${targetUserId}` -> timestamp (ms)
 const afkDmCooldown = new Map();
 const DM_COOLDOWN_MS = 60000; // 60s per target user to prevent Discord DM 429 rate limit errors
 
+// Mention DB write throttle per target user per author: `${targetUserId}:${authorId}` -> timestamp (ms)
+const recentMentionAuthors = new Map();
+const MENTION_WRITE_THROTTLE_MS = 3000; // 3s per author to prevent rapid flood writes while ensuring mentions are recorded
+
 export function clearAfkHandlerState() {
   returningUserLocks.clear();
   afkMentionCooldown.clear();
   afkDmCooldown.clear();
+  recentMentionAuthors.clear();
 }
 
 function pruneOldLocks(now) {
-  if (returningUserLocks.size > 500) {
-    for (const [k, expires] of returningUserLocks.entries()) {
-      if (now > expires) returningUserLocks.delete(k);
-    }
+  for (const [k, expires] of returningUserLocks.entries()) {
+    if (now > expires) returningUserLocks.delete(k);
   }
-  if (afkMentionCooldown.size > 1000) {
-    const cutoff = now - MENTION_COOLDOWN_MS;
-    for (const [k, t] of afkMentionCooldown.entries()) {
-      if (t < cutoff) afkMentionCooldown.delete(k);
-    }
+  const mentionCutoff = now - MENTION_COOLDOWN_MS;
+  for (const [k, t] of afkMentionCooldown.entries()) {
+    if (t < mentionCutoff) afkMentionCooldown.delete(k);
   }
-  if (afkDmCooldown.size > 1000) {
-    const cutoff = now - DM_COOLDOWN_MS;
-    for (const [k, t] of afkDmCooldown.entries()) {
-      if (t < cutoff) afkDmCooldown.delete(k);
-    }
+  const dmCutoff = now - DM_COOLDOWN_MS;
+  for (const [k, t] of afkDmCooldown.entries()) {
+    if (t < dmCutoff) afkDmCooldown.delete(k);
+  }
+  const writeCutoff = now - MENTION_WRITE_THROTTLE_MS;
+  for (const [k, t] of recentMentionAuthors.entries()) {
+    if (t < writeCutoff) recentMentionAuthors.delete(k);
   }
 }
+
+// Background unref sweeper to prevent memory leaks from inactive maps
+const afkCleanupInterval = setInterval(() => {
+  pruneOldLocks(Date.now());
+}, 60 * 1000);
+if (afkCleanupInterval.unref) afkCleanupInterval.unref();
 
 function formatDuration(seconds) {
   const safeSec = Math.max(0, Math.floor(seconds));
@@ -57,8 +66,15 @@ function formatDuration(seconds) {
 async function sendAfkDmNotification(user, targetAfk, message, now) {
   if (typeof user.send !== "function") return;
   const currentGuildName = message.guild?.name || "Server";
-  const authorTag = message.author.tag || message.author.username || "User";
-  const contentSnippet = message.content ? message.content.slice(0, 250).replace(/[`\r\n]+/g, " ") : "*No text content*";
+  const authorTag = message.author?.tag || message.author?.username || "User";
+
+  let contentSnippet = "*No text content*";
+  if (message.content && message.content.trim()) {
+    contentSnippet = message.content.slice(0, 250).replace(/[`\r\n]+/g, " ");
+  } else if (message.attachments && message.attachments.size > 0) {
+    contentSnippet = "*[Attachment / File]*";
+  }
+
   const safeReason = (targetAfk.afk_reason || "AFK").replace(/[`\r\n]+/g, " ").slice(0, 150);
 
   const dmEmbed = makeEmbed({
@@ -98,9 +114,12 @@ async function sendAfkDmNotification(user, targetAfk, message, now) {
   await user.send({ embeds: [dmEmbed], components: dmComponents }).catch(() => {});
 }
 
-async function processAuthorReturn(message, authorAfk, elapsed) {
-  const guildId = message.guild.id;
-  const authorId = message.author.id;
+/**
+ * Unified execution for clearing AFK status, restoring nickname, and sending welcome back notification.
+ */
+async function executeAfkReturn({ guild, member, user, channel, message = null, authorAfk, elapsed }) {
+  const guildId = guild.id;
+  const userId = user.id;
 
   let storedMentions = [];
   try {
@@ -111,35 +130,35 @@ async function processAuthorReturn(message, authorAfk, elapsed) {
     storedMentions = [];
   }
 
-  // Remove AFK status from DB and cache
-  await removeAfkStatus(authorId, guildId);
+  // 1. Remove AFK status from DB and in-memory caches
+  await removeAfkStatus(userId, guildId);
 
-  // Restore nickname safely with permission, hierarchy, and owner checks
-  const botMember = message.guild.members?.me || message.guild.me;
+  // 2. Restore nickname safely with permission, hierarchy, and owner checks
+  const botMember = guild.members?.me || guild.me;
   const canManageNick =
-    message.member &&
-    message.guild.ownerId !== authorId &&
+    member &&
+    guild.ownerId !== userId &&
     botMember?.permissions?.has("ManageNicknames") &&
-    (!botMember.roles?.highest || !message.member.roles?.highest || botMember.roles.highest.position > message.member.roles.highest.position);
+    (!botMember.roles?.highest || !member.roles?.highest || botMember.roles.highest.position > member.roles.highest.position);
 
   if (canManageNick) {
-    const currentNick = message.member.nickname || message.member.displayName;
-    if (currentNick && currentNick.startsWith("[AFK]")) {
-      // If original_nickname was null/empty (no custom nickname), setNickname(null) restores normal username
+    const currentNick = member.nickname || member.displayName;
+    if (currentNick && /^\[afk\]\s*/i.test(currentNick)) {
       const targetNick = authorAfk.original_nickname || null;
-      await message.member.setNickname(targetNick).catch(() => {});
+      await member.setNickname(targetNick).catch(() => {});
     }
   }
 
-  const authorAvatar = typeof message.author?.displayAvatarURL === "function"
-    ? message.author.displayAvatarURL({ dynamic: true, size: 256 })
+  // 3. Construct Welcome Back Notification
+  const authorAvatar = typeof user.displayAvatarURL === "function"
+    ? user.displayAvatarURL({ dynamic: true, size: 256 })
     : undefined;
-  const guildName = message.guild?.name || "this server";
-  const authorName = message.author?.username || message.author?.tag || "User";
+  const guildName = guild.name || "this server";
+  const authorName = user.username || user.tag || "User";
   const safeReason = (authorAfk.afk_reason || "AFK").replace(/[`\r\n]+/g, " ").slice(0, 200);
 
   let description =
-    `<@${authorId}>, your AFK status in **${guildName}** has been removed.\n\n` +
+    `<@${userId}>, your AFK status in **${guildName}** has been removed.\n\n` +
     `• **Time Away:** \`${formatDuration(elapsed)}\`\n` +
     `• **Reason:** \`${safeReason}\``;
 
@@ -196,15 +215,41 @@ async function processAuthorReturn(message, authorAfk, elapsed) {
     headerDivider: false,
   });
 
-  const reply = await message.reply({
-    embeds: [embed],
-    components,
-    allowedMentions: { repliedUser: false },
-  }).catch(() => {});
+  // 4. Dispatch welcome message
+  let replyMsg = null;
+  const allowedMentions = { repliedUser: false, parse: [] };
 
-  if (reply) {
+  if (message && typeof message.reply === "function") {
+    replyMsg = await message.reply({
+      embeds: [embed],
+      components,
+      allowedMentions,
+    }).catch(async () => {
+      // Fallback if reply fails (e.g. original message deleted or embed permission missing)
+      if (channel && typeof channel.send === "function") {
+        return await channel.send({
+          content: `👋 Welcome back <@${userId}>! Your AFK status in **${guildName}** has been removed.`,
+          allowedMentions: { parse: [] },
+        }).catch(() => null);
+      }
+      return null;
+    });
+  } else if (channel && typeof channel.send === "function") {
+    replyMsg = await channel.send({
+      embeds: [embed],
+      components,
+      allowedMentions,
+    }).catch(async () => {
+      return await channel.send({
+        content: `👋 Welcome back <@${userId}>! Your AFK status in **${guildName}** has been removed.`,
+        allowedMentions: { parse: [] },
+      }).catch(() => null);
+    });
+  }
+
+  if (replyMsg && typeof replyMsg.delete === "function") {
     const timeout = storedMentions.length > 0 ? 45000 : 12000;
-    setTimeout(() => reply.delete().catch(() => {}), timeout);
+    setTimeout(() => replyMsg.delete().catch(() => {}), timeout);
   }
 }
 
@@ -236,111 +281,17 @@ export async function handleInteractionAfkReturn(interaction) {
     return;
   }
 
-  // Remove AFK status
-  await removeAfkStatus(userId, guildId);
+  const channel = interaction.channel || (interaction.channelId ? await interaction.guild.channels.fetch(interaction.channelId).catch(() => null) : null);
 
-  // Restore nickname safely
-  const member = interaction.member;
-  const botMember = interaction.guild.members?.me || interaction.guild.me;
-  const canManageNick =
-    member &&
-    interaction.guild.ownerId !== userId &&
-    botMember?.permissions?.has("ManageNicknames") &&
-    (!botMember.roles?.highest || !member.roles?.highest || botMember.roles.highest.position > member.roles.highest.position);
-
-  if (canManageNick) {
-    const currentNick = member.nickname || member.displayName;
-    if (currentNick && currentNick.startsWith("[AFK]")) {
-      const targetNick = authorAfk.original_nickname || null;
-      await member.setNickname(targetNick).catch(() => {});
-    }
-  }
-
-  // Notify channel
-  if (interaction.channel && typeof interaction.channel.send === "function") {
-    let storedMentions = [];
-    try {
-      storedMentions = typeof authorAfk.mentions === "string"
-        ? JSON.parse(authorAfk.mentions || "[]")
-        : (Array.isArray(authorAfk.mentions) ? authorAfk.mentions : []);
-    } catch (_) {
-      storedMentions = [];
-    }
-
-    const authorAvatar = typeof interaction.user.displayAvatarURL === "function"
-      ? interaction.user.displayAvatarURL({ dynamic: true, size: 256 })
-      : undefined;
-    const guildName = interaction.guild.name || "this server";
-    const authorName = interaction.user.username || interaction.user.tag || "User";
-    const safeReason = (authorAfk.afk_reason || "AFK").replace(/[`\r\n]+/g, " ").slice(0, 200);
-
-    let description =
-      `<@${userId}>, your AFK status in **${guildName}** has been removed.\n\n` +
-      `• **Time Away:** \`${formatDuration(elapsed)}\`\n` +
-      `• **Reason:** \`${safeReason}\``;
-
-    const components = [];
-    if (storedMentions.length > 0) {
-      description += `\n\n**📬 Mentions Received (${storedMentions.length}):**\n`;
-      description += storedMentions
-        .slice(0, 5)
-        .map((m, idx) => {
-          const cleanContent = m.content ? m.content.replace(/\r?\n+/g, " ").trim() : "*Attachment*";
-          const snippet = cleanContent.length > 50 ? `${cleanContent.slice(0, 47)}...` : cleanContent;
-          const timeStr = m.timestamp ? `<t:${m.timestamp}:R>` : "";
-          return `\`${idx + 1}.\` <@${m.author_id}> in <#${m.channel_id}>: *"${snippet}"* ${timeStr}`;
-        })
-        .join("\n");
-
-      if (storedMentions.length > 5) {
-        description += `\n*...and ${storedMentions.length - 5} more mention(s)*`;
-      }
-
-      const buttons = [];
-      storedMentions.slice(0, 5).forEach((m, idx) => {
-        if (m.message_url && (m.message_url.startsWith("https://") || m.message_url.startsWith("http://"))) {
-          const rawChannelName = m.channel_name || `${idx + 1}`;
-          const buttonLabel = `Jump: #${rawChannelName}`.slice(0, 80);
-          buttons.push(
-            new ButtonBuilder()
-              .setLabel(buttonLabel)
-              .setStyle(ButtonStyle.Link)
-              .setURL(m.message_url)
-          );
-        }
-      });
-
-      if (buttons.length > 0) {
-        components.push(new ActionRowBuilder().addComponents(buttons));
-      }
-    } else {
-      description += `\n\n*You received no mentions while you were away.*`;
-    }
-
-    const embed = makeEmbed({
-      author: {
-        name: "Welcome Back!",
-        iconURL: authorAvatar,
-      },
-      title: `${authorName} is no longer AFK`,
-      description,
-      thumbnail: authorAvatar,
-      image: CONFIG.AFK_IMAGE_URL || null,
-      level: "SUCCESS",
-      color: COLORS.DARK,
-      headerDivider: false,
-    });
-
-    const reply = await interaction.channel.send({
-      embeds: [embed],
-      components,
-    }).catch(() => {});
-
-    if (reply) {
-      const timeout = storedMentions.length > 0 ? 45000 : 12000;
-      setTimeout(() => reply.delete().catch(() => {}), timeout);
-    }
-  }
+  await executeAfkReturn({
+    guild: interaction.guild,
+    member: interaction.member,
+    user: interaction.user,
+    channel,
+    message: null,
+    authorAfk,
+    elapsed,
+  });
 }
 
 export async function handleAfk(message, { skipAuthorReturn = false } = {}) {
@@ -370,7 +321,15 @@ export async function handleAfk(message, { skipAuthorReturn = false } = {}) {
         if (elapsed < 5) {
           returningUserLocks.delete(returnLockKey);
         } else {
-          await processAuthorReturn(message, authorAfk, elapsed);
+          await executeAfkReturn({
+            guild: message.guild,
+            member: message.member,
+            user: message.author,
+            channel: message.channel,
+            message,
+            authorAfk,
+            elapsed,
+          });
         }
       } else {
         returningUserLocks.delete(returnLockKey);
@@ -386,23 +345,20 @@ export async function handleAfk(message, { skipAuthorReturn = false } = {}) {
     for (const [userId, user] of message.mentions.users) {
       if (user.bot || userId === authorId) continue;
 
-      const cdKey = `${guildId}:${userId}:${message.channel.id}`;
-      const lastMentioned = afkMentionCooldown.get(cdKey) || 0;
-      if (now - lastMentioned < MENTION_COOLDOWN_MS) continue;
+      // Fast check: skip non-AFK users instantly without hitting DB
+      if (!isUserAfkQuick(userId, guildId)) continue;
 
       const targetAfk = await getAfkStatus(userId, guildId);
-      if (targetAfk) {
-        afkMentionCooldown.set(cdKey, now);
-        const elapsed = Math.floor(now / 1000) - Number(targetAfk.since);
-        const safeReason = (targetAfk.afk_reason || "AFK").replace(/[`\r\n]+/g, " ").slice(0, 200);
+      if (!targetAfk) continue;
 
-        afkMentions.push({
-          userId,
-          reason: safeReason,
-          duration: formatDuration(elapsed),
-        });
+      const elapsed = Math.floor(now / 1000) - Number(targetAfk.since);
+      const safeReason = (targetAfk.afk_reason || "AFK").replace(/[`\r\n]+/g, " ").slice(0, 200);
 
-        // Record mention object in the AFK user's record
+      // A. Record mention object in the AFK user's record (throttled by 3s per author to prevent flood abuse)
+      const writeKey = `${userId}:${authorId}`;
+      const lastWrite = recentMentionAuthors.get(writeKey) || 0;
+      if (now - lastWrite >= MENTION_WRITE_THROTTLE_MS) {
+        recentMentionAuthors.set(writeKey, now);
         const mentionObj = {
           author_id: message.author.id,
           author_tag: message.author.tag || message.author.username,
@@ -412,17 +368,27 @@ export async function handleAfk(message, { skipAuthorReturn = false } = {}) {
           message_url: message.url,
           timestamp: Math.floor(now / 1000),
         };
-
-        // A. Queue DB mention write
         backgroundTasks.push(addAfkMention(userId, guildId, mentionObj));
+      }
 
-        // B. Send DM with 60s per-user rate limit protection to prevent Discord 429 DM floods
-        const dmCdKey = `${guildId}:${userId}`;
-        const lastDmSent = afkDmCooldown.get(dmCdKey) || 0;
-        if (now - lastDmSent >= DM_COOLDOWN_MS) {
-          afkDmCooldown.set(dmCdKey, now);
-          backgroundTasks.push(sendAfkDmNotification(user, targetAfk, message, now));
-        }
+      // B. Send DM with 60s per-user rate limit protection to prevent Discord 429 DM floods
+      const dmCdKey = `${guildId}:${userId}`;
+      const lastDmSent = afkDmCooldown.get(dmCdKey) || 0;
+      if (now - lastDmSent >= DM_COOLDOWN_MS) {
+        afkDmCooldown.set(dmCdKey, now);
+        backgroundTasks.push(sendAfkDmNotification(user, targetAfk, message, now));
+      }
+
+      // C. Public Channel Announcement (throttled per channel per AFK user to prevent channel spam)
+      const cdKey = `${guildId}:${userId}:${message.channel.id}`;
+      const lastMentioned = afkMentionCooldown.get(cdKey) || 0;
+      if (now - lastMentioned >= MENTION_COOLDOWN_MS) {
+        afkMentionCooldown.set(cdKey, now);
+        afkMentions.push({
+          userId,
+          reason: safeReason,
+          duration: formatDuration(elapsed),
+        });
       }
     }
 
@@ -451,8 +417,16 @@ export async function handleAfk(message, { skipAuthorReturn = false } = {}) {
 
       const reply = await message.reply({
         embeds: [embed],
-        allowedMentions: { repliedUser: false },
-      }).catch(() => {});
+        allowedMentions: { repliedUser: false, parse: [] },
+      }).catch(async () => {
+        if (message.channel && typeof message.channel.send === "function") {
+          return await message.channel.send({
+            content: `${EMOJIS.get("arrow_point") || "👉"} The mentioned user is currently AFK.`,
+            allowedMentions: { parse: [] },
+          }).catch(() => null);
+        }
+        return null;
+      });
 
       if (reply) {
         setTimeout(() => reply.delete().catch(() => {}), 10000);

@@ -52,11 +52,14 @@ export default {
 
     const prefix = (CONFIG.PREFIX || "ts").toLowerCase();
     const rawContent = (message.content || "").trim();
+    const botMentionAfkRegex = new RegExp(`^<@!?${client.user?.id}>(?:\\s+)?afk(?:\\s+|$)`, "i");
     const isAfkCommand =
       rawContent.toLowerCase().startsWith(`${prefix}afk`) ||
       rawContent.toLowerCase().startsWith("dvafk") ||
+      rawContent.toLowerCase().startsWith("dv afk") ||
       rawContent.toLowerCase() === `${prefix} afk` ||
-      rawContent.toLowerCase().startsWith(`${prefix} afk `);
+      rawContent.toLowerCase().startsWith(`${prefix} afk `) ||
+      botMentionAfkRegex.test(rawContent);
 
     // 3. AFK Notifications & Return
     await handleAfk(message, { skipAuthorReturn: isAfkCommand });

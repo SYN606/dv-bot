@@ -48,7 +48,7 @@ export default createCommand({
       !ctx.member.permissions.has("Administrator")
     ) {
       // Strip off any existing [AFK] prefix from displayName to prevent nested [AFK] [AFK] tags
-      const cleanName = ctx.member.displayName.replace(/^(\[AFK\]\s*)+/i, "").trim();
+      const cleanName = ctx.member.displayName.replace(/^(\[AFK\]\s*)+/i, "").trim() || ctx.user.username;
       const newNick = `[AFK] ${cleanName}`.slice(0, 32);
       if (ctx.member.displayName !== newNick) {
         await ctx.member.setNickname(newNick).catch(() => {});
@@ -57,7 +57,10 @@ export default createCommand({
 
     await setAfkStatus(ctx.user.id, ctx.guild.id, reason, originalNick);
 
-    const avatar = ctx.user.displayAvatarURL({ dynamic: true, size: 256 });
+    const avatar = typeof ctx.user.displayAvatarURL === "function"
+      ? ctx.user.displayAvatarURL({ dynamic: true, size: 256 })
+      : undefined;
+
     const embed = makeEmbed({
       author: {
         name: "Away From Keyboard",
@@ -73,6 +76,12 @@ export default createCommand({
       headerDivider: false,
     });
 
-    return await ctx.reply({ embeds: [embed] });
+    return await ctx.reply({
+      embeds: [embed],
+    }).catch(async () => {
+      return await ctx.reply({
+        content: `✅ **${ctx.user.username}** is now AFK: \`${reason}\``,
+      });
+    });
   },
 });
