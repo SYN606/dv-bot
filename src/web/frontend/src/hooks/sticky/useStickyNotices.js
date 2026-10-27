@@ -61,7 +61,7 @@ export function useStickyNotices(guildId, showToast) {
     if (editingNotice) {
       setEditor({
         channelId: editingNotice.channel_id,
-        content: editingNotice.content || "",
+        content: editingNotice.content || editingNotice.sticky_content || "",
         postNow: true, // Default to true when editing to ensure updates trigger
       });
     }
@@ -80,9 +80,12 @@ export function useStickyNotices(guildId, showToast) {
     if (!editingNotice) {
       return editor.channelId !== "" || editor.content !== "";
     }
-    return editor.channelId !== editingNotice.channel_id || 
-           editor.content !== editingNotice.content ||
-           !editor.postNow; // if postNow is toggled off, it's a change of behavior
+    const originalContent = editingNotice.content || editingNotice.sticky_content || "";
+    return (
+      editor.channelId !== editingNotice.channel_id || 
+      editor.content !== originalContent ||
+      !editor.postNow
+    );
   }, [editor, editingNotice]);
 
   const createOrUpdate = async () => {
@@ -98,7 +101,7 @@ export function useStickyNotices(guildId, showToast) {
       
       showToast?.({ 
         title: "Success", 
-        message: editor.postNow ? "Sticky notice deployed!" : "Sticky notice saved.", 
+        message: editor.postNow ? "Sticky notice deployed to channel!" : "Sticky notice saved.", 
         type: "success" 
       });
       

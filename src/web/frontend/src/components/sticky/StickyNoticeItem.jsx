@@ -1,28 +1,36 @@
 import React from "react";
 import Badge from "../ui/Badge";
+import { Pin } from "lucide-react";
 
 export default function StickyNoticeItem({ notice, channelName, onEdit, onDelete, isDeleting }) {
-  const contentPreview = notice.content.length > 100 
-    ? notice.content.substring(0, 100) + "..."
-    : notice.content;
+  const rawContent = notice.content || notice.sticky_content || "";
+  const contentPreview = rawContent.length > 120 
+    ? rawContent.substring(0, 120) + "..."
+    : rawContent;
+
+  const repins = Number(notice.repins || notice.counter || 0);
 
   return (
     <div className="glass-panel p-5 rounded-2xl border border-white/5 flex flex-col md:flex-row md:items-start justify-between gap-6 hover:border-white/10 transition-colors">
       <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-3 mb-2">
-          <h4 className="text-lg font-bold text-white truncate">#{channelName || "unknown-channel"}</h4>
-          <Badge variant="default" className="text-[10px]">
-            {notice.repins || 0} repins
+        <div className="flex flex-wrap items-center gap-2.5 mb-2">
+          <div className="flex items-center gap-1.5 font-bold text-white text-base truncate">
+            <Pin className="w-4 h-4 text-brand-crimson shrink-0" />
+            <span>#{channelName || `channel-${notice.channel_id?.slice(-4)}`}</span>
+          </div>
+
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Active
+          </span>
+
+          <Badge variant="default" className="text-[10px] font-mono">
+            {repins.toLocaleString()} repin{repins === 1 ? "" : "s"}
           </Badge>
-          {notice.post_now && (
-            <Badge variant="success" className="text-[10px]">
-              Deploy immediately
-            </Badge>
-          )}
         </div>
         
         <p className="text-sm text-slate-300 wrap-break-word whitespace-pre-wrap leading-relaxed max-w-3xl">
-          {contentPreview}
+          {contentPreview || <span className="text-slate-500 italic">No content</span>}
         </p>
       </div>
 

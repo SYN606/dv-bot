@@ -5,9 +5,18 @@ const MAX_WEBHOOK_CACHE_SIZE = 500;
 const webhookCache = new Map(); // channelId -> Webhook
 const channelLocks = new Map(); // channelId -> Promise lock
 const channelCooldowns = new Map(); // channelId -> timestamp
+const pendingTrailingTimers = new Map(); // channelId -> Timeout
 
 export function invalidateWebhookCache(channelId) {
   webhookCache.delete(String(channelId));
+}
+
+export function cancelStickyTrailingTimer(channelId) {
+  const cId = String(channelId);
+  if (pendingTrailingTimers.has(cId)) {
+    clearTimeout(pendingTrailingTimers.get(cId));
+    pendingTrailingTimers.delete(cId);
+  }
 }
 
 /**
@@ -45,32 +54,33 @@ export async function getOrCreateStickyWebhook(channel, name = WEBHOOK_NAME) {
 
     // Create new webhook
     const botUser = botMember.user;
-    const avatarUrl = typeof botUser.displayAvatarURL === "function"
+    const avatarUrl = typeof botUser?.displayAvatarURL === "function"
       ? botUser.displayAvatarURL({ extension: "png", size: 128 })
       : null;
 
-    const newWebhook = await channel.createWebhook({
+    const created = await channel.createWebhook({
       name,
-      avatar: avatarUrl,
-      reason: "Automated Sticky & Media Channel Notice Engine",
+      avatar: avatarUrl || undefined,
+      reason: "Automated sticky messages and system notifications manager",
     });
 
     if (webhookCache.size >= MAX_WEBHOOK_CACHE_SIZE) {
       const oldestKey = webhookCache.keys().next().value;
       if (oldestKey) webhookCache.delete(oldestKey);
     }
-    webhookCache.set(channelId, newWebhook);
-    return newWebhook;
+
+    webhookCache.set(channelId, created);
+    return created;
   } catch (err) {
-    if (err?.status === 429) {
-      console.warn(`[WEBHOOK 429] Rate limited creating webhook in #${channel.name || channelId}`);
+    if (err?.code !== 50013) {
+      console.warn(`[WEBHOOK SETUP WARNING] Channel #${channel.name}:`, err?.message || err);
     }
     return null;
   }
 }
 
 /**
- * Safely deletes a previous sticky message via webhook or channel fallback
+ * Cleanly deletes a previous sticky message via webhook or channel API.
  */
 export async function deletePreviousSticky(webhook, channel, messageId) {
   if (!messageId) return;
@@ -105,16 +115,10 @@ export async function deletePreviousSticky(webhook, channel, messageId) {
 /**
  * Dispatches a sticky notice to the channel using Webhooks (bypassing bot global route 429s)
  * with robust fallback to standard channel.send.
- * Includes per-channel async mutex to guarantee zero race-condition duplicates.
+ * Includes per-channel async mutex to guarantee zero race-condition duplicates,
+ * and a trailing debounce timer to prevent sticky messages getting buried during rapid chat.
  *
  * @param {Object} options
- * @param {import("discord.js").TextChannel} options.channel
- * @param {import("discord.js").EmbedBuilder|Object} options.embed
- * @param {string} [options.content]
- * @param {string} [options.lastMessageId]
- * @param {number} [options.minCooldownMs=3000]
- * @param {boolean} [options.force=false]
- * @returns {Promise<string|null>} new sticky message ID
  */
 export async function dispatchStickyNotice({
   channel,
@@ -123,6 +127,7 @@ export async function dispatchStickyNotice({
   lastMessageId = null,
   minCooldownMs = 3000,
   force = false,
+  onDispatched = null,
 }) {
   if (!channel || !channel.guild) return null;
   const channelId = String(channel.id);
@@ -147,13 +152,47 @@ export async function dispatchStickyNotice({
     const now = Date.now();
     const lastExec = channelCooldowns.get(channelId) || 0;
     if (!force && now - lastExec < minCooldownMs) {
+      // Cooldown active: ensure trailing re-post timer is running so sticky isn't left buried
+      if (!pendingTrailingTimers.has(channelId)) {
+        const remainingMs = Math.max(150, minCooldownMs - (now - lastExec) + 200);
+        const timer = setTimeout(async () => {
+          pendingTrailingTimers.delete(channelId);
+          try {
+            // Check if sticky message is still needed at bottom
+            if (channel.lastMessageId && String(channel.lastMessageId) === String(lastMessageId)) {
+              return;
+            }
+            const trailingNewId = await dispatchStickyNotice({
+              channel,
+              embed,
+              content,
+              lastMessageId,
+              minCooldownMs,
+              force: true,
+              onDispatched,
+            });
+            if (onDispatched && trailingNewId && trailingNewId !== lastMessageId) {
+              await onDispatched(trailingNewId);
+            }
+          } catch (err) {
+            console.warn(`[STICKY TRAILING REPOST WARNING] #${channel.name}:`, err?.message || err);
+          }
+        }, remainingMs);
+
+        if (timer.unref) timer.unref();
+        pendingTrailingTimers.set(channelId, timer);
+      }
       return lastMessageId;
+    }
+
+    if (pendingTrailingTimers.has(channelId)) {
+      clearTimeout(pendingTrailingTimers.get(channelId));
+      pendingTrailingTimers.delete(channelId);
     }
 
     channelCooldowns.set(channelId, Date.now());
 
     // Check if the last message in the channel is ALREADY the sticky message
-    // (avoids unnecessary delete & repost cycles)
     if (lastMessageId && channel.lastMessageId === String(lastMessageId)) {
       return lastMessageId;
     }
@@ -182,7 +221,11 @@ export async function dispatchStickyNotice({
         });
 
         if (sent?.id) {
-          return String(sent.id);
+          const sentId = String(sent.id);
+          if (onDispatched) {
+            await onDispatched(sentId);
+          }
+          return sentId;
         }
       } catch (err) {
         if (err?.status === 404) {
@@ -203,7 +246,11 @@ export async function dispatchStickyNotice({
           allowedMentions: { parse: [] },
         });
         if (sent?.id) {
-          return String(sent.id);
+          const sentId = String(sent.id);
+          if (onDispatched) {
+            await onDispatched(sentId);
+          }
+          return sentId;
         }
       } catch (err) {
         console.warn(`[STICKY DISPATCH FAILED] Channel #${channel.name}:`, err?.message || err);

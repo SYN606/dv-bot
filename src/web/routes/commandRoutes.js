@@ -30,6 +30,11 @@ import {
 import { StickyMessage } from "../../db/models/index.js";
 import { apiCache } from "./cache.js";
 
+import {
+  dispatchStickyNotice,
+  cancelStickyTrailingTimer,
+} from "../../utils/webhookManager.js";
+
 const IMAGE_URL_REGEX = /(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp)(?:\?\S+)?)/i;
 
 export const commandRoutes = new Hono();
@@ -632,32 +637,34 @@ commandRoutes.post("/guilds/:guildId/sticky", async (c) => {
         targetChannel = await botGuild.channels.fetch(channel_id).catch(() => null);
       }
 
-      if (targetChannel && typeof targetChannel.send === "function") {
-        // Delete previous sticky message if known
-        if (record.last_message_id && /^\d{17,20}$/.test(record.last_message_id)) {
-          try {
-            const oldMsg = await targetChannel.messages.fetch(record.last_message_id).catch(() => null);
-            if (oldMsg && typeof oldMsg.delete === "function") {
-              await oldMsg.delete().catch(() => {});
-            }
-          } catch {}
-        }
-
+      if (targetChannel) {
         const imgMatch = content.match(IMAGE_URL_REGEX);
         const imageUrl = imgMatch ? imgMatch[1] : null;
         const cleanText = imageUrl ? content.replace(imageUrl, "").trim() : content;
 
         const embed = makeEmbed({
-          title: "ðŸ“Œ Sticky Message",
-          description: cleanText ? `${EMOJIS.get("announcement") || "ðŸ“Œ"} ${cleanText}` : "ðŸ“Œ **Sticky Notice**",
+          title: "📌 Sticky Message",
+          description: cleanText ? `${EMOJIS.get("announcement") || "📌"} ${cleanText}` : "📌 **Sticky Notice**",
           image: imageUrl,
           level: "SYSTEM",
         });
 
-        const newMsg = await targetChannel.send({ embeds: [embed] }).catch(() => null);
-        if (newMsg?.id) {
-          await updateStickyLastMessage(guildId, channel_id, newMsg.id);
-          record.last_message_id = newMsg.id;
+        const newMsgId = await dispatchStickyNotice({
+          channel: targetChannel,
+          embed,
+          lastMessageId: record.last_message_id,
+          force: true,
+          onDispatched: async (id) => {
+            if (id) {
+              await updateStickyLastMessage(guildId, channel_id, id);
+              record.last_message_id = id;
+            }
+          },
+        });
+
+        if (newMsgId) {
+          await updateStickyLastMessage(guildId, channel_id, newMsgId);
+          record.last_message_id = newMsgId;
         }
       }
     } catch (err) {
@@ -674,6 +681,9 @@ commandRoutes.delete("/guilds/:guildId/sticky/:channelId", async (c) => {
   const guildId = c.req.param("guildId");
   const channelId = c.req.param("channelId");
   const botGuild = c.get("botGuild");
+
+  // Cancel any trailing timer waiting to repost in this channel
+  cancelStickyTrailingTimer(channelId);
 
   // Attempt to delete stale sticky message in Discord channel before deleting record
   try {

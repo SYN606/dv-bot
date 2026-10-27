@@ -7,7 +7,7 @@ const COMMAND_PREFIXES = ["!", "/", ".", "dv "];
 const IMAGE_URL_REGEX = /(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp)(?:\?\S+)?)/i;
 
 export async function handleSticky(message) {
-  if (!message.guild || message.author.bot) return;
+  if (!message.guild || message.author?.bot) return;
 
   // Ignore bot command invocations so commands don't cause sticky reposition loops
   if (message.content && COMMAND_PREFIXES.some((p) => message.content.startsWith(p))) {
@@ -22,8 +22,8 @@ export async function handleSticky(message) {
 
   const lastMsgId = sticky.last_message_id ? String(sticky.last_message_id) : null;
 
-  // Don't re-send if the last message in the channel is already the sticky message
-  if (lastMsgId && lastMsgId === message.id) return;
+  // Don't re-send if the sticky message is already the latest message in this channel
+  if (lastMsgId && message.channel.lastMessageId === lastMsgId) return;
 
   try {
     // Extract image URL if present in sticky content
@@ -43,6 +43,11 @@ export async function handleSticky(message) {
       embed,
       lastMessageId: lastMsgId,
       minCooldownMs: 3000,
+      onDispatched: async (id) => {
+        if (id && id !== lastMsgId) {
+          await updateStickyLastMessage(guildId, channelId, id);
+        }
+      },
     });
 
     if (newMsgId && newMsgId !== lastMsgId) {

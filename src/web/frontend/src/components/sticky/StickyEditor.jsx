@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { ChannelSelector, EmojiSelector } from "../discord";
 import Switch from "../ui/Switch";
-import { Plus } from "lucide-react";
+import { Plus, Pin } from "lucide-react";
 
 export default function StickyEditor({ 
   guildId, 
@@ -24,7 +24,6 @@ export default function StickyEditor({
     const end = textarea.selectionEnd;
 
     const newContent = editor.content.substring(0, start) + emojiRaw + editor.content.substring(end);
-    
     updateEditor("content", newContent);
 
     // Restore cursor position after state updates
@@ -34,21 +33,25 @@ export default function StickyEditor({
     }, 0);
   };
 
-  const isSaveDisabled = !editor.channelId || !editor.content.trim() || saving || (!hasChanges && isEditing);
+  const isOverLimit = (editor.content || "").length > 2000;
+  const isSaveDisabled = !editor.channelId || !editor.content.trim() || saving || isOverLimit;
 
   return (
     <div className="flex flex-col h-full glass-panel bg-slate-900/50 p-6 rounded-3xl border border-white/5">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-sm font-bold text-white tracking-wider flex items-center gap-2">
+          <Pin className="w-4 h-4 text-brand-crimson" />
           {isEditing ? "EDIT STICKY NOTICE" : "NEW STICKY NOTICE"}
           {isEditing && hasChanges && (
-            <span className="text-[10px] font-mono text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md">Unsaved changes</span>
+            <span className="text-[10px] font-mono text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+              Unsaved changes
+            </span>
           )}
         </h3>
         {isEditing && (
           <button 
             onClick={onReset}
-            className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1 bg-indigo-500/10 px-2 py-1 rounded-md"
+            className="text-xs font-semibold text-brand-crimson hover:text-white transition-colors flex items-center gap-1 bg-brand-crimson/10 hover:bg-brand-crimson/20 border border-brand-crimson/20 px-2.5 py-1 rounded-lg"
           >
             <Plus className="w-3.5 h-3.5" />
             New Notice
@@ -60,7 +63,7 @@ export default function StickyEditor({
         {/* Channel Selection */}
         <div>
           <label className="block text-xs font-mono text-slate-500 uppercase tracking-widest font-bold mb-2">
-            Channel
+            Target Channel
           </label>
           <ChannelSelector 
             guildId={guildId}
@@ -68,19 +71,19 @@ export default function StickyEditor({
             value={editor.channelId}
             onChange={(val) => updateEditor("channelId", val)}
             allowedTypes={["text"]}
-            placeholder="Select a channel..."
+            placeholder="Select or search channel..."
           />
         </div>
 
         {/* Message Composer */}
         <div className="flex-1 flex flex-col">
           <label className="block text-xs font-mono text-slate-500 uppercase tracking-widest font-bold mb-1">
-            Message
+            Notice Content
           </label>
           <p className="text-[11px] text-slate-400 mb-2">
-            Supports Discord-style text, custom server emojis, and an optional image URL.
+            Supports Discord formatting, custom server emojis, and an optional image link.
           </p>
-          <div className="flex-1 flex flex-col relative border border-white/10 rounded-xl bg-slate-950 focus-within:border-indigo-500/50 transition-colors">
+          <div className="flex-1 flex flex-col relative border border-white/10 rounded-xl bg-slate-950 focus-within:border-brand-crimson/50 transition-colors">
             <textarea
               ref={textareaRef}
               value={editor.content}
@@ -99,8 +102,8 @@ export default function StickyEditor({
                   multiple={false}
                 />
               </div>
-              <span className="text-[10px] text-slate-500 font-mono">
-                {editor.content.length} chars
+              <span className={`text-[10px] font-mono ${isOverLimit ? "text-rose-400 font-bold" : "text-slate-500"}`}>
+                {editor.content.length} / 2000 chars
               </span>
             </div>
           </div>
@@ -113,7 +116,7 @@ export default function StickyEditor({
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
               {editor.postNow 
                 ? "Send or refresh this notice immediately when the configuration is saved."
-                : "The notice will be posted when the next qualifying channel activity occurs."}
+                : "The notice will post when the next qualifying channel activity occurs."}
             </p>
           </div>
           <div className="shrink-0 mt-1">
@@ -129,9 +132,13 @@ export default function StickyEditor({
           <button
             onClick={onSave}
             disabled={isSaveDisabled}
-            className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 rounded-xl bg-brand-crimson hover:bg-brand-crimson-dark text-white font-bold transition-all shadow-lg shadow-brand-crimson/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? "Saving..." : isEditing ? "Save Changes" : "Create Notice"}
+            {saving
+              ? "Saving..."
+              : isEditing
+              ? (editor.postNow ? "Save & Deploy Notice" : "Save Changes")
+              : (editor.postNow ? "Create & Deploy Notice" : "Create Notice")}
           </button>
         </div>
       </div>
