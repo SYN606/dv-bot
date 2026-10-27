@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from "react";
-import { Trophy, MessageSquare, Mic, Search } from "lucide-react";
+import { Trophy, MessageSquare, Mic, Search, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { getDiscordAvatarUrl } from "../../utils/discord";
 
 export default function Leaderboard({ topChatters = [], topVoice = [], leaderboards, loading }) {
   const [tab, setTab] = useState("chat");
   const [scope, setScope] = useState("weekly");
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const filteredData = useMemo(() => {
     let rawData = [];
@@ -38,12 +40,26 @@ export default function Leaderboard({ topChatters = [], topVoice = [], leaderboa
     return list.map((item, idx) => ({ ...item, rank: idx + 1, activeVal: getVal(item) }));
   }, [tab, scope, topChatters, topVoice, leaderboards, search]);
 
+  // Reset to page 1 whenever filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [tab, scope, search, pageSize]);
+
+  const totalPages = pageSize === "all" ? 1 : Math.ceil(filteredData.length / pageSize) || 1;
+  const paginatedData = useMemo(() => {
+    if (pageSize === "all") return filteredData;
+    const start = (currentPage - 1) * pageSize;
+    return filteredData.slice(start, start + pageSize);
+  }, [filteredData, currentPage, pageSize]);
+
   if (loading) {
     return (
       <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-6 mt-8 animate-pulse">
         <div className="h-8 w-48 bg-white/5 rounded"></div>
         <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-14 w-full bg-white/5 rounded-2xl"></div>)}
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-14 w-full bg-white/5 rounded-2xl"></div>
+          ))}
         </div>
       </div>
     );
@@ -56,17 +72,19 @@ export default function Leaderboard({ topChatters = [], topVoice = [], leaderboa
       {/* Header & Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-brand-crimson border border-white/10">
+          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-brand-crimson border border-white/10 shadow-sm">
             <Trophy className="w-5 h-5" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-white tracking-tight">Community Leaderboard</h2>
-            <p className="text-xs text-slate-400">Most active members by engagement</p>
+            <p className="text-xs text-slate-400">
+              Ranking {filteredData.length} active member{filteredData.length === 1 ? "" : "s"} by engagement
+            </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* Tab Toggle */}
+          {/* Tab Toggle: Chat vs Voice */}
           <div className="flex items-center bg-slate-900 border border-white/10 rounded-lg p-1">
             <button
               onClick={() => setTab("chat")}
@@ -88,7 +106,7 @@ export default function Leaderboard({ topChatters = [], topVoice = [], leaderboa
             </button>
           </div>
 
-          {/* Scope Toggle */}
+          {/* Scope Toggle: Weekly vs All-Time */}
           <div className="flex items-center bg-slate-900 border border-white/10 rounded-lg p-1">
             <button
               onClick={() => setScope("weekly")}
@@ -108,60 +126,94 @@ export default function Leaderboard({ topChatters = [], topVoice = [], leaderboa
             </button>
           </div>
 
+          {/* Rows Per Page */}
+          <div className="flex items-center bg-slate-900 border border-white/10 rounded-lg p-1 text-xs">
+            {[10, 25, "all"].map((size) => (
+              <button
+                key={size}
+                onClick={() => setPageSize(size)}
+                className={`px-2.5 py-1 rounded-md font-mono text-[11px] uppercase transition-colors ${
+                  pageSize === size ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                {size === "all" ? "All" : size}
+              </button>
+            ))}
+          </div>
+
           {/* Search */}
           <div className="relative w-full sm:w-auto">
             <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
             <input
               type="text"
-              placeholder="Search user..."
+              placeholder="Search member..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full sm:w-48 pl-9 pr-3 py-1.5 rounded-lg bg-slate-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-crimson/50 transition-colors"
+              className="w-full sm:w-48 pl-9 pr-8 py-1.5 rounded-lg bg-slate-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-crimson/50 transition-colors"
             />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* List */}
       <div className="space-y-2">
-        {filteredData.length === 0 ? (
+        {paginatedData.length === 0 ? (
           <div className="text-center py-12 text-xs text-slate-500 border border-dashed border-white/5 rounded-2xl">
-            No active members found matching your search.
+            {search ? `No members found matching "${search}".` : "No active members recorded yet."}
           </div>
         ) : (
-          filteredData.map((u) => {
+          paginatedData.map((u) => {
             const rank = u.rank;
             let medalClass = "text-slate-500 bg-slate-900 border-white/5";
             let medalText = `#${rank}`;
-            
+
             if (rank === 1) {
               medalClass = "text-yellow-400 bg-yellow-400/10 border-yellow-400/30 shadow-lg shadow-yellow-400/10";
-              medalText = "1st";
+              medalText = "🥇 1st";
             } else if (rank === 2) {
               medalClass = "text-slate-300 bg-slate-300/10 border-slate-300/30";
-              medalText = "2nd";
+              medalText = "🥈 2nd";
             } else if (rank === 3) {
               medalClass = "text-amber-600 bg-amber-600/10 border-amber-600/30";
-              medalText = "3rd";
+              medalText = "🥉 3rd";
             }
 
             const val = u.activeVal ?? 0;
 
             return (
-              <div key={u.userId || rank} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 rounded-2xl bg-slate-900/40 hover:bg-slate-900 border border-white/5 transition-colors gap-3">
+              <div
+                key={u.userId || rank}
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 rounded-2xl bg-slate-900/40 hover:bg-slate-900 border border-white/5 transition-colors gap-3"
+              >
                 <div className="flex items-center gap-3.5">
-                  <span className={`w-8 h-8 rounded-lg border flex items-center justify-center text-[10px] font-bold font-mono ${medalClass}`}>
+                  <span
+                    className={`min-w-16 px-2.5 py-1 rounded-lg border flex items-center justify-center text-[10px] font-bold font-mono ${medalClass}`}
+                  >
                     {medalText}
                   </span>
                   <img
                     src={getDiscordAvatarUrl(u)}
                     alt={u.username}
-                    className="w-8 h-8 rounded-full bg-slate-800"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png";
+                    }}
+                    className="w-9 h-9 rounded-full bg-slate-800 object-cover ring-1 ring-white/10"
                     loading="lazy"
                   />
                   <div>
                     <div className="text-sm font-semibold text-slate-200">{u.username || "Unknown"}</div>
-                    <div className="text-[10px] text-slate-500 font-mono hidden sm:block">ID: {u.userId || "N/A"}</div>
+                    <div className="text-[10px] text-slate-500 font-mono hidden sm:block">
+                      ID: {u.userId || "N/A"}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 sm:justify-end pl-11 sm:pl-0">
@@ -177,7 +229,35 @@ export default function Leaderboard({ topChatters = [], topVoice = [], leaderboa
           })
         )}
       </div>
+
+      {/* Pagination Footer */}
+      {pageSize !== "all" && totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4 border-t border-white/5 text-xs text-slate-400">
+          <div>
+            Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredData.length)} of{" "}
+            {filteredData.length} members
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="p-1.5 rounded-lg bg-slate-900 border border-white/10 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="font-mono text-xs px-2">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="p-1.5 rounded-lg bg-slate-900 border border-white/10 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

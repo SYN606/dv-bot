@@ -1,4 +1,5 @@
 import { processWeeklyAutoRoles } from "../services/autoroleService.js";
+import { resetAllWeeklyAnalytics } from "../db/helpers/analytics.js";
 import { getSystemMeta, setSystemMeta } from "../db/helpers/common.js";
 import { logger } from "../utils/logger.js";
 
@@ -56,7 +57,13 @@ export class AutoRoleWorker {
         }
 
         logger.info(`[AutoRoleWorker] Triggering weekly rollover for week ${currentWeekKey}...`);
+        
+        // 1. Process guild-configured auto roles and role reward announcements
         await processWeeklyAutoRoles(this.client);
+
+        // 2. Globally reset weekly messages and weekly voice seconds for all guilds
+        await resetAllWeeklyAnalytics();
+
         await setSystemMeta("last_autorole_rollover_week", currentWeekKey);
         logger.info(`[AutoRoleWorker] Successfully completed weekly rollover for week ${currentWeekKey}.`);
       }

@@ -1,21 +1,57 @@
 import { VCRoleConfig } from "../db/models/index.js";
-import { recordVoiceActivity } from "../db/helpers/analytics.js";
+import { ANALYTICS_BATCHER } from "../handlers/analyticsBatcher.js";
 import { checkMemberSupporter } from "../handlers/supporterHandler.js";
+import { logger } from "../utils/logger.js";
 
-const activeVoiceSessions = new Map(); // `${guildId}:${userId}` -> timestamp
-const MAX_VOICE_SESSIONS = 5000;
+export const activeVoiceSessions = new Map(); // `${guildId}:${userId}` -> { startTime, channelId }
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours max session duration
 
 // Periodic sweeper for orphaned/disconnected sessions
 const voiceCleanupInterval = setInterval(() => {
   const now = Date.now();
-  for (const [key, startTime] of activeVoiceSessions.entries()) {
-    if (now - startTime > SESSION_TTL_MS) {
+  for (const [key, session] of activeVoiceSessions.entries()) {
+    const start = typeof session === "object" ? session.startTime : session;
+    if (now - start > SESSION_TTL_MS) {
       activeVoiceSessions.delete(key);
     }
   }
 }, 60 * 60 * 1000);
 if (voiceCleanupInterval.unref) voiceCleanupInterval.unref();
+
+/**
+ * Hydrate active voice sessions across all guilds upon bot startup/restart.
+ */
+export function hydrateVoiceSessions(client) {
+  let count = 0;
+  for (const guild of client.guilds.cache.values()) {
+    const afkChannelId = guild.afkChannelId;
+    for (const [channelId, channel] of guild.channels.cache) {
+      if (channel.isVoiceBased() && channelId !== afkChannelId) {
+        for (const [memberId, member] of channel.members) {
+          if (!member.user?.bot && !member.voice.selfDeaf && !member.voice.serverDeaf) {
+            activeVoiceSessions.set(`${guild.id}:${member.id}`, {
+              startTime: Date.now(),
+              channelId,
+            });
+            count++;
+          }
+        }
+      }
+    }
+  }
+  if (count > 0) {
+    logger.info(`[ANALYTICS] Hydrated ${count} active voice session(s) on startup.`);
+  }
+}
+
+function isEligibleForVoiceAnalytics(state) {
+  if (!state?.channelId || !state.member || state.member.user?.bot) return false;
+  // Ignore server's AFK channel
+  if (state.guild?.afkChannelId === state.channelId) return false;
+  // Anti-exploit: do not credit deafened users (farming prevention)
+  if (state.selfDeaf || state.serverDeaf) return false;
+  return true;
+}
 
 export default {
   name: "voiceStateUpdate",
@@ -47,34 +83,33 @@ export default {
       }
     } catch {}
 
-    // 2. Voice Analytics Tracking
-    const joined = !oldState.channelId && Boolean(newState.channelId);
-    const left = Boolean(oldState.channelId) && !newState.channelId;
-    const switched = Boolean(oldState.channelId) && Boolean(newState.channelId) && oldState.channelId !== newState.channelId;
+    // 2. Voice Analytics Tracking with Anti-Exploit Deafen & AFK Guard
+    const wasEligible = isEligibleForVoiceAnalytics(oldState);
+    const isNowEligible = isEligibleForVoiceAnalytics(newState);
+    const channelChanged = oldState.channelId !== newState.channelId;
 
-    if (joined) {
-      activeVoiceSessions.set(sessionKey, Date.now());
-    } else if (switched) {
-      const startTime = activeVoiceSessions.get(sessionKey);
-      if (startTime) {
-        const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-        if (elapsedSeconds > 5) {
-          await recordVoiceActivity(guildId, userId, oldState.channelId, elapsedSeconds).catch(() => {});
-        }
-      }
-      activeVoiceSessions.set(sessionKey, Date.now());
-    } else if (left) {
-      const startTime = activeVoiceSessions.get(sessionKey);
-      if (startTime) {
-        const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-        activeVoiceSessions.delete(sessionKey);
+    const existingSession = activeVoiceSessions.get(sessionKey);
+    const sessionStartTime = existingSession
+      ? (typeof existingSession === "object" ? existingSession.startTime : existingSession)
+      : null;
+    const recordedChannelId = existingSession?.channelId || oldState.channelId;
 
-        if (elapsedSeconds > 5) {
-          await recordVoiceActivity(guildId, userId, oldState.channelId, elapsedSeconds).catch(() => {});
-        }
-      } else {
-        activeVoiceSessions.delete(sessionKey);
+    // A. Transition out of eligible state or channel switch: credit elapsed voice time
+    if (sessionStartTime && (!isNowEligible || channelChanged)) {
+      const elapsedSeconds = Math.floor((Date.now() - sessionStartTime) / 1000);
+      activeVoiceSessions.delete(sessionKey);
+
+      if (elapsedSeconds > 5 && recordedChannelId) {
+        ANALYTICS_BATCHER.addVoice(guildId, userId, recordedChannelId, elapsedSeconds).catch(() => {});
       }
+    }
+
+    // B. Transition into eligible state or channel switch: start a new session timer
+    if (isNowEligible && (!sessionStartTime || channelChanged || !wasEligible)) {
+      activeVoiceSessions.set(sessionKey, {
+        startTime: Date.now(),
+        channelId: newState.channelId,
+      });
     }
   },
 };

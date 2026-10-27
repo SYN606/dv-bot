@@ -1,6 +1,7 @@
 import { Events } from "discord.js";
 import { CONFIG } from "../config.js";
 import { ANALYTICS_BATCHER } from "../handlers/analyticsBatcher.js";
+import { hydrateVoiceSessions } from "./voiceStateUpdate.js";
 import { TempbanWorker } from "../handlers/tempbanWorker.js";
 import { AutoRoleWorker } from "../handlers/autoroleWorker.js";
 import { SupporterWorker } from "../handlers/supporterHandler.js";
@@ -9,7 +10,6 @@ import { initStickyCache } from "../db/helpers/sticky.js";
 import { initAutoresponderCache } from "../db/helpers/autoresponder.js";
 import { restoreActiveChannelLocks } from "../services/channelLockService.js";
 import { logger } from "../utils/logger.js";
-
 import { startPresence } from "../core/presence.js";
 
 export default {
@@ -31,11 +31,13 @@ export default {
     logger.info("[CACHE] Hot-path AFK, Sticky, and Autoresponder caches pre-warmed.");
     await restoreActiveChannelLocks(client).catch(() => {});
 
-    // 4. Start Background Workers
+    // 4. Start Background Workers & Hydrate Active Voice Sessions
     ANALYTICS_BATCHER.start();
+    hydrateVoiceSessions(client);
+
     const tempbanWorker = new TempbanWorker(client);
     tempbanWorker.start();
-    
+
     const autoroleWorker = new AutoRoleWorker(client);
     autoroleWorker.start();
 

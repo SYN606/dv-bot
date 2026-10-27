@@ -5,12 +5,13 @@ export function exportAnalyticsCSV(data) {
   const voice = data.topVoice || [];
   const insights = data.insights || {};
   const summary = data.summary || {};
+  const deltas = summary.deltas || {};
 
   let csv = "=== FULL SERVER ANALYTICS REPORT ===\n\n";
-  
+
   csv += "--- SUMMARY ---\n";
-  csv += `Total Messages,${summary.totalMessages ?? 0}\n`;
-  csv += `Total Voice Hours,${summary.totalVoiceHours ?? 0}\n`;
+  csv += `Total Messages,${summary.totalMessages ?? 0}${deltas.messagesDelta !== null && deltas.messagesDelta !== undefined ? ` (${deltas.messagesDelta > 0 ? "+" : ""}${deltas.messagesDelta}%)` : ""}\n`;
+  csv += `Total Voice Hours,${summary.totalVoiceHours ?? 0}${deltas.voiceDelta !== null && deltas.voiceDelta !== undefined ? ` (${deltas.voiceDelta > 0 ? "+" : ""}${deltas.voiceDelta}%)` : ""}\n`;
   csv += `Net Growth,${(summary.netGrowth ?? 0) >= 0 ? "+" : ""}${summary.netGrowth ?? 0}\n`;
   csv += `Retention Rate,${summary.retentionRate != null ? summary.retentionRate + "%" : "-"}\n`;
   csv += `Active Members Tracked,${summary.activeTracked ?? 0}\n\n`;
@@ -20,6 +21,24 @@ export function exportAnalyticsCSV(data) {
   csv += `Peak Traffic Day,"${(insights.busiestDay || "-").replace(/"/g, '""')}"\n`;
   csv += `Most Active Channel,"${(insights.topChannel || "-").replace(/"/g, '""')}"\n`;
   csv += `Growth Momentum,"${(insights.growthSummary || "-").replace(/"/g, '""')}"\n\n`;
+
+  if (data.timeline && data.timeline.length > 0) {
+    csv += "--- DAILY TIMELINE ---\n";
+    csv += "Date,Messages,Voice Minutes,Joins,Leaves,Net Growth\n";
+    data.timeline.forEach((t) => {
+      csv += `${t.date},${t.messages},${t.voiceMinutes},${t.joins},${t.leaves},${t.netGrowth}\n`;
+    });
+    csv += "\n";
+  }
+
+  if (data.channelBreakdown && data.channelBreakdown.length > 0) {
+    csv += "--- TOP CHANNELS ---\n";
+    csv += "Channel,Messages,Voice Minutes,Chat Share\n";
+    data.channelBreakdown.forEach((ch) => {
+      csv += `"${ch.name}",${ch.messages},${ch.voiceMinutes},${ch.percentage}%\n`;
+    });
+    csv += "\n";
+  }
 
   csv += "--- TOP CHATTERS ---\n";
   csv += "Rank,Username,Weekly Messages,Total Messages\n";

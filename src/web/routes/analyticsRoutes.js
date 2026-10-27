@@ -64,7 +64,7 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
     };
   });
 
-  // 3. Server Retention & Engagement Summary
+  // 3. Server Retention & Engagement Summary with Deltas
   const stats = await getServerRetentionStats(guildId, numDays);
   const hasSnapshots = stats.hasSnapshots;
   const totalMessages = hasSnapshots ? timeline.reduce((acc, curr) => acc + curr.messages, 0) : stats.totalMessages;
@@ -89,6 +89,7 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
     retentionRate: stats.retentionRate,
     activeTracked: stats.totalActive,
     totalGuildMembers,
+    deltas: stats.deltas || {},
   };
 
   // 4. Channel Activity Breakdown
@@ -117,21 +118,27 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
     growthSummary: `${netGrowth >= 0 ? "+" : ""}${netGrowth} members over past ${numDays} days (${stats.retentionRate}% retention)`,
   };
 
-  // 7. Top Chatters & Top Voice Members (Both Weekly & All-Time)
+  // 7. Top Chatters & Top Voice Members (Top 25 each, throttled & memoized user resolution)
   const [topChattersWeeklyRaw, topChattersTotalRaw, topVoiceWeeklyRaw, topVoiceTotalRaw] = await Promise.all([
-    getLeaderboard(guildId, "messages", "weekly", 10),
-    getLeaderboard(guildId, "messages", "total", 10),
-    getLeaderboard(guildId, "vc", "weekly", 10),
-    getLeaderboard(guildId, "vc", "total", 10),
+    getLeaderboard(guildId, "messages", "weekly", 25),
+    getLeaderboard(guildId, "messages", "total", 25),
+    getLeaderboard(guildId, "vc", "weekly", 25),
+    getLeaderboard(guildId, "vc", "total", 25),
   ]);
 
   const client = c.get("discordClient");
+  const userCache = new Map();
 
   const resolveUser = async (userId) => {
-    let u = botGuild?.members?.cache?.get(String(userId))?.user || client?.users?.cache?.get(String(userId));
+    const idStr = String(userId);
+    if (userCache.has(idStr)) return userCache.get(idStr);
+
+    let u = botGuild?.members?.cache?.get(idStr)?.user || client?.users?.cache?.get(idStr);
     if (!u && client?.users?.fetch) {
-      u = await client.users.fetch(String(userId)).catch(() => null);
+      // Catch error / 429 gracefully so we never crash the response
+      u = await client.users.fetch(idStr).catch(() => null);
     }
+    userCache.set(idStr, u || null);
     return u;
   };
 
@@ -142,7 +149,7 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
     return {
       userId: String(m.user_id),
       username: userObj?.username || `User ${m.user_id}`,
-      avatar: userObj?.displayAvatarURL?.() || null,
+      avatar: userObj?.displayAvatarURL?.({ size: 64 }) || null,
       messages: numDays <= 7 ? weeklyMessages : totalMessages,
       weeklyMessages,
       totalMessages,
@@ -157,7 +164,7 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
     return {
       userId: String(m.user_id),
       username: userObj?.username || `User ${m.user_id}`,
-      avatar: userObj?.displayAvatarURL?.() || null,
+      avatar: userObj?.displayAvatarURL?.({ size: 64 }) || null,
       vcMinutes: numDays <= 7 ? weeklyMinutes : totalMinutes,
       totalMinutes,
       weeklyMinutes,

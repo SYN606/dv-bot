@@ -33,9 +33,17 @@ export default {
       checkMemberSupporter(message.member).catch(() => {});
     }
 
-    // 1. Analytics Tracking
+    // 1. Analytics Tracking (with channel/role ACL exclusion check)
     if (!message.author.bot) {
-      ANALYTICS_BATCHER.addMessage(message.guild.id, message.author.id, message.channel.id).catch(() => {});
+      isExecutionAllowed(message.guild.id, message.member, message.channel.id, "analytics")
+        .then((allowed) => {
+          if (allowed) {
+            ANALYTICS_BATCHER.addMessage(message.guild.id, message.author.id, message.channel.id).catch(() => {});
+          }
+        })
+        .catch(() => {
+          ANALYTICS_BATCHER.addMessage(message.guild.id, message.author.id, message.channel.id).catch(() => {});
+        });
     }
 
     // 2. Media-Only Channel Enforcement
