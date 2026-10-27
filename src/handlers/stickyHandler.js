@@ -1,4 +1,5 @@
 import { getStickyMessage, updateStickyLastMessage } from "../db/helpers/sticky.js";
+import { isModuleEnabled } from "../db/helpers/moduleStatus.js";
 import { makeEmbed } from "../core/embeds.js";
 import { EMOJIS } from "../core/emojis.js";
 import { dispatchStickyNotice } from "../utils/webhookManager.js";
@@ -15,6 +16,7 @@ export async function handleSticky(message) {
   }
 
   const guildId = message.guild.id;
+  if (!(await isModuleEnabled(guildId, "sticky"))) return;
   const channelId = message.channel.id;
 
   const sticky = await getStickyMessage(guildId, channelId);

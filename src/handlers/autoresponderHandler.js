@@ -1,5 +1,6 @@
 import { parseEmoji } from "discord.js";
 import { getGuildAutoresponders, hasGuildAutoresponders } from "../db/helpers/autoresponder.js";
+import { isModuleEnabled } from "../db/helpers/moduleStatus.js";
 import { makeEmbed } from "../core/embeds.js";
 
 // Cooldown tracking: `${responderId}:${userId}` -> timestamp (ms)
@@ -191,6 +192,9 @@ export async function handleAutoresponder(message) {
   if (message.webhookId || message.system) return false;
 
   const guildId = message.guild.id;
+
+  // Master module switch check
+  if (!(await isModuleEnabled(guildId, "autoresponder"))) return false;
 
   // Zero-query memory gate: if guild has no autoresponders, bail in 0.001ms
   if (!hasGuildAutoresponders(guildId)) return false;

@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useWarningPunishments } from "../../hooks/warning-punishments";
+import { useModuleStatus } from "../../hooks/useModuleStatus";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import {
+  WarningPunishmentsHeader,
   PunishmentRuleList,
   PunishmentRuleForm,
 } from "../../components/warning-punishments";
@@ -28,6 +30,7 @@ export default function WarningPunishmentsPage({ showToast }) {
   } = useWarningPunishments(guildId, showToast);
 
   const [pendingDelete, setPendingDelete] = useState(null);
+  const { enabled: moduleEnabled, toggle: toggleModule } = useModuleStatus(guildId, "warning_punishments", showToast);
 
   const handleDeleteConfirmed = async () => {
     if (!pendingDelete) return;
@@ -68,18 +71,11 @@ export default function WarningPunishmentsPage({ showToast }) {
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-300 pb-32">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="text-sm font-display text-brand-crimson tracking-wider">संयम</span>
-          <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest opacity-80">
-            / Moderation / Automation
-          </span>
-        </div>
-        <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Auto-Punishments</h1>
-        <p className="text-sm text-slate-400">
-          Automatically take moderation action when members reach configured warning thresholds.
-        </p>
-      </div>
+      <WarningPunishmentsHeader 
+        activeCount={rules.length} 
+        enabled={moduleEnabled} 
+        onToggle={toggleModule} 
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* Rules List */}

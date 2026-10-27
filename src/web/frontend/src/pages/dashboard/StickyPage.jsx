@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useParams, useOutletContext } from "react-router-dom";
 import { useStickyNotices } from "../../hooks/sticky";
+import { useModuleStatus } from "../../hooks/useModuleStatus";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 import {
@@ -34,6 +35,7 @@ export default function StickyPage({ showToast }) {
   } = useStickyNotices(guildId, showToast);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const { enabled: moduleEnabled, toggle: toggleModule } = useModuleStatus(guildId, "sticky", showToast);
 
   // If a user selects a channel that already has a sticky, switch to edit mode
   const handleEditorUpdate = (field, value) => {
@@ -85,7 +87,12 @@ export default function StickyPage({ showToast }) {
 
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-300 pb-32">
-      <StickyHeader activeCount={notices.length} totalRepins={totalRepins} />
+      <StickyHeader 
+        activeCount={notices.length} 
+        totalRepins={totalRepins} 
+        enabled={moduleEnabled}
+        onToggle={toggleModule}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch mb-12">
         <StickyEditor 

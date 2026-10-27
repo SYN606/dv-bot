@@ -1,4 +1,5 @@
 import { getMediaOnlyChannel, updateMediaStickyMessageId } from "../db/helpers/mediaOnly.js";
+import { isModuleEnabled } from "../db/helpers/moduleStatus.js";
 import { makeEmbed } from "../core/embeds.js";
 import { EMOJIS } from "../core/emojis.js";
 import { sendModLog } from "../utils/modLog.js";
@@ -142,6 +143,7 @@ export async function handleMediaOnly(message) {
 
   // Ignore DV-BOT's own messages
   if (message.author.id === message.client?.user?.id) return false;
+  if (!(await isModuleEnabled(message.guild.id, "media_only"))) return false;
 
   const channelConfig = await getMediaOnlyChannel(message.guild.id, message.channel.id);
   if (!channelConfig) return false;

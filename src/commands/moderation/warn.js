@@ -4,6 +4,7 @@ import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import { addWarning, getWarnings } from "../../db/helpers/warnings.js";
 import { getWarningPunishmentConfig } from "../../db/helpers/warningPunishments.js";
+import { isModuleEnabled } from "../../db/helpers/moduleStatus.js";
 import { executeTempban } from "../../services/tempbanService.js";
 import { sendModLog } from "../../utils/modLog.js";
 
@@ -88,7 +89,8 @@ export default createCommand({
 
     // --- Auto-punishment check ---
     let punishmentNote = "";
-    const punishConfig = await getWarningPunishmentConfig(guild.id, warnCount);
+    const isPunishEnabled = await isModuleEnabled(guild.id, "warning_punishments");
+    const punishConfig = isPunishEnabled ? await getWarningPunishmentConfig(guild.id, warnCount) : null;
 
     if (punishConfig) {
       const botMember = guild.members.me;

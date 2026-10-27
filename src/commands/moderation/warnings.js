@@ -9,6 +9,7 @@ import {
   getWarnings,
 } from "../../db/helpers/warnings.js";
 import { getWarningPunishmentConfig } from "../../db/helpers/warningPunishments.js";
+import { isModuleEnabled } from "../../db/helpers/moduleStatus.js";
 import { executeTempban } from "../../services/tempbanService.js";
 import { sendModLog } from "../../utils/modLog.js";
 
@@ -104,7 +105,8 @@ export default createCommand({
 
       let punishmentApplied = "";
 
-      const config = await getWarningPunishmentConfig(guild.id, warnCount);
+      const isPunishEnabled = await isModuleEnabled(guild.id, "warning_punishments");
+      const config = isPunishEnabled ? await getWarningPunishmentConfig(guild.id, warnCount) : null;
       if (config) {
         const botMember = guild.members.me;
         const canPunish = targetMember.roles.highest.position < botMember.roles.highest.position;

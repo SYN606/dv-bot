@@ -39,14 +39,14 @@ export default function HomePage({ user, botInfo }) {
           {/* Giant Background Typography */}
           <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none select-none -z-10">
             <span className="text-[15vw] leading-none font-display text-brand-crimson opacity-[0.03] whitespace-nowrap" aria-hidden="true">
-              डिजिटल विगिटल
+              डिजिटल-विजिटल
             </span>
           </div>
 
           <div className="max-w-4xl mx-auto text-center space-y-8 relative z-10">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm text-xs font-mono text-slate-300 uppercase tracking-widest mb-4">
               <span className="w-2 h-2 rounded-full bg-brand-crimson animate-pulse"></span>
-              Built around the community
+              डिजिटल-विजिटल • Built around the community
             </div>
 
             <h1 className="text-5xl sm:text-7xl font-display text-white tracking-tight leading-[1.1]">
@@ -55,7 +55,7 @@ export default function HomePage({ user, botInfo }) {
             </h1>
 
             <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto font-body leading-relaxed">
-              One place for the people, tools and automation behind Digital Vigital.
+              One place for the people, tools and automation behind डिजिटल-विजिटल (Digital Vigital).
             </p>
 
             <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -157,45 +157,63 @@ export default function HomePage({ user, botInfo }) {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-              {/* Featured Large Card */}
-              <div className="md:col-span-7 glass-card p-8 sm:p-10 rounded-4xl border border-white/5 flex flex-col justify-between group hover:border-brand-crimson/30 transition-colors bg-linear-to-br from-slate-900 to-slate-950">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Card 1: Verification */}
+              <div className="glass-card p-8 rounded-3xl border border-white/10 flex flex-col justify-between group hover:border-brand-crimson/40 transition-all duration-300 bg-linear-to-b from-slate-900/80 to-slate-950/80 hover:shadow-xl hover:shadow-brand-crimson/10">
                 <div className="flex items-center justify-between mb-8">
                   <div className="w-12 h-12 rounded-2xl bg-brand-crimson/10 flex items-center justify-center text-brand-crimson border border-brand-crimson/20">
                     <ShieldCheck className="w-6 h-6" />
                   </div>
-                  <span className="font-mono text-xl text-slate-700">01</span>
+                  <span className="font-mono text-xs text-slate-500 uppercase tracking-widest font-semibold px-2 py-1 rounded-md bg-white/5 border border-white/5">01</span>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-white mb-3">Verification & Access</h3>
+                  <h3 className="text-xl font-bold text-white mb-2.5 group-hover:text-brand-crimson transition-colors">Verification & Access</h3>
                   <p className="text-slate-400 leading-relaxed max-w-md">
                     Automated security gates ensuring only verified community members access the core server. Captcha, role assignment, and raid protection built-in.
                   </p>
+
+                </div>
+                <div className="pt-6 mt-6 border-t border-white/5 flex items-center text-xs font-mono text-slate-500">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-2"></span>
+                  Security Gatekeeper
+
                 </div>
               </div>
 
-              {/* Smaller Cards */}
-              <div className="md:col-span-5 flex flex-col gap-6">
-                <div className="glass-card p-8 rounded-4xlrder border-white/5 flex-1 group hover:border-brand-cyan/30 transition-colors">
+              {/* Card 2: Autoresponders */}
+
+              <div className="glass-card p-8 rounded-3xl border border-white/10 flex flex-col justify-between group hover:border-brand-cyan/40 transition-all duration-300 bg-linear-to-b from-slate-900/80 to-slate-950/80 hover:shadow-xl hover:shadow-brand-cyan/10">
+                <div>
                   <div className="flex items-center justify-between mb-6">
                     <div className="w-10 h-10 rounded-xl bg-brand-cyan/10 flex items-center justify-center text-brand-cyan">
                       <Bot className="w-5 h-5" />
                     </div>
-                    <span className="font-mono text-lg text-slate-700">02</span>
+                    <span className="font-mono text-xs text-slate-500 uppercase tracking-widest font-semibold px-2 py-1 rounded-md bg-white/5 border border-white/5">02</span>
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-2">Autoresponders</h3>
-                  <p className="text-sm text-slate-400">Intelligent trigger-based responses to handle common community questions.</p>
+                  <h3 className="text-xl font-bold text-white mb-2.5 group-hover:text-brand-cyan transition-colors">Autoresponders</h3>
+                  <p className="text-slate-400 text-sm leading-relaxed">Intelligent trigger-based responses and custom emoji reactions to handle common community questions with zero latency.</p>
+                </div>
+                <div className="pt-6 mt-6 border-t border-white/5 flex items-center text-xs font-mono text-slate-500">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-cyan mr-2"></span>
+                  Trigger Automation
+                </div>
                 </div>
 
-                <div className="glass-card p-8 rounded-4xl border border-white/5 flex-1 group hover:border-brand-violet/30 transition-colors">
+              {/* Card 3: Media Channels */}
+              <div className="glass-card p-8 rounded-3xl border border-white/10 flex flex-col justify-between group hover:border-brand-violet/40 transition-all duration-300 bg-linear-to-b from-slate-900/80 to-slate-950/80 hover:shadow-xl hover:shadow-brand-violet/10">
+                <div>
                   <div className="flex items-center justify-between mb-6">
                     <div className="w-10 h-10 rounded-xl bg-brand-violet/10 flex items-center justify-center text-brand-violet">
                       <ImageIcon className="w-5 h-5" />
                     </div>
-                    <span className="font-mono text-lg text-slate-700">03</span>
+                    <span className="font-mono text-xs text-slate-500 uppercase tracking-widest font-semibold px-2 py-1 rounded-md bg-white/5 border border-white/5">03</span>
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-2">Media Channels</h3>
-                  <p className="text-sm text-slate-400">Strict curation for art and media channels. Auto-deletes pure text messages.</p>
+                  <h3 className="text-xl font-bold text-white mb-2.5 group-hover:text-brand-violet transition-colors">Media Channels</h3>
+                  <p className="text-slate-400 text-sm leading-relaxed">Strict curation for art and media channels with auto-cleanup of pure text, plus dynamic sticky notices that stay visible.</p>
+                </div>
+                <div className="pt-6 mt-6 border-t border-white/5 flex items-center text-xs font-mono text-slate-500">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-violet mr-2"></span>
+                  Clean Curation
                 </div>
               </div>
             </div>
@@ -272,7 +290,7 @@ export default function HomePage({ user, botInfo }) {
         <section className="py-24 sm:py-32 px-6 border-t border-white/5 bg-linear-to-b from-slate-950 to-black">
           <div className="max-w-3xl mx-auto text-center space-y-8">
             <h2 className="text-4xl sm:text-6xl font-display text-white tracking-tight">
-              समुदाय से जुड़िये
+              डिजिटल-विजिटल समुदाय से जुड़िये
             </h2>
             <p className="text-xl text-slate-400 font-sans">
               Be part of Digital Vigital.

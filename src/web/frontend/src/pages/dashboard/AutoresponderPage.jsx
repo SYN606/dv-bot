@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useParams, useOutletContext } from "react-router-dom";
 import { useAutoresponders } from "../../hooks/autoresponder";
+import { useModuleStatus } from "../../hooks/useModuleStatus";
 
 // Components
 import { AutoresponderHeader, AutoresponderEditor, AutoresponderList } from "../../components/autoresponder";
@@ -10,6 +11,7 @@ export default function AutoresponderPage({ showToast }) {
   const { guildId } = useParams();
   
   const { rules, loading, error, refresh, saveRule, toggleRule, deleteRule } = useAutoresponders(guildId, showToast);
+  const { enabled: moduleEnabled, toggle: toggleModule } = useModuleStatus(guildId, "autoresponder", showToast);
   const [editingRule, setEditingRule] = useState(null);
 
   const activeCount = rules.filter(r => r.enabled).length;
@@ -48,6 +50,8 @@ export default function AutoresponderPage({ showToast }) {
         totalCount={rules.length} 
         loading={loading} 
         onRefresh={refresh} 
+        enabled={moduleEnabled}
+        onToggle={toggleModule}
       />
 
       <AutoresponderEditor 

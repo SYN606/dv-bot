@@ -1,6 +1,7 @@
 import React from "react";
 import { useParams } from "react-router-dom";
 import { useMediaOnly } from "../../hooks/media-only";
+import { useModuleStatus } from "../../hooks/useModuleStatus";
 
 import {
   MediaOnlyHeader,
@@ -23,6 +24,8 @@ export default function MediaOnlyPage({ showToast }) {
     createRule,
     deleteRule
   } = useMediaOnly(guildId, showToast);
+
+  const { enabled: moduleEnabled, toggle: toggleModule } = useModuleStatus(guildId, "media_only", showToast);
 
   if (error) {
     return (
@@ -51,7 +54,11 @@ export default function MediaOnlyPage({ showToast }) {
 
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-300 pb-24">
-      <MediaOnlyHeader activeCount={rules.length} />
+      <MediaOnlyHeader 
+        activeCount={rules.length} 
+        enabled={moduleEnabled}
+        onToggle={toggleModule}
+      />
 
       <MediaRuleEditor 
         guildId={guildId}

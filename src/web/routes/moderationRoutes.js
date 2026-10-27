@@ -23,8 +23,24 @@ import {
 import { getAllWarningPunishmentConfigs, setWarningPunishmentConfig, removeWarningPunishmentConfig } from "../../db/helpers/warningPunishments.js";
 import { ModerationLogConfig, VCRoleConfig, AutoRoleConfig } from "../../db/models/index.js";
 import { apiCache } from "./cache.js";
+import { isModuleEnabled, setModuleEnabled } from "../../db/helpers/moduleStatus.js";
 
 export const moderationRoutes = new Hono();
+
+// Media-Only Module Status
+moderationRoutes.get("/guilds/:guildId/media_only/status", async (c) => {
+  const guildId = c.req.param("guildId");
+  const enabled = await isModuleEnabled(guildId, "media_only");
+  return c.json({ enabled });
+});
+
+moderationRoutes.put("/guilds/:guildId/media_only/status", async (c) => {
+  const guildId = c.req.param("guildId");
+  const body = await c.req.json().catch(() => ({}));
+  const enabled = body.enabled !== undefined ? Boolean(body.enabled) : true;
+  await setModuleEnabled(guildId, "media_only", enabled);
+  return c.json({ success: true, enabled });
+});
 
 // 1. Media-Only Channels Setup
 moderationRoutes.get("/guilds/:guildId/media_only", async (c) => {
@@ -361,6 +377,21 @@ moderationRoutes.post("/guilds/:guildId/tempban", async (c) => {
   });
 });
 
+
+// Warning Punishments Module Status
+moderationRoutes.get("/guilds/:guildId/warning_punishments/status", async (c) => {
+  const guildId = c.req.param("guildId");
+  const enabled = await isModuleEnabled(guildId, "warning_punishments");
+  return c.json({ enabled });
+});
+
+moderationRoutes.put("/guilds/:guildId/warning_punishments/status", async (c) => {
+  const guildId = c.req.param("guildId");
+  const body = await c.req.json().catch(() => ({}));
+  const enabled = body.enabled !== undefined ? Boolean(body.enabled) : true;
+  await setModuleEnabled(guildId, "warning_punishments", enabled);
+  return c.json({ success: true, enabled });
+});
 
 // Warning Punishments Setup
 moderationRoutes.get("/guilds/:guildId/warning_punishments", async (c) => {

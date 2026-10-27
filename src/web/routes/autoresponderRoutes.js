@@ -10,8 +10,24 @@ import {
   clearResponderReactions,
 } from "../../db/helpers/autoresponder.js";
 import { apiCache } from "./cache.js";
+import { isModuleEnabled, setModuleEnabled } from "../../db/helpers/moduleStatus.js";
 
 export const autoresponderRoutes = new Hono();
+
+// Autoresponder Module Status
+autoresponderRoutes.get("/guilds/:guildId/autoresponder/status", async (c) => {
+  const guildId = c.req.param("guildId");
+  const enabled = await isModuleEnabled(guildId, "autoresponder");
+  return c.json({ enabled });
+});
+
+autoresponderRoutes.put("/guilds/:guildId/autoresponder/status", async (c) => {
+  const guildId = c.req.param("guildId");
+  const body = await c.req.json().catch(() => ({}));
+  const enabled = body.enabled !== undefined ? Boolean(body.enabled) : true;
+  await setModuleEnabled(guildId, "autoresponder", enabled);
+  return c.json({ success: true, enabled });
+});
 
 function formatRule(r) {
   const raw = r.toJSON ? r.toJSON() : r;

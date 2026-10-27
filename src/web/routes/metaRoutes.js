@@ -1,8 +1,32 @@
 import { Hono } from "hono";
 import { ChannelType } from "discord.js";
 import { apiCache } from "./cache.js";
+import { isModuleEnabled, setModuleEnabled, getAllModuleStatuses } from "../../db/helpers/moduleStatus.js";
 
 export const metaRoutes = new Hono();
+
+// Guild Module Statuses
+metaRoutes.get("/guilds/:guildId/modules", async (c) => {
+  const guildId = c.req.param("guildId");
+  const statuses = await getAllModuleStatuses(guildId);
+  return c.json(statuses);
+});
+
+metaRoutes.get("/guilds/:guildId/modules/:moduleName", async (c) => {
+  const guildId = c.req.param("guildId");
+  const moduleName = c.req.param("moduleName");
+  const enabled = await isModuleEnabled(guildId, moduleName);
+  return c.json({ module: moduleName, enabled });
+});
+
+metaRoutes.put("/guilds/:guildId/modules/:moduleName", async (c) => {
+  const guildId = c.req.param("guildId");
+  const moduleName = c.req.param("moduleName");
+  const body = await c.req.json().catch(() => ({}));
+  const enabled = body.enabled !== undefined ? Boolean(body.enabled) : true;
+  await setModuleEnabled(guildId, moduleName, enabled);
+  return c.json({ success: true, module: moduleName, enabled });
+});
 
 // Guild Metadata (Text Channels, Roles with Hierarchy, Custom Emojis)
 metaRoutes.get("/guilds/:guildId/meta", async (c) => {

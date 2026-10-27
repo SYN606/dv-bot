@@ -494,6 +494,20 @@ export async function removeWarningPunishment(guildId, warnCount) {
   return result;
 }
 
+// Module Master Toggles
+export async function getModuleStatus(guildId, moduleName) {
+  return fetchApi(`/api/guilds/${guildId}/modules/${moduleName}`);
+}
+
+export async function setModuleStatus(guildId, moduleName, enabled) {
+  const result = await fetchApi(`/api/guilds/${guildId}/modules/${moduleName}`, {
+    method: "PUT",
+    body: { enabled },
+  });
+  invalidatePath(`/api/guilds/${guildId}/modules/${moduleName}`);
+  return result;
+}
+
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Message Studio API
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

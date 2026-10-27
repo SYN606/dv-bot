@@ -57,7 +57,10 @@ export default function AutoRoleRewardsPage({ showToast }) {
 
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-300 pb-32">
-      <AutoRoleHeader isEnabled={Boolean(config.enabled)} />
+      <AutoRoleHeader 
+        enabled={Boolean(config.enabled)} 
+        onToggle={() => updateConfig("enabled", config.enabled ? 0 : 1)} 
+      />
 
       <AutoRoleSettings 
         guildId={guildId}
@@ -66,12 +69,7 @@ export default function AutoRoleRewardsPage({ showToast }) {
         updateConfig={updateConfig}
       />
 
-      {!config.enabled && (
-        <div className="mb-8 p-6 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 text-indigo-200">
-          <h3 className="font-bold text-indigo-400 mb-1">Auto-Roles are currently disabled.</h3>
-          <p className="text-sm opacity-80">Your configuration is preserved and will be used when the module is enabled.</p>
-        </div>
-      )}
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <RewardRolesPanel 

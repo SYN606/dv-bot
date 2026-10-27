@@ -28,6 +28,7 @@ import {
   updateStickyLastMessage,
 } from "../../db/helpers/sticky.js";
 import { StickyMessage } from "../../db/models/index.js";
+import { isModuleEnabled, setModuleEnabled } from "../../db/helpers/moduleStatus.js";
 import { apiCache } from "./cache.js";
 
 import {
@@ -562,6 +563,21 @@ commandRoutes.post("/guilds/:guildId/commands/clear_channel_rule", async (c) => 
     feature,
     ...state,
   });
+});
+
+// Sticky Module Status
+commandRoutes.get("/guilds/:guildId/sticky/status", async (c) => {
+  const guildId = c.req.param("guildId");
+  const enabled = await isModuleEnabled(guildId, "sticky");
+  return c.json({ enabled });
+});
+
+commandRoutes.put("/guilds/:guildId/sticky/status", async (c) => {
+  const guildId = c.req.param("guildId");
+  const body = await c.req.json().catch(() => ({}));
+  const enabled = body.enabled !== undefined ? Boolean(body.enabled) : true;
+  await setModuleEnabled(guildId, "sticky", enabled);
+  return c.json({ success: true, enabled });
 });
 
 // 2. Sticky Channel Messages
