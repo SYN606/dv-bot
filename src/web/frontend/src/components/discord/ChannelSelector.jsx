@@ -1,23 +1,30 @@
-import { useState } from "react";
-import { Search, Hash, Volume2, Megaphone } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Search, Hash, Volume2, Megaphone, X, Check } from "lucide-react";
 import {
   useFloating,
   autoUpdate,
   offset,
   flip,
   shift,
-  useClick,
   useDismiss,
   useRole,
   useInteractions,
   FloatingPortal,
-  FloatingFocusManager,
   size
 } from '@floating-ui/react';
 
-export default function ChannelSelector({ channels = [], value, onChange, multiple = false, allowedTypes = [], specialOptions = [], placeholder = "Select channel..." }) {
+export default function ChannelSelector({
+  channels = [],
+  value,
+  onChange,
+  multiple = false,
+  allowedTypes = [],
+  specialOptions = [],
+  placeholder = "Select or search channel..."
+}) {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const inputRef = useRef(null);
 
   const { refs, floatingStyles, context, placement } = useFloating({
     open,
@@ -25,168 +32,266 @@ export default function ChannelSelector({ channels = [], value, onChange, multip
     placement: 'bottom-start',
     whileElementsMounted: autoUpdate,
     middleware: [
-      offset(8),
+      offset(6),
       flip({ fallbackAxisSideDirection: 'end', padding: 16 }),
       shift({ padding: 16 }),
       size({
         apply({ rects, elements }) {
           Object.assign(elements.floating.style, {
-            width: `${rects.reference.width}px`,
+            width: `${Math.max(rects.reference.width, 280)}px`,
           });
         },
       }),
     ],
   });
 
-  const click = useClick(context);
   const dismiss = useDismiss(context);
-  const role = useRole(context, { role: 'listbox' });
+  const listboxRole = useRole(context, { role: 'listbox' });
 
   const { getReferenceProps, getFloatingProps } = useInteractions([
-    click,
     dismiss,
-    role,
+    listboxRole,
   ]);
+
+  // Synchronize displayed query with value in single select
+  useEffect(() => {
+    if (!multiple) {
+      if (!value) {
+        setQuery("");
+      } else {
+        const special = specialOptions.find((o) => o.value === value);
+        if (special) {
+          setQuery(special.label);
+        } else {
+          const found = channels.find((c) => c.id === value);
+          if (found) setQuery(found.name.startsWith("#") ? found.name : `#${found.name}`);
+        }
+      }
+    }
+  }, [value, channels, specialOptions, multiple]);
+
+  const getIcon = (type) => {
+    if (type === 2) return <Volume2 className="w-4 h-4 text-emerald-400" />;
+    if (type === 5) return <Megaphone className="w-4 h-4 text-amber-400" />;
+    return <Hash className="w-4 h-4 text-slate-400" />;
+  };
 
   const handleSelect = (id) => {
     if (!multiple) {
       onChange(id);
       setOpen(false);
+      const special = specialOptions.find((o) => o.value === id);
+      if (special) {
+        setQuery(special.label);
+      } else {
+        const found = channels.find((c) => c.id === id);
+        if (found) setQuery(found.name.startsWith("#") ? found.name : `#${found.name}`);
+      }
       return;
     }
+
     const current = Array.isArray(value) ? value : [];
     if (current.includes(id)) {
-      onChange(current.filter(c => c !== id));
+      onChange(current.filter((c) => c !== id));
     } else {
       onChange([...current, id]);
     }
   };
 
-  const getIcon = (type) => {
-    if (type === 2) return <Volume2 className="w-4 h-4" />; // Voice
-    if (type === 5) return <Megaphone className="w-4 h-4" />; // Announcement
-    return <Hash className="w-4 h-4" />; // Default Text
+  const handleClear = (e) => {
+    e.stopPropagation();
+    setQuery("");
+    onChange(multiple ? [] : "");
+    inputRef.current?.focus();
   };
 
-  const filtered = channels.filter(c => {
-    if (allowedTypes.length > 0 && !(allowedTypes.map(t => t === 'text' ? [0, 5] : t === 'voice' ? [2] : [t]).flat().includes(c.type === undefined ? 0 : c.type))) return false;
-    if (!search) return true;
-    return c.name.toLowerCase().includes(search.toLowerCase());
+  const cleanQuery = query.startsWith("#") ? query.slice(1).trim().toLowerCase() : query.trim().toLowerCase();
+
+  const filteredChannels = channels.filter((c) => {
+    // Type restriction check
+    if (allowedTypes.length > 0) {
+      const allowedNumeric = allowedTypes
+        .map((t) => (t === 'text' ? [0, 5] : t === 'voice' ? [2] : [t]))
+        .flat();
+      const channelType = c.type === undefined ? 0 : c.type;
+      if (!allowedNumeric.includes(channelType)) return false;
+    }
+
+    if (!cleanQuery) return true;
+    return c.name.toLowerCase().includes(cleanQuery) || c.id === query.trim();
   });
 
-  const getDisplayText = () => {
-    if (!multiple && specialOptions.length > 0) {
-      const special = specialOptions.find(o => o.value === value);
-      if (special) return special.label;
+  const filteredSpecial = specialOptions.filter((opt) => {
+    if (!cleanQuery) return true;
+    return (
+      opt.label.toLowerCase().includes(cleanQuery) ||
+      (opt.description && opt.description.toLowerCase().includes(cleanQuery))
+    );
+  });
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") {
+      setOpen(false);
+    } else if (e.key === "Enter" && !multiple) {
+      e.preventDefault();
+      if (filteredSpecial.length > 0) {
+        handleSelect(filteredSpecial[0].value);
+      } else if (filteredChannels.length > 0) {
+        handleSelect(filteredChannels[0].id);
+      }
     }
-    if (!multiple) {
-      const selected = channels.find(c => c.id === value);
-      return selected ? selected.name : placeholder;
-    }
-    const current = Array.isArray(value) ? value : [];
-    if (current.length === 0) return placeholder;
-    if (current.length === 1) return channels.find(c => c.id === current[0])?.name || placeholder;
-    return `${current.length} channels selected`;
   };
 
   const isDropUp = placement.startsWith('top');
+  const selectedChannel = !multiple && value ? channels.find((c) => c.id === value) : null;
+
+  const hasSelection = multiple
+    ? Array.isArray(value) && value.length > 0
+    : Boolean(value);
 
   return (
-    <div className="w-full relative">
-      <button
+    <div className="relative w-full">
+      <div
         ref={refs.setReference}
         {...getReferenceProps()}
-        type="button"
-        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm transition-all text-left border shadow-sm ${
-          open 
-            ? "bg-slate-900 border-indigo-500/50 ring-2 ring-indigo-500/20 text-white" 
-            : "bg-slate-900 border-white/10 text-slate-300 hover:bg-slate-800 hover:border-white/20 hover:text-white"
-        }`}
+        className="relative w-full"
       >
-        <span className="truncate font-medium">{getDisplayText()}</span>
-        <Hash className={`w-4 h-4 shrink-0 transition-colors ${open ? "text-indigo-400" : "text-slate-500"}`} />
-      </button>
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
+          {selectedChannel ? (
+            getIcon(selectedChannel.type)
+          ) : (
+            <Hash className="w-4 h-4 text-slate-500" />
+          )}
+        </div>
+
+        {multiple && hasSelection ? (
+          <div
+            onClick={() => {
+              setOpen(true);
+              inputRef.current?.focus();
+            }}
+            className="w-full flex items-center justify-between pl-9 pr-9 py-2 bg-slate-900 border border-white/10 rounded-xl text-sm text-white cursor-pointer hover:border-white/20 transition-all"
+          >
+            <span className="truncate font-medium text-slate-200">
+              {value.length === 1
+                ? `#${channels.find((c) => c.id === value[0])?.name || "1 channel"}`
+                : `${value.length} channels selected`}
+            </span>
+          </div>
+        ) : (
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder={placeholder}
+            value={query}
+            onFocus={(e) => {
+              if (!open) setOpen(true);
+              if (!multiple && hasSelection) e.target.select();
+            }}
+            onClick={() => {
+              if (!open) setOpen(true);
+            }}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (!open) setOpen(true);
+            }}
+            onKeyDown={handleKeyDown}
+            className="w-full pl-9 pr-9 py-2 bg-slate-900 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all"
+          />
+        )}
+
+        {(hasSelection || query) && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            title="Clear channel selection"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
 
       {open && (
         <FloatingPortal>
-          <FloatingFocusManager context={context} modal={false} initialFocus={-1}>
-            <div
-              ref={refs.setFloating}
-              style={{ ...floatingStyles, zIndex: 9999 }}
-              {...getFloatingProps()}
-              className={`bg-slate-900 border border-white/10 rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
-                isDropUp ? "origin-bottom" : "origin-top"
-              }`}
-            >
-              <div className="p-2 border-b border-white/5 bg-slate-900/50">
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="text"
-                    placeholder="Search channels..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950/50 border border-white/5 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
-                    autoFocus
-                  />
+          <div
+            ref={refs.setFloating}
+            style={{ ...floatingStyles, zIndex: 9999 }}
+            {...getFloatingProps()}
+            className={`glass-panel bg-slate-950/98 border border-white/10 rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
+              isDropUp ? "origin-bottom" : "origin-top"
+            }`}
+          >
+            <div className="max-h-64 overflow-y-auto p-1.5 scrollbar-thin">
+              {/* Special options (e.g. None / All Channels) */}
+              {filteredSpecial.length > 0 && (
+                <div className="mb-1.5 pb-1.5 border-b border-white/5 space-y-0.5">
+                  {filteredSpecial.map((opt) => {
+                    const isSelected = value === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => handleSelect(opt.value)}
+                        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                          isSelected
+                            ? "bg-indigo-500/20 text-indigo-300 font-semibold"
+                            : "text-slate-300 hover:bg-white/5 hover:text-white"
+                        }`}
+                      >
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="truncate font-semibold">{opt.label}</span>
+                          {opt.description && (
+                            <span className="text-[10px] text-slate-500 truncate leading-tight">
+                              {opt.description}
+                            </span>
+                          )}
+                        </div>
+                        {isSelected && (
+                          <Check className="w-4 h-4 text-indigo-400 shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-              <div className="max-h-64 overflow-y-auto p-1.5 scrollbar-thin">
-                {specialOptions.length > 0 && !search && (
-                  <div className="mb-1.5 pb-1.5 border-b border-white/5 space-y-0.5">
-                    {specialOptions.map(opt => {
-                      const isSelected = value === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => handleSelect(opt.value)}
-                          className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
-                            isSelected 
-                              ? "bg-indigo-500/10 text-indigo-400" 
-                              : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                          }`}
-                        >
-                          <div className="flex flex-col gap-0.5 min-w-0">
-                            <span className="truncate font-semibold">{opt.label}</span>
-                            {opt.description && <span className="text-[10px] text-slate-500 truncate leading-tight">{opt.description}</span>}
-                          </div>
-                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                {filtered.length === 0 ? (
-                  <div className="text-center py-6 text-sm text-slate-500 font-medium">No channels found</div>
-                ) : (
-                  <div className="space-y-0.5">
-                    {filtered.map(c => {
-                      const isSelected = multiple ? (value || []).includes(c.id) : value === c.id;
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => handleSelect(c.id)}
-                          className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
-                            isSelected 
-                              ? "bg-indigo-500/10 text-indigo-400" 
-                              : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className={isSelected ? "text-indigo-400/80" : "text-slate-500"}>{getIcon(c.type)}</span>
-                            <span className="truncate font-medium">{c.name}</span>
-                          </div>
-                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              )}
+
+              {filteredChannels.length === 0 && filteredSpecial.length === 0 ? (
+                <div className="text-center py-6 text-sm text-slate-500 font-medium">
+                  {query ? `No channels matching "${query}"` : "No channels found"}
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  {filteredChannels.map((c) => {
+                    const isSelected = multiple
+                      ? (value || []).includes(c.id)
+                      : value === c.id;
+
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => handleSelect(c.id)}
+                        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                          isSelected
+                            ? "bg-indigo-500/20 text-indigo-300 font-semibold"
+                            : "text-slate-300 hover:bg-white/5 hover:text-white"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="shrink-0">{getIcon(c.type)}</span>
+                          <span className="truncate font-medium">#{c.name}</span>
+                        </div>
+                        {isSelected && (
+                          <Check className="w-4 h-4 text-indigo-400 shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </FloatingFocusManager>
+          </div>
         </FloatingPortal>
       )}
     </div>
