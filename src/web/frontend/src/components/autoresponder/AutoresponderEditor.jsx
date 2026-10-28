@@ -101,10 +101,10 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
                   value={form.trigger}
                   onChange={(e) => handleChange("trigger", e.target.value)}
                   className={`w-full px-3.5 py-2 rounded-lg bg-slate-900 border text-xs text-white placeholder-slate-500 focus:outline-none transition-colors ${
-                    errors.trigger ? "border-brand-crimson focus:border-brand-crimson" : "border-white/10 focus:border-indigo-500"
+                    errors.trigger ? "border-rose-500/80 focus:border-rose-500" : "border-white/10 focus:border-indigo-500"
                   }`}
                 />
-                {errors.trigger && <p className="text-brand-crimson text-xs mt-1">{errors.trigger}</p>}
+                {errors.trigger && <p className="text-rose-400 text-xs mt-1">{errors.trigger}</p>}
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
@@ -120,7 +120,7 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
                         : "bg-slate-900 text-slate-400 border-white/5 hover:bg-slate-800"
                     }`}
                   >
-                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                    {mode === "startsWith" ? "Starts With" : mode === "endsWith" ? "Ends With" : mode.charAt(0).toUpperCase() + mode.slice(1)}
                   </button>
                 ))}
               </div>
@@ -169,10 +169,10 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
                   value={form.reply}
                   onChange={(e) => handleChange("reply", e.target.value)}
                   className={`w-full h-20 px-3.5 py-2.5 rounded-lg bg-slate-900 border text-xs text-white placeholder-slate-500 focus:outline-none transition-colors resize-none ${
-                    errors.reply ? "border-brand-crimson focus:border-brand-crimson" : "border-white/10 focus:border-indigo-500"
+                    errors.reply ? "border-rose-500/80 focus:border-rose-500" : "border-white/10 focus:border-indigo-500"
                   }`}
                 />
-                {errors.reply && <p className="text-brand-crimson text-xs mt-1">{errors.reply}</p>}
+                {errors.reply && <p className="text-rose-400 text-xs mt-1">{errors.reply}</p>}
               </div>
 
               {form.isEmbed && (
@@ -183,10 +183,10 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
                     value={form.imageUrl}
                     onChange={(e) => handleChange("imageUrl", e.target.value)}
                     className={`w-full px-3.5 py-2 rounded-lg bg-slate-900 border text-xs text-white placeholder-slate-500 focus:outline-none transition-colors ${
-                      errors.imageUrl ? "border-brand-crimson focus:border-brand-crimson" : "border-white/10 focus:border-indigo-500"
+                      errors.imageUrl ? "border-rose-500/80 focus:border-rose-500" : "border-white/10 focus:border-indigo-500"
                     }`}
                   />
-                  {errors.imageUrl && <p className="text-brand-crimson text-xs mt-1">{errors.imageUrl}</p>}
+                  {errors.imageUrl && <p className="text-rose-400 text-xs mt-1">{errors.imageUrl}</p>}
                 </div>
               )}
 
@@ -248,9 +248,9 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
                   <div className="text-xs font-semibold text-slate-200 group-hover:text-white transition-colors">Delete Trigger</div>
                   <div className="text-[11px] text-slate-500">Delete the user's message</div>
                 </div>
-                <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.deleteTrigger ? 'bg-brand-crimson' : 'bg-slate-700'}`}>
+                <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.deleteTrigger ? 'bg-rose-500' : 'bg-slate-700'}`}>
                   <input type="checkbox" className="sr-only" checked={form.deleteTrigger} onChange={(e) => handleChange("deleteTrigger", e.target.checked)} />
-                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${form.deleteTrigger ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${form.deleteTrigger ? 'translate-x-4' : 'translate-x-0.5'}`} />
                 </div>
               </label>
 
@@ -261,7 +261,7 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
                 </div>
                 <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.ignoreBots ? 'bg-indigo-500' : 'bg-slate-700'}`}>
                   <input type="checkbox" className="sr-only" checked={form.ignoreBots} onChange={(e) => handleChange("ignoreBots", e.target.checked)} />
-                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${form.ignoreBots ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${form.ignoreBots ? 'translate-x-4' : 'translate-x-0.5'}`} />
                 </div>
               </label>
             </div>

@@ -13,7 +13,8 @@ export default function DiscordPreview({ botInfo, user, trigger, isEmbed, embedT
       .replace(/{user}/g, `<@${user?.id || "123456789"}>`)
       .replace(/{username}/g, user?.username || "Member")
       .replace(/{server}/g, "Digital Vigital")
-      .replace(/{channel}/g, "#general");
+      .replace(/{channel}/g, "#general")
+      .replace(/{memberCount}/g, "1,250");
   };
 
   return (

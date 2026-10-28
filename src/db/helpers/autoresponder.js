@@ -105,14 +105,22 @@ export async function deleteAutoresponder(guildId, responderId) {
 
 export async function updateAutoresponder(guildId, responderId, data) {
   const gId = String(guildId);
-  const [updatedCount] = await AutoResponder.update(data, {
+  const existing = await AutoResponder.findOne({
+    where: {
+      guild_id: gId,
+      responder_id: Number(responderId),
+    },
+  });
+  if (!existing) return false;
+
+  await AutoResponder.update(data, {
     where: {
       guild_id: gId,
       responder_id: Number(responderId),
     },
   });
   invalidateAutoresponderCache(gId);
-  return updatedCount > 0;
+  return true;
 }
 
 export async function toggleAutoresponder(guildId, responderId) {

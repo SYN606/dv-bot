@@ -15,7 +15,7 @@ export default function AutoresponderHeader({
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-6">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <span className="text-sm font-display text-brand-crimson tracking-wider">स्वचालन</span>
+            <span className="text-sm font-display text-indigo-400 tracking-wider">स्वचालन</span>
             <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest opacity-80">/ Autoresponder / Triggers</span>
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Autoresponder</h1>

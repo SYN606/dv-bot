@@ -61,7 +61,7 @@ function compileGuildRules(rawRules) {
         const raw = typeof rx === "string" ? rx : rx?.emoji || rx?.dataValues?.emoji || "";
         if (!raw) return null;
         const parsed = parseEmoji(raw);
-        return parsed?.id || parsed?.name || raw;
+        return parsed?.id ? `${parsed.name}:${parsed.id}` : (parsed?.name || raw);
       }).filter(Boolean);
 
       return {

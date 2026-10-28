@@ -2,19 +2,28 @@ import React, { useState } from "react";
 import { Edit2, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { EmojiBadge } from "../discord";
 
+function formatMatchMode(mode) {
+  const m = String(mode || "contains").toLowerCase();
+  if (m === "startswith") return "Starts With";
+  if (m === "endswith") return "Ends With";
+  if (m === "exact") return "Exact Match";
+  if (m === "regex") return "Regex";
+  return "Contains";
+}
+
 export default function AutoresponderRule({ rule, isEditing, onEdit, onToggle, onDelete }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   if (isDeleting) {
     return (
-      <div className="glass-panel p-3.5 rounded-xl border border-brand-crimson/50 bg-brand-crimson/5 space-y-3">
+      <div className="glass-panel p-3.5 rounded-xl border border-rose-500/50 bg-rose-500/10 space-y-3">
         <div className="text-xs text-slate-200">
-          Delete autoresponder for <span className="font-mono text-brand-crimson font-bold">"{rule.trigger || rule.trigger_phrase}"</span>?
+          Delete autoresponder for <span className="font-mono text-rose-400 font-bold">"{rule.trigger || rule.trigger_phrase}"</span>?
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => onDelete(rule.id)}
-            className="px-3 py-1 rounded-md bg-brand-crimson hover:bg-brand-crimson-dark text-white text-xs font-semibold transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-colors shadow-md shadow-rose-600/20"
           >
             Confirm Delete
           </button>
@@ -43,7 +52,9 @@ export default function AutoresponderRule({ rule, isEditing, onEdit, onToggle, o
           </div>
           
           <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-500">
-            <span className="uppercase text-slate-400 font-semibold">{rule.matchMode || rule.match_type || "contains"}</span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-sans">
+              {formatMatchMode(rule.matchMode || rule.match_type)}
+            </span>
             <span>•</span>
             <span>{rule.cooldown ?? 0}s cooldown</span>
             {(rule.deleteTrigger ?? rule.delete_trigger) && (
@@ -103,7 +114,7 @@ export default function AutoresponderRule({ rule, isEditing, onEdit, onToggle, o
             </button>
             <button
               onClick={() => setIsDeleting(true)}
-              className="flex-1 flex items-center justify-center gap-1.5 p-1.5 rounded-lg bg-white/5 hover:bg-brand-crimson hover:text-white text-slate-400 transition-colors border border-white/5"
+              className="flex-1 flex items-center justify-center gap-1.5 p-1.5 rounded-lg bg-white/5 hover:bg-rose-500 hover:text-white text-slate-400 transition-colors border border-white/5"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>

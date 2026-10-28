@@ -349,7 +349,16 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
     static async findByPk(pk, queryOpts = {}) {
       if (pk === undefined || pk === null) return null;
       const db = getDb();
-      const whereCond = eq(table[primaryKey], String(pk));
+      const col = table[primaryKey];
+      const isNumCol = col?.dataType === 'number' || col?.columnType === 'SQLiteInteger';
+      const isTextCol = col?.dataType === 'string' || col?.columnType === 'SQLiteText';
+      let pkVal = pk;
+      if (isNumCol && !isNaN(Number(pk))) {
+        pkVal = Number(pk);
+      } else if (isTextCol) {
+        pkVal = String(pk);
+      }
+      const whereCond = eq(col, pkVal);
       let query = db.select().from(table).where(whereCond);
       const row = await execGet(query);
       if (!row) return null;

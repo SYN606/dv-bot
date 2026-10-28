@@ -66,6 +66,7 @@ export default function AutoresponderPage({ showToast }) {
       <AutoresponderList 
         rules={rules} 
         loading={loading} 
+        editingRuleId={editingRule?.id || editingRule?.responder_id} 
         onEdit={handleEdit} 
         onToggle={toggleRule} 
         onDelete={deleteRule} 

@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import AutoresponderRule from "./AutoresponderRule";
 
-export default function AutoresponderList({ rules, loading, onEdit, onToggle, onDelete }) {
+export default function AutoresponderList({ rules, loading, editingRuleId, onEdit, onToggle, onDelete }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
 
@@ -72,7 +72,7 @@ export default function AutoresponderList({ rules, loading, onEdit, onToggle, on
             <AutoresponderRule 
               key={rule.id}
               rule={rule}
-              isEditing={false}
+              isEditing={Boolean(editingRuleId && (rule.id === editingRuleId || rule.responder_id === editingRuleId))}
               onEdit={onEdit}
               onToggle={onToggle}
               onDelete={onDelete}
