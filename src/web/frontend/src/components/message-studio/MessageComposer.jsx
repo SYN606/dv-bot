@@ -99,12 +99,17 @@ export default function MessageComposer({
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
   const [editingHistoryItem, setEditingHistoryItem] = useState(null);
 
-  // Set default channel when channels load
+  // Initialize default destination channel once when channels load
+  const hasInitializedChannel = useRef(false);
   useEffect(() => {
-    if (!channelId && channels.length > 0) {
-      setChannelId(channels[0].id);
+    if (!hasInitializedChannel.current && channels && channels.length > 0) {
+      hasInitializedChannel.current = true;
+      if (!channelId) {
+        const firstSendable = channels.find((c) => c.canSend !== false) || channels[0];
+        setChannelId(firstSendable.id);
+      }
     }
-  }, [channels, channelId]);
+  }, [channels]);
 
   // Keep reply box open if reply is enabled
   useEffect(() => {
@@ -164,6 +169,14 @@ export default function MessageComposer({
     const errors = [];
     if (!channelId) {
       errors.push("Please select a target destination channel.");
+    } else {
+      const ch = channels.find((c) => c.id === channelId);
+      if (ch && ch.canSend === false) {
+        const missing = Array.isArray(ch.missingPermissions) && ch.missingPermissions.length > 0
+          ? ` (${ch.missingPermissions.join(", ")})`
+          : "";
+        errors.push(`Bot lacks permission to send messages in #${ch.name}${missing}.`);
+      }
     }
     if (mode === "normal" && !content.trim() && attachments.length === 0) {
       errors.push("Normal mode requires text content or file attachments.");
@@ -638,6 +651,14 @@ export default function MessageComposer({
                     onChange={setChannelId}
                     placeholder="Select text channel..."
                   />
+                  {selectedChannel && selectedChannel.canSend === false && (
+                    <div className="mt-1.5 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+                      <span>
+                        Bot cannot send to #{selectedChannel.name} ({selectedChannel.missingPermissions?.join(", ") || "Missing Permissions"}). Choose another channel.
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Reply Toggle */}

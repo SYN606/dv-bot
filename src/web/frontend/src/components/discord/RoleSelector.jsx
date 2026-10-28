@@ -25,9 +25,31 @@ export default function RoleSelector({
   const [query, setQuery] = useState("");
   const inputRef = useRef(null);
 
+  const selectedOption = !multiple && value ? specialOptions.find((o) => o.value === value) : null;
+  const selectedRole = !multiple && value ? roles.find((r) => r.id === value) : null;
+  const selectedLabel = selectedOption
+    ? selectedOption.label
+    : selectedRole
+    ? (selectedRole.name.startsWith("@") ? selectedRole.name : `@${selectedRole.name}`)
+    : "";
+
+  // Sync displayed query when value changes
+  useEffect(() => {
+    if (!multiple) {
+      setQuery(selectedLabel);
+    }
+  }, [selectedLabel, multiple]);
+
+  const handleOpenChange = (nextOpen) => {
+    setOpen(nextOpen);
+    if (!nextOpen && !multiple) {
+      setQuery(selectedLabel);
+    }
+  };
+
   const { refs, floatingStyles, context, placement } = useFloating({
     open,
-    onOpenChange: setOpen,
+    onOpenChange: handleOpenChange,
     placement: 'bottom-start',
     whileElementsMounted: autoUpdate,
     middleware: [
@@ -51,23 +73,6 @@ export default function RoleSelector({
     dismiss,
     listboxRole,
   ]);
-
-  // Sync displayed query when value changes
-  useEffect(() => {
-    if (!multiple) {
-      if (!value) {
-        setQuery("");
-      } else {
-        const special = specialOptions.find((o) => o.value === value);
-        if (special) {
-          setQuery(special.label);
-        } else {
-          const found = roles.find((r) => r.id === value);
-          if (found) setQuery(`@${found.name}`);
-        }
-      }
-    }
-  }, [value, roles, specialOptions, multiple]);
 
   const handleSelect = (id) => {
     if (!multiple) {
@@ -99,23 +104,26 @@ export default function RoleSelector({
   };
 
   const cleanQuery = query.startsWith("@") ? query.slice(1).trim().toLowerCase() : query.trim().toLowerCase();
+  const isQueryUnedited = Boolean(selectedLabel && query.trim().toLowerCase() === selectedLabel.trim().toLowerCase());
+  const activeSearch = isQueryUnedited ? "" : cleanQuery;
 
   const filteredRoles = roles.filter((r) => {
-    if (!cleanQuery) return true;
-    return r.name.toLowerCase().includes(cleanQuery) || r.id === query.trim();
+    if (!activeSearch) return true;
+    return r.name.toLowerCase().includes(activeSearch) || r.id === query.trim();
   });
 
   const filteredSpecial = specialOptions.filter((opt) => {
-    if (!cleanQuery) return true;
+    if (!activeSearch) return true;
     return (
-      opt.label.toLowerCase().includes(cleanQuery) ||
-      (opt.description && opt.description.toLowerCase().includes(cleanQuery))
+      opt.label.toLowerCase().includes(activeSearch) ||
+      (opt.description && opt.description.toLowerCase().includes(activeSearch))
     );
   });
 
   const handleKeyDown = (e) => {
     if (e.key === "Escape") {
       setOpen(false);
+      if (!multiple) setQuery(selectedLabel);
     } else if (e.key === "Enter" && !multiple) {
       e.preventDefault();
       if (filteredSpecial.length > 0) {
@@ -127,7 +135,6 @@ export default function RoleSelector({
   };
 
   const isDropUp = placement.startsWith('top');
-  const selectedRole = !multiple && value ? roles.find((r) => r.id === value) : null;
   const roleColor = selectedRole?.color ? selectedRole.color : null;
 
   const hasSelection = multiple

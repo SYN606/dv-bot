@@ -26,9 +26,31 @@ export default function ChannelSelector({
   const [query, setQuery] = useState("");
   const inputRef = useRef(null);
 
+  const selectedOption = !multiple && value ? specialOptions.find((o) => o.value === value) : null;
+  const selectedChannel = !multiple && value ? channels.find((c) => c.id === value) : null;
+  const selectedLabel = selectedOption
+    ? selectedOption.label
+    : selectedChannel
+    ? (selectedChannel.name.startsWith("#") ? selectedChannel.name : `#${selectedChannel.name}`)
+    : "";
+
+  // Synchronize displayed query with value in single select
+  useEffect(() => {
+    if (!multiple) {
+      setQuery(selectedLabel);
+    }
+  }, [selectedLabel, multiple]);
+
+  const handleOpenChange = (nextOpen) => {
+    setOpen(nextOpen);
+    if (!nextOpen && !multiple) {
+      setQuery(selectedLabel);
+    }
+  };
+
   const { refs, floatingStyles, context, placement } = useFloating({
     open,
-    onOpenChange: setOpen,
+    onOpenChange: handleOpenChange,
     placement: 'bottom-start',
     whileElementsMounted: autoUpdate,
     middleware: [
@@ -52,23 +74,6 @@ export default function ChannelSelector({
     dismiss,
     listboxRole,
   ]);
-
-  // Synchronize displayed query with value in single select
-  useEffect(() => {
-    if (!multiple) {
-      if (!value) {
-        setQuery("");
-      } else {
-        const special = specialOptions.find((o) => o.value === value);
-        if (special) {
-          setQuery(special.label);
-        } else {
-          const found = channels.find((c) => c.id === value);
-          if (found) setQuery(found.name.startsWith("#") ? found.name : `#${found.name}`);
-        }
-      }
-    }
-  }, [value, channels, specialOptions, multiple]);
 
   const getIcon = (type) => {
     if (type === 2) return <Volume2 className="w-4 h-4 text-emerald-400" />;
@@ -106,6 +111,8 @@ export default function ChannelSelector({
   };
 
   const cleanQuery = query.startsWith("#") ? query.slice(1).trim().toLowerCase() : query.trim().toLowerCase();
+  const isQueryUnedited = Boolean(selectedLabel && query.trim().toLowerCase() === selectedLabel.trim().toLowerCase());
+  const activeSearch = isQueryUnedited ? "" : cleanQuery;
 
   const filteredChannels = channels.filter((c) => {
     // Type restriction check
@@ -117,21 +124,26 @@ export default function ChannelSelector({
       if (!allowedNumeric.includes(channelType)) return false;
     }
 
-    if (!cleanQuery) return true;
-    return c.name.toLowerCase().includes(cleanQuery) || c.id === query.trim();
+    if (!activeSearch) return true;
+    return (
+      c.name.toLowerCase().includes(activeSearch) ||
+      (c.parentName && c.parentName.toLowerCase().includes(activeSearch)) ||
+      c.id === query.trim()
+    );
   });
 
   const filteredSpecial = specialOptions.filter((opt) => {
-    if (!cleanQuery) return true;
+    if (!activeSearch) return true;
     return (
-      opt.label.toLowerCase().includes(cleanQuery) ||
-      (opt.description && opt.description.toLowerCase().includes(cleanQuery))
+      opt.label.toLowerCase().includes(activeSearch) ||
+      (opt.description && opt.description.toLowerCase().includes(activeSearch))
     );
   });
 
   const handleKeyDown = (e) => {
     if (e.key === "Escape") {
       setOpen(false);
+      if (!multiple) setQuery(selectedLabel);
     } else if (e.key === "Enter" && !multiple) {
       e.preventDefault();
       if (filteredSpecial.length > 0) {
@@ -143,7 +155,6 @@ export default function ChannelSelector({
   };
 
   const isDropUp = placement.startsWith('top');
-  const selectedChannel = !multiple && value ? channels.find((c) => c.id === value) : null;
 
   const hasSelection = multiple
     ? Array.isArray(value) && value.length > 0
@@ -280,11 +291,25 @@ export default function ChannelSelector({
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <span className="shrink-0">{getIcon(c.type)}</span>
-                          <span className="truncate font-medium">#{c.name}</span>
+                          <span className="truncate font-medium">
+                            {c.name.startsWith("#") ? c.name : `#${c.name}`}
+                          </span>
+                          {c.parentName && (
+                            <span className="text-[10px] text-slate-500 font-normal truncate">
+                              ({c.parentName})
+                            </span>
+                          )}
                         </div>
-                        {isSelected && (
-                          <Check className="w-4 h-4 text-indigo-400 shrink-0" />
-                        )}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {c.canSend === false && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-medium">
+                              No Send Perms
+                            </span>
+                          )}
+                          {isSelected && (
+                            <Check className="w-4 h-4 text-indigo-400 shrink-0" />
+                          )}
+                        </div>
                       </button>
                     );
                   })}
