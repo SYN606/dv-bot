@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { getWarningPunishments, addWarningPunishment, removeWarningPunishment } from "../../api/client";
+import {
+  getWarningPunishments,
+  addWarningPunishment,
+  updateWarningPunishment,
+  removeWarningPunishment
+} from "../../api/client";
 import {
   findNextUnusedThreshold,
   getPunishmentType,
@@ -87,6 +92,36 @@ export function useWarningPunishments(guildId, showToast) {
     }
   }, [guildId, warnCount, actionType, duration, rules, showToast]);
 
+  const updateRule = useCallback(
+    async (originalWarnCount, { warnCount: newCount, actionType: newAction, duration: newDuration }) => {
+      try {
+        await updateWarningPunishment(guildId, originalWarnCount, {
+          warnCount: newCount,
+          actionType: newAction,
+          duration: newDuration,
+        });
+        showToast?.({
+          title: "Success",
+          message: `Punishment rule for ${newCount} warnings updated!`,
+          type: "success",
+        });
+
+        const data = await getWarningPunishments(guildId);
+        setRules(data?.configs || []);
+        return true;
+      } catch (err) {
+        console.error(err);
+        showToast?.({
+          title: "Error",
+          message: err.message || "Failed to update punishment rule.",
+          type: "error",
+        });
+        return false;
+      }
+    },
+    [guildId, showToast]
+  );
+
   const deleteRule = useCallback(
     async (warnCountToDelete) => {
       setDeletingWarnCount(warnCountToDelete);
@@ -120,9 +155,10 @@ export function useWarningPunishments(guildId, showToast) {
     loading,
     error,
     refresh: fetchRules,
-    // Delete
+    // Delete & Update
     deletingWarnCount,
     deleteRule,
+    updateRule,
     // Add-form state
     warnCount,
     setWarnCount,

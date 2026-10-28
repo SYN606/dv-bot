@@ -416,9 +416,41 @@ moderationRoutes.post("/guilds/:guildId/warning_punishments", async (c) => {
     }
 
     const config = await setWarningPunishmentConfig(guildId, parseInt(warnCount), actionType, duration ? parseInt(duration) : null);
+    apiCache.invalidateGuild(guildId);
     return c.json({ success: true, config });
   } catch (err) {
     console.error("[WARNING PUNISHMENTS] POST error:", err);
+    return c.json({ error: err.message || "Internal server error" }, 500);
+  }
+});
+
+moderationRoutes.put("/guilds/:guildId/warning_punishments/:warnCount", async (c) => {
+  try {
+    const guildId = c.req.param("guildId");
+    const originalWarnCount = parseInt(c.req.param("warnCount"), 10);
+    const body = await c.req.json().catch(() => ({}));
+    const newWarnCount = body.warnCount !== undefined ? parseInt(body.warnCount, 10) : originalWarnCount;
+    const { actionType, duration } = body;
+
+    if (!newWarnCount || !actionType) {
+      return c.json({ error: "warnCount and actionType are required" }, 400);
+    }
+
+    // If threshold count was changed, remove the old rule first
+    if (originalWarnCount !== newWarnCount) {
+      await removeWarningPunishmentConfig(guildId, originalWarnCount);
+    }
+
+    const config = await setWarningPunishmentConfig(
+      guildId,
+      newWarnCount,
+      actionType,
+      duration ? parseInt(duration, 10) : null
+    );
+    apiCache.invalidateGuild(guildId);
+    return c.json({ success: true, config });
+  } catch (err) {
+    console.error("[WARNING PUNISHMENTS] PUT error:", err);
     return c.json({ error: err.message || "Internal server error" }, 500);
   }
 });
@@ -428,5 +460,6 @@ moderationRoutes.delete("/guilds/:guildId/warning_punishments/:warnCount", async
   const warnCount = c.req.param("warnCount");
 
   const success = await removeWarningPunishmentConfig(guildId, parseInt(warnCount));
+  apiCache.invalidateGuild(guildId);
   return c.json({ success });
 });

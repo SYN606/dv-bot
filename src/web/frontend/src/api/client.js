@@ -486,6 +486,15 @@ export async function addWarningPunishment(guildId, payload) {
   return result;
 }
 
+export async function updateWarningPunishment(guildId, warnCount, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/warning_punishments/${warnCount}`, {
+    method: "PUT",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/warning_punishments`);
+  return result;
+}
+
 export async function removeWarningPunishment(guildId, warnCount) {
   const result = await fetchApi(`/api/guilds/${guildId}/warning_punishments/${warnCount}`, {
     method: "DELETE",

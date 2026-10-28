@@ -7,6 +7,7 @@ import {
   WarningPunishmentsHeader,
   PunishmentRuleList,
   PunishmentRuleForm,
+  EditPunishmentModal,
 } from "../../components/warning-punishments";
 
 export default function WarningPunishmentsPage({ showToast }) {
@@ -19,6 +20,7 @@ export default function WarningPunishmentsPage({ showToast }) {
     refresh,
     deletingWarnCount,
     deleteRule,
+    updateRule,
     warnCount,
     setWarnCount,
     actionType,
@@ -30,6 +32,7 @@ export default function WarningPunishmentsPage({ showToast }) {
   } = useWarningPunishments(guildId, showToast);
 
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [editingRule, setEditingRule] = useState(null);
   const { enabled: moduleEnabled, toggle: toggleModule } = useModuleStatus(guildId, "warning_punishments", showToast);
 
   const handleDeleteConfirmed = async () => {
@@ -81,6 +84,7 @@ export default function WarningPunishmentsPage({ showToast }) {
         {/* Rules List */}
         <PunishmentRuleList
           rules={rules}
+          onEdit={setEditingRule}
           onDelete={setPendingDelete}
           deletingWarnCount={deletingWarnCount}
         />
@@ -98,6 +102,15 @@ export default function WarningPunishmentsPage({ showToast }) {
           existingRules={rules}
         />
       </div>
+
+      {/* Edit Punishment Rule Modal */}
+      <EditPunishmentModal
+        isOpen={Boolean(editingRule)}
+        onClose={() => setEditingRule(null)}
+        rule={editingRule}
+        existingRules={rules}
+        onConfirmEdit={updateRule}
+      />
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog

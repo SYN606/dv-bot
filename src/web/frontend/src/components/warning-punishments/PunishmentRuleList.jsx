@@ -3,7 +3,7 @@ import PunishmentRuleItem from "./PunishmentRuleItem";
 import EmptyState from "../ui/EmptyState";
 import { Shield } from "lucide-react";
 
-export default function PunishmentRuleList({ rules, onDelete, deletingWarnCount }) {
+export default function PunishmentRuleList({ rules, onEdit, onDelete, deletingWarnCount }) {
   if (rules.length === 0) {
     return (
       <EmptyState
@@ -28,6 +28,7 @@ export default function PunishmentRuleList({ rules, onDelete, deletingWarnCount 
           <PunishmentRuleItem
             key={rule.warn_count}
             rule={rule}
+            onEdit={onEdit}
             onDelete={onDelete}
             isDeleting={deletingWarnCount === rule.warn_count}
             isLast={idx === rules.length - 1}
