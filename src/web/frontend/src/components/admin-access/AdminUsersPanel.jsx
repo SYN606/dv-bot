@@ -21,14 +21,14 @@ export default function AdminUsersPanel({ guildId, adminUsers, ownerId, onAddUse
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           <Users className="w-5 h-5 text-indigo-400" />
-          Admin Users
+          Authorized Users
         </h2>
         <span className="text-xs font-mono text-slate-400 font-bold bg-white/5 px-2 py-0.5 rounded border border-white/10">
           {filteredUsers.length} users
         </span>
       </div>
       <p className="text-sm text-slate-400 mb-6">
-        Grant individual members permission to manage the bot without requiring a staff role.
+        Grant individual members direct access to log into the web dashboard and manage the bot without needing a staff role.
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -37,16 +37,16 @@ export default function AdminUsersPanel({ guildId, adminUsers, ownerId, onAddUse
             guildId={guildId}
             value={selectedUser}
             onChange={setSelectedUser}
-            placeholder="Search member to authorize..."
+            placeholder="Search member name or enter Discord User ID..."
             excludeIds={[...adminUsers.map(u => u.id), ownerId]}
           />
         </div>
         <button
           onClick={handleAdd}
           disabled={!selectedUser || addingUserId}
-          className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors disabled:opacity-50 shrink-0 flex items-center justify-center min-w-35"
+          className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors disabled:opacity-50 shrink-0 flex items-center justify-center min-w-35 shadow-md shadow-indigo-600/20"
         >
-          {addingUserId ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Admin"}
+          {addingUserId ? <Loader2 className="w-4 h-4 animate-spin" /> : "Authorize User"}
         </button>
       </div>
 

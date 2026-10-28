@@ -65,18 +65,33 @@ export default function UserSelector({
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Synchronize external value changes (e.g. reset from parent)
+  // Synchronize external value changes (e.g. reset from parent after add)
+  const prevValueRef = useRef(value);
   useEffect(() => {
-    if (!value) {
-      setSelectedMember(null);
-      setQuery("");
-    } else if (selectedMember && selectedMember.id !== value) {
+    if (prevValueRef.current !== value) {
+      prevValueRef.current = value;
+      if (!value) {
+        setSelectedMember(null);
+        setQuery("");
+      } else {
+        const match = results.find((m) => m.id === value);
+        if (match) {
+          setSelectedMember(match);
+          setQuery(match.displayName || match.globalName || match.username || match.id);
+        } else {
+          setQuery(value);
+        }
+      }
+    }
+  }, [value, results]);
+
+  // Resolve member display if initial value was passed before results loaded
+  useEffect(() => {
+    if (value && !selectedMember && results.length > 0) {
       const match = results.find((m) => m.id === value);
       if (match) {
         setSelectedMember(match);
-        setQuery(match.globalName || match.username || match.id);
-      } else {
-        setQuery(value);
+        setQuery(match.displayName || match.globalName || match.username || match.id);
       }
     }
   }, [value, results, selectedMember]);
@@ -165,7 +180,7 @@ export default function UserSelector({
       >
         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
           {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-brand-crimson" />
+            <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
           ) : (
             <Search className="w-4 h-4" />
           )}
@@ -176,8 +191,9 @@ export default function UserSelector({
           type="text"
           placeholder={placeholder}
           value={query}
-          onFocus={() => {
+          onFocus={(e) => {
             if (!open) setOpen(true);
+            if (selectedMember) e.target.select();
           }}
           onClick={() => {
             if (!open) setOpen(true);
@@ -187,7 +203,7 @@ export default function UserSelector({
             if (!open) setOpen(true);
           }}
           onKeyDown={handleKeyDown}
-          className="w-full pl-9 pr-9 py-2 bg-slate-900 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-crimson/50 focus:ring-1 focus:ring-brand-crimson/30 transition-all"
+          className="w-full pl-9 pr-9 py-2 bg-slate-900 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all"
         />
 
         {(query || value) && (
@@ -213,27 +229,34 @@ export default function UserSelector({
             }`}
           >
             <div className="max-h-64 overflow-y-auto p-1.5 scrollbar-thin">
+              {/* Direct snowflake ID authorize action */}
+              {isSnowflake && (
+                <div className="p-1 mb-1 border-b border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(query.trim());
+                      setOpen(false);
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25 text-xs font-semibold transition-colors border border-indigo-500/30 flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <User className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span className="truncate">Authorize user by Discord ID: <strong className="font-mono text-white">{query.trim()}</strong></span>
+                    </div>
+                    <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  </button>
+                </div>
+              )}
+
               {loading && results.length === 0 ? (
                 <div className="flex items-center justify-center py-6 text-slate-400 gap-2 text-xs">
-                  <Loader2 className="w-4 h-4 animate-spin text-brand-crimson" />
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
                   <span>Searching server members...</span>
                 </div>
-              ) : filteredResults.length === 0 ? (
+              ) : filteredResults.length === 0 && !isSnowflake ? (
                 <div className="text-center py-6 px-4">
-                  <p className="text-xs text-slate-400 mb-2">No members found.</p>
-                  {isSnowflake && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onChange(query.trim());
-                        setOpen(false);
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-brand-crimson/20 text-brand-crimson hover:bg-brand-crimson/30 text-xs font-semibold transition-colors border border-brand-crimson/30 inline-flex items-center gap-1.5"
-                    >
-                      <User className="w-3.5 h-3.5" />
-                      <span>Inspect by ID: {query.trim()}</span>
-                    </button>
-                  )}
+                  <p className="text-xs text-slate-400">No members found matching &quot;{query}&quot;.</p>
                 </div>
               ) : (
                 <div className="space-y-0.5">
@@ -247,7 +270,7 @@ export default function UserSelector({
                         onClick={() => handleSelect(m)}
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
                           isSelected
-                            ? "bg-brand-crimson/20 text-white"
+                            ? "bg-indigo-500/20 text-white font-medium"
                             : "hover:bg-white/5 text-slate-300 hover:text-white"
                         }`}
                       >
@@ -264,7 +287,7 @@ export default function UserSelector({
                           />
                           <div className="min-w-0">
                             <div className="text-xs font-semibold truncate text-slate-200">
-                              {m.globalName || m.username}
+                              {m.displayName || m.globalName || m.username}
                             </div>
                             <div className="text-[10px] text-slate-500 font-mono truncate">
                               @{m.username} • {m.id}
@@ -272,7 +295,7 @@ export default function UserSelector({
                           </div>
                         </div>
                         {isSelected && (
-                          <Check className="w-4 h-4 text-brand-crimson shrink-0 ml-2" />
+                          <Check className="w-4 h-4 text-indigo-400 shrink-0 ml-2" />
                         )}
                       </button>
                     );

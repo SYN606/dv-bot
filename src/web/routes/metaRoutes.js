@@ -175,6 +175,18 @@ metaRoutes.get("/guilds/:guildId/members", async (c) => {
         }
       }
 
+      // Gateway chunk fetch fallback if search didn't return enough results
+      if (memberList.length < limit && typeof botGuild.members?.fetch === "function") {
+        const fetched = await botGuild.members.fetch({ query, limit }).catch(() => null);
+        if (fetched && fetched.size > 0) {
+          for (const m of fetched.values()) {
+            if (!memberList.some((x) => x.id === m.id)) {
+              memberList.push(m);
+            }
+          }
+        }
+      }
+
       // If still fewer than limit, search cached members
       if (memberList.length < limit && botGuild.members?.cache) {
         const qLower = query.toLowerCase();
@@ -189,8 +201,14 @@ metaRoutes.get("/guilds/:guildId/members", async (c) => {
         }
       }
     } else {
-      // No query, return from cache up to limit
-      if (botGuild.members?.cache) {
+      // No query, populate from cache or fetch up to limit
+      if (!botGuild.members?.cache || botGuild.members.cache.size < limit) {
+        const fetched = await botGuild.members.fetch({ limit }).catch(() => null);
+        if (fetched && fetched.size > 0) {
+          memberList = Array.from(fetched.values()).slice(0, limit);
+        }
+      }
+      if (memberList.length === 0 && botGuild.members?.cache) {
         for (const m of botGuild.members.cache.values()) {
           if (memberList.length >= limit) break;
           memberList.push(m);

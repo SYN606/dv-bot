@@ -66,6 +66,43 @@ authRoutes.get("/me", async (c) => {
     });
   });
 
+  // Verify dashboard access for users with configured Admin Users or Allowed Admin Roles
+  if (!isSuperuser) {
+    const { getAdminUsers, getAdminRoles } = await import("../../db/helpers/adminRoles.js");
+    await Promise.all(
+      Array.from(guildsMap.values()).map(async (g) => {
+        if (g.canManage || !g.botPresent) return;
+        const cacheKey = `user_bot_access:${g.id}:${session.user.id}`;
+        const cached = apiCache.get(cacheKey);
+        if (cached === true) {
+          g.canManage = true;
+          return;
+        }
+
+        try {
+          const [adminUsers, adminRoles] = await Promise.all([
+            getAdminUsers(g.id),
+            getAdminRoles(g.id),
+          ]);
+
+          if (adminUsers.includes(session.user.id)) {
+            g.canManage = true;
+            apiCache.set(cacheKey, true, 60000);
+          } else if (adminRoles.length > 0) {
+            const bg = client?.guilds.cache.get(String(g.id));
+            const member = bg?.members.cache.get(session.user.id);
+            if (member && adminRoles.some((rId) => member.roles.cache.has(rId))) {
+              g.canManage = true;
+              apiCache.set(cacheKey, true, 60000);
+            }
+          }
+        } catch {
+          // Ignore failures gracefully
+        }
+      })
+    );
+  }
+
   // If superuser, inject any bot guilds they aren't naturally a part of
   if (isSuperuser && client?.guilds?.cache) {
     for (const [id, bg] of client.guilds.cache) {
@@ -158,6 +195,43 @@ authRoutes.post("/me/sync", async (c) => {
       canManage: isSuperuser ? true : canManage, // Superusers can manage everything
     });
   });
+
+  // Verify dashboard access for users with configured Admin Users or Allowed Admin Roles
+  if (!isSuperuser) {
+    const { getAdminUsers, getAdminRoles } = await import("../../db/helpers/adminRoles.js");
+    await Promise.all(
+      Array.from(guildsMap.values()).map(async (g) => {
+        if (g.canManage || !g.botPresent) return;
+        const cacheKey = `user_bot_access:${g.id}:${session.user.id}`;
+        const cached = apiCache.get(cacheKey);
+        if (cached === true) {
+          g.canManage = true;
+          return;
+        }
+
+        try {
+          const [adminUsers, adminRoles] = await Promise.all([
+            getAdminUsers(g.id),
+            getAdminRoles(g.id),
+          ]);
+
+          if (adminUsers.includes(session.user.id)) {
+            g.canManage = true;
+            apiCache.set(cacheKey, true, 60000);
+          } else if (adminRoles.length > 0) {
+            const bg = client?.guilds.cache.get(String(g.id));
+            const member = bg?.members.cache.get(session.user.id);
+            if (member && adminRoles.some((rId) => member.roles.cache.has(rId))) {
+              g.canManage = true;
+              apiCache.set(cacheKey, true, 60000);
+            }
+          }
+        } catch {
+          // Ignore failures gracefully
+        }
+      })
+    );
+  }
 
   // If superuser, inject any bot guilds they aren't naturally a part of
   if (isSuperuser && client?.guilds?.cache) {

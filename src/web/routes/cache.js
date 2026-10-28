@@ -50,8 +50,9 @@ export class ApiCache {
 
   invalidateGuild(guildId) {
     const prefix = `guild:${guildId}:`;
+    const accessPrefix = `user_bot_access:${guildId}:`;
     for (const key of this.store.keys()) {
-      if (key.startsWith(prefix)) {
+      if (key.startsWith(prefix) || key.startsWith(accessPrefix)) {
         this.store.delete(key);
       }
     }

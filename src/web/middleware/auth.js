@@ -105,10 +105,52 @@ export async function requireGuildAdmin(c, next) {
     const hasManageGuild = (permissions & BigInt(MANAGE_GUILD)) === BigInt(MANAGE_GUILD);
 
     if (!isAdmin && !hasManageGuild) {
-      if (c.req.path.startsWith("/api/")) {
-        return c.json({ error: "You lack Administrator or Manage Server permissions in this guild." }, 403);
+      // Check if user is granted dashboard access via configured Admin Users or Allowed Admin Roles
+      let hasBotAdminAccess = false;
+      const cacheKey = `user_bot_access:${guildId}:${user.id}`;
+      const cachedAccess = apiCache.get(cacheKey);
+
+      if (typeof cachedAccess === "boolean") {
+        hasBotAdminAccess = cachedAccess;
+      } else {
+        try {
+          const { getAdminUsers, getAdminRoles } = await import("../../db/helpers/adminRoles.js");
+          const [adminUsers, adminRoles] = await Promise.all([
+            getAdminUsers(guildId),
+            getAdminRoles(guildId),
+          ]);
+
+          if (adminUsers.includes(user.id)) {
+            hasBotAdminAccess = true;
+          } else if (adminRoles.length > 0) {
+            let bg = client?.guilds.cache.get(guildId) || null;
+            if (!bg && client?.guilds) {
+              bg = await client.guilds.fetch(guildId).catch(() => null);
+            }
+            if (bg) {
+              let member = bg.members.cache.get(user.id);
+              if (!member) {
+                member = await bg.members.fetch(user.id).catch(() => null);
+              }
+              if (member && adminRoles.some((rId) => member.roles.cache.has(rId))) {
+                hasBotAdminAccess = true;
+              }
+            }
+          }
+        } catch (e) {
+          logger.warn(`[AUTH] Failed to check allowed admin roles for user ${user.id} in guild ${guildId}:`, e.message);
+        }
+
+        // Cache result for 60 seconds for performance
+        apiCache.set(cacheKey, hasBotAdminAccess, 60000);
       }
-      return c.redirect("/dashboard");
+
+      if (!hasBotAdminAccess) {
+        if (c.req.path.startsWith("/api/")) {
+          return c.json({ error: "You lack Administrator or Manage Server permissions in this guild." }, 403);
+        }
+        return c.redirect("/dashboard");
+      }
     }
   }
 

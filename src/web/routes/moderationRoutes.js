@@ -200,7 +200,7 @@ moderationRoutes.post("/guilds/:guildId/admin_roles", async (c) => {
   }
 
   const created = await addAdminRole(guildId, role_id);
-  apiCache.delete(`guild:${guildId}:admin_roles`);
+  apiCache.invalidateGuild(guildId);
   return c.json({ success: true, created });
 });
 
@@ -209,7 +209,7 @@ moderationRoutes.delete("/guilds/:guildId/admin_roles/:roleId", async (c) => {
   const roleId = c.req.param("roleId");
 
   const removed = await removeAdminRole(guildId, roleId);
-  apiCache.delete(`guild:${guildId}:admin_roles`);
+  apiCache.invalidateGuild(guildId);
   return c.json({ success: removed });
 });
 
@@ -229,7 +229,7 @@ moderationRoutes.post("/guilds/:guildId/admin_users", async (c) => {
   }
 
   const created = await addAdminUser(guildId, cleanUserId);
-  apiCache.delete(`guild:${guildId}:admin_roles`);
+  apiCache.invalidateGuild(guildId);
   return c.json({ success: true, created });
 });
 
@@ -243,7 +243,7 @@ moderationRoutes.delete("/guilds/:guildId/admin_users/:userId", async (c) => {
   }
 
   const removed = await removeAdminUser(guildId, userId);
-  apiCache.delete(`guild:${guildId}:admin_roles`);
+  apiCache.invalidateGuild(guildId);
   return c.json({ success: removed });
 });
 

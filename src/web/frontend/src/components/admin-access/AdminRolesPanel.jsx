@@ -23,14 +23,14 @@ export default function AdminRolesPanel({ guildId, roles, adminRoles, onAddRole,
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           <Shield className="w-5 h-5 text-indigo-400" />
-          Staff Roles
+          Allowed Roles (Dashboard Access)
         </h2>
         <span className="text-xs font-mono text-slate-400 font-bold bg-white/5 px-2 py-0.5 rounded border border-white/10">
-          {adminRoles.length} roles
+          {adminRoles.length} allowed
         </span>
       </div>
       <p className="text-sm text-slate-400 mb-6">
-        Members with these roles can configure the bot and manage settings.
+        Members with these Discord roles can log into this web dashboard and configure bot features without requiring full Discord Administrator rights.
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -39,22 +39,22 @@ export default function AdminRolesPanel({ guildId, roles, adminRoles, onAddRole,
             roles={availableRoles}
             value={selectedRole}
             onChange={setSelectedRole}
-            placeholder="Select a role to authorize..."
+            placeholder="Select a Discord role to allow dashboard access..."
           />
         </div>
         <button
           onClick={handleAdd}
           disabled={!selectedRole || addingRoleId}
-          className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors disabled:opacity-50 shrink-0 flex items-center justify-center min-w-35"
+          className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors disabled:opacity-50 shrink-0 flex items-center justify-center min-w-35 shadow-md shadow-indigo-600/20"
         >
-          {addingRoleId ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Role"}
+          {addingRoleId ? <Loader2 className="w-4 h-4 animate-spin" /> : "Allow Role"}
         </button>
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto pr-2 scrollbar-thin">
         {adminRoles.length === 0 ? (
           <div className="text-center py-8 text-sm text-slate-500 border border-dashed border-white/5 rounded-xl">
-            No staff roles authorized yet.
+            No allowed roles added yet. Server Owner and Discord Admins always have access.
           </div>
         ) : (
           adminRoles.map((r) => (
