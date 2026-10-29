@@ -106,7 +106,7 @@ export default createCommand({
           position++;
         }
       }
-      joinPosition = position;
+      joinPosition = `#${position}`;
     }
 
     // Roles (if member)

@@ -70,7 +70,11 @@ const ROASTS = [
  * Cycles through all items before reshuffling, and never repeats the last item consecutively.
  */
 class NonRepeatingDeck {
-  constructor(items) {
+  public original: string[];
+  public deck: string[];
+  public lastDrawn: string | null;
+
+  constructor(items: string[]) {
     this.original = [...items];
     this.deck = [];
     this.lastDrawn = null;

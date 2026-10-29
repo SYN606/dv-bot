@@ -339,7 +339,7 @@ export default createCommand({
     const actionRow2 = new ActionRowBuilder().addComponents(homeButton, closeButton);
 
     const totalCmds = Array.from(client.commands.values()).length;
-    const slashOnlyCount = Array.from(client.commands.values()).filter((c) => c.slashOnly).length;
+    const slashOnlyCount = Array.from(client.commands.values()).filter((c: any) => c.slashOnly).length;
     const hybridCount = totalCmds - slashOnlyCount;
 
     const desc =
