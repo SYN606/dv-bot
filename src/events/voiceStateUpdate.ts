@@ -3,7 +3,7 @@ import { ANALYTICS_BATCHER } from "../handlers/analyticsBatcher.js";
 import { checkMemberSupporter } from "../handlers/supporterHandler.js";
 import { logger } from "../utils/logger.js";
 
-export const activeVoiceSessions = new Map(); // `${guildId}:${userId}` -> { startTime, channelId }
+export const activeVoiceSessions = new Map<string, any>(); // `${guildId}:${userId}` -> { startTime, channelId }
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours max session duration
 
 // Periodic sweeper for orphaned/disconnected sessions

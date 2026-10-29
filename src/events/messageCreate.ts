@@ -220,7 +220,7 @@ export default {
     }
 
     // D. Options mapping from arguments
-    const options = { _args: rawArgs };
+    const options: Record<string, any> = { _args: rawArgs };
     if (rawArgs.length > 0) {
       options.primary = rawArgs[0];
       options.rest = rawArgs.slice(1).join(" ");
@@ -287,7 +287,7 @@ async function sendMentionReply(client, message, prefix) {
     },
   });
 
-  const row = new ActionRowBuilder().addComponents(
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setLabel("Dashboard")
       .setStyle(ButtonStyle.Link)

@@ -22,7 +22,7 @@ export default {
     // 1. Telemetry: Increment daily joins count
     try {
       await ensureGuild(guildId);
-      const [snapshot] = await DailyActivitySnapshot.findOrCreate({
+      const [snapshot]: any = await DailyActivitySnapshot.findOrCreate({
         where: { guild_id: guildId, date: today },
         defaults: { guild_id: guildId, date: today, joins_count: 0 },
       });
