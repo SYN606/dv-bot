@@ -102,18 +102,21 @@ export default function AutoresponderList({
             }
           />
         ) : (
-          filteredRules.map((rule) => (
-            <AutoresponderRule
-              key={rule.id}
-              rule={rule}
-              isEditing={Boolean(
-                editingRuleId && (rule.id === editingRuleId || rule.responder_id === editingRuleId)
-              )}
-              onEdit={onEdit}
-              onToggle={onToggle}
-              onDelete={onDelete}
-            />
-          ))
+          filteredRules.map((rule) => {
+            const ruleId = rule.id || rule.responder_id;
+            return (
+              <AutoresponderRule
+                key={ruleId}
+                rule={rule}
+                isEditing={Boolean(
+                  editingRuleId && (ruleId === editingRuleId || String(ruleId) === String(editingRuleId))
+                )}
+                onEdit={onEdit}
+                onToggle={onToggle}
+                onDelete={onDelete}
+              />
+            );
+          })
         )}
       </div>
     </div>

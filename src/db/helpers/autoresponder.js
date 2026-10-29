@@ -105,20 +105,16 @@ export async function deleteAutoresponder(guildId, responderId) {
 
 export async function updateAutoresponder(guildId, responderId, data) {
   const gId = String(guildId);
+  const numId = Number(responderId);
   const existing = await AutoResponder.findOne({
     where: {
       guild_id: gId,
-      responder_id: Number(responderId),
+      responder_id: numId,
     },
   });
   if (!existing) return false;
 
-  await AutoResponder.update(data, {
-    where: {
-      guild_id: gId,
-      responder_id: Number(responderId),
-    },
-  });
+  await existing.update(data);
   invalidateAutoresponderCache(gId);
   return true;
 }

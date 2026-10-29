@@ -13,6 +13,7 @@ function formatMatchMode(mode) {
 
 export default function AutoresponderRule({ rule, isEditing, onEdit, onToggle, onDelete }) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const ruleId = rule.id || rule.responder_id;
 
   if (isDeleting) {
     return (
@@ -22,7 +23,7 @@ export default function AutoresponderRule({ rule, isEditing, onEdit, onToggle, o
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onDelete(rule.id)}
+            onClick={() => onDelete(ruleId)}
             className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-colors shadow-md shadow-rose-600/20"
           >
             Confirm Delete
@@ -94,7 +95,7 @@ export default function AutoresponderRule({ rule, isEditing, onEdit, onToggle, o
 
         <div className="flex items-center sm:flex-col gap-2 shrink-0">
           <button
-            onClick={() => onToggle(rule.id, rule.enabled)}
+            onClick={() => onToggle(ruleId, rule.enabled)}
             className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors w-full sm:w-28 ${
               rule.enabled 
                 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20" 

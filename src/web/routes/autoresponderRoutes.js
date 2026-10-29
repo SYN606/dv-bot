@@ -94,15 +94,55 @@ autoresponderRoutes.get("/guilds/:guildId/autoresponder/:id", async (c) => {
 
 // Shared validation & normalization function
 function parseAndValidateBody(body) {
-  const trigger = (body.trigger_phrase || body.trigger || "").trim();
-  const reply = (body.reply_content || body.reply || "").trim();
-  const matchType = (body.match_type || body.matchMode || body.match_mode || "contains").toLowerCase();
-  const isEmbed = body.is_embed !== undefined ? Boolean(body.is_embed) : Boolean(body.isEmbed);
-  const embedTitle = (body.embed_title || body.embedTitle || "").trim() || null;
-  const imageUrl = (body.image_url || body.imageUrl || "").trim() || null;
+  // Prefer explicit modern properties (trigger, reply, matchMode, isEmbed, etc.) over legacy DB column names
+  const trigger = (
+    body.trigger !== undefined && body.trigger !== null
+      ? String(body.trigger)
+      : body.trigger_phrase !== undefined && body.trigger_phrase !== null
+      ? String(body.trigger_phrase)
+      : ""
+  ).trim();
+
+  const reply = (
+    body.reply !== undefined && body.reply !== null
+      ? String(body.reply)
+      : body.reply_content !== undefined && body.reply_content !== null
+      ? String(body.reply_content)
+      : ""
+  ).trim();
+
+  const rawMatchType = body.matchMode ?? body.match_type ?? body.match_mode ?? "contains";
+  const matchType = String(rawMatchType).toLowerCase();
+
+  const isEmbed =
+    body.isEmbed !== undefined
+      ? Boolean(body.isEmbed)
+      : body.is_embed !== undefined
+      ? Boolean(body.is_embed)
+      : false;
+
+  const rawEmbedTitle = body.embedTitle ?? body.embed_title ?? "";
+  const embedTitle = String(rawEmbedTitle).trim() || null;
+
+  const rawImageUrl = body.imageUrl ?? body.image_url ?? "";
+  const imageUrl = String(rawImageUrl).trim() || null;
+
   const cooldown = Math.max(0, Number(body.cooldown || 0));
-  const deleteTrigger = body.delete_trigger !== undefined ? Boolean(body.delete_trigger) : Boolean(body.deleteTrigger);
-  const ignoreBots = body.ignore_bots !== undefined ? Boolean(body.ignore_bots) : (body.ignoreBots !== undefined ? Boolean(body.ignoreBots) : true);
+
+  const deleteTrigger =
+    body.deleteTrigger !== undefined
+      ? Boolean(body.deleteTrigger)
+      : body.delete_trigger !== undefined
+      ? Boolean(body.delete_trigger)
+      : false;
+
+  const ignoreBots =
+    body.ignoreBots !== undefined
+      ? Boolean(body.ignoreBots)
+      : body.ignore_bots !== undefined
+      ? Boolean(body.ignore_bots)
+      : true;
+
   const enabled = body.enabled !== undefined ? Boolean(body.enabled) : true;
 
   // Normalize reactions

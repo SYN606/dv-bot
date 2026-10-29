@@ -26,8 +26,6 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
   useEffect(() => {
     if (editRule) {
       setForm({
-        ...INITIAL_RULE,
-        ...editRule,
         id: editRule.id || editRule.responder_id,
         responder_id: editRule.responder_id || editRule.id,
         trigger: editRule.trigger ?? editRule.trigger_phrase ?? "",
@@ -39,6 +37,7 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
         cooldown: Number(editRule.cooldown || 0),
         deleteTrigger: Boolean(editRule.deleteTrigger ?? editRule.delete_trigger),
         ignoreBots: editRule.ignoreBots !== undefined ? Boolean(editRule.ignoreBots) : (editRule.ignore_bots !== undefined ? Boolean(editRule.ignore_bots) : true),
+        enabled: editRule.enabled !== undefined ? Boolean(editRule.enabled) : true,
         reactions: Array.isArray(editRule.reactions)
           ? editRule.reactions
           : Array.isArray(editRule.emoji_reactions)
@@ -100,7 +99,32 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
       return false;
     }
     setIsSaving(true);
-    const success = await onSave(form);
+    const payload = {
+      id: form.id || form.responder_id,
+      responder_id: form.responder_id || form.id,
+      trigger: (form.trigger || "").trim(),
+      trigger_phrase: (form.trigger || "").trim(),
+      reply: (form.reply || "").trim(),
+      reply_content: (form.reply || "").trim(),
+      matchMode: form.matchMode || "contains",
+      match_type: form.matchMode || "contains",
+      match_mode: form.matchMode || "contains",
+      isEmbed: Boolean(form.isEmbed),
+      is_embed: Boolean(form.isEmbed),
+      embedTitle: (form.embedTitle || "").trim(),
+      embed_title: (form.embedTitle || "").trim(),
+      imageUrl: (form.imageUrl || "").trim(),
+      image_url: (form.imageUrl || "").trim(),
+      cooldown: Number(form.cooldown || 0),
+      deleteTrigger: Boolean(form.deleteTrigger),
+      delete_trigger: Boolean(form.deleteTrigger),
+      ignoreBots: form.ignoreBots !== undefined ? Boolean(form.ignoreBots) : true,
+      ignore_bots: form.ignoreBots !== undefined ? Boolean(form.ignoreBots) : true,
+      enabled: form.enabled !== undefined ? Boolean(form.enabled) : true,
+      reactions: form.reactions || [],
+      emoji_reactions: form.reactions || [],
+    };
+    const success = await onSave(payload);
     if (success && !editRule) {
       setForm(INITIAL_RULE);
     }

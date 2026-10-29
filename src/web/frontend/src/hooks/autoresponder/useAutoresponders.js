@@ -30,17 +30,17 @@ export function useAutoresponders(guildId, showToast) {
     try {
       const response = await saveAutoresponder(guildId, ruleData);
       const savedRule = response?.responder || response?.rule || (response?.id ? response : null);
-      if (savedRule && savedRule.id) {
+      if (savedRule && (savedRule.id || savedRule.responder_id)) {
+        const targetId = String(savedRule.id || savedRule.responder_id);
         setRules((prev) => {
-          const exists = prev.find((r) => r.id === savedRule.id);
+          const exists = prev.find((r) => String(r.id || r.responder_id) === targetId);
           if (exists) {
-            return prev.map((r) => (r.id === savedRule.id ? { ...r, ...savedRule } : r));
+            return prev.map((r) => (String(r.id || r.responder_id) === targetId ? { ...r, ...savedRule } : r));
           }
           return [...prev, savedRule];
         });
-      } else {
-        await fetchRules();
       }
+      await fetchRules();
       showToast?.({ title: "Success", message: "Autoresponder saved successfully", type: "success" });
       return true;
     } catch (err) {
@@ -51,10 +51,11 @@ export function useAutoresponders(guildId, showToast) {
   };
 
   const toggleRule = async (ruleId, currentEnabled) => {
+    const targetId = String(ruleId);
     try {
       await toggleAutoresponder(guildId, ruleId, !currentEnabled);
       setRules((prev) =>
-        prev.map((r) => (r.id === ruleId ? { ...r, enabled: !currentEnabled } : r))
+        prev.map((r) => (String(r.id || r.responder_id) === targetId ? { ...r, enabled: !currentEnabled } : r))
       );
       return true;
     } catch (err) {
@@ -64,9 +65,10 @@ export function useAutoresponders(guildId, showToast) {
   };
 
   const deleteRule = async (ruleId) => {
+    const targetId = String(ruleId);
     try {
       await deleteAutoresponder(guildId, ruleId);
-      setRules((prev) => prev.filter((r) => r.id !== ruleId));
+      setRules((prev) => prev.filter((r) => String(r.id || r.responder_id) !== targetId));
       showToast?.({ title: "Success", message: "Rule deleted", type: "success" });
       return true;
     } catch (err) {

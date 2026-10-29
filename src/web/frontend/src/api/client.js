@@ -359,8 +359,9 @@ export async function getAutoresponders(guildId) {
 
 export async function saveAutoresponder(guildId, payload) {
   let result;
-  if (payload.id) {
-    result = await fetchApi(`/api/guilds/${guildId}/autoresponder/${payload.id}`, {
+  const ruleId = payload?.id || payload?.responder_id;
+  if (ruleId) {
+    result = await fetchApi(`/api/guilds/${guildId}/autoresponder/${ruleId}`, {
       method: "PUT",
       body: payload,
     });
