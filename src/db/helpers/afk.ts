@@ -164,7 +164,7 @@ export async function setAfkStatus(userId, guildId, reason, originalNickname = n
     }
     await record.save();
   } else {
-    const [createdRecord] = await AFK.findOrCreate({
+    const [createdRecord]: any = await AFK.findOrCreate({
       where: {
         user_id: uId,
         guild_id: gId,

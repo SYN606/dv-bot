@@ -4,7 +4,7 @@ import { ensureGuild } from "./common.js";
 import { isBotAdmin } from "../../core/permissions.js";
 
 // Fast in-memory cache of ACL rules per guild
-const aclCache = new Map();
+const aclCache = new Map<string, any>();
 
 export function invalidateAclCache(guildId = null) {
   if (guildId) {
@@ -58,7 +58,7 @@ export async function addRoleRestriction(guildId, roleId, feature = "all", restr
 
   await ensureGuild(gId);
 
-  const [record, created] = await RoleRestriction.findOrCreate({
+  const [record, created]: any = await RoleRestriction.findOrCreate({
     where: {
       guild_id: gId,
       role_id: rId,
@@ -97,7 +97,7 @@ export async function addChannelRestriction(guildId, channelId, feature = "all",
 
   await ensureGuild(gId);
 
-  const [record, created] = await ChannelRestriction.findOrCreate({
+  const [record, created]: any = await ChannelRestriction.findOrCreate({
     where: {
       guild_id: gId,
       channel_id: cId,
@@ -209,7 +209,7 @@ export async function setChannelRulesForTarget(guildId, feature, mode = "everywh
 
   const normalizedMode = String(mode).toLowerCase().trim();
   const cleanIds = Array.from(
-    new Set((Array.isArray(channelIds) ? channelIds : [channelIds]).filter(Boolean).map(String))
+    new Set<string>((Array.isArray(channelIds) ? channelIds : [channelIds]).filter(Boolean).map(String))
   );
 
   if (normalizedMode === "enable_only" || normalizedMode === "allow") {
@@ -271,7 +271,7 @@ export async function isExecutionAllowed(guildId, channelId, member, commandName
   }
 
   const acl = await getGuildAcl(gId);
-  const memberRoles = member?.roles?.cache ? new Set(member.roles.cache.keys()) : new Set();
+  const memberRoles = member?.roles?.cache ? new Set<string>(member.roles.cache.keys()) : new Set<string>();
 
   function matchesFeature(feat) {
     const f = normalizeFeature(feat);

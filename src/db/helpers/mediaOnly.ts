@@ -1,7 +1,7 @@
 import { MediaOnlyChannel } from "../models/index.js";
 import { ensureGuild } from "./common.js";
 
-const mediaOnlyCache = new Map();
+const mediaOnlyCache = new Map<string, any>();
 
 export function clearMediaOnlyCache(guildId = null) {
   if (guildId) {

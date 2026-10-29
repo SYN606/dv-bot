@@ -1,7 +1,7 @@
 import { SystemMeta } from "../models/index.js";
 
 // Fast in-memory cache per guild: `${guildId}:${moduleName}` -> boolean
-const moduleStatusCache = new Map();
+const moduleStatusCache = new Map<string, boolean>();
 
 /**
  * Normalizes module names
@@ -84,7 +84,7 @@ export function invalidateModuleCache(guildId, moduleName = null) {
  */
 export async function getAllModuleStatuses(guildId) {
   const modules = ["autoresponder", "sticky", "media_only", "warning_punishments"];
-  const result = {};
+  const result: Record<string, boolean> = {};
   for (const m of modules) {
     result[m] = await isModuleEnabled(guildId, m);
   }

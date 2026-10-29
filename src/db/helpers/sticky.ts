@@ -2,8 +2,8 @@ import { StickyMessage } from "../models/index.js";
 import { ensureGuild } from "./common.js";
 
 // In-memory zero-query filter and sticky cache
-const stickyChannelIds = new Set();
-const stickyCache = new Map();
+const stickyChannelIds = new Set<string>();
+const stickyCache = new Map<string, any>();
 
 export async function initStickyCache() {
   try {
@@ -52,7 +52,7 @@ export async function setStickyMessage(guildId, channelId, content) {
   const cId = String(channelId);
 
   await ensureGuild(gId);
-  const [record, created] = await StickyMessage.findOrCreate({
+  const [record, created]: any = await StickyMessage.findOrCreate({
     where: {
       guild_id: gId,
       channel_id: cId,

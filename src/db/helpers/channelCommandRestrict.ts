@@ -4,7 +4,7 @@ import { ensureGuild } from "./common.js";
 import { PROTECTED_COMMANDS } from "../../core/permissions.js";
 
 // In-memory cache for ultra-fast check lookups
-const restrictCache = new Map();
+const restrictCache = new Map<string, any>();
 const MAX_CACHE_ENTRIES = 2000;
 
 function normalize(commandName) {
@@ -121,7 +121,7 @@ export async function bulkRestrictCommands(guildId, channelId, commandNames, sco
 
   const rawList = Array.isArray(commandNames) ? commandNames : [commandNames];
   const normalized = Array.from(
-    new Set(rawList.map(normalize).filter(Boolean))
+    new Set<string>(rawList.map(normalize).filter(Boolean))
   );
 
   const toAdd = [];
@@ -172,7 +172,7 @@ export async function bulkUnrestrictCommands(guildId, channelId, commandNames) {
 
   const rawList = Array.isArray(commandNames) ? commandNames : [commandNames];
   const normalized = Array.from(
-    new Set(rawList.map(normalize).filter(Boolean))
+    new Set<string>(rawList.map(normalize).filter(Boolean))
   );
 
   if (normalized.length === 0) {
