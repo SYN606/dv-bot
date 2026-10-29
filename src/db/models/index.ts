@@ -50,6 +50,7 @@ AutoResponder.hasMany(AutoResponderReaction, {
   });
 AutoResponderReaction.belongsTo(AutoResponder, {
   foreignKey: "responder_id",
+  as: "responder",
 });
 
 export {

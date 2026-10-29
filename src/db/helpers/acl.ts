@@ -133,7 +133,7 @@ export async function removeChannelRestrictionByTarget(guildId, channelId, featu
   const cId = String(channelId);
   const feat = normalizeFeature(feature);
 
-  const where = {
+  const where: Record<string, any> = {
     guild_id: gId,
     channel_id: cId,
     feature: feat,
@@ -149,7 +149,7 @@ export async function removeChannelRestrictionByTarget(guildId, channelId, featu
 
 export async function getGuildChannelRules(guildId) {
   const acl = await getGuildAcl(guildId);
-  const rulesByFeature = {};
+  const rulesByFeature: Record<string, { feature: string; isCategory: boolean; allowChannels: string[]; denyChannels: string[] }> = {};
 
   for (const c of acl.channels) {
     const feat = normalizeFeature(c.feature);
@@ -174,7 +174,7 @@ export async function getGuildChannelRules(guildId) {
   }
 
   // Format into clean mode + channels
-  const formatted = {};
+  const formatted: Record<string, any> = {};
   for (const [feat, data] of Object.entries(rulesByFeature)) {
     const hasAllow = data.allowChannels.length > 0;
     const hasDeny = data.denyChannels.length > 0;

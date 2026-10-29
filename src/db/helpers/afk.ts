@@ -6,14 +6,14 @@ import { ensureGuildAndUser } from "./common.js";
 // 2. activeAfkKeys: Set of `${userId}:${guildId}` representing 100% of currently active AFKs
 // 3. userAfkGuildCount: Map of userId -> count of active guilds (O(1) multi-guild lifecycle)
 // 4. afkCache: Bounded LRU cache of full database records to prevent redundant SQLite queries
-const activeAfkUserIds = new Set();
-const activeAfkKeys = new Set();
-const userAfkGuildCount = new Map();
-const afkCache = new Map();
+const activeAfkUserIds = new Set<string>();
+const activeAfkKeys = new Set<string>();
+const userAfkGuildCount = new Map<string, number>();
+const afkCache = new Map<string, any>();
 const MAX_AFK_CACHE = 5000;
 
 // Per-user-guild lock queue to serialize concurrent mention additions without race conditions
-const mentionQueues = new Map();
+const mentionQueues = new Map<string, any>();
 
 export function getAfkCacheKey(userId, guildId) {
   return `${userId}:${guildId}`;

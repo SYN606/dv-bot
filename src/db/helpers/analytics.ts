@@ -24,7 +24,7 @@ export async function getMemberAnalytics(guildId, userId) {
       is_active: true,
     },
   });
-  return record;
+  return record as any;
 }
 
 // Cached prepared statements for maximum performance across batch flushes
@@ -190,7 +190,7 @@ export async function recordBatchActivity(entries = []) {
     await memberRecord.save();
 
     try {
-      const [snapshot] = await DailyActivitySnapshot.findOrCreate({
+      const [snapshot]: any = await DailyActivitySnapshot.findOrCreate({
         where: { guild_id: gId, date: today },
         defaults: { guild_id: gId, date: today, total_messages: 0, total_vc_seconds: 0, joins_count: 0, leaves_count: 0 },
       });
@@ -202,7 +202,7 @@ export async function recordBatchActivity(entries = []) {
 
     if (cId) {
       try {
-        const [channelRecord] = await ChannelActivity.findOrCreate({
+        const [channelRecord]: any = await ChannelActivity.findOrCreate({
           where: { guild_id: gId, channel_id: cId, date: today },
           defaults: { guild_id: gId, channel_id: cId, date: today, message_count: 0, vc_seconds_spent: 0 },
         });
@@ -214,7 +214,7 @@ export async function recordBatchActivity(entries = []) {
     }
 
     try {
-      const [hourlyRecord] = await HourlyActivity.findOrCreate({
+      const [hourlyRecord]: any = await HourlyActivity.findOrCreate({
         where: { guild_id: gId, day_of_week: dayOfWeek, hour_of_day: hourOfDay },
         defaults: { guild_id: gId, day_of_week: dayOfWeek, hour_of_day: hourOfDay, message_count: 0, vc_seconds: 0 },
       });
@@ -340,10 +340,10 @@ export async function getServerRetentionStats(guildId, days = 7) {
   // If daily snapshots haven't accumulated yet, fallback to active members totals
   if (totalMessages === 0 && totalVcSeconds === 0) {
     try {
-      const msgSum = await MemberAnalytics.sum("total_messages", {
+      const msgSum = await (MemberAnalytics as any).sum("total_messages", {
         where: { guild_id: gId, is_active: true },
       });
-      const vcSum = await MemberAnalytics.sum("total_vc_seconds", {
+      const vcSum = await (MemberAnalytics as any).sum("total_vc_seconds", {
         where: { guild_id: gId, is_active: true },
       });
       totalMessages = Number(msgSum || 0);
