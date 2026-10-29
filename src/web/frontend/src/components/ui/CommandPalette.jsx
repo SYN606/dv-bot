@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Command, ArrowRight, ShieldCheck, Pin, Terminal, Activity, Sliders, Server, History } from "lucide-react";
+import { Search, Command, ArrowRight, ShieldCheck, Pin, Terminal, Activity, Sliders, Server, History, ScrollText } from "lucide-react";
 
 export default function CommandPalette({ isOpen, setIsOpen, currentGuild }) {
   const [query, setQuery] = useState("");
@@ -25,12 +25,13 @@ export default function CommandPalette({ isOpen, setIsOpen, currentGuild }) {
 
   const features = currentGuild ? [
     { label: "Dashboard Overview", path: `/dashboard/${currentGuild.id}`, icon: Server },
+    { label: "Server Audit Logs", path: `/dashboard/${currentGuild.id}/audit-logs`, icon: ScrollText },
     { label: "Analytics & Metrics", path: `/dashboard/${currentGuild.id}/analytics`, icon: Activity },
     { label: "Verification Settings", path: `/dashboard/${currentGuild.id}/verification`, icon: ShieldCheck },
     { label: "Command Restrictions", path: `/dashboard/${currentGuild.id}/commands`, icon: Terminal },
     { label: "Sticky Messages", path: `/dashboard/${currentGuild.id}/sticky`, icon: Pin },
     { label: "Bot Settings", path: `/dashboard/${currentGuild.id}/config`, icon: Sliders },
-    { label: "Recent Audit Log", path: `/dashboard/${currentGuild.id}/permissions`, icon: History },
+    { label: "Permissions Vulnerability Audit", path: `/dashboard/${currentGuild.id}/permissions`, icon: History },
   ] : [
     { label: "Return Home", path: "/", icon: Server }
   ];
@@ -58,42 +59,38 @@ export default function CommandPalette({ isOpen, setIsOpen, currentGuild }) {
           <input
             type="text"
             className="flex-1 bg-transparent border-none outline-none text-slate-100 placeholder:text-slate-500 font-sans text-lg"
-            placeholder="Search Digital Vigital..."
-            autoFocus
+            placeholder="Type a command or search feature..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            autoFocus
           />
-          <div className="hidden sm:flex items-center gap-1 bg-slate-800 px-2 py-1 rounded text-xs font-mono text-slate-400">
-            <span>ESC</span>
-          </div>
+          <kbd className="px-2 py-0.5 rounded text-xs bg-slate-800 border border-slate-700 text-slate-400 font-mono">
+            ESC
+          </kbd>
         </div>
 
-        <div className="max-h-72 overflow-y-auto py-2">
+        {/* Results */}
+        <div className="max-h-72 overflow-y-auto p-2 space-y-1">
           {filtered.length > 0 ? (
-            <div className="px-2">
-              <div className="px-3 py-2 text-xs font-mono text-brand-cyan tracking-wider uppercase mb-1">
-                Navigation
-              </div>
-              {filtered.map((item, i) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => handleSelect(item.path)}
-                    className="w-full flex items-center justify-between px-3 py-3 rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-colors group text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-4 h-4 text-slate-400 group-hover:text-brand-violet transition-colors" />
-                      <span className="font-medium text-sm">{item.label}</span>
-                    </div>
-                    <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all text-slate-400" />
-                  </button>
-                );
-              })}
-            </div>
+            filtered.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => handleSelect(item.path)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg text-left text-slate-200 hover:bg-white/10 transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-4 h-4 text-slate-400 group-hover:text-indigo-400 transition-colors" />
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-400" />
+                </button>
+              );
+            })
           ) : (
-            <div className="px-4 py-8 text-center text-slate-500 text-sm">
-              No matching modules found.
+            <div className="p-4 text-center text-sm text-slate-500">
+              No matching features found.
             </div>
           )}
         </div>

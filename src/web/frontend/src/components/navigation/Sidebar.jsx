@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, TrendingUp, ShieldCheck, Pin, Image as ImageIcon,
-  Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award, PenTool, LogOut
+  Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award, PenTool, LogOut, ScrollText
 } from "lucide-react";
 import SuperuserBadge from "../ui/SuperuserBadge";
 import { getDiscordAvatarUrl } from "../../utils/discord";
@@ -45,6 +45,7 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
     {
       group: "MODERATION",
       items: [
+        { id: "audit_logs", label: "Server Audit Logs", icon: ScrollText, path: `/dashboard/${currentGuild.id}/audit-logs` },
         { id: "warning_punishments", label: "Warning Punishments", icon: AlertTriangle, path: `/dashboard/${currentGuild.id}/warning-punishments` },
         { id: "admin_roles", label: "Admin Roles", icon: Shield, path: `/dashboard/${currentGuild.id}/admin-roles` },
         { id: "permissions", label: "Permissions Audit", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/permissions` }

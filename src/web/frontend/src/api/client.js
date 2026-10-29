@@ -675,3 +675,39 @@ export async function clearMessageStudioHistory(guildId, status = null) {
   return result;
 }
 
+
+// ============================================================================
+// Audit Logs & Security Stream API
+// ============================================================================
+
+export async function getAuditLogs(guildId, { limit = 50, action = null, executorId = null, before = null } = {}) {
+  const params = new URLSearchParams();
+  if (limit) params.append("limit", limit);
+  if (action) params.append("action", action);
+  if (executorId) params.append("executorId", executorId);
+  if (before) params.append("before", before);
+
+  const q = params.toString() ? `?${params.toString()}` : "";
+  return fetchApi(`/api/guilds/${guildId}/audit-logs${q}`);
+}
+
+export async function getAuditLogConfig(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/audit-logs/config`);
+}
+
+export async function updateAuditLogConfig(guildId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/audit-logs/config`, {
+    method: "POST",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/audit-logs/config`);
+  invalidatePath(`/api/guilds/${guildId}/config`);
+  return result;
+}
+
+export async function sendTestAuditLog(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/audit-logs/test`, {
+    method: "POST",
+    body: {},
+  });
+}

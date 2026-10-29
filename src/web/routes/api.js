@@ -13,6 +13,7 @@ import { permissionsRoutes } from "./permissionsRoutes.js";
 import { supporterRoutes } from "./supporterRoutes.js";
 import { autoroleRoutes } from "./autoroleRoutes.js";
 import { messageStudioRoutes } from "./messageStudioRoutes.js";
+import { auditLogRoutes } from "./auditLogRoutes.js";
 import { apiCache } from "./cache.js";
 import { rateLimiter } from "../middleware/rateLimit.js";
 
@@ -44,6 +45,7 @@ apiRouter.route("/", permissionsRoutes);
 apiRouter.route("/", supporterRoutes);
 apiRouter.route("/", autoroleRoutes);
 apiRouter.route("/", messageStudioRoutes);
+apiRouter.route("/", auditLogRoutes);
 
 // Re-export cache utility for direct usage if needed
 export { apiCache };
