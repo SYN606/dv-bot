@@ -675,7 +675,7 @@ export async function initDb(options = {}) {
     const mysql = await import("mysql2/promise");
     const { drizzle } = await import("drizzle-orm/mysql2");
     mysqlPool = mysql.createPool(conf.url);
-    activeDb = drizzle(mysqlPool, { schema });
+    activeDb = drizzle(mysqlPool, { schema, mode: "default" });
     logger.info("[DB] Drizzle ORM connected to MySQL.");
     return activeDb;
   }

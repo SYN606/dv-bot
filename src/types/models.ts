@@ -1,5 +1,5 @@
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import type * as schema from "../db/schema/sqlite.ts";
+import type * as schema from "../db/schema/sqlite.js";
 
 export type Guild = InferSelectModel<typeof schema.guilds>;
 export type NewGuild = InferInsertModel<typeof schema.guilds>;

@@ -48,6 +48,7 @@ export interface BotConfig {
   DB_USER: string | null;
   DB_PASS: string | null;
   DB_HOST: string;
+  DB_SSL: boolean;
   DB_PORT: string | null;
   DB_NAME: string | null;
   CLIENT_ID: string;
@@ -85,6 +86,7 @@ export const CONFIG: BotConfig = {
   DB_USER: process.env.DB_USER || null,
   DB_PASS: process.env.DB_PASS || null,
   DB_HOST: process.env.DB_HOST || "localhost",
+  DB_SSL: (process.env.DB_SSL || "false").toLowerCase() === "true",
   DB_PORT: process.env.DB_PORT || null,
   DB_NAME: process.env.DB_NAME || null,
 
