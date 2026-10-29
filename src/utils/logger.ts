@@ -78,6 +78,10 @@ function formatIsoTime(date = new Date()) {
 }
 
 class AsyncLogger {
+  public buffer: any[];
+  public flushTimer: any;
+  public currentFlushPromise: Promise<void> | null;
+  public minLevel: number;
   constructor() {
     this.buffer = [];
     this.flushTimer = null;
