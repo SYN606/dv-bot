@@ -19,7 +19,7 @@ export const PERMISSION_RISKS = {
   ManageEvents: { name: "Manage Events", level: "green", flag: PermissionFlagsBits.ManageEvents },
   ViewAuditLog: { name: "View Audit Log", level: "green", flag: PermissionFlagsBits.ViewAuditLog },
   PrioritySpeaker: { name: "Priority Speaker", level: "green", flag: PermissionFlagsBits.PrioritySpeaker },
-  ManageEmojisAndStickers: { name: "Manage Emojis & Stickers", level: "green", flag: PermissionFlagsBits.ManageExpressions || PermissionFlagsBits.ManageEmojisAndStickers },
+  ManageEmojisAndStickers: { name: "Manage Emojis & Stickers", level: "green", flag: PermissionFlagsBits.ManageGuildExpressions },
   CreateInstantInvite: { name: "Create Invite", level: "green", flag: PermissionFlagsBits.CreateInstantInvite },
 };
 

@@ -15,7 +15,14 @@
  * - {boostTier}, {boost_tier}, {server.tier} -> Server Boost Tier
  * - {server.icon}, {icon} -> Server Icon URL
  */
-export function formatServerVariables(text, { guild, channel, config = {}, user = null } = {}) {
+export interface ServerVariableOptions {
+  guild?: any;
+  channel?: any;
+  config?: Record<string, any>;
+  user?: any;
+}
+
+export function formatServerVariables(text, { guild, channel, config = {}, user = null }: ServerVariableOptions = {}) {
   if (typeof text !== "string" || !text) return text || "";
 
   const serverName = guild?.name || "Server";
@@ -80,7 +87,7 @@ export function formatServerVariables(text, { guild, channel, config = {}, user 
   return result;
 }
 
-export function parseServerVariables(text, guildOrOptions, channel, config, user) {
+export function parseServerVariables(text, guildOrOptions?: any, channel?: any, config?: any, user?: any) {
   if (guildOrOptions && typeof guildOrOptions === "object" && ("guild" in guildOrOptions || "channel" in guildOrOptions || "config" in guildOrOptions)) {
     return formatServerVariables(text, guildOrOptions);
   }

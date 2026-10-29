@@ -1,5 +1,5 @@
-export function validateAutoresponder(form) {
-  const errors = {};
+export function validateAutoresponder(form: Record<string, any>) {
+  const errors: Record<string, string> = {};
 
   if (!form.trigger || !form.trigger.trim()) {
     errors.trigger = "Trigger is required.";
