@@ -1,0 +1,32 @@
+[Unit]
+Description=DV-BOT Discord Bot
+Documentation=https://github.com/SYN606/dv-bot
+After=network.target
+
+[Service]
+Type=simple
+# Change to the user running the bot (e.g. ubuntu, debian, botuser)
+User=syn
+Group=webhost
+
+# Path to your bot's directory
+WorkingDirectory=/var/webhost/dv-bot
+
+# Path to the entrypoint script
+ExecStart=/bin/bash /var/webhost/dv-bot/entrypoint.sh
+
+# Automatically restart if the bot crashes
+Restart=always
+RestartSec=5s
+
+# Forward SIGTERM for clean in-flight database flush & Discord disconnect
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+# Security and resource limits
+LimitNOFILE=65536
+Environment=NODE_ENV=production
+Environment=DB_DIR=/var/db
+
+[Install]
+WantedBy=multi-user.target
