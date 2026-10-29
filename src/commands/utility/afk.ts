@@ -33,7 +33,7 @@ export default createCommand({
     const reason = rawReason.slice(0, 200).replace(/[`\r\n]+/g, " ").trim() || "AFK";
 
     let originalNick = ctx.member?.nickname || null;
-    const botMember = ctx.guild.members?.me || ctx.guild.me;
+    const botMember = ctx.guild.members?.me;
     const isOwner = ctx.guild.ownerId === ctx.user.id;
     const botHasHigherRole =
       botMember?.roles?.highest && ctx.member?.roles?.highest
@@ -58,7 +58,7 @@ export default createCommand({
     await setAfkStatus(ctx.user.id, ctx.guild.id, reason, originalNick);
 
     const avatar = typeof ctx.user.displayAvatarURL === "function"
-      ? ctx.user.displayAvatarURL({ dynamic: true, size: 256 })
+      ? ctx.user.displayAvatarURL({ size: 256 })
       : undefined;
 
     const embed = makeEmbed({

@@ -36,7 +36,7 @@ export default createCommand({
     const targetUser = ctx.options.user ? (await ctx.client.users.fetch(ctx.options.user).catch(() => ctx.user)) : ctx.user;
     const analytics = await getMemberAnalytics(guild.id, targetUser.id);
 
-    const pairs = [
+    const pairs: [string, any][] = [
       ["Total Messages", String(analytics.total_messages || 0)],
       ["Weekly Messages", String(analytics.weekly_messages || 0)],
       ["Total Voice Time", formatSeconds(analytics.total_vc_seconds || 0)],
@@ -45,7 +45,7 @@ export default createCommand({
     ];
 
     const embed = keyValueEmbed(`Activity Stats • ${targetUser.username}`, pairs, {
-      thumbnail: targetUser.displayAvatarURL({ dynamic: true }),
+      thumbnail: targetUser.displayAvatarURL(),
       inline: true,
     });
 

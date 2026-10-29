@@ -125,7 +125,7 @@ export const ANIME_GIFS = {
  * Fast in-memory interaction counter between user pairs
  * Key: `${guildId}:${minUserId}:${maxUserId}:${action}` -> Number
  */
-const interactionTracker = new Map();
+const interactionTracker = new Map<string, number>();
 const MAX_TRACKER_SIZE = 10000;
 
 export function getAndIncrementInteraction(guildId, userAId, userBId, action) {
