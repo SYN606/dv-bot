@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { ChannelSelector, RoleSelector } from "../discord";
 import ContentModeSelector from "./ContentModeSelector";
 import EnforcementSettings from "./EnforcementSettings";
-import { Plus, Loader2 } from "lucide-react";
+import { useUnsavedChanges } from "../../hooks/useUnsavedChanges";
+import { Plus, Loader2, RotateCcw } from "lucide-react";
 
 const DEFAULT_FORM = {
   channelId: "",
@@ -20,13 +21,27 @@ export default function MediaRuleEditor({ guildId, channels, roles, activeRules,
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleReset = () => {
+    setForm(DEFAULT_FORM);
+  };
+
   const handleCreate = async () => {
-    if (!form.channelId) return;
+    if (!form.channelId) return false;
     const success = await onCreate(form);
     if (success) {
       setForm(DEFAULT_FORM);
     }
+    return success;
   };
+
+  const isDirty = Boolean(form.channelId);
+
+  useUnsavedChanges({
+    isDirty,
+    onSave: handleCreate,
+    onReset: handleReset,
+    pageTitle: "Media-Only Channel Rule",
+  });
 
   const activeChannelIds = activeRules.map(r => r.channel_id);
   const availableChannels = channels.filter(c => !activeChannelIds.includes(c.id));
@@ -43,7 +58,7 @@ export default function MediaRuleEditor({ guildId, channels, roles, activeRules,
           </div>
           <ChannelSelector 
             guildId={guildId}
-            channels={channels} // Pass all channels, but filter out active ones via exclude/filtered approach
+            channels={channels}
             value={form.channelId}
             onChange={(val) => updateField("channelId", val)}
             allowedTypes={[0, 5]}
@@ -78,20 +93,31 @@ export default function MediaRuleEditor({ guildId, channels, roles, activeRules,
         updateField={updateField} 
       />
 
-      <div className="pt-6 border-t border-white/5 flex justify-end">
+      <div className="pt-6 border-t border-white/5 flex items-center justify-end gap-3">
+        {isDirty && (
+          <button
+            type="button"
+            onClick={handleReset}
+            disabled={isCreating}
+            className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Reset
+          </button>
+        )}
         <button
           onClick={handleCreate}
           disabled={!form.channelId || isCreating}
-          className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 flex items-center justify-center gap-2 w-full sm:w-auto"
+          className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 flex items-center justify-center gap-2 w-full sm:w-auto"
         >
           {isCreating ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
               Creating Rule...
             </>
           ) : (
             <>
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
               Create Media Rule
             </>
           )}

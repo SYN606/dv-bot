@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { EmojiSelector, DiscordPreview } from "../discord";
-
+import { useUnsavedChanges } from "../../hooks/useUnsavedChanges";
 import { validateAutoresponder } from "../../utils/autoresponder";
 
 const INITIAL_RULE = {
@@ -51,16 +51,53 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
     setErrors({});
   }, [editRule]);
 
+  const isDirty = useMemo(() => {
+    if (editRule) {
+      const origTrigger = editRule.trigger ?? editRule.trigger_phrase ?? "";
+      const origReply = editRule.reply ?? editRule.reply_content ?? "";
+      const origMatch = editRule.matchMode ?? editRule.match_mode ?? editRule.match_type ?? "contains";
+      const origEmbed = Boolean(editRule.isEmbed ?? editRule.is_embed);
+      const origTitle = editRule.embedTitle ?? editRule.embed_title ?? "";
+      const origImage = editRule.imageUrl ?? editRule.image_url ?? "";
+      const origCooldown = Number(editRule.cooldown || 0);
+      return (
+        form.trigger !== origTrigger ||
+        form.reply !== origReply ||
+        form.matchMode !== origMatch ||
+        form.isEmbed !== origEmbed ||
+        form.embedTitle !== origTitle ||
+        form.imageUrl !== origImage ||
+        form.cooldown !== origCooldown
+      );
+    }
+    return (
+      Boolean(form.trigger?.trim()) ||
+      Boolean(form.reply?.trim()) ||
+      Boolean(form.embedTitle?.trim()) ||
+      Boolean(form.imageUrl?.trim()) ||
+      (Array.isArray(form.reactions) && form.reactions.length > 0)
+    );
+  }, [form, editRule]);
+
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
   };
 
+  const handleReset = useCallback(() => {
+    if (editRule) {
+      onCancel?.();
+    } else {
+      setForm(INITIAL_RULE);
+      setErrors({});
+    }
+  }, [editRule, onCancel]);
+
   const handleSave = async () => {
     const validation = validateAutoresponder(form);
     if (!validation.isValid) {
       setErrors(validation.errors);
-      return;
+      return false;
     }
     setIsSaving(true);
     const success = await onSave(form);
@@ -68,7 +105,15 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
       setForm(INITIAL_RULE);
     }
     setIsSaving(false);
+    return success;
   };
+
+  useUnsavedChanges({
+    isDirty,
+    onSave: handleSave,
+    onReset: handleReset,
+    pageTitle: editRule ? "Autoresponder (Editing)" : "New Autoresponder",
+  });
 
   const insertVariable = (variable) => {
     const updatedReply = form.reply + variable;
@@ -267,13 +312,25 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
             </div>
           </section>
 
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50"
-          >
-            {isSaving ? "Saving..." : editRule ? "Save Changes" : "Create Autoresponder"}
-          </button>
+          <div className="flex items-center gap-3">
+            {isDirty && (
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={isSaving}
+                className="px-4 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-colors disabled:opacity-50"
+              >
+                Reset
+              </button>
+            )}
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50"
+            >
+              {isSaving ? "Saving..." : editRule ? "Save Changes" : "Create Autoresponder"}
+            </button>
+          </div>
         </div>
 
         {/* PREVIEW COLUMN */}

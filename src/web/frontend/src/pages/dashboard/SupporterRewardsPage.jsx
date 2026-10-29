@@ -1,6 +1,7 @@
 import React from "react";
 import { useParams } from "react-router-dom";
 import { useSupporterRewards } from "../../hooks/supporter-rewards";
+import { useUnsavedChanges } from "../../hooks/useUnsavedChanges";
 import { PageError, PageSkeleton } from "../../components/ui";
 
 import {
@@ -22,8 +23,16 @@ export default function SupporterRewardsPage({ showToast }) {
     hasChanges,
     updateConfig,
     save,
+    reset,
     refresh
   } = useSupporterRewards(guildId, showToast);
+
+  useUnsavedChanges({
+    isDirty: hasChanges,
+    onSave: save,
+    onReset: reset,
+    pageTitle: "Supporter Rewards",
+  });
 
   if (error) {
     return <PageError title="Unable to load configuration" description="Failed to load Supporter Rewards configuration." onRetry={refresh} />;

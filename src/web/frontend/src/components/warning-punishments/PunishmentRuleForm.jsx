@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus } from "lucide-react";
+import { Plus, RotateCcw } from "lucide-react";
 import {
   PUNISHMENT_TYPES,
   MIN_WARNING_THRESHOLD,
@@ -20,6 +20,14 @@ export default function PunishmentRuleForm({
   const isValid = Number.isInteger(parsedCount) && parsedCount >= MIN_WARNING_THRESHOLD && parsedCount <= MAX_WARNING_THRESHOLD && !isDuplicate;
   const selectedType = getPunishmentType(actionType);
   const durationOptions = getDurationOptionsForPunishment(actionType);
+
+  const isDirty = warnCount !== 3 || actionType !== "timeout" || duration !== 3600;
+
+  const handleReset = () => {
+    setWarnCount(3);
+    setActionType("timeout");
+    setDuration(3600);
+  };
 
   return (
     <div className="glass-panel bg-slate-900/50 p-6 rounded-3xl border border-white/5 space-y-6 h-full flex flex-col">
@@ -109,12 +117,23 @@ export default function PunishmentRuleForm({
         </div>
       )}
 
-      <div className="mt-auto pt-4">
+      <div className="mt-auto pt-4 flex items-center gap-3">
+        {isDirty && (
+          <button
+            type="button"
+            onClick={handleReset}
+            disabled={adding}
+            className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Reset
+          </button>
+        )}
         <button
           type="button"
           onClick={onSubmit}
           disabled={!isValid || adding}
-          className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" />
           {adding ? "Adding Rule..." : "Add Punishment Rule"}

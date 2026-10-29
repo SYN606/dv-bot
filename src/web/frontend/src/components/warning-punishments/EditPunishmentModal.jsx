@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Edit3, X, Save, Loader2, AlertCircle } from "lucide-react";
+import { Edit3, X, Save, Loader2, AlertCircle, RotateCcw } from "lucide-react";
 import {
   PUNISHMENT_TYPES,
   MIN_WARNING_THRESHOLD,
@@ -45,6 +45,21 @@ export default function EditPunishmentModal({
 
   const selectedType = getPunishmentType(actionType);
   const durationOptions = getDurationOptionsForPunishment(actionType);
+
+  const isDirty = rule && (
+    parsedCount !== rule.warn_count ||
+    actionType !== rule.action_type ||
+    duration !== (rule.duration || 3600)
+  );
+
+  const handleReset = () => {
+    if (rule) {
+      setWarnCount(rule.warn_count);
+      setActionType(rule.action_type);
+      setDuration(rule.duration || 3600);
+      setError(null);
+    }
+  };
 
   const handleSave = async () => {
     if (!isValid || loading) return;
@@ -198,6 +213,17 @@ export default function EditPunishmentModal({
 
         {/* Footer Actions */}
         <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/5">
+          {isDirty && (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={handleReset}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset
+            </button>
+          )}
           <button
             type="button"
             disabled={loading}

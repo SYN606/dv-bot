@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useParams, useOutletContext } from "react-router-dom";
 import { useStickyNotices } from "../../hooks/sticky";
 import { useModuleStatus } from "../../hooks/useModuleStatus";
+import { useUnsavedChanges } from "../../hooks/useUnsavedChanges";
 import { ConfirmDialog, PageError, PageSkeleton } from "../../components/ui";
 
 import {
@@ -36,6 +37,13 @@ export default function StickyPage({ showToast }) {
 
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const { enabled: moduleEnabled, toggle: toggleModule } = useModuleStatus(guildId, "sticky", showToast);
+
+  useUnsavedChanges({
+    isDirty: hasChanges,
+    onSave: createOrUpdate,
+    onReset: resetEditor,
+    pageTitle: "Sticky Messages",
+  });
 
   // If a user selects a channel that already has a sticky, switch to edit mode
   const handleEditorUpdate = (field, value) => {

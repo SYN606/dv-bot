@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useParams, useOutletContext } from "react-router-dom";
 import { useVerification } from "../../hooks/verification";
+import { useUnsavedChanges } from "../../hooks/useUnsavedChanges";
 import { ConfirmDialog, PageError, PageSkeleton } from "../../components/ui";
 
 import {
@@ -30,8 +31,16 @@ export default function VerificationPage({ showToast }) {
     save,
     postPrompt,
     reset,
+    discardChanges,
     refresh
   } = useVerification(guildId, showToast);
+
+  useUnsavedChanges({
+    isDirty: hasChanges,
+    onSave: save,
+    onReset: discardChanges,
+    pageTitle: "Verification Gate",
+  });
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -88,6 +97,13 @@ export default function VerificationPage({ showToast }) {
             </button>
 
             <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
+              <button
+                onClick={discardChanges}
+                disabled={!hasChanges || saving || posting}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition-colors disabled:opacity-50 border border-white/5"
+              >
+                Reset
+              </button>
               <button
                 onClick={save}
                 disabled={isSaveDisabled || !hasChanges}

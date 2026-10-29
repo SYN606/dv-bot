@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { getAuthSession, getBotInfo } from "./api/client";
 import { ToastProvider, useToast } from "./app/providers/ToastProvider";
+import { UnsavedChangesProvider } from "./app/providers/UnsavedChangesProvider";
 import AppRoutes from "./app/routes";
 
 /**
@@ -58,12 +59,14 @@ function AppInner() {
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AppRoutes
-        user={user}
-        botInfo={botInfo}
-        showToast={showToast}
-        onUserUpdate={handleUserUpdate}
-      />
+      <UnsavedChangesProvider>
+        <AppRoutes
+          user={user}
+          botInfo={botInfo}
+          showToast={showToast}
+          onUserUpdate={handleUserUpdate}
+        />
+      </UnsavedChangesProvider>
     </BrowserRouter>
   );
 }

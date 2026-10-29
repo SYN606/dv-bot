@@ -139,6 +139,10 @@ export function useVerification(guildId, showToast) {
     }
   };
 
+  const discardChanges = useCallback(() => {
+    setConfig(baselineConfig);
+  }, [baselineConfig]);
+
   return {
     config,
     channels,
@@ -154,6 +158,7 @@ export function useVerification(guildId, showToast) {
     save,
     postPrompt,
     reset,
+    discardChanges,
     refresh: loadData
   };
 }
