@@ -196,7 +196,7 @@ export default {
     }
 
     // D. Build options map
-    const options = {};
+    const options: Record<string, any> = {};
     for (const opt of interaction.options.data) {
       options[opt.name] = opt.value;
       if (opt.options) {

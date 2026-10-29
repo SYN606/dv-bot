@@ -16,7 +16,7 @@ export default {
     // Telemetry: Increment daily leaves count
     try {
       await ensureGuild(guildId);
-      const [snapshot] = await DailyActivitySnapshot.findOrCreate({
+      const [snapshot]: any = await DailyActivitySnapshot.findOrCreate({
         where: { guild_id: guildId, date: today },
         defaults: { guild_id: guildId, date: today, leaves_count: 0 },
       });
