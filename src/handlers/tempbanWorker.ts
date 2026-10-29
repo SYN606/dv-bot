@@ -4,6 +4,10 @@ import { processExpiredTempbans } from "../services/tempbanService.js";
  * Tempban Worker: Microservice worker that polls and automatically lifts expired temporary bans.
  */
 export class TempbanWorker {
+  public client: any;
+  public intervalMs: number;
+  public timer: any;
+  public isProcessing: boolean;
   constructor(client, intervalMs = 30000) {
     this.client = client;
     this.intervalMs = intervalMs;

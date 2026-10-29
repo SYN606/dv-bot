@@ -3,11 +3,11 @@ import { getSupporterConfig } from "../db/helpers/supporter.js";
 import { SystemMeta } from "../db/models/index.js";
 
 // LRU Cache for anti-spam (Key: 'guildId:userId', Value: timestamp of last announcement)
-const announcementCooldowns = new Map();
+const announcementCooldowns = new Map<string, number>();
 const COOLDOWN_SECONDS = 3600; // 1 hour cooldown per user per guild
 
 // In-memory cache for fast announcement message lookups: `${type}:${guildId}:${userId}` -> { channelId, messageId }
-const supporterAnnouncementCache = new Map();
+const supporterAnnouncementCache = new Map<string, any>();
 
 export async function saveSupporterAnnouncement(guildId, userId, type, channelId, messageId) {
   const cacheKey = `${type}:${guildId}:${userId}`;
@@ -84,7 +84,7 @@ export async function deleteSupporterAnnouncement(guild, userId, type = "clan", 
 }
 
 // User Clan details cache to eliminate repetitive REST /users/{id} API calls
-const userClanCache = new Map(); // userId -> { primary: object, timestamp: number }
+const userClanCache = new Map<string, any>(); // userId -> { primary: object, timestamp: number }
 const CLAN_CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache TTL
 let clanRestBackoffUntil = 0; // Cooldown for /users/:id to avoid Discord 429 rate limits
 
@@ -97,7 +97,7 @@ export function clearUserClanCache(userId = null) {
 }
 
 // Member evaluation cooldown to avoid repeatedly evaluating the same user on high-frequency chat
-const memberEvalCooldowns = new Map(); // `${guildId}:${userId}` -> timestamp
+const memberEvalCooldowns = new Map<string, number>(); // `${guildId}:${userId}` -> timestamp
 const MEMBER_EVAL_COOLDOWN = 180 * 1000; // 3 minutes cooldown
 
 const RESTRICTED_PERMISSIONS = [
@@ -111,7 +111,7 @@ const RESTRICTED_PERMISSIONS = [
   PermissionFlagsBits.ManageWebhooks,
   PermissionFlagsBits.ManageEvents,
   PermissionFlagsBits.ModerateMembers,
-  PermissionFlagsBits.ManageExpressions || PermissionFlagsBits.ManageGuildExpressions,
+  PermissionFlagsBits.ManageGuildExpressions,
 ].filter(Boolean);
 
 function checkDangerousPermissions(role) {
@@ -398,7 +398,7 @@ export async function syncAllSupporters(client) {
       if (!config || !config.enabled) continue;
       if (!config.vanity_role_id && !config.clan_role_id) continue;
 
-      const members = Array.from(guild.members.cache.values());
+      const members: any[] = Array.from(guild.members.cache.values());
       for (const member of members) {
         if (!member || member.user?.bot) continue;
 
@@ -434,6 +434,10 @@ export async function syncAllSupporters(client) {
 }
 
 export class SupporterWorker {
+  public client: any;
+  public intervalMs: number;
+  public timer: any;
+  public isProcessing: boolean;
   constructor(client, intervalMs = 120000) {
     this.client = client;
     this.intervalMs = intervalMs;

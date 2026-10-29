@@ -2,11 +2,16 @@ import { recordBatchActivity } from "../db/helpers/analytics.js";
 import { logger } from "../utils/logger.js";
 
 export class AnalyticsBatcher {
+  public flushIntervalMs: number;
+  public maxBufferSize: number;
+  public messageBuffer: Map<string, number>;
+  public voiceBuffer: Map<string, number>;
+  public timer: any;
   constructor(flushIntervalMs = 15000, maxBufferSize = 50) {
     this.flushIntervalMs = flushIntervalMs;
     this.maxBufferSize = maxBufferSize;
-    this.messageBuffer = new Map(); // `${guildId}:${userId}:${channelId}` -> count
-    this.voiceBuffer = new Map();   // `${guildId}:${userId}:${channelId}` -> seconds
+    this.messageBuffer = new Map<string, number>(); // `${guildId}:${userId}:${channelId}` -> count
+    this.voiceBuffer = new Map<string, number>();   // `${guildId}:${userId}:${channelId}` -> seconds
     this.timer = null;
   }
 
@@ -59,7 +64,7 @@ export class AnalyticsBatcher {
     this.voiceBuffer.clear();
 
     // Consolidate into unified batch map: `${guildId}:${userId}:${channelId}` -> { messages, vcSeconds }
-    const batchMap = new Map();
+    const batchMap = new Map<string, { messages: number; vcSeconds: number }>();
 
     for (const [key, count] of msgEntries) {
       const item = batchMap.get(key) || { messages: 0, vcSeconds: 0 };
