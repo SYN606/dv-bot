@@ -179,8 +179,13 @@ trap 'graceful_shutdown SIGHUP'  SIGHUP
 trap 'graceful_shutdown SIGQUIT' SIGQUIT
 
 # 8. Start Bot Process in Background
-log_deploy "🚀 Launching bot runtime (bun run src/bot.js)..."
-bun run src/bot.js "$@" &
+BOT_ENTRY="src/bot.js"
+if [ -f "src/bot.ts" ]; then
+  BOT_ENTRY="src/bot.ts"
+fi
+
+log_deploy "🚀 Launching bot runtime (bun run $BOT_ENTRY)..."
+bun run "$BOT_ENTRY" "$@" &
 CHILD_PID=$!
 
 log_deploy "✨ DV-BOT is live (PID: $CHILD_PID)"
