@@ -106,7 +106,7 @@ export default createCommand({
           position++;
         }
       }
-      joinPosition = position;
+      joinPosition = `#${position}`;
     }
 
     // Roles (if member)
@@ -150,7 +150,7 @@ export default createCommand({
     const warningEmoji = EMOJIS.get("warning") || "⚠️";
     const curvedArrow = EMOJIS.get("curved_arrow") || "↪";
 
-    const embedOptions = {
+    const embedOptions: any = {
       title: `${targetUser.username}`,
       description: `${developerEmoji} <@${targetUser.id}>\n${arrowEmoji} \`${targetUser.id}\``,
       level: "INFO",

@@ -89,16 +89,19 @@ export class DVClient extends Client {
     const files: string[] = [];
     const readDirRecursive = (currentDir: string) => {
       const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+      const names = new Set(entries.map((e) => e.name));
       for (const entry of entries) {
         const fullPath = path.join(currentDir, entry.name);
         if (entry.isDirectory()) {
           readDirRecursive(fullPath);
-        } else if (
-          (entry.name.endsWith(".js") || entry.name.endsWith(".ts")) &&
-          !entry.name.endsWith(".d.ts") &&
-          !entry.name.startsWith("_")
-        ) {
-          files.push(fullPath);
+        } else if (!entry.name.startsWith("_") && !entry.name.endsWith(".d.ts")) {
+          if (entry.name.endsWith(".js")) {
+            const tsName = entry.name.replace(/\.js$/, ".ts");
+            if (names.has(tsName)) continue; // Prioritize .ts over duplicate .js
+            files.push(fullPath);
+          } else if (entry.name.endsWith(".ts")) {
+            files.push(fullPath);
+          }
         }
       }
     };
@@ -131,14 +134,19 @@ export class DVClient extends Client {
   async loadEvents(dir = path.join(CONFIG.ROOT_DIR, "src", "events")): Promise<void> {
     if (!fs.existsSync(dir)) return;
 
-    const files = fs
-      .readdirSync(dir)
-      .filter(
-        (f) =>
-          (f.endsWith(".js") || f.endsWith(".ts")) &&
-          !f.endsWith(".d.ts") &&
-          !f.startsWith("_")
-      );
+    const rawFiles = fs.readdirSync(dir).filter((f) => !f.startsWith("_") && !f.endsWith(".d.ts"));
+    const names = new Set(rawFiles);
+    const files: string[] = [];
+
+    for (const file of rawFiles) {
+      if (file.endsWith(".js")) {
+        const tsName = file.replace(/\.js$/, ".ts");
+        if (names.has(tsName)) continue; // Prioritize .ts over duplicate .js
+        files.push(file);
+      } else if (file.endsWith(".ts")) {
+        files.push(file);
+      }
+    }
 
     for (const file of files) {
       try {

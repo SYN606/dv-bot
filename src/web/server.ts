@@ -83,7 +83,7 @@ export function createWebApp(client = null) {
     setCookie(c, "oauth_state", state, {
       path: "/",
       httpOnly: true,
-      secure: CONFIG.COOKIE_SECURE ?? false,
+      secure: CONFIG.ENV === "production",
       sameSite: "Lax",
       maxAge: 300,
     });

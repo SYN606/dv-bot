@@ -23,9 +23,7 @@
     "hono": "^4.13.8",
     "mysql2": "^3.12.0",
     "pg": "^8.13.1",
-    "pg-hstore": "^2.3.4",
-    "sequelize": "^6.37.5",
-    "sqlite3": "^5.1.7"
+    "sequelize": "^6.37.5"
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",
