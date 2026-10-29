@@ -1,5 +1,6 @@
 import React from "react";
 import { UserCheck, ShieldAlert, Bot, Plus, X, AlertTriangle } from "lucide-react";
+import { RoleSelector } from "../discord";
 
 export default function WelcomeAutoRoleEditor({
   config,
@@ -81,25 +82,15 @@ export default function WelcomeAutoRoleEditor({
             Roles automatically added to regular users upon entering the server.
           </p>
 
-          {/* Selector Dropdown */}
-          <div className="flex gap-2 mb-3">
-            <select
-              defaultValue=""
-              onChange={(e) => {
-                handleAddJoinRole(e.target.value);
-                e.target.value = "";
-              }}
-              className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-500 transition-all"
-            >
-              <option value="">Add a role to join assignment...</option>
-              {assignableRoles
-                .filter((r) => !selectedJoinRoleIds.includes(r.id))
-                .map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name} {r.isAboveBot ? "(⚠️ Above Bot)" : ""}
-                  </option>
-                ))}
-            </select>
+          {/* Centralized Role Selector */}
+          <div className="mb-3">
+            <RoleSelector
+              roles={assignableRoles}
+              value={selectedJoinRoleIds}
+              onChange={(val) => updateConfig("join_role_ids", val)}
+              multiple={true}
+              placeholder="Search and assign member join-roles..."
+            />
           </div>
 
           {/* Active Badges */}
@@ -168,18 +159,15 @@ export default function WelcomeAutoRoleEditor({
             Assigned exclusively when another Discord bot is invited to the server.
           </p>
 
-          <select
-            value={config.bot_role_id || ""}
-            onChange={(e) => updateConfig("bot_role_id", e.target.value)}
-            className="w-full md:w-1/2 px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500 transition-all"
-          >
-            <option value="">No special bot role (Disabled)</option>
-            {assignableRoles.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name} {r.isAboveBot ? "(⚠️ Above Bot)" : ""}
-              </option>
-            ))}
-          </select>
+          <div className="w-full md:w-1/2">
+            <RoleSelector
+              roles={assignableRoles}
+              value={config.bot_role_id || ""}
+              onChange={(val) => updateConfig("bot_role_id", val)}
+              specialOptions={[{ value: "", label: "No special bot role (Disabled)" }]}
+              placeholder="Select bot auto-role..."
+            />
+          </div>
 
           {isBotRoleHierarchyError && (
             <div className="mt-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">

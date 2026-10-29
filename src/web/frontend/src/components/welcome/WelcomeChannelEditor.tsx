@@ -4,6 +4,7 @@ import {
   User, Plus, Trash2, LayoutList, CheckSquare
 } from "lucide-react";
 import WelcomeVariableBar from "./WelcomeVariableBar";
+import { ChannelSelector } from "../discord";
 
 const COLOR_PRESETS = [
   { name: "Indigo", hex: "#6366F1" },
@@ -30,7 +31,6 @@ export default function WelcomeChannelEditor({
   updateConfig,
   insertVariable,
 }) {
-  const textChannels = channels.filter((c) => c.type === 0 || c.type === "GUILD_TEXT" || !c.type);
   const fields = Array.isArray(config.welcome_embed_fields) ? config.welcome_embed_fields : [];
 
   const handleAddField = () => {
@@ -87,18 +87,13 @@ export default function WelcomeChannelEditor({
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
               Welcome Channel <span className="text-rose-400">*</span>
             </label>
-            <select
-              value={config.welcome_channel_id || ""}
-              onChange={(e) => updateConfig("welcome_channel_id", e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500 transition-all"
-            >
-              <option value="">Select a text channel...</option>
-              {textChannels.map((c) => (
-                <option key={c.id} value={c.id}>
-                  #{c.name}
-                </option>
-              ))}
-            </select>
+            <ChannelSelector
+              channels={channels}
+              value={config.welcome_channel_id}
+              onChange={(val) => updateConfig("welcome_channel_id", val)}
+              allowedTypes={["text"]}
+              placeholder="Select welcome channel..."
+            />
           </div>
 
           <div>
