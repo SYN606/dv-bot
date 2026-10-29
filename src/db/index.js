@@ -534,6 +534,7 @@ function ensureSqliteSchema(sqlite) {
     sqlite.exec("ALTER TABLE channel_permission_snapshots ADD COLUMN expires_at TEXT;");
     sqlite.exec("CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);");
     sqlite.exec("CREATE TABLE IF NOT EXISTS auto_role_config (guild_id TEXT PRIMARY KEY, role_id TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);");
+    sqlite.exec("CREATE TABLE IF NOT EXISTS welcome_config (guild_id TEXT PRIMARY KEY, welcome_enabled INTEGER DEFAULT 0, welcome_channel_id TEXT, welcome_message TEXT, welcome_is_embed INTEGER DEFAULT 1, welcome_embed_title TEXT, welcome_embed_color TEXT DEFAULT '#6366F1', welcome_embed_footer TEXT, welcome_show_thumbnail INTEGER DEFAULT 1, welcome_image_url TEXT, welcome_ping_user INTEGER DEFAULT 1, welcome_delete_seconds INTEGER DEFAULT 0, dm_enabled INTEGER DEFAULT 0, dm_message TEXT, leave_enabled INTEGER DEFAULT 0, leave_channel_id TEXT, leave_message TEXT, leave_is_embed INTEGER DEFAULT 0, leave_embed_title TEXT, leave_embed_color TEXT DEFAULT '#F43F5E', autorole_enabled INTEGER DEFAULT 0, join_role_ids TEXT DEFAULT '[]', bot_role_id TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);");
   } catch (_) {}
 
   // Migrate warning_punishment_config: add columns missing from earlier schema versions

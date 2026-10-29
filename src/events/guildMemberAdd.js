@@ -1,8 +1,15 @@
 import { Events } from "discord.js";
-import { VerificationConfig, DailyActivitySnapshot, TempbanRecord, AutoRoleConfig } from "../db/models/index.js";
+import {
+  VerificationConfig,
+  DailyActivitySnapshot,
+  TempbanRecord,
+  AutoRoleConfig,
+  WelcomeConfig,
+} from "../db/models/index.js";
 import { getTempbanConfig } from "../db/helpers/tempban.js";
 import { ensureGuild } from "../db/helpers/common.js";
 import { checkMemberSupporter } from "../handlers/supporterHandler.js";
+import { buildWelcomePayload, formatWelcomeText } from "../utils/welcomeFormatter.js";
 
 export default {
   name: Events.GuildMemberAdd,
@@ -61,8 +68,7 @@ export default {
       console.error("[AUTO-UNVERIFIED ROLE ERROR]:", err);
     }
 
-    // 4. Default Auto-Role on Join (Server Welcome / Member Role)
-    // Only assigned on join if verification gate is inactive to prevent bypassing verification!
+    // 4. Default Legacy Auto-Role on Join (if configured)
     if (!hasVerificationGate) {
       try {
         const autoRole = await AutoRoleConfig.findByPk(guildId);
@@ -82,5 +88,81 @@ export default {
     try {
       await checkMemberSupporter(member, true);
     } catch (_) {}
+
+    // 6. Welcome Gatekeeper Engine: Auto-Roles, Public Channel Welcome & DM Onboarding
+    try {
+      const welcomeCfg = await WelcomeConfig.findByPk(guildId);
+      if (!welcomeCfg) return;
+
+      const botMember = member.guild.members.me;
+
+      // 6a. Gatekeeper Auto-Roles
+      if (welcomeCfg.autorole_enabled) {
+        // Dedicated Bot Auto-Role
+        if (member.user.bot && welcomeCfg.bot_role_id) {
+          const bRole = member.guild.roles.cache.get(String(welcomeCfg.bot_role_id));
+          if (bRole && botMember && bRole.position < botMember.roles.highest.position) {
+            await member.roles.add(bRole, "Welcome Gatekeeper: assigned bot auto-role on join").catch(() => {});
+          }
+        }
+        // Human Member Join-Roles (assigned only if verification gate is not holding user)
+        else if (!member.user.bot && !hasVerificationGate) {
+          let roleIds = [];
+          try {
+            roleIds = typeof welcomeCfg.join_role_ids === "string"
+              ? JSON.parse(welcomeCfg.join_role_ids || "[]")
+              : (welcomeCfg.join_role_ids || []);
+          } catch (_) {
+            roleIds = [];
+          }
+
+          if (Array.isArray(roleIds) && roleIds.length > 0) {
+            const rolesToAdd = [];
+            for (const rId of roleIds) {
+              const r = member.guild.roles.cache.get(String(rId));
+              if (r && botMember && r.position < botMember.roles.highest.position) {
+                rolesToAdd.push(r);
+              }
+            }
+            if (rolesToAdd.length > 0) {
+              await member.roles.add(rolesToAdd, "Welcome Gatekeeper: assigned join auto-roles").catch(() => {});
+            }
+          }
+        }
+      }
+
+      // 6b. Public Channel Welcome Message Dispatch
+      if (welcomeCfg.welcome_enabled && welcomeCfg.welcome_channel_id) {
+        const welcomeChannel = member.guild.channels.cache.get(String(welcomeCfg.welcome_channel_id));
+        if (welcomeChannel && welcomeChannel.isTextBased()) {
+          const payload = buildWelcomePayload(welcomeCfg, member, "welcome");
+          if (payload) {
+            const sentMsg = await welcomeChannel.send(payload).catch((err) => {
+              console.error("[WELCOME CHANNEL SEND ERROR]:", err);
+              return null;
+            });
+
+            // Auto-delete timer if configured
+            if (sentMsg && welcomeCfg.welcome_delete_seconds > 0) {
+              setTimeout(() => {
+                sentMsg.delete().catch(() => {});
+              }, Number(welcomeCfg.welcome_delete_seconds) * 1000);
+            }
+          }
+        }
+      }
+
+      // 6c. Direct Message (DM) Onboarding Dispatch
+      if (welcomeCfg.dm_enabled && !member.user.bot && welcomeCfg.dm_message) {
+        const dmText = formatWelcomeText(welcomeCfg.dm_message, member);
+        if (dmText.trim()) {
+          await member.send({ content: dmText }).catch(() => {
+            // DMs are frequently blocked by user privacy settings; silently catch
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[WELCOME GATEKEEPER ERROR]:", err);
+    }
   },
 };

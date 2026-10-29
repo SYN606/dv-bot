@@ -551,3 +551,38 @@ export const messageHistory = sqliteTable(
     guildMsgIdx: index("idx_message_history_msg").on(table.guild_id, table.message_id),
   })
 );
+
+
+export const welcomeConfig = sqliteTable("welcome_config", {
+  guild_id: text("guild_id").primaryKey(),
+  welcome_enabled: integer("welcome_enabled", { mode: "number" }).default(0),
+  welcome_channel_id: text("welcome_channel_id"),
+  welcome_message: text("welcome_message").default(
+    "Hey {user}, welcome to **{server}**! Glad to have you here. You are member #{memberCount}! 🎉"
+  ),
+  welcome_is_embed: integer("welcome_is_embed", { mode: "number" }).default(1),
+  welcome_embed_title: text("welcome_embed_title").default("Welcome to {server}!"),
+  welcome_embed_color: text("welcome_embed_color").default("#6366F1"),
+  welcome_embed_footer: text("welcome_embed_footer").default("Member #{memberCount}"),
+  welcome_show_thumbnail: integer("welcome_show_thumbnail", { mode: "number" }).default(1),
+  welcome_image_url: text("welcome_image_url"),
+  welcome_ping_user: integer("welcome_ping_user", { mode: "number" }).default(1),
+  welcome_delete_seconds: integer("welcome_delete_seconds", { mode: "number" }).default(0),
+  dm_enabled: integer("dm_enabled", { mode: "number" }).default(0),
+  dm_message: text("dm_message").default(
+    "Welcome to **{server}**, {username}! Please check out our rules and enjoy your stay."
+  ),
+  leave_enabled: integer("leave_enabled", { mode: "number" }).default(0),
+  leave_channel_id: text("leave_channel_id"),
+  leave_message: text("leave_message").default(
+    "{username} has left the server. We are down to {memberCount} members."
+  ),
+  leave_is_embed: integer("leave_is_embed", { mode: "number" }).default(0),
+  leave_embed_title: text("leave_embed_title").default("Goodbye!"),
+  leave_embed_color: text("leave_embed_color").default("#F43F5E"),
+  autorole_enabled: integer("autorole_enabled", { mode: "number" }).default(0),
+  join_role_ids: text("join_role_ids").default("[]"),
+  bot_role_id: text("bot_role_id"),
+  created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+});

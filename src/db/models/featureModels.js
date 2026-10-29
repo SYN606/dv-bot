@@ -17,6 +17,7 @@ import {
   messageTemplates,
   messageHistory,
   systemMeta,
+  welcomeConfig,
 } from "../schema/sqlite.js";
 
 export const AFK = createModel("AFK", afk, "id");
@@ -40,3 +41,4 @@ export const MessageDraft = createModel("MessageDraft", messageDrafts, "id");
 export const MessageTemplate = createModel("MessageTemplate", messageTemplates, "id");
 export const MessageHistory = createModel("MessageHistory", messageHistory, "id");
 export const SystemMeta = createModel("SystemMeta", systemMeta, "key");
+export const WelcomeConfig = createModel("WelcomeConfig", welcomeConfig, "guild_id");

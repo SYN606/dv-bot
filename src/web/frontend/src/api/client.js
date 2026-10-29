@@ -711,3 +711,28 @@ export async function sendTestAuditLog(guildId) {
     body: {},
   });
 }
+
+
+// ============================================================================
+// Welcome & Leave Gatekeeper API
+// ============================================================================
+
+export async function getWelcomeConfig(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/welcome`);
+}
+
+export async function updateWelcomeConfig(guildId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/welcome`, {
+    method: "POST",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/welcome`);
+  return result;
+}
+
+export async function sendTestWelcomeMessage(guildId, { type = "channel" } = {}) {
+  return fetchApi(`/api/guilds/${guildId}/welcome/test`, {
+    method: "POST",
+    body: { type },
+  });
+}

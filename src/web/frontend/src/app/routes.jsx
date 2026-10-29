@@ -21,6 +21,7 @@ const ServerSelectorPage = lazy(() => import("../pages/dashboard/ServerSelectorP
 const OverviewPage = lazy(() => import("../pages/dashboard/OverviewPage"));
 const AnalyticsPage = lazy(() => import("../pages/dashboard/AnalyticsPage"));
 const VerificationPage = lazy(() => import("../pages/dashboard/VerificationPage"));
+const WelcomePage = lazy(() => import("../pages/dashboard/WelcomePage"));
 const AdminRolesPage = lazy(() => import("../pages/dashboard/AdminRolesPage"));
 const MediaOnlyPage = lazy(() => import("../pages/dashboard/MediaOnlyPage"));
 const CommandsPage = lazy(() => import("../pages/dashboard/CommandsPage"));
@@ -74,6 +75,7 @@ export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
           <Route index element={<OverviewPage showToast={showToast} />} />
           <Route path="analytics" element={<AnalyticsPage showToast={showToast} />} />
           <Route path="verification" element={<VerificationPage showToast={showToast} />} />
+          <Route path="welcome" element={<WelcomePage showToast={showToast} />} />
           <Route path="admin-roles" element={<AdminRolesPage showToast={showToast} />} />
           <Route path="media-only" element={<MediaOnlyPage showToast={showToast} />} />
           <Route path="commands" element={<CommandsPage showToast={showToast} />} />

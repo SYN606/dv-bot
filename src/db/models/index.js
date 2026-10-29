@@ -24,6 +24,7 @@ import {
   MessageTemplate,
   MessageHistory,
   SystemMeta,
+  WelcomeConfig,
 } from "./featureModels.js";
 import {
   AutoResponder,
@@ -46,7 +47,7 @@ import { Op } from "./drizzleAdapter.js";
 AutoResponder.hasMany(AutoResponderReaction, {
   foreignKey: "responder_id",
   as: "reactions",
-});
+  });
 AutoResponderReaction.belongsTo(AutoResponder, {
   foreignKey: "responder_id",
 });
@@ -75,6 +76,7 @@ export {
   MessageTemplate,
   MessageHistory,
   SystemMeta,
+  WelcomeConfig,
   TempbanConfig,
   TempbanRecord,
   WarningRecord,

@@ -1,7 +1,8 @@
 import { Events } from "discord.js";
-import { DailyActivitySnapshot, MemberAnalytics } from "../db/models/index.js";
+import { DailyActivitySnapshot, MemberAnalytics, WelcomeConfig } from "../db/models/index.js";
 import { ensureGuild } from "../db/helpers/common.js";
 import { deleteSupporterAnnouncement } from "../handlers/supporterHandler.js";
+import { buildWelcomePayload } from "../utils/welcomeFormatter.js";
 
 export default {
   name: Events.GuildMemberRemove,
@@ -45,5 +46,23 @@ export default {
         deleteSupporterAnnouncement(member.guild, userId, "vanity"),
       ]);
     } catch (_) {}
+
+    // Welcome & Leave Gatekeeper: Goodbye / Leave Dispatch
+    try {
+      const welcomeCfg = await WelcomeConfig.findByPk(guildId);
+      if (welcomeCfg && welcomeCfg.leave_enabled && welcomeCfg.leave_channel_id) {
+        const leaveChannel = member.guild.channels.cache.get(String(welcomeCfg.leave_channel_id));
+        if (leaveChannel && leaveChannel.isTextBased()) {
+          const payload = buildWelcomePayload(welcomeCfg, member, "leave");
+          if (payload) {
+            await leaveChannel.send(payload).catch((err) => {
+              console.error("[LEAVE CHANNEL SEND ERROR]:", err);
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[LEAVE GATEKEEPER ERROR]:", err);
+    }
   },
 };
