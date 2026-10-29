@@ -58,18 +58,33 @@ export function formatWelcomeText(template, member) {
 
   const user = member?.user || member;
   const guild = member?.guild;
-  const userId = user?.id || "0";
-  const username = user?.username || user?.displayName || "Member";
+  const userId = user?.id || member?.id || "0";
+  const username = user?.username || member?.displayName || "Member";
   const tag = user?.tag || username;
   const serverName = guild?.name || "Server";
   const memberCount = guild?.memberCount ? String(guild.memberCount) : "1";
   const memberCountOrdinal = getOrdinalSuffix(memberCount);
-  const userAvatar = typeof user?.displayAvatarURL === "function"
-    ? user.displayAvatarURL({ size: 512, forceStatic: false })
-    : (user?.avatarUrl || "");
-  const serverIcon = typeof guild?.iconURL === "function"
-    ? guild.iconURL({ size: 512 })
-    : (guild?.iconUrl || "");
+
+  let userAvatar = "";
+  if (typeof user?.displayAvatarURL === "function") {
+    userAvatar = user.displayAvatarURL({ size: 512, forceStatic: false }) || "";
+  } else if (user?.avatarUrl) {
+    userAvatar = user.avatarUrl;
+  } else if (user?.avatar) {
+    userAvatar = `https://cdn.discordapp.com/avatars/${userId}/${user.avatar}.png?size=512`;
+  } else {
+    userAvatar = "https://cdn.discordapp.com/embed/avatars/0.png";
+  }
+
+  let serverIcon = "";
+  if (typeof guild?.iconURL === "function") {
+    serverIcon = guild.iconURL({ size: 512 }) || "";
+  } else if (guild?.iconUrl) {
+    serverIcon = guild.iconUrl;
+  } else if (guild?.icon) {
+    serverIcon = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=512`;
+  }
+
   const accountAge = user?.createdAt ? getAccountAge(user.createdAt) : "Recently created";
 
   return template
@@ -85,11 +100,38 @@ export function formatWelcomeText(template, member) {
 }
 
 /**
+ * Safely resolves hex color integer between 0x000000 and 0xFFFFFF.
+ */
+function parseHexColor(rawColor, fallbackHex = 0x6366f1) {
+  if (!rawColor) return fallbackHex;
+  const cleanHex = String(rawColor).replace("#", "").trim();
+  const parsed = parseInt(cleanHex, 16);
+  if (!isNaN(parsed) && parsed >= 0 && parsed <= 0xffffff) {
+    return parsed;
+  }
+  return fallbackHex;
+}
+
+/**
+ * Validates and safely resolves an image or icon URL.
+ */
+function resolveSafeUrl(rawUrl, member) {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+  const formatted = formatWelcomeText(rawUrl.trim(), member);
+  if (formatted.startsWith("http://") || formatted.startsWith("https://")) {
+    return formatted;
+  }
+  return null;
+}
+
+/**
  * Resolves full payload for sending Welcome / Leave / DM messages.
+ * Supports modern bot rich embed formatting, author header, fields, thumbnail, banner, footer.
+ *
  * @param {object} config - Database record or welcome config object
  * @param {object} member - Discord.js GuildMember or mock member
  * @param {'welcome'|'leave'|'dm'} type - Message type
- * @returns {{ content?: string, embeds?: EmbedBuilder[] }}
+ * @returns {{ content?: string, embeds: EmbedBuilder[] }}
  */
 export function buildWelcomePayload(config, member, type = "welcome") {
   if (!config || !member) return null;
@@ -98,79 +140,168 @@ export function buildWelcomePayload(config, member, type = "welcome") {
     ? Boolean(config.welcome_is_embed)
     : type === "leave"
     ? Boolean(config.leave_is_embed)
-    : false; // DMs are typically markdown text
+    : Boolean(config.dm_is_embed);
 
   const messageText = type === "welcome"
-    ? config.welcome_message
+    ? (config.welcome_message || "Hey {user}, welcome to **{server}**!")
     : type === "leave"
-    ? config.leave_message
-    : config.dm_message;
+    ? (config.leave_message || "{username} has left the server.")
+    : (config.dm_message || "Welcome to **{server}**, {username}!");
 
   const formattedText = formatWelcomeText(messageText, member);
 
+  // 1. Plain Text Mode
   if (!isEmbed) {
+    let textContent = formattedText;
+    if (type === "welcome" && config.welcome_ping_user && member?.id) {
+      if (!textContent.includes(`<@${member.id}>`) && !textContent.includes(`<@!${member.id}>`)) {
+        textContent = `<@${member.id}> ${textContent}`;
+      }
+    }
     return {
-      content: formattedText || undefined,
+      content: textContent || "Welcome to the server!",
       embeds: [],
     };
   }
 
-  // Embed Mode
+  // 2. Modern Rich Embed Mode
   const embed = new EmbedBuilder();
 
   // Color
-  const rawColor = type === "welcome" ? config.welcome_embed_color : config.leave_embed_color;
-  let colorInt = 0x6366f1; // Default modern indigo
-  if (rawColor) {
-    const cleanHex = rawColor.replace("#", "");
-    const parsed = parseInt(cleanHex, 16);
-    if (!isNaN(parsed)) colorInt = parsed;
-  }
-  embed.setColor(colorInt);
+  const rawColor = type === "welcome"
+    ? config.welcome_embed_color
+    : type === "leave"
+    ? config.leave_embed_color
+    : config.dm_embed_color;
+  embed.setColor(parseHexColor(rawColor, type === "leave" ? 0xf43f5e : type === "dm" ? 0x10b981 : 0x6366f1));
 
-  // Title
-  const rawTitle = type === "welcome" ? config.welcome_embed_title : config.leave_embed_title;
-  if (rawTitle) {
-    embed.setTitle(formatWelcomeText(rawTitle, member).slice(0, 256));
-  }
-
-  // Description
-  if (formattedText) {
-    embed.setDescription(formattedText.slice(0, 4096));
-  }
-
-  // Thumbnail (user avatar)
-  if (type === "welcome" && config.welcome_show_thumbnail) {
-    const user = member?.user || member;
-    const avatar = typeof user?.displayAvatarURL === "function"
-      ? user.displayAvatarURL({ size: 512, forceStatic: false })
-      : user?.avatarUrl;
-    if (avatar) embed.setThumbnail(avatar);
-  }
-
-  // Banner image URL
-  if (type === "welcome" && config.welcome_image_url) {
-    const formattedUrl = formatWelcomeText(config.welcome_image_url, member).trim();
-    if (formattedUrl.startsWith("http://") || formattedUrl.startsWith("https://")) {
-      embed.setImage(formattedUrl);
+  // Author Header
+  if (type === "welcome" && config.welcome_embed_author) {
+    const authorName = formatWelcomeText(config.welcome_embed_author, member).slice(0, 256);
+    const authorIcon = resolveSafeUrl(config.welcome_embed_author_icon, member);
+    const authorUrl = resolveSafeUrl(config.welcome_embed_author_url, member);
+    if (authorName) {
+      embed.setAuthor({
+        name: authorName,
+        iconURL: authorIcon || undefined,
+        url: authorUrl || undefined,
+      });
     }
   }
 
-  // Footer
-  const rawFooter = type === "welcome" ? config.welcome_embed_footer : null;
-  if (rawFooter) {
-    const formattedFooter = formatWelcomeText(rawFooter, member);
-    const guild = member?.guild;
-    const iconUrl = typeof guild?.iconURL === "function" ? guild.iconURL({ size: 128 }) : undefined;
-    embed.setFooter({
-      text: formattedFooter.slice(0, 2048),
-      iconURL: iconUrl,
-    });
+  // Title & Title URL
+  const rawTitle = type === "welcome"
+    ? config.welcome_embed_title
+    : type === "leave"
+    ? config.leave_embed_title
+    : config.dm_embed_title;
+  if (rawTitle) {
+    const titleText = formatWelcomeText(rawTitle, member).slice(0, 256);
+    if (titleText) {
+      embed.setTitle(titleText);
+      const titleUrl = type === "welcome" ? resolveSafeUrl(config.welcome_embed_title_url, member) : null;
+      if (titleUrl) {
+        embed.setURL(titleUrl);
+      }
+    }
   }
 
-  embed.setTimestamp();
+  // Description (ensuring embed never has empty body if title is also empty)
+  if (formattedText) {
+    embed.setDescription(formattedText.slice(0, 4096));
+  } else if (!rawTitle) {
+    embed.setDescription("Welcome to the server!");
+  }
 
-  // Prepend user mention ping if requested
+  // Thumbnail
+  const showThumb = type === "welcome"
+    ? Boolean(config.welcome_show_thumbnail)
+    : type === "leave"
+    ? Boolean(config.leave_show_thumbnail)
+    : Boolean(config.dm_show_thumbnail);
+
+  if (showThumb) {
+    let thumbUrl = null;
+    const thumbType = config.welcome_thumbnail_type || "user_avatar";
+
+    if (type === "welcome" && thumbType === "server_icon") {
+      thumbUrl = formatWelcomeText("{serverIcon}", member);
+    } else if (type === "welcome" && thumbType === "custom" && config.welcome_thumbnail_custom) {
+      thumbUrl = resolveSafeUrl(config.welcome_thumbnail_custom, member);
+    } else {
+      thumbUrl = formatWelcomeText("{userAvatar}", member);
+    }
+
+    if (thumbUrl && (thumbUrl.startsWith("http://") || thumbUrl.startsWith("https://"))) {
+      embed.setThumbnail(thumbUrl);
+    }
+  }
+
+  // Custom Embed Fields (Carl-bot / Dyno style)
+  if (type === "welcome" && config.welcome_embed_fields) {
+    let fieldsArray = [];
+    try {
+      fieldsArray = typeof config.welcome_embed_fields === "string"
+        ? JSON.parse(config.welcome_embed_fields || "[]")
+        : (config.welcome_embed_fields || []);
+    } catch (_) {
+      fieldsArray = [];
+    }
+
+    if (Array.isArray(fieldsArray)) {
+      for (const field of fieldsArray.slice(0, 25)) {
+        if (!field || !field.name || !field.value) continue;
+        const name = formatWelcomeText(String(field.name), member).slice(0, 256);
+        const value = formatWelcomeText(String(field.value), member).slice(0, 1024);
+        if (name && value) {
+          embed.addFields({
+            name,
+            value,
+            inline: Boolean(field.inline),
+          });
+        }
+      }
+    }
+  }
+
+  // Banner / Main Image
+  const rawImage = type === "welcome"
+    ? config.welcome_image_url
+    : type === "leave"
+    ? config.leave_image_url
+    : null;
+  const safeImg = resolveSafeUrl(rawImage, member);
+  if (safeImg) {
+    embed.setImage(safeImg);
+  }
+
+  // Footer & Timestamp
+  const rawFooter = type === "welcome"
+    ? config.welcome_embed_footer
+    : type === "leave"
+    ? config.leave_embed_footer
+    : config.dm_embed_footer;
+
+  if (rawFooter) {
+    const formattedFooter = formatWelcomeText(rawFooter, member).slice(0, 2048);
+    const footerIcon = type === "welcome"
+      ? resolveSafeUrl(config.welcome_embed_footer_icon, member)
+      : resolveSafeUrl("{serverIcon}", member);
+
+    if (formattedFooter) {
+      embed.setFooter({
+        text: formattedFooter,
+        iconURL: footerIcon || undefined,
+      });
+    }
+  }
+
+  // Timestamp
+  if (config.welcome_show_timestamp !== 0 && config.welcome_show_timestamp !== false) {
+    embed.setTimestamp();
+  }
+
+  // User Ping outside embed (if requested)
   let pingContent = undefined;
   if (type === "welcome" && config.welcome_ping_user && member?.id) {
     pingContent = `<@${member.id}>`;

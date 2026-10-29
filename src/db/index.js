@@ -537,6 +537,32 @@ function ensureSqliteSchema(sqlite) {
     sqlite.exec("CREATE TABLE IF NOT EXISTS welcome_config (guild_id TEXT PRIMARY KEY, welcome_enabled INTEGER DEFAULT 0, welcome_channel_id TEXT, welcome_message TEXT, welcome_is_embed INTEGER DEFAULT 1, welcome_embed_title TEXT, welcome_embed_color TEXT DEFAULT '#6366F1', welcome_embed_footer TEXT, welcome_show_thumbnail INTEGER DEFAULT 1, welcome_image_url TEXT, welcome_ping_user INTEGER DEFAULT 1, welcome_delete_seconds INTEGER DEFAULT 0, dm_enabled INTEGER DEFAULT 0, dm_message TEXT, leave_enabled INTEGER DEFAULT 0, leave_channel_id TEXT, leave_message TEXT, leave_is_embed INTEGER DEFAULT 0, leave_embed_title TEXT, leave_embed_color TEXT DEFAULT '#F43F5E', autorole_enabled INTEGER DEFAULT 0, join_role_ids TEXT DEFAULT '[]', bot_role_id TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);");
   } catch (_) {}
 
+  // Upgrade welcome_config with modern embed columns
+  const welcomeCols = [
+    "welcome_embed_title_url TEXT",
+    "welcome_embed_author TEXT",
+    "welcome_embed_author_icon TEXT",
+    "welcome_embed_author_url TEXT",
+    "welcome_embed_footer_icon TEXT",
+    "welcome_embed_fields TEXT DEFAULT '[]'",
+    "welcome_thumbnail_type TEXT DEFAULT 'user_avatar'",
+    "welcome_thumbnail_custom TEXT",
+    "welcome_show_timestamp INTEGER DEFAULT 1",
+    "dm_is_embed INTEGER DEFAULT 0",
+    "dm_embed_title TEXT DEFAULT 'Welcome to {server}!'",
+    "dm_embed_color TEXT DEFAULT '#10B981'",
+    "dm_embed_footer TEXT DEFAULT '{server}'",
+    "dm_show_thumbnail INTEGER DEFAULT 1",
+    "leave_embed_footer TEXT DEFAULT 'Remaining: {memberCount} members'",
+    "leave_show_thumbnail INTEGER DEFAULT 1",
+    "leave_image_url TEXT"
+  ];
+  for (const col of welcomeCols) {
+    try {
+      sqlite.exec(`ALTER TABLE welcome_config ADD COLUMN ${col};`);
+    } catch (_) {}
+  }
+
   // Migrate warning_punishment_config: add columns missing from earlier schema versions
   try {
     sqlite.exec("ALTER TABLE warning_punishment_config ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;");

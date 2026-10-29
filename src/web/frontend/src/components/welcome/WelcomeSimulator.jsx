@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sparkles, Eye, Hash, MessageSquare, Mail, UserMinus } from "lucide-react";
+import { Eye, Hash, MessageSquare, Mail, UserMinus, ExternalLink } from "lucide-react";
 
 export default function WelcomeSimulator({ config, guildMeta }) {
   const [activeTab, setActiveTab] = useState("welcome"); // "welcome" | "leave" | "dm"
@@ -14,8 +14,12 @@ export default function WelcomeSimulator({ config, guildMeta }) {
     accountAge: "6 months old",
   };
 
+  const serverIcon = guildMeta?.icon
+    ? `https://cdn.discordapp.com/icons/${guildMeta.id}/${guildMeta.icon}.png?size=128`
+    : "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=80";
+
   const replaceVariables = (str) => {
-    if (!str) return "";
+    if (!str || typeof str !== "string") return "";
     return str
       .replace(/\{user\}/gi, `@${mockUser.username}`)
       .replace(/\{username\}/gi, mockUser.username)
@@ -24,11 +28,11 @@ export default function WelcomeSimulator({ config, guildMeta }) {
       .replace(/\{memberCount\}/gi, memberCount)
       .replace(/\{memberCountOrdinal\}/gi, `${memberCount}th`)
       .replace(/\{userAvatar\}/gi, mockUser.avatar)
-      .replace(/\{serverIcon\}/gi, guildMeta?.iconUrl || mockUser.avatar)
+      .replace(/\{serverIcon\}/gi, serverIcon)
       .replace(/\{accountAge\}/gi, mockUser.accountAge);
   };
 
-  // Helper to render rudimentary markdown bold
+  // Rudimentary markdown bold and links
   const renderMarkdown = (text) => {
     if (!text) return null;
     const parts = text.split(/(\*\*.*?\*\*)/g);
@@ -39,6 +43,8 @@ export default function WelcomeSimulator({ config, guildMeta }) {
       return part;
     });
   };
+
+  const fields = Array.isArray(config.welcome_embed_fields) ? config.welcome_embed_fields : [];
 
   return (
     <div className="sticky top-6 rounded-3xl bg-slate-900/80 border border-white/[0.08] backdrop-blur-2xl overflow-hidden shadow-2xl">
@@ -94,7 +100,7 @@ export default function WelcomeSimulator({ config, guildMeta }) {
       </div>
 
       {/* Discord Chat Area */}
-      <div className="p-4 sm:p-5 bg-[#313338] min-h-[300px] flex flex-col justify-start text-[14px] leading-relaxed">
+      <div className="p-4 sm:p-5 bg-[#313338] min-h-[340px] flex flex-col justify-start text-[14px] leading-relaxed">
         {/* Channel Indicator Header */}
         <div className="flex items-center gap-2 pb-3 mb-3 border-b border-[#3f4147] text-[#949ba4] text-xs font-medium">
           {activeTab === "dm" ? (
@@ -145,22 +151,50 @@ export default function WelcomeSimulator({ config, guildMeta }) {
                   </div>
                 )}
 
-                {/* Plain Text or Embed */}
+                {/* Plain Text Mode */}
                 {!config.welcome_is_embed ? (
                   <div className="text-[#dbdee1] whitespace-pre-wrap text-[13px] leading-relaxed">
                     {renderMarkdown(replaceVariables(config.welcome_message))}
                   </div>
                 ) : (
+                  /* Modern Rich Embed Mode */
                   <div
-                    className="mt-1.5 max-w-md rounded-lg bg-[#2b2d31] border-l-4 p-3.5 shadow-md flex flex-col gap-2 relative overflow-hidden"
+                    className="mt-1.5 max-w-lg rounded-lg bg-[#2b2d31] border-l-4 p-4 shadow-md flex flex-col gap-2.5 relative overflow-hidden"
                     style={{ borderColor: config.welcome_embed_color || "#6366F1" }}
                   >
-                    {/* Title & Description with Thumbnail */}
+                    {/* Author Header */}
+                    {config.welcome_embed_author && (
+                      <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                        {config.welcome_embed_author_icon && (
+                          <img
+                            src={replaceVariables(config.welcome_embed_author_icon)}
+                            alt=""
+                            className="w-5 h-5 rounded-full object-cover"
+                            onError={(e) => { e.currentTarget.style.display = "none"; }}
+                          />
+                        )}
+                        <span>{replaceVariables(config.welcome_embed_author)}</span>
+                      </div>
+                    )}
+
+                    {/* Title with optional URL & Thumbnail */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         {config.welcome_embed_title && (
-                          <div className="font-bold text-white text-[14px] mb-1">
-                            {replaceVariables(config.welcome_embed_title)}
+                          <div className="font-bold text-white text-[15px] mb-1 flex items-center gap-1.5">
+                            {config.welcome_embed_title_url ? (
+                              <a
+                                href={config.welcome_embed_title_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[#00a8fc] hover:underline flex items-center gap-1"
+                              >
+                                {replaceVariables(config.welcome_embed_title)}
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            ) : (
+                              replaceVariables(config.welcome_embed_title)
+                            )}
                           </div>
                         )}
                         <div className="text-[#dbdee1] text-[13px] leading-relaxed whitespace-pre-wrap">
@@ -168,38 +202,63 @@ export default function WelcomeSimulator({ config, guildMeta }) {
                         </div>
                       </div>
 
-                      {/* Thumbnail (User Avatar) */}
+                      {/* Thumbnail */}
                       {config.welcome_show_thumbnail && (
-                        <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border border-white/10 shadow">
+                        <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-white/10 shadow bg-slate-900/50">
                           <img
-                            src={mockUser.avatar}
-                            alt="User Thumbnail"
+                            src={
+                              config.welcome_thumbnail_type === "server_icon"
+                                ? serverIcon
+                                : mockUser.avatar
+                            }
+                            alt="Thumbnail"
                             className="w-full h-full object-cover"
                           />
                         </div>
                       )}
                     </div>
 
+                    {/* Custom Embed Fields */}
+                    {fields.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2.5 pt-1.5">
+                        {fields.map((f, i) => (
+                          <div
+                            key={i}
+                            className={`rounded bg-[#1e1f22]/70 p-2 border border-white/5 ${
+                              f.inline ? "col-span-1" : "col-span-2"
+                            }`}
+                          >
+                            <div className="text-[11px] font-bold text-white mb-0.5">
+                              {replaceVariables(f.name)}
+                            </div>
+                            <div className="text-[12px] text-[#dbdee1]">
+                              {renderMarkdown(replaceVariables(f.value))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Banner Image */}
                     {config.welcome_image_url && (
-                      <div className="mt-1.5 rounded-md overflow-hidden max-h-48 border border-white/5 bg-slate-900/60">
+                      <div className="mt-1 rounded-md overflow-hidden max-h-52 border border-white/5 bg-slate-900/60">
                         <img
-                          src={config.welcome_image_url}
+                          src={replaceVariables(config.welcome_image_url)}
                           alt="Banner Preview"
                           className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                          }}
+                          onError={(e) => { e.currentTarget.style.display = "none"; }}
                         />
                       </div>
                     )}
 
                     {/* Footer */}
-                    {config.welcome_embed_footer && (
+                    {(config.welcome_embed_footer || config.welcome_show_timestamp) && (
                       <div className="pt-2 border-t border-white/5 text-[11px] text-[#949ba4] flex items-center gap-1.5">
-                        <span>{replaceVariables(config.welcome_embed_footer)}</span>
-                        <span>•</span>
-                        <span>Today at 12:00 PM</span>
+                        {config.welcome_embed_footer && (
+                          <span>{replaceVariables(config.welcome_embed_footer)}</span>
+                        )}
+                        {config.welcome_embed_footer && config.welcome_show_timestamp && <span>•</span>}
+                        {config.welcome_show_timestamp && <span>Today at 12:00 PM</span>}
                       </div>
                     )}
                   </div>
@@ -216,17 +275,50 @@ export default function WelcomeSimulator({ config, guildMeta }) {
                   </div>
                 ) : (
                   <div
-                    className="mt-1.5 max-w-md rounded-lg bg-[#2b2d31] border-l-4 p-3.5 shadow-md flex flex-col gap-2"
+                    className="mt-1.5 max-w-lg rounded-lg bg-[#2b2d31] border-l-4 p-4 shadow-md flex flex-col gap-2.5"
                     style={{ borderColor: config.leave_embed_color || "#F43F5E" }}
                   >
-                    {config.leave_embed_title && (
-                      <div className="font-bold text-white text-[14px]">
-                        {replaceVariables(config.leave_embed_title)}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        {config.leave_embed_title && (
+                          <div className="font-bold text-white text-[15px] mb-1">
+                            {replaceVariables(config.leave_embed_title)}
+                          </div>
+                        )}
+                        <div className="text-[#dbdee1] text-[13px] leading-relaxed whitespace-pre-wrap">
+                          {renderMarkdown(replaceVariables(config.leave_message))}
+                        </div>
+                      </div>
+
+                      {config.leave_show_thumbnail && (
+                        <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border border-white/10 shadow bg-slate-900/50">
+                          <img
+                            src={mockUser.avatar}
+                            alt="Departed User"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {config.leave_image_url && (
+                      <div className="mt-1 rounded-md overflow-hidden max-h-48 border border-white/5 bg-slate-900/60">
+                        <img
+                          src={replaceVariables(config.leave_image_url)}
+                          alt="Leave Banner"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = "none"; }}
+                        />
                       </div>
                     )}
-                    <div className="text-[#dbdee1] text-[13px] leading-relaxed whitespace-pre-wrap">
-                      {renderMarkdown(replaceVariables(config.leave_message))}
-                    </div>
+
+                    {config.leave_embed_footer && (
+                      <div className="pt-2 border-t border-white/5 text-[11px] text-[#949ba4] flex items-center gap-1.5">
+                        <span>{replaceVariables(config.leave_embed_footer)}</span>
+                        <span>•</span>
+                        <span>Today at 12:00 PM</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -234,8 +326,48 @@ export default function WelcomeSimulator({ config, guildMeta }) {
 
             {/* TAB: Direct Message */}
             {activeTab === "dm" && (
-              <div className="text-[#dbdee1] whitespace-pre-wrap text-[13px] leading-relaxed">
-                {renderMarkdown(replaceVariables(config.dm_message))}
+              <div>
+                {!config.dm_is_embed ? (
+                  <div className="text-[#dbdee1] whitespace-pre-wrap text-[13px] leading-relaxed">
+                    {renderMarkdown(replaceVariables(config.dm_message))}
+                  </div>
+                ) : (
+                  <div
+                    className="mt-1.5 max-w-lg rounded-lg bg-[#2b2d31] border-l-4 p-4 shadow-md flex flex-col gap-2.5"
+                    style={{ borderColor: config.dm_embed_color || "#10B981" }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        {config.dm_embed_title && (
+                          <div className="font-bold text-white text-[15px] mb-1">
+                            {replaceVariables(config.dm_embed_title)}
+                          </div>
+                        )}
+                        <div className="text-[#dbdee1] text-[13px] leading-relaxed whitespace-pre-wrap">
+                          {renderMarkdown(replaceVariables(config.dm_message))}
+                        </div>
+                      </div>
+
+                      {config.dm_show_thumbnail && (
+                        <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/10 shadow bg-slate-900/50">
+                          <img
+                            src={serverIcon}
+                            alt="Server"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {config.dm_embed_footer && (
+                      <div className="pt-2 border-t border-white/5 text-[11px] text-[#949ba4] flex items-center gap-1.5">
+                        <span>{replaceVariables(config.dm_embed_footer)}</span>
+                        <span>•</span>
+                        <span>Today at 12:00 PM</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

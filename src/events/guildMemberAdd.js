@@ -133,7 +133,11 @@ export default {
 
       // 6b. Public Channel Welcome Message Dispatch
       if (welcomeCfg.welcome_enabled && welcomeCfg.welcome_channel_id) {
-        const welcomeChannel = member.guild.channels.cache.get(String(welcomeCfg.welcome_channel_id));
+        let welcomeChannel = member.guild.channels.cache.get(String(welcomeCfg.welcome_channel_id));
+        if (!welcomeChannel && member.guild.channels.fetch) {
+          welcomeChannel = await member.guild.channels.fetch(String(welcomeCfg.welcome_channel_id)).catch(() => null);
+        }
+
         if (welcomeChannel && welcomeChannel.isTextBased()) {
           const payload = buildWelcomePayload(welcomeCfg, member, "welcome");
           if (payload) {
@@ -153,10 +157,10 @@ export default {
       }
 
       // 6c. Direct Message (DM) Onboarding Dispatch
-      if (welcomeCfg.dm_enabled && !member.user.bot && welcomeCfg.dm_message) {
-        const dmText = formatWelcomeText(welcomeCfg.dm_message, member);
-        if (dmText.trim()) {
-          await member.send({ content: dmText }).catch(() => {
+      if (welcomeCfg.dm_enabled && !member.user.bot) {
+        const dmPayload = buildWelcomePayload(welcomeCfg, member, "dm");
+        if (dmPayload && (dmPayload.content || dmPayload.embeds?.length > 0)) {
+          await member.send(dmPayload).catch(() => {
             // DMs are frequently blocked by user privacy settings; silently catch
           });
         }

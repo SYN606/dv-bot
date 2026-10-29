@@ -1,5 +1,5 @@
 import React from "react";
-import { UserMinus, Palette } from "lucide-react";
+import { UserMinus, Palette, Image as ImageIcon } from "lucide-react";
 import WelcomeVariableBar from "./WelcomeVariableBar";
 
 const COLOR_PRESETS = [
@@ -103,57 +103,59 @@ export default function WelcomeLeaveEditor({
         />
 
         {config.leave_is_embed && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Embed Title
-              </label>
-              <input
-                type="text"
-                value={config.leave_embed_title || ""}
-                onChange={(e) => updateConfig("leave_embed_title", e.target.value)}
-                placeholder="Goodbye!"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-white/10 text-white text-xs focus:outline-none focus:border-rose-500 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Accent Color
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={config.leave_embed_color || "#F43F5E"}
-                  onChange={(e) => updateConfig("leave_embed_color", e.target.value)}
-                  className="w-10 h-9 p-0.5 rounded-lg bg-slate-800 border border-white/10 cursor-pointer shrink-0"
-                />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Embed Title
+                </label>
                 <input
                   type="text"
-                  value={config.leave_embed_color || "#F43F5E"}
-                  onChange={(e) => updateConfig("leave_embed_color", e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-800/80 border border-white/10 text-white text-xs font-mono uppercase focus:outline-none focus:border-rose-500"
+                  value={config.leave_embed_title || ""}
+                  onChange={(e) => updateConfig("leave_embed_title", e.target.value)}
+                  placeholder="Goodbye!"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-white/10 text-white text-xs focus:outline-none focus:border-rose-500 transition-all"
                 />
               </div>
-            </div>
 
-            {/* Presets */}
-            <div className="md:col-span-3 flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-[11px] text-slate-400 mr-1">Presets:</span>
-              {COLOR_PRESETS.map((p) => (
-                <button
-                  key={p.hex}
-                  type="button"
-                  onClick={() => updateConfig("leave_embed_color", p.hex)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-white/10 hover:border-white/20 transition-all text-slate-300"
-                >
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shadow-sm"
-                    style={{ backgroundColor: p.hex }}
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Accent Color
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={config.leave_embed_color || "#F43F5E"}
+                    onChange={(e) => updateConfig("leave_embed_color", e.target.value)}
+                    className="w-10 h-9 p-0.5 rounded-lg bg-slate-800 border border-white/10 cursor-pointer shrink-0"
                   />
-                  <span>{p.name}</span>
-                </button>
-              ))}
+                  <input
+                    type="text"
+                    value={config.leave_embed_color || "#F43F5E"}
+                    onChange={(e) => updateConfig("leave_embed_color", e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800/80 border border-white/10 text-white text-xs font-mono uppercase focus:outline-none focus:border-rose-500"
+                  />
+                </div>
+              </div>
+
+              {/* Presets */}
+              <div className="md:col-span-3 flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-[11px] text-slate-400 mr-1">Presets:</span>
+                {COLOR_PRESETS.map((p) => (
+                  <button
+                    key={p.hex}
+                    type="button"
+                    onClick={() => updateConfig("leave_embed_color", p.hex)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-white/10 hover:border-white/20 transition-all text-slate-300"
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shadow-sm"
+                      style={{ backgroundColor: p.hex }}
+                    />
+                    <span>{p.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -166,7 +168,7 @@ export default function WelcomeLeaveEditor({
               <span className="text-rose-400">*</span>
             </label>
             <span className="text-[10px] text-slate-400">
-              {(config.leave_message || "").length} / 2000
+              {(config.leave_message || "").length} / 4000
             </span>
           </div>
           <textarea
@@ -177,6 +179,50 @@ export default function WelcomeLeaveEditor({
             className="w-full px-4 py-3 rounded-2xl bg-slate-800/80 border border-white/10 text-white text-xs font-mono leading-relaxed focus:outline-none focus:border-rose-500 transition-all"
           />
         </div>
+
+        {/* Leave Embed Footer & Thumbnail */}
+        {config.leave_is_embed && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-white/[0.04]">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Footer Text
+              </label>
+              <input
+                type="text"
+                value={config.leave_embed_footer || ""}
+                onChange={(e) => updateConfig("leave_embed_footer", e.target.value)}
+                placeholder="Remaining: {memberCount} members"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-white/10 text-white text-xs focus:outline-none focus:border-rose-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
+                <span>Banner Image URL (Optional)</span>
+              </label>
+              <input
+                type="text"
+                value={config.leave_image_url || ""}
+                onChange={(e) => updateConfig("leave_image_url", e.target.value)}
+                placeholder="https://example.com/goodbye-banner.png"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-white/10 text-white text-xs focus:outline-none focus:border-rose-500"
+              />
+            </div>
+
+            <div className="md:col-span-2 pt-1">
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={Boolean(config.leave_show_thumbnail)}
+                  onChange={(e) => updateConfig("leave_show_thumbnail", e.target.checked)}
+                  className="rounded bg-slate-800 border-white/20 text-rose-600 focus:ring-0 w-4 h-4"
+                />
+                <span className="text-xs text-slate-300">Show departing member avatar thumbnail</span>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

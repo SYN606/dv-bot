@@ -558,20 +558,38 @@ export const welcomeConfig = sqliteTable("welcome_config", {
   welcome_enabled: integer("welcome_enabled", { mode: "number" }).default(0),
   welcome_channel_id: text("welcome_channel_id"),
   welcome_message: text("welcome_message").default(
-    "Hey {user}, welcome to **{server}**! Glad to have you here. You are member #{memberCount}! 🎉"
+    "Hey {user}, welcome to **{server}**! Glad to have you here. You are member #{memberCount}! ðŸŽ‰"
   ),
   welcome_is_embed: integer("welcome_is_embed", { mode: "number" }).default(1),
   welcome_embed_title: text("welcome_embed_title").default("Welcome to {server}!"),
+  welcome_embed_title_url: text("welcome_embed_title_url"),
+  welcome_embed_author: text("welcome_embed_author"),
+  welcome_embed_author_icon: text("welcome_embed_author_icon"),
+  welcome_embed_author_url: text("welcome_embed_author_url"),
   welcome_embed_color: text("welcome_embed_color").default("#6366F1"),
   welcome_embed_footer: text("welcome_embed_footer").default("Member #{memberCount}"),
+  welcome_embed_footer_icon: text("welcome_embed_footer_icon"),
+  welcome_embed_fields: text("welcome_embed_fields").default("[]"),
   welcome_show_thumbnail: integer("welcome_show_thumbnail", { mode: "number" }).default(1),
+  welcome_thumbnail_type: text("welcome_thumbnail_type").default("user_avatar"),
+  welcome_thumbnail_custom: text("welcome_thumbnail_custom"),
   welcome_image_url: text("welcome_image_url"),
   welcome_ping_user: integer("welcome_ping_user", { mode: "number" }).default(1),
   welcome_delete_seconds: integer("welcome_delete_seconds", { mode: "number" }).default(0),
+  welcome_show_timestamp: integer("welcome_show_timestamp", { mode: "number" }).default(1),
+
+  // Direct Message (DM) Onboarding
   dm_enabled: integer("dm_enabled", { mode: "number" }).default(0),
   dm_message: text("dm_message").default(
     "Welcome to **{server}**, {username}! Please check out our rules and enjoy your stay."
   ),
+  dm_is_embed: integer("dm_is_embed", { mode: "number" }).default(0),
+  dm_embed_title: text("dm_embed_title").default("Welcome to {server}!"),
+  dm_embed_color: text("dm_embed_color").default("#10B981"),
+  dm_embed_footer: text("dm_embed_footer").default("{server}"),
+  dm_show_thumbnail: integer("dm_show_thumbnail", { mode: "number" }).default(1),
+
+  // Leave / Goodbye Message
   leave_enabled: integer("leave_enabled", { mode: "number" }).default(0),
   leave_channel_id: text("leave_channel_id"),
   leave_message: text("leave_message").default(
@@ -580,6 +598,11 @@ export const welcomeConfig = sqliteTable("welcome_config", {
   leave_is_embed: integer("leave_is_embed", { mode: "number" }).default(0),
   leave_embed_title: text("leave_embed_title").default("Goodbye!"),
   leave_embed_color: text("leave_embed_color").default("#F43F5E"),
+  leave_embed_footer: text("leave_embed_footer").default("Remaining: {memberCount} members"),
+  leave_show_thumbnail: integer("leave_show_thumbnail", { mode: "number" }).default(1),
+  leave_image_url: text("leave_image_url"),
+
+  // Auto-Roles
   autorole_enabled: integer("autorole_enabled", { mode: "number" }).default(0),
   join_role_ids: text("join_role_ids").default("[]"),
   bot_role_id: text("bot_role_id"),

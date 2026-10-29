@@ -51,7 +51,11 @@ export default {
     try {
       const welcomeCfg = await WelcomeConfig.findByPk(guildId);
       if (welcomeCfg && welcomeCfg.leave_enabled && welcomeCfg.leave_channel_id) {
-        const leaveChannel = member.guild.channels.cache.get(String(welcomeCfg.leave_channel_id));
+        let leaveChannel = member.guild.channels.cache.get(String(welcomeCfg.leave_channel_id));
+        if (!leaveChannel && member.guild.channels.fetch) {
+          leaveChannel = await member.guild.channels.fetch(String(welcomeCfg.leave_channel_id)).catch(() => null);
+        }
+
         if (leaveChannel && leaveChannel.isTextBased()) {
           const payload = buildWelcomePayload(welcomeCfg, member, "leave");
           if (payload) {

@@ -7,20 +7,40 @@ const DEFAULT_WELCOME_CONFIG = {
   welcome_message: "Hey {user}, welcome to **{server}**! Glad to have you here. You are member #{memberCount}! 🎉",
   welcome_is_embed: true,
   welcome_embed_title: "Welcome to {server}!",
+  welcome_embed_title_url: "",
+  welcome_embed_author: "",
+  welcome_embed_author_icon: "",
+  welcome_embed_author_url: "",
   welcome_embed_color: "#6366F1",
   welcome_embed_footer: "Member #{memberCount}",
+  welcome_embed_footer_icon: "",
+  welcome_embed_fields: [],
   welcome_show_thumbnail: true,
+  welcome_thumbnail_type: "user_avatar",
+  welcome_thumbnail_custom: "",
   welcome_image_url: "",
   welcome_ping_user: true,
   welcome_delete_seconds: 0,
+  welcome_show_timestamp: true,
+
   dm_enabled: false,
   dm_message: "Welcome to **{server}**, {username}! Please check out our rules and enjoy your stay.",
+  dm_is_embed: false,
+  dm_embed_title: "Welcome to {server}!",
+  dm_embed_color: "#10B981",
+  dm_embed_footer: "{server}",
+  dm_show_thumbnail: true,
+
   leave_enabled: false,
   leave_channel_id: "",
   leave_message: "{username} has left the server. We are down to {memberCount} members.",
   leave_is_embed: false,
   leave_embed_title: "Goodbye!",
   leave_embed_color: "#F43F5E",
+  leave_embed_footer: "Remaining: {memberCount} members",
+  leave_show_thumbnail: true,
+  leave_image_url: "",
+
   autorole_enabled: false,
   join_role_ids: [],
   bot_role_id: "",
@@ -54,21 +74,44 @@ export function useWelcome(guildId, showToast) {
       setGuildMeta(meta);
 
       if (welcome) {
+        let parsedFields = [];
+        try {
+          parsedFields = typeof welcome.welcome_embed_fields === "string"
+            ? JSON.parse(welcome.welcome_embed_fields || "[]")
+            : (welcome.welcome_embed_fields || []);
+        } catch (_) {
+          parsedFields = [];
+        }
+
         const parsed = {
           welcome_enabled: Boolean(welcome.welcome_enabled),
           welcome_channel_id: welcome.welcome_channel_id || "",
           welcome_message: welcome.welcome_message ?? DEFAULT_WELCOME_CONFIG.welcome_message,
           welcome_is_embed: Boolean(welcome.welcome_is_embed),
           welcome_embed_title: welcome.welcome_embed_title ?? DEFAULT_WELCOME_CONFIG.welcome_embed_title,
+          welcome_embed_title_url: welcome.welcome_embed_title_url || "",
+          welcome_embed_author: welcome.welcome_embed_author || "",
+          welcome_embed_author_icon: welcome.welcome_embed_author_icon || "",
+          welcome_embed_author_url: welcome.welcome_embed_author_url || "",
           welcome_embed_color: welcome.welcome_embed_color || DEFAULT_WELCOME_CONFIG.welcome_embed_color,
           welcome_embed_footer: welcome.welcome_embed_footer ?? DEFAULT_WELCOME_CONFIG.welcome_embed_footer,
-          welcome_show_thumbnail: Boolean(welcome.welcome_show_thumbnail),
+          welcome_embed_footer_icon: welcome.welcome_embed_footer_icon || "",
+          welcome_embed_fields: Array.isArray(parsedFields) ? parsedFields : [],
+          welcome_show_thumbnail: Boolean(welcome.welcome_show_thumbnail ?? true),
+          welcome_thumbnail_type: welcome.welcome_thumbnail_type || "user_avatar",
+          welcome_thumbnail_custom: welcome.welcome_thumbnail_custom || "",
           welcome_image_url: welcome.welcome_image_url || "",
-          welcome_ping_user: Boolean(welcome.welcome_ping_user),
+          welcome_ping_user: Boolean(welcome.welcome_ping_user ?? true),
           welcome_delete_seconds: Number(welcome.welcome_delete_seconds || 0),
+          welcome_show_timestamp: Boolean(welcome.welcome_show_timestamp ?? true),
 
           dm_enabled: Boolean(welcome.dm_enabled),
           dm_message: welcome.dm_message ?? DEFAULT_WELCOME_CONFIG.dm_message,
+          dm_is_embed: Boolean(welcome.dm_is_embed),
+          dm_embed_title: welcome.dm_embed_title ?? DEFAULT_WELCOME_CONFIG.dm_embed_title,
+          dm_embed_color: welcome.dm_embed_color || DEFAULT_WELCOME_CONFIG.dm_embed_color,
+          dm_embed_footer: welcome.dm_embed_footer ?? DEFAULT_WELCOME_CONFIG.dm_embed_footer,
+          dm_show_thumbnail: Boolean(welcome.dm_show_thumbnail ?? true),
 
           leave_enabled: Boolean(welcome.leave_enabled),
           leave_channel_id: welcome.leave_channel_id || "",
@@ -76,6 +119,9 @@ export function useWelcome(guildId, showToast) {
           leave_is_embed: Boolean(welcome.leave_is_embed),
           leave_embed_title: welcome.leave_embed_title ?? DEFAULT_WELCOME_CONFIG.leave_embed_title,
           leave_embed_color: welcome.leave_embed_color || DEFAULT_WELCOME_CONFIG.leave_embed_color,
+          leave_embed_footer: welcome.leave_embed_footer ?? DEFAULT_WELCOME_CONFIG.leave_embed_footer,
+          leave_show_thumbnail: Boolean(welcome.leave_show_thumbnail ?? true),
+          leave_image_url: welcome.leave_image_url || "",
 
           autorole_enabled: Boolean(welcome.autorole_enabled),
           join_role_ids: Array.isArray(welcome.join_role_ids) ? welcome.join_role_ids : [],
