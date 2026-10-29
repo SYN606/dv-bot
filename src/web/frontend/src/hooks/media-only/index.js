@@ -1,1 +1,0 @@
-export { useMediaOnly } from "./useMediaOnly";

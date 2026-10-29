@@ -1,1 +1,0 @@
-export { useCommandRestrictions } from "./useCommandRestrictions";

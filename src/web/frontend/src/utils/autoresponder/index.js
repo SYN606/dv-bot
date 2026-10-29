@@ -1,1 +1,0 @@
-export { validateAutoresponder } from "./autoresponderValidation";
