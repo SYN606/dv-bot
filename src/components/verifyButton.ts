@@ -5,14 +5,27 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
-import { VerificationConfig } from "../db/models/index.js";
-import { makeEmbed } from "../core/embeds.js";
-import { EMOJIS } from "../core/emojis.js";
-import { VerificationService } from "../services/index.js";
+import { VerificationConfig } from "../db/models/index";
+import { makeEmbed } from "../core/embeds";
+import { EMOJIS } from "../core/emojis";
+import { VerificationService } from "../services/index";
+
+export interface IVerificationConfig {
+  guild_id: string;
+  enabled: boolean;
+  channel_id: string | null;
+  verified_role_id: string | null;
+  unverified_role_id: string | null;
+  mode: string;
+  min_account_age_hours: number;
+  send_dm_on_join: boolean;
+  log_channel_id: string | null;
+  [key: string]: any;
+}
 
 // In-memory concurrency locks and temporary captcha store
-const pendingVerifications = new Set();
-const captchaChallenges = new Map(); // key: `${guildId}:${userId}`, value: { code, expires }
+const pendingVerifications = new Set<string>();
+const captchaChallenges = new Map<string, { code: string; expires: number }>(); // key: `${guildId}:${userId}`, value: { code, expires }
 
 function pruneCaptchaChallenges() {
   const now = Date.now();
@@ -26,7 +39,7 @@ function pruneCaptchaChallenges() {
 const captchaSweeper = setInterval(pruneCaptchaChallenges, 60000);
 if (captchaSweeper.unref) captchaSweeper.unref();
 
-function generateCaptchaCode(length = 6) {
+function generateCaptchaCode(length = 6): string {
   const chars = "23456789abcdefghkmnpqrstuvwxyz";
   let res = "";
   for (let i = 0; i < length; i++) {
@@ -38,7 +51,7 @@ function generateCaptchaCode(length = 6) {
 /**
  * Execute role grant & unverified role removal with audit logging via VerificationService
  */
-async function executeVerificationGrant(interaction, config) {
+async function executeVerificationGrant(interaction: any, config: any) {
   const guildId = interaction.guild.id;
   const userId = interaction.user.id;
   const lockKey = `${guildId}:${userId}`;
@@ -119,9 +132,9 @@ async function executeVerificationGrant(interaction, config) {
   }
 }
 
-export function registerVerificationComponent(client) {
+export function registerVerificationComponent(client: any) {
   // 1. Verification Button Handler
-  client.components.set("verify_member_btn", async (interaction) => {
+  client.components.set("verify_member_btn", async (interaction: any) => {
     if (!interaction.guild || !interaction.member) {
       return await interaction.reply({
         embeds: [
@@ -136,7 +149,7 @@ export function registerVerificationComponent(client) {
     }
 
     const guildId = interaction.guild.id;
-    const config = await VerificationConfig.findByPk(guildId);
+    const config: IVerificationConfig | null = (await VerificationConfig.findByPk(guildId)) as any;
 
     if (!config || !config.enabled) {
       return await interaction.reply({
@@ -227,8 +240,8 @@ export function registerVerificationComponent(client) {
         .setRequired(true);
 
       modal.addComponents(
-        new ActionRowBuilder().addComponents(codeDisplayInput),
-        new ActionRowBuilder().addComponents(userInput)
+        new ActionRowBuilder<TextInputBuilder>().addComponents(codeDisplayInput),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(userInput)
       );
 
       return await interaction.showModal(modal);
@@ -239,7 +252,7 @@ export function registerVerificationComponent(client) {
   });
 
   // 2. Captcha Modal Submission Handler
-  client.components.set("verify_captcha_modal", async (interaction) => {
+  client.components.set("verify_captcha_modal", async (interaction: any) => {
     const guildId = interaction.guild?.id;
     if (!guildId || !interaction.member) return;
 
@@ -275,7 +288,7 @@ export function registerVerificationComponent(client) {
       });
     }
 
-    const config = await VerificationConfig.findByPk(guildId);
+    const config: IVerificationConfig | null = (await VerificationConfig.findByPk(guildId)) as any;
     if (!config || !config.enabled) {
       return await interaction.reply({
         embeds: [
@@ -306,7 +319,7 @@ export function registerVerificationComponent(client) {
   });
 
   // Alias for backward compatibility
-  client.components.set("btn_verify_gate", async (interaction) => {
+  client.components.set("btn_verify_gate", async (interaction: any) => {
     const handler = client.components.get("verify_member_btn");
     if (handler) return await handler(interaction);
   });

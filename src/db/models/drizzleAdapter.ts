@@ -176,7 +176,11 @@ export function buildOrderBy(table, orderSpec) {
  * Active Record Model Instance
  */
 export class ModelInstance {
-  constructor(model, data) {
+  [key: string]: any;
+  _model: any;
+  _data: any;
+
+  constructor(model: any, data: any) {
     this._model = model;
     this._data = { ...data };
 
