@@ -1,0 +1,1 @@
+export { useAdminAccess } from "./useAdminAccess";
