@@ -14,7 +14,7 @@ import { sendModLog } from "../utils/modLog.js";
  * Get verification configuration for a guild
  */
 export async function getVerificationConfig(guildId) {
-  const [config] = await VerificationConfig.findOrCreate({
+  const [config]: any = await VerificationConfig.findOrCreate({
     where: { guild_id: String(guildId) },
     defaults: {
       guild_id: String(guildId),
@@ -266,6 +266,6 @@ export async function deployVerificationPrompt({ guild, channelId, config }) {
     .setStyle(ButtonStyle.Success)
     .setEmoji(parsedEmoji);
 
-  const row = new ActionRowBuilder().addComponents(button);
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
   return await channel.send({ embeds: [embed], components: [row] });
 }

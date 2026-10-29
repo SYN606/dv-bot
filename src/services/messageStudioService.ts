@@ -452,7 +452,7 @@ export async function verifyAndFetchReply(client, currentGuildId, replyInput) {
 
 export function serializeToDiscordPayload(payload, { canMentionEveryone = false } = {}) {
   const mode = payload.mode || "normal";
-  const discordOptions = {};
+  const discordOptions: Record<string, any> = {};
 
   // 1. Content
   if (mode === "normal" || mode === "hybrid") {
@@ -490,7 +490,7 @@ export function serializeToDiscordPayload(payload, { canMentionEveryone = false 
           }
 
           if (e.author?.name && String(e.author.name).trim()) {
-            const authorOpts = {
+            const authorOpts: { name: string; iconURL?: string; url?: string } = {
               name: transformMentionPlaceholders(
                 String(e.author.name).trim().slice(0, LIMITS.MAX_AUTHOR_NAME_LENGTH)
               ),
@@ -505,7 +505,7 @@ export function serializeToDiscordPayload(payload, { canMentionEveryone = false 
           }
 
           if (e.footer?.text && String(e.footer.text).trim()) {
-            const footerOpts = {
+            const footerOpts: { text: string; iconURL?: string } = {
               text: transformMentionPlaceholders(
                 String(e.footer.text).trim().slice(0, LIMITS.MAX_FOOTER_TEXT_LENGTH)
               ),
@@ -573,7 +573,7 @@ export function serializeToDiscordPayload(payload, { canMentionEveryone = false 
 
   // 4. Allowed Mentions
   const mentionConfig = payload.mention_config || payload.mentionConfig || {};
-  const allowed = { parse: [] };
+  const allowed: Record<string, any> = { parse: [] };
 
   // By default allow users unless explicitly set to false, so user pings trigger notification
   const allowUsers = mentionConfig.allowUsers !== undefined ? Boolean(mentionConfig.allowUsers) : true;
