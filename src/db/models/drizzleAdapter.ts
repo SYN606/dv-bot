@@ -211,7 +211,7 @@ export class ModelInstance {
     const db = getDb();
     const table = this._model.table;
 
-    const valuesToUpdate = {};
+    const valuesToUpdate: Record<string, any> = {};
     for (const col of Object.keys(table)) {
       if (col === pk) continue;
       if (this[col] !== undefined) {
@@ -229,7 +229,7 @@ export class ModelInstance {
       await execRun(db.update(table).set(valuesToUpdate).where(eq(table[pk], pkVal)));
     } else {
       // Insert if no PK yet
-      const payload = {};
+      const payload: Record<string, any> = {};
       for (const [k, v] of Object.entries(this.toJSON())) {
         payload[k] = v instanceof Date ? v.toISOString() : v;
       }
@@ -350,7 +350,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
       });
     }
 
-    static async findByPk(pk, queryOpts = {}) {
+    static async findByPk(pk: any, queryOpts: any = {}) {
       if (pk === undefined || pk === null) return null;
       const db = getDb();
       const col = table[primaryKey];
@@ -374,7 +374,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
       return instance;
     }
 
-    static async findOne(queryOpts = {}) {
+    static async findOne(queryOpts: any = {}) {
       const db = getDb();
       let query = db.select().from(table);
 
@@ -398,7 +398,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
       return instance;
     }
 
-    static async findAll(queryOpts = {}) {
+    static async findAll(queryOpts: any = {}) {
       const db = getDb();
       let query = db.select().from(table);
 
@@ -430,7 +430,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
       return instances;
     }
 
-    static async findOrCreate({ where, defaults = {} }) {
+    static async findOrCreate({ where, defaults = {} }: any) {
       const existing = await ModelClass.findOne({ where });
       if (existing) {
         return [existing, false];
@@ -503,7 +503,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
       return (inserted || formatted).map((r) => new ModelInstance(ModelClass, r));
     }
 
-    static async update(values, { where }) {
+    static async update(values: any, { where }: any) {
       const db = getDb();
       const whereClause = buildWhereClause(table, where);
       const updateValues = { ...values };
@@ -528,7 +528,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
       return [changes];
     }
 
-    static async destroy({ where }) {
+    static async destroy({ where }: any) {
       const db = getDb();
       const whereClause = buildWhereClause(table, where);
       let query = db.delete(table);
@@ -539,7 +539,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
       return res?.changes ?? (Array.isArray(res) ? res.length : 1);
     }
 
-    static async upsert(data) {
+    static async upsert(data: any) {
       const pkVal = data[primaryKey];
       if (pkVal === undefined || pkVal === null) {
         return [await ModelClass.create(data), true];
@@ -558,7 +558,7 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
       return [created, true];
     }
 
-    static async count({ where } = {}) {
+    static async count({ where }: any = {}) {
       const db = getDb();
       let query = db.select({ count: sql`count(*)` }).from(table);
       if (where) {
