@@ -9,7 +9,7 @@ import { ensureGuildAndUser } from "./common.js";
 import { getRawSqlite } from "../index.js";
 
 export async function getMemberAnalytics(guildId, userId) {
-  const [record] = await MemberAnalytics.findOrCreate({
+  const [record]: any = await MemberAnalytics.findOrCreate({
     where: {
       guild_id: String(guildId),
       user_id: String(userId),
@@ -406,7 +406,7 @@ export async function getChannelBreakdown(guildId, days = 7, limit = 8) {
     },
   });
 
-  const channelMap = new Map();
+  const channelMap = new Map<string, any>();
   let serverTotalMessages = 0;
 
   for (const act of activities) {
@@ -441,7 +441,7 @@ export async function getHourlyDistribution(guildId) {
   const dayMessageCounts = new Array(7).fill(0);
 
   // Initialize 24 slots (0..23)
-  const hourMap = new Map();
+  const hourMap = new Map<number, any>();
   for (let h = 0; h < 24; h++) {
     hourMap.set(h, { hour: h, messages: 0, vcSeconds: 0 });
   }

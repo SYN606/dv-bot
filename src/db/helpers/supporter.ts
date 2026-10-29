@@ -1,7 +1,7 @@
 import { SupporterConfig } from "../models/index.js";
 import { ensureGuild } from "./common.js";
 
-const supporterCache = new Map();
+const supporterCache = new Map<string, any>();
 
 export function clearSupporterCache(guildId = null) {
   if (guildId) {
@@ -41,7 +41,7 @@ export async function setSupporterConfig(guildId, data) {
     clan_message: data.clan_message || "",
   };
 
-  const [record, created] = await SupporterConfig.findOrCreate({
+  const [record, created]: any = await SupporterConfig.findOrCreate({
     where: { guild_id: gId },
     defaults: { guild_id: gId, ...defaults },
   });

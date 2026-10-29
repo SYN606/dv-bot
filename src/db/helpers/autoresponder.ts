@@ -2,8 +2,8 @@ import { AutoResponder, AutoResponderReaction } from "../models/index.js";
 import { ensureGuild } from "./common.js";
 import { invalidateCompiledRules } from "../../handlers/autoresponderHandler.js";
 
-const autoresponderCache = new Map();
-const activeAutoresponderGuilds = new Set();
+const autoresponderCache = new Map<string, any[]>();
+const activeAutoresponderGuilds = new Set<string>();
 
 export async function initAutoresponderCache() {
   try {
@@ -159,7 +159,7 @@ export async function setResponderReactions(responderId, emojiList, guildId = nu
 }
 
 export async function addResponderReaction(responderId, emoji) {
-  const res = await AutoResponderReaction.findOrCreate({
+  const res: any = await AutoResponderReaction.findOrCreate({
     where: {
       responder_id: Number(responderId),
       emoji: String(emoji),

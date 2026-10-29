@@ -1,8 +1,8 @@
 import { Guild, User, SystemMeta } from "../models/index.js";
 
-const guildCache = new Set();
-const userCache = new Set();
-const metaCache = new Map();
+const guildCache = new Set<string>();
+const userCache = new Set<string>();
+const metaCache = new Map<string, any>();
 const MAX_CACHE_ENTRIES = 10000;
 
 export async function getSystemMeta(key) {

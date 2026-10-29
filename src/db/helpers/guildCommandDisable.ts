@@ -2,7 +2,7 @@ import { DisabledCommand } from "../models/index.js";
 import { PROTECTED_COMMANDS } from "../../core/permissions.js";
 
 // In-memory fast-path cache: key = `${guildId}:${commandName}` â†’ boolean
-const disabledCache = new Map();
+const disabledCache = new Map<string, boolean>();
 
 function normalize(name) {
   return String(name).trim().toLowerCase().replace(/^\//, "");
@@ -57,7 +57,7 @@ export async function disableCommandGuild(guildId, commandName) {
     throw new Error(`Command '${cmd}' is protected and cannot be disabled.`);
   }
 
-  const [, created] = await DisabledCommand.findOrCreate({
+  const [, created]: any = await DisabledCommand.findOrCreate({
     where: { guild_id: String(guildId), command_name: cmd },
     defaults: { guild_id: String(guildId), command_name: cmd },
   });
@@ -96,7 +96,7 @@ export async function getGuildDisabledCommands(guildId) {
 export async function bulkDisableCommandsGuild(guildId, commandNames) {
   const gId = String(guildId);
   const names = Array.isArray(commandNames) ? commandNames : [commandNames];
-  const normalized = [...new Set(names.map(normalize).filter(Boolean))];
+  const normalized = [...new Set<string>(names.map(normalize).filter(Boolean))];
 
   const skipped = [];
   const toDisable = [];
@@ -107,7 +107,7 @@ export async function bulkDisableCommandsGuild(guildId, commandNames) {
 
   let count = 0;
   for (const cmd of toDisable) {
-    const [, created] = await DisabledCommand.findOrCreate({
+    const [, created]: any = await DisabledCommand.findOrCreate({
       where: { guild_id: gId, command_name: cmd },
       defaults: { guild_id: gId, command_name: cmd },
     });
@@ -124,7 +124,7 @@ export async function bulkDisableCommandsGuild(guildId, commandNames) {
 export async function bulkEnableCommandsGuild(guildId, commandNames) {
   const gId = String(guildId);
   const names = Array.isArray(commandNames) ? commandNames : [commandNames];
-  const normalized = [...new Set(names.map(normalize).filter(Boolean))];
+  const normalized = [...new Set<string>(names.map(normalize).filter(Boolean))];
 
   if (normalized.length === 0) return { enabledCount: 0 };
 

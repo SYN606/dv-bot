@@ -19,7 +19,7 @@ export async function setTempbanConfig(guildId, roleId) {
     return null;
   }
   await ensureGuild(gId);
-  const [config, created] = await TempbanConfig.findOrCreate({
+  const [config, created]: any = await TempbanConfig.findOrCreate({
     where: { guild_id: gId },
     defaults: { guild_id: gId, role_id: String(roleId) },
   });
@@ -38,7 +38,7 @@ export async function createTempban(guildId, userId, moderatorId, reason, expire
   await ensureGuildAndUser(gId, uId);
   await ensureUser(mId);
 
-  const [record, created] = await TempbanRecord.findOrCreate({
+  const [record, created]: any = await TempbanRecord.findOrCreate({
     where: { guild_id: gId, user_id: uId },
     defaults: {
       guild_id: gId,
@@ -62,7 +62,7 @@ export async function createTempban(guildId, userId, moderatorId, reason, expire
 }
 
 export async function getActiveTempbans(guildId = null) {
-  const where = { active: true };
+  const where: Record<string, any> = { active: true };
   if (guildId) where.guild_id = String(guildId);
   return await TempbanRecord.findAll({ where });
 }

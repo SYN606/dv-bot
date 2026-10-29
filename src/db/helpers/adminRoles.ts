@@ -1,8 +1,8 @@
 import { AdminRole, AdminUser } from "../models/index.js";
 import { ensureGuild, ensureGuildAndUser } from "./common.js";
 
-const adminRoleCache = new Map();
-const adminUserCache = new Map();
+const adminRoleCache = new Map<string, string[]>();
+const adminUserCache = new Map<string, string[]>();
 
 export function clearAdminRoleCache(guildId = null) {
   if (guildId) {
@@ -49,7 +49,7 @@ export async function addAdminRole(guildId, roleId) {
 
   await ensureGuild(gId);
 
-  const [record, created] = await AdminRole.findOrCreate({
+  const [record, created]: any = await AdminRole.findOrCreate({
     where: { guild_id: gId, role_id: rId },
     defaults: { guild_id: gId, role_id: rId },
   });
@@ -99,7 +99,7 @@ export async function addAdminUser(guildId, userId) {
 
   await ensureGuildAndUser(gId, uId);
 
-  const [record, created] = await AdminUser.findOrCreate({
+  const [record, created]: any = await AdminUser.findOrCreate({
     where: { guild_id: gId, user_id: uId },
     defaults: { guild_id: gId, user_id: uId },
   });

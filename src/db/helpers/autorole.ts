@@ -1,7 +1,7 @@
 import { AutoRoleRewardConfig, RoleRestriction } from "../models/index.js";
 import { ensureGuild } from "./common.js";
 
-const configCache = new Map();
+const configCache = new Map<string, any>();
 
 export function clearAutoRoleCache(guildId = null) {
   if (guildId) {
@@ -68,13 +68,13 @@ export async function getAutoRoleBlacklist(guildId) {
       restriction_type: "DENY",
     },
   });
-  return Array.from(new Set(records.map((r) => r.role_id)));
+  return Array.from(new Set<string>(records.map((r) => r.role_id)));
 }
 
 export async function addAutoRoleBlacklist(guildId, roleId) {
   const gId = String(guildId);
   await ensureGuild(gId);
-  const [record, created] = await RoleRestriction.findOrCreate({
+  const [record, created]: any = await RoleRestriction.findOrCreate({
     where: {
       guild_id: gId,
       role_id: String(roleId),
@@ -106,7 +106,7 @@ export async function removeAutoRoleBlacklist(guildId, roleId) {
 export async function setAutoRoleBlacklist(guildId, roleIds) {
   const gId = String(guildId);
   await ensureGuild(gId);
-  const targetIds = Array.from(new Set((roleIds || []).map(String).filter(Boolean)));
+  const targetIds = Array.from(new Set<string>((roleIds || []).map(String).filter(Boolean)));
   
   const existing = await getAutoRoleBlacklist(gId);
   const toAdd = targetIds.filter(id => !existing.includes(id));
