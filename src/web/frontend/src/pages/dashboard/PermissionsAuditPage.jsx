@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { usePermissionsAudit } from "../../hooks/permissions-audit";
+import { PageError, PageSkeleton } from "../../components/ui";
 import { Key, Users, UserCheck, ShieldAlert, SlidersHorizontal } from "lucide-react";
 
 import {
@@ -37,37 +38,16 @@ export default function PermissionsAuditPage({ showToast }) {
 
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-[50vh] animate-in fade-in zoom-in-[0.98] duration-500">
-        <div className="glass-panel p-8 rounded-3xl max-w-md w-full border border-white/5 text-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-brand-crimson/10 border border-brand-crimson/20 text-brand-crimson flex items-center justify-center mx-auto">
-            <ShieldAlert className="w-6 h-6" />
-          </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Unable to load permission audit</h2>
-          <p className="text-xs text-slate-400">The server vulnerability audit could not be retrieved from the bot gateway.</p>
-          <button
-            onClick={refresh}
-            className="mt-4 px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold transition-colors border border-white/10"
-          >
-            Retry Scan
-          </button>
-        </div>
-      </div>
+      <PageError
+        title="Unable to load permission audit"
+        description="The server vulnerability audit could not be retrieved from the bot gateway."
+        onRetry={refresh}
+      />
     );
   }
 
   if (loading) {
-    return (
-      <div className="w-full space-y-6 animate-pulse">
-        <div className="h-20 glass-panel rounded-2xl border border-white/5" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="h-28 glass-panel rounded-2xl border border-white/5" />
-          <div className="h-28 glass-panel rounded-2xl border border-white/5" />
-          <div className="h-28 glass-panel rounded-2xl border border-white/5" />
-          <div className="h-28 glass-panel rounded-2xl border border-white/5" />
-        </div>
-        <div className="h-96 glass-panel rounded-2xl border border-white/5" />
-      </div>
-    );
+    return <PageSkeleton cards={2} rows={2} />;
   }
 
   const memberCount = auditData?.members?.length || 0;

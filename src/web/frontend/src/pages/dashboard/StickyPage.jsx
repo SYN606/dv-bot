@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useParams, useOutletContext } from "react-router-dom";
 import { useStickyNotices } from "../../hooks/sticky";
 import { useModuleStatus } from "../../hooks/useModuleStatus";
-import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { ConfirmDialog, PageError, PageSkeleton } from "../../components/ui";
 
 import {
   StickyHeader,
@@ -60,27 +60,15 @@ export default function StickyPage({ showToast }) {
 
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-[50vh] animate-in fade-in zoom-in-[0.98] duration-500">
-        <div className="glass-panel p-8 rounded-3xl max-w-md w-full border border-white/5 text-center space-y-4">
-          <h2 className="text-xl font-bold text-white tracking-tight">Unable to load sticky notices</h2>
-          <p className="text-sm text-slate-400">Failed to connect to the backend.</p>
-          <button onClick={refresh} className="mt-4 px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-semibold transition-colors">Retry</button>
-        </div>
-      </div>
+      <PageError
+        title="Unable to load sticky notices"
+        onRetry={refresh}
+      />
     );
   }
 
   if (loading && channels.length === 0) {
-    return (
-      <div className="w-full space-y-8 animate-pulse">
-        <div className="h-24 glass-panel rounded-3xl border border-white/5"></div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="h-96 glass-panel rounded-3xl border border-white/5"></div>
-          <div className="h-96 glass-panel rounded-3xl border border-white/5"></div>
-        </div>
-        <div className="h-40 glass-panel rounded-3xl border border-white/5"></div>
-      </div>
-    );
+    return <PageSkeleton cards={2} rows={2} />;
   }
 
   const selectedChannelName = channels.find(c => c.id === editor.channelId)?.name;

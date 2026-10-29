@@ -9,7 +9,7 @@ import {
   getGuildMeta, getVerification, getMediaOnly,
   getSticky, getAutoresponders, getAdminRoles
 } from "../../api/client";
-import SuperuserBadge from "../../components/ui/SuperuserBadge";
+import { SuperuserBadge } from "../../components/ui";
 
 export default function OverviewPage({ showToast }) {
   const { user, botInfo, currentGuild } = useOutletContext() || {};
@@ -60,7 +60,7 @@ export default function OverviewPage({ showToast }) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-[50vh]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-slate-700 border-t-brand-crimson rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-4 border-slate-700 border-t-indigo-500 rounded-full animate-spin"></div>
           <p className="text-slate-400 font-mono text-sm tracking-widest">LOADING COMMAND CENTER...</p>
         </div>
       </div>
@@ -70,7 +70,7 @@ export default function OverviewPage({ showToast }) {
   const { guild } = meta || {};
 
   const StatusIndicator = ({ active, text }) => (
-    <div className={`flex items-center gap-1.5 text-[10px] font-mono tracking-widest uppercase ${active ? 'text-brand-green' : 'text-slate-500'}`}>
+    <div className={`flex items-center gap-1.5 text-[10px] font-mono tracking-widest uppercase ${active ? 'text-emerald-400' : 'text-slate-500'}`}>
       {active ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
       {text || (active ? "Active" : "Disabled")}
     </div>

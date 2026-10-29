@@ -1,5 +1,5 @@
 import React from "react";
-import ConfirmDialog from "../ui/ConfirmDialog";
+import { ConfirmDialog } from "../ui";
 
 export default function PrivateBotDialog({ open, onClose, guild }) {
   if (!guild) return null;

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAnalytics } from "../../hooks/analytics";
+import { PageError } from "../../components/ui";
 
 // Components
 import {
@@ -22,21 +23,11 @@ export default function AnalyticsPage() {
 
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-[50vh] animate-in fade-in zoom-in-[0.98] duration-500">
-        <div className="glass-panel p-8 rounded-3xl max-w-md w-full border border-white/5 text-center space-y-4">
-          <div className="w-12 h-12 rounded-full bg-brand-crimson/10 text-brand-crimson mx-auto flex items-center justify-center border border-brand-crimson/20">
-            <span className="font-bold text-xl">!</span>
-          </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Unable to load analytics</h2>
-          <p className="text-sm text-slate-400">We couldn't retrieve analytics for this server. The backend might be unreachable or the guild data doesn't exist.</p>
-          <button 
-            onClick={refresh}
-            className="mt-4 px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-semibold transition-colors w-full"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <PageError
+        title="Unable to load analytics"
+        description="We couldn't retrieve analytics for this server. The backend might be unreachable or the guild data doesn't exist."
+        onRetry={refresh}
+      />
     );
   }
 

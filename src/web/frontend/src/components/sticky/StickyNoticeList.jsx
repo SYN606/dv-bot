@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import StickyNoticeItem from "./StickyNoticeItem";
-import EmptyState from "../ui/EmptyState";
-import SearchInput from "../ui/SearchInput";
+import { EmptyState, SearchInput, Button } from "../ui";
 import { Pin } from "lucide-react";
 
 export default function StickyNoticeList({ notices, channels, onEdit, onDelete, deletingChannelId }) {
@@ -43,6 +42,7 @@ export default function StickyNoticeList({ notices, channels, onEdit, onDelete, 
           <SearchInput 
             value={search} 
             onChange={setSearch} 
+            onClear={() => setSearch("")}
             placeholder="Search notices..." 
           />
         </div>
@@ -53,25 +53,26 @@ export default function StickyNoticeList({ notices, channels, onEdit, onDelete, 
           title="No matching notices"
           description={`No active sticky notices match "${search}".`}
           action={
-            <button 
+            <Button 
+              variant="secondary"
+              size="sm"
               onClick={() => setSearch("")}
-              className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-semibold transition-colors"
             >
               Clear Search
-            </button>
+            </Button>
           }
         />
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredNotices.map((notice) => {
             const channel = channels.find(c => c.id === notice.channel_id);
             return (
               <StickyNoticeItem 
                 key={notice.channel_id}
                 notice={notice}
-                channelName={channel?.name}
-                onEdit={onEdit}
-                onDelete={onDelete}
+                channel={channel}
+                onEdit={() => onEdit(notice)}
+                onDelete={() => onDelete(notice.channel_id)}
                 isDeleting={deletingChannelId === notice.channel_id}
               />
             );

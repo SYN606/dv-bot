@@ -3,8 +3,7 @@ import { useParams, Navigate, Outlet } from "react-router-dom";
 import Sidebar from "../components/navigation/Sidebar";
 import Navbar from "../components/navigation/Navbar";
 import Footer from "../components/navigation/Footer";
-import Toast from "../components/ui/Toast";
-import CommandPalette from "../components/ui/CommandPalette";
+import { Toast, CommandPalette } from "../components/ui";
 import { Menu } from "lucide-react";
 
 export default function Base({

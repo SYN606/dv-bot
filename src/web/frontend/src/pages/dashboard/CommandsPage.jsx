@@ -9,7 +9,7 @@ import {
   CommandToolbar,
   CommandModule,
 } from "../../components/commands";
-import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { ConfirmDialog, PageError, PageSkeleton, EmptyState, Button } from "../../components/ui";
 
 export default function CommandsPage({ showToast }) {
   const { guildId } = useParams();
@@ -117,34 +117,11 @@ export default function CommandsPage({ showToast }) {
   }, [categoriesMap, selectedCategory, statusFilter, searchQuery]);
 
   if (error) {
-    return (
-      <div className="flex-1 flex items-center justify-center min-h-[50vh] animate-in fade-in zoom-in-[0.98] duration-500">
-        <div className="glass-panel p-8 rounded-3xl max-w-md w-full border border-white/5 text-center space-y-4">
-          <h2 className="text-xl font-bold text-white tracking-tight">Unable to load Commands</h2>
-          <p className="text-sm text-slate-400">Failed to connect to the backend.</p>
-          <button
-            onClick={refresh}
-            className="mt-4 px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-semibold transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
+    return <PageError title="Unable to load Commands" onRetry={refresh} />;
   }
 
   if (loading && commands.length === 0) {
-    return (
-      <div className="w-full space-y-8 animate-pulse">
-        <div className="h-24 glass-panel rounded-3xl border border-white/5"></div>
-        <div className="h-32 glass-panel rounded-3xl border border-white/5"></div>
-        <div className="h-32 glass-panel rounded-3xl border border-white/5"></div>
-        <div className="space-y-4">
-          <div className="h-64 glass-panel rounded-3xl border border-white/5"></div>
-          <div className="h-64 glass-panel rounded-3xl border border-white/5"></div>
-        </div>
-      </div>
-    );
+    return <PageSkeleton cards={2} rows={2} />;
   }
 
   return (
@@ -184,24 +161,27 @@ export default function CommandsPage({ showToast }) {
 
       <div className="space-y-6">
         {visibleCategories.length === 0 ? (
-          <div className="text-center py-16 px-6 glass-panel rounded-3xl border border-dashed border-white/5">
-            <h3 className="text-lg font-bold text-white mb-2">No commands found</h3>
-            <p className="text-sm text-slate-400">
-              {searchQuery || statusFilter !== "all" || selectedCategory !== "all"
+          <EmptyState
+            title="No commands found"
+            description={
+              searchQuery || statusFilter !== "all" || selectedCategory !== "all"
                 ? "Try adjusting your search query, status filter, or category."
-                : "No commands are registered in this server."}
-            </p>
-            <button
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedCategory("all");
-                setStatusFilter("all");
-              }}
-              className="mt-4 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-semibold transition-colors"
-            >
-              Clear Filters
-            </button>
-          </div>
+                : "No commands are registered in this server."
+            }
+            action={
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedCategory("all");
+                  setStatusFilter("all");
+                }}
+              >
+                Clear Filters
+              </Button>
+            }
+          />
         ) : (
           visibleCategories.map((cat) => (
             <CommandModule

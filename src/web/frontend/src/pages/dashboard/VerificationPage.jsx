@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useParams, useOutletContext } from "react-router-dom";
 import { useVerification } from "../../hooks/verification";
-import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { ConfirmDialog, PageError, PageSkeleton } from "../../components/ui";
 
 import {
   VerificationHeader,
@@ -41,32 +41,11 @@ export default function VerificationPage({ showToast }) {
   const isSaveDisabled = !config.channelId || !config.verifiedRoleId || isHierarchyError || saving || posting;
 
   if (error) {
-    return (
-      <div className="flex-1 flex items-center justify-center min-h-[50vh] animate-in fade-in zoom-in-[0.98] duration-500">
-        <div className="glass-panel p-8 rounded-3xl max-w-md w-full border border-white/5 text-center space-y-4">
-          <h2 className="text-xl font-bold text-white tracking-tight">Unable to load configuration</h2>
-          <p className="text-sm text-slate-400">Failed to load Verification configuration.</p>
-          <button onClick={refresh} className="mt-4 px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-semibold transition-colors">Retry</button>
-        </div>
-      </div>
-    );
+    return <PageError title="Unable to load configuration" description="Failed to load Verification configuration." onRetry={refresh} />;
   }
 
   if (loading) {
-    return (
-      <div className="w-full space-y-8 animate-pulse">
-        <div className="h-32 glass-panel rounded-3xl border border-white/5"></div>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-7 xl:col-span-8 space-y-8">
-            <div className="h-64 glass-panel rounded-3xl border border-white/5"></div>
-            <div className="h-48 glass-panel rounded-3xl border border-white/5"></div>
-          </div>
-          <div className="lg:col-span-5 xl:col-span-4">
-            <div className="h-96 glass-panel rounded-3xl border border-white/5"></div>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageSkeleton cards={2} rows={0} />;
   }
 
   return (
