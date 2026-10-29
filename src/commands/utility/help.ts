@@ -263,18 +263,18 @@ export default createCommand({
     }
 
     // 2. Main Command Directory Overview
-    let restrictedSet = new Set();
+    let restrictedSet = new Set<string>();
     const isAdminUser = member?.permissions?.has(PermissionFlagsBits.Administrator);
 
     if (guild && channel && !isAdminUser) {
       try {
         const restricted = await getRestrictedCommands(guild.id, channel.id);
-        restrictedSet = new Set(restricted.map((c) => c.toLowerCase()));
+        restrictedSet = new Set<string>(restricted.map((c) => c.toLowerCase()));
       } catch (e) {}
     }
 
     // Build Categories Map dynamically
-    const categoriesMap = new Map();
+    const categoriesMap = new Map<string, any>();
     for (const cmd of client.commands.values()) {
       if (restrictedSet.has(cmd.name.toLowerCase()) && !isAdminUser) continue;
 
@@ -335,8 +335,8 @@ export default createCommand({
       .setStyle(ButtonStyle.Danger)
       .setEmoji("🗑️");
 
-    const actionRow1 = new ActionRowBuilder().addComponents(selectMenu);
-    const actionRow2 = new ActionRowBuilder().addComponents(homeButton, closeButton);
+    const actionRow1 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
+    const actionRow2 = new ActionRowBuilder<ButtonBuilder>().addComponents(homeButton, closeButton);
 
     const totalCmds = Array.from(client.commands.values()).length;
     const slashOnlyCount = Array.from(client.commands.values()).filter((c: any) => c.slashOnly).length;
@@ -453,8 +453,8 @@ export default createCommand({
         await responseMsg
           .edit({
             components: [
-              new ActionRowBuilder().addComponents(selectMenu),
-              new ActionRowBuilder().addComponents(homeButton, closeButton),
+              new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu),
+              new ActionRowBuilder<ButtonBuilder>().addComponents(homeButton, closeButton),
             ],
           })
           .catch(() => {});
@@ -462,8 +462,8 @@ export default createCommand({
         await interaction
           .editReply({
             components: [
-              new ActionRowBuilder().addComponents(selectMenu),
-              new ActionRowBuilder().addComponents(homeButton, closeButton),
+              new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu),
+              new ActionRowBuilder<ButtonBuilder>().addComponents(homeButton, closeButton),
             ],
           })
           .catch(() => {});

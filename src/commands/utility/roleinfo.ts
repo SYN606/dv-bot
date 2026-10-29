@@ -7,7 +7,7 @@ const slashBuilder = new SlashCommandBuilder()
   .setDescription("Get detailed statistics, member count, and permissions for a role.")
   .addRoleOption((opt) => opt.setName("role").setDescription("The role you want to inspect.").setRequired(true));
 
-const memberFetchThrottle = new Map(); // guildId -> timestamp
+const memberFetchThrottle = new Map<string, number>(); // guildId -> timestamp
 
 export default createCommand({
   name: "roleinfo",

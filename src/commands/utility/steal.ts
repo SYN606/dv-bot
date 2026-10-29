@@ -155,7 +155,7 @@ export default createCommand({
 
     const addedItems = [];
     const failedItems = [];
-    const seenNames = new Set();
+    const seenNames = new Set<string>();
 
     // Process Emojis (Capped at MAX_ITEMS)
     for (const item of emojisToSteal.slice(0, MAX_ITEMS)) {

@@ -83,8 +83,8 @@ export default createCommand({
       targetUser = await client.users.fetch(targetId).catch(() => ctx.user);
     } else if (ctx.message && ctx.message.mentions.users.size > 0) {
       targetUser = ctx.message.mentions.users.first();
-    } else if (ctx.args && ctx.args.length > 0) {
-      const match = ctx.args[0].match(/^<@!?(\d+)>$/) || [null, ctx.args[0]];
+    } else if (ctx.options?._args && ctx.options._args.length > 0) {
+      const match = ctx.options._args[0].match(/^<@!?(\d+)>$/) || [null, ctx.options._args[0]];
       targetUser = await client.users.fetch(match[1]).catch(() => ctx.user);
     }
 
@@ -113,7 +113,7 @@ export default createCommand({
     let roleText = "None";
     let roles = [];
     if (targetMember) {
-      roles = Array.from(targetMember.roles.cache.values())
+      roles = (Array.from(targetMember.roles.cache.values()) as any[])
         .filter((r) => r.id !== guild.id)
         .sort((a, b) => b.position - a.position)
         .map((r) => `<@&${r.id}>`);
@@ -154,9 +154,9 @@ export default createCommand({
       title: `${targetUser.username}`,
       description: `${developerEmoji} <@${targetUser.id}>\n${arrowEmoji} \`${targetUser.id}\``,
       level: "INFO",
-      thumbnail: targetUser.displayAvatarURL({ size: 1024, dynamic: true }),
+      thumbnail: targetUser.displayAvatarURL({ size: 1024 }),
       footer: `Action by : ${ctx.user.username}`,
-      footerIcon: ctx.user.displayAvatarURL({ dynamic: true }),
+      footerIcon: ctx.user.displayAvatarURL(),
       fields: []
     };
 

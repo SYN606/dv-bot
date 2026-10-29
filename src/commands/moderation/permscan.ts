@@ -5,7 +5,7 @@ import { EMOJIS } from "../../core/emojis.js";
 import { analyzeMemberPermissions } from "../../utils/permissionsData.js";
 import { isBotAdmin } from "../../core/permissions.js";
 
-const permscanFetchThrottle = new Map(); // guildId -> timestamp
+const permscanFetchThrottle = new Map<string, number>(); // guildId -> timestamp
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("permscan")

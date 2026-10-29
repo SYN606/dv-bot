@@ -52,7 +52,7 @@ export default createCommand({
     const primeWindowStr = hourly.primeWindow || "*Accumulating data...*";
     const busiestDayStr = hourly.busiestDay || "*Accumulating data...*";
 
-    const deltas = stats.deltas || {};
+    const deltas: Record<string, any> = stats.deltas || {};
     const formatDelta = (val) => {
       if (val === null || val === undefined) return "";
       const sign = val > 0 ? "+" : "";
@@ -102,7 +102,7 @@ export default createCommand({
     });
 
     if (guild.iconURL()) {
-      embed.setThumbnail(guild.iconURL({ dynamic: true }));
+      embed.setThumbnail(guild.iconURL());
     }
 
     return await ctx.reply({ embeds: [embed] });
