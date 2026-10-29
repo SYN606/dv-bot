@@ -43,27 +43,63 @@ export function getAccountAge(createdAt) {
 /**
  * Replaces placeholders in template text with actual member/guild data.
  * Supported variables:
- * - {user}
- * - {username}
- * - {tag}
- * - {server}
- * - {memberCount}
- * - {memberCountOrdinal}
- * - {userAvatar}
- * - {serverIcon}
- * - {accountAge}
+ * - {user}           - Discord user mention (<@id>)
+ * - {id} / {userId}  - Discord snowflake ID
+ * - {username}       - Raw account username
+ * - {displayName}    - Server display name / nickname
+ * - {nickname}       - Server nickname or display name
+ * - {normalName}     - Normal display name (alias for displayName)
+ * - {roles}          - Comma-separated list of server roles held
+ * - {rolesMentions}  - Mention tags for all held roles
+ * - {roleCount}      - Total number of roles held
+ * - {joinedAge}      - Time spent on server before departure
+ * - {tag}            - Legacy username#0000 or username
+ * - {server}         - Discord guild / server name
+ * - {memberCount}    - Total guild member count
+ * - {memberCountOrdinal} - Ordinal rank (e.g. 1,420th)
+ * - {userAvatar}     - Direct user avatar URL
+ * - {serverIcon}     - Direct server icon URL
+ * - {accountAge}     - Account creation age
  */
 export function formatWelcomeText(template, member) {
   if (!template || typeof template !== "string") return "";
 
   const user = member?.user || member;
   const guild = member?.guild;
-  const userId = user?.id || member?.id || "0";
-  const username = user?.username || member?.displayName || "Member";
+  const userId = String(user?.id || member?.id || "0");
+  const username = String(user?.username || member?.displayName || "Member");
+  const displayName = String(member?.displayName || member?.nickname || user?.globalName || username);
+  const normalName = displayName;
   const tag = user?.tag || username;
   const serverName = guild?.name || "Server";
   const memberCount = guild?.memberCount ? String(guild.memberCount) : "1";
   const memberCountOrdinal = getOrdinalSuffix(memberCount);
+
+  // Extract all roles held by the member (excluding @everyone)
+  let roles = "No roles";
+  let rolesMentions = "No roles";
+  let roleCount = 0;
+
+  if (member?.roles?.cache && typeof member.roles.cache.filter === "function") {
+    const guildRoles = member.roles.cache.filter((r) => r.id !== guild?.id && r.name !== "@everyone");
+    roleCount = guildRoles.size;
+    if (roleCount > 0) {
+      roles = guildRoles.map((r) => r.name).join(", ");
+      rolesMentions = guildRoles.map((r) => `<@&${r.id}>`).join(" ");
+    }
+  } else if (Array.isArray(member?.roleNames) && member.roleNames.length > 0) {
+    roleCount = member.roleNames.length;
+    roles = member.roleNames.join(", ");
+    rolesMentions = member.roleNames.map((n) => (n.startsWith("@") ? n : `@${n}`)).join(" ");
+  } else if (typeof member?.roles === "string" && member.roles.trim().length > 0) {
+    roles = member.roles;
+    rolesMentions = member.roles;
+    roleCount = member.roles.split(",").length;
+  }
+
+  // Calculate joined age on server
+  const joinedDate = member?.joinedAt || member?.joinedTimestamp;
+  const joinedAge = joinedDate ? getAccountAge(joinedDate) : "Unknown";
 
   let userAvatar = "";
   if (typeof user?.displayAvatarURL === "function") {
@@ -89,7 +125,16 @@ export function formatWelcomeText(template, member) {
 
   return template
     .replace(/\{user\}/gi, `<@${userId}>`)
+    .replace(/\{id\}/gi, userId)
+    .replace(/\{userId\}/gi, userId)
     .replace(/\{username\}/gi, username)
+    .replace(/\{displayName\}/gi, displayName)
+    .replace(/\{nickname\}/gi, displayName)
+    .replace(/\{normalName\}/gi, normalName)
+    .replace(/\{roles\}/gi, roles)
+    .replace(/\{rolesMentions\}/gi, rolesMentions)
+    .replace(/\{roleCount\}/gi, String(roleCount))
+    .replace(/\{joinedAge\}/gi, joinedAge)
     .replace(/\{tag\}/gi, tag)
     .replace(/\{server\}/gi, serverName)
     .replace(/\{memberCount\}/gi, memberCount)
@@ -139,13 +184,15 @@ export function buildWelcomePayload(config, member, type = "welcome") {
   const isEmbed = type === "welcome"
     ? Boolean(config.welcome_is_embed)
     : type === "leave"
-    ? Boolean(config.leave_is_embed)
+    ? Boolean(config.leave_is_embed ?? 1)
     : Boolean(config.dm_is_embed);
+
+  const defaultLeaveMessage = "## 🚪 {displayName} has left the server\n\n> 👤 **User:** {user} (`{username}`)\n> 🆔 **User ID:** `{id}`\n> 🏷️ **Normal Name:** {displayName}\n> 🛡️ **Roles:** {roles}\n> 👥 **Remaining Members:** #{memberCount}";
 
   const messageText = type === "welcome"
     ? (config.welcome_message || "Hey {user}, welcome to **{server}**!")
     : type === "leave"
-    ? (config.leave_message || "{username} has left the server.")
+    ? (config.leave_message || defaultLeaveMessage)
     : (config.dm_message || "Welcome to **{server}**, {username}!");
 
   const formattedText = formatWelcomeText(messageText, member);
@@ -159,7 +206,7 @@ export function buildWelcomePayload(config, member, type = "welcome") {
       }
     }
     return {
-      content: textContent || "Welcome to the server!",
+      content: textContent || "Goodbye!",
       embeds: [],
     };
   }
@@ -176,10 +223,22 @@ export function buildWelcomePayload(config, member, type = "welcome") {
   embed.setColor(parseHexColor(rawColor, type === "leave" ? 0xf43f5e : type === "dm" ? 0x10b981 : 0x6366f1));
 
   // Author Header
-  if (type === "welcome" && config.welcome_embed_author) {
-    const authorName = formatWelcomeText(config.welcome_embed_author, member).slice(0, 256);
-    const authorIcon = resolveSafeUrl(config.welcome_embed_author_icon, member);
-    const authorUrl = resolveSafeUrl(config.welcome_embed_author_url, member);
+  const authorNameRaw = type === "welcome"
+    ? config.welcome_embed_author
+    : type === "leave"
+    ? (config.leave_embed_author || null)
+    : null;
+  const authorIconRaw = type === "welcome"
+    ? config.welcome_embed_author_icon
+    : type === "leave"
+    ? (config.leave_embed_author_icon || "{userAvatar}")
+    : null;
+  const authorUrlRaw = type === "welcome" ? config.welcome_embed_author_url : null;
+
+  if (authorNameRaw) {
+    const authorName = formatWelcomeText(authorNameRaw, member).slice(0, 256);
+    const authorIcon = resolveSafeUrl(authorIconRaw, member);
+    const authorUrl = resolveSafeUrl(authorUrlRaw, member);
     if (authorName) {
       embed.setAuthor({
         name: authorName,
@@ -193,8 +252,9 @@ export function buildWelcomePayload(config, member, type = "welcome") {
   const rawTitle = type === "welcome"
     ? config.welcome_embed_title
     : type === "leave"
-    ? config.leave_embed_title
+    ? (config.leave_embed_title ?? "🚪 Member Departed")
     : config.dm_embed_title;
+
   if (rawTitle) {
     const titleText = formatWelcomeText(rawTitle, member).slice(0, 256);
     if (titleText) {
@@ -210,14 +270,14 @@ export function buildWelcomePayload(config, member, type = "welcome") {
   if (formattedText) {
     embed.setDescription(formattedText.slice(0, 4096));
   } else if (!rawTitle) {
-    embed.setDescription("Welcome to the server!");
+    embed.setDescription("Member has left the server.");
   }
 
   // Thumbnail
   const showThumb = type === "welcome"
     ? Boolean(config.welcome_show_thumbnail)
     : type === "leave"
-    ? Boolean(config.leave_show_thumbnail)
+    ? Boolean(config.leave_show_thumbnail ?? 1)
     : Boolean(config.dm_show_thumbnail);
 
   if (showThumb) {
@@ -238,12 +298,18 @@ export function buildWelcomePayload(config, member, type = "welcome") {
   }
 
   // Custom Embed Fields (Carl-bot / Dyno style)
-  if (type === "welcome" && config.welcome_embed_fields) {
+  const fieldsRaw = type === "welcome"
+    ? config.welcome_embed_fields
+    : type === "leave"
+    ? config.leave_embed_fields
+    : null;
+
+  if (fieldsRaw) {
     let fieldsArray = [];
     try {
-      fieldsArray = typeof config.welcome_embed_fields === "string"
-        ? JSON.parse(config.welcome_embed_fields || "[]")
-        : (config.welcome_embed_fields || []);
+      fieldsArray = typeof fieldsRaw === "string"
+        ? JSON.parse(fieldsRaw || "[]")
+        : (fieldsRaw || []);
     } catch (_) {
       fieldsArray = [];
     }
@@ -279,7 +345,7 @@ export function buildWelcomePayload(config, member, type = "welcome") {
   const rawFooter = type === "welcome"
     ? config.welcome_embed_footer
     : type === "leave"
-    ? config.leave_embed_footer
+    ? (config.leave_embed_footer || "User ID: {id} • Remaining: {memberCount} members")
     : config.dm_embed_footer;
 
   if (rawFooter) {

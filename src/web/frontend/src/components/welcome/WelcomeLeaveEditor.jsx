@@ -1,5 +1,5 @@
 import React from "react";
-import { UserMinus, Palette, Image as ImageIcon } from "lucide-react";
+import { UserMinus, Palette, Image as ImageIcon, Sparkles, LayoutTemplate, HelpCircle } from "lucide-react";
 import WelcomeVariableBar from "./WelcomeVariableBar";
 
 const COLOR_PRESETS = [
@@ -18,6 +18,28 @@ export default function WelcomeLeaveEditor({
 }) {
   const textChannels = channels.filter((c) => c.type === 0 || c.type === "GUILD_TEXT" || !c.type);
 
+  const applyTemplate = (type) => {
+    if (type === "audit") {
+      updateConfig("leave_is_embed", true);
+      updateConfig("leave_embed_title", "🚪 Member Departed");
+      updateConfig(
+        "leave_message",
+        "## 🚪 {displayName} has left the server\n\n> 👤 **User:** {user} (`{username}`)\n> 🆔 **User ID:** `{id}`\n> 🏷️ **Normal Name:** {displayName}\n> 🛡️ **Roles:** {roles}\n> ⏳ **Time on Server:** {joinedAge}\n> 👥 **Remaining Members:** #{memberCount}"
+      );
+      updateConfig("leave_embed_footer", "User ID: {id} • Remaining: {memberCount} members");
+      updateConfig("leave_show_thumbnail", true);
+    } else if (type === "compact") {
+      updateConfig("leave_is_embed", true);
+      updateConfig("leave_embed_title", "Goodbye {username}!");
+      updateConfig(
+        "leave_message",
+        "### {displayName} ({user}) left {server}\n\n**Roles held:** {roles}\n**User ID:** `{id}`\n\nWe are now down to **{memberCount}** members."
+      );
+      updateConfig("leave_embed_footer", "Remaining: {memberCount} members");
+      updateConfig("leave_show_thumbnail", true);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Enable Toggle & Target Channel */}
@@ -30,7 +52,7 @@ export default function WelcomeLeaveEditor({
             <div>
               <h2 className="text-base font-bold text-white">Goodbye & Leave Dispatch</h2>
               <p className="text-xs text-slate-400">
-                Log member departures in an administrative channel or public farewell room.
+                Log member departures with rich details, user IDs, nicknames, and role audit history.
               </p>
             </div>
           </div>
@@ -84,9 +106,9 @@ export default function WelcomeLeaveEditor({
         </div>
       </div>
 
-      {/* Message Content */}
+      {/* Message Content & Styling */}
       <div className="p-6 rounded-3xl bg-slate-900/60 border border-white/[0.08] backdrop-blur-xl space-y-5">
-        <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/[0.06]">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             <span>Goodbye Message Styling</span>
             {config.leave_is_embed && (
@@ -95,6 +117,28 @@ export default function WelcomeLeaveEditor({
               </span>
             )}
           </h3>
+
+          {/* Quick Preset Templates */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-400 flex items-center gap-1">
+              <LayoutTemplate className="w-3 h-3 text-indigo-400" />
+              Presets:
+            </span>
+            <button
+              type="button"
+              onClick={() => applyTemplate("audit")}
+              className="px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 text-xs font-medium transition-all"
+            >
+              🛡️ Role & ID Audit
+            </button>
+            <button
+              type="button"
+              onClick={() => applyTemplate("compact")}
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/10 text-xs font-medium transition-all"
+            >
+              💬 Compact
+            </button>
+          </div>
         </div>
 
         {/* Variables */}
@@ -113,7 +157,7 @@ export default function WelcomeLeaveEditor({
                   type="text"
                   value={config.leave_embed_title || ""}
                   onChange={(e) => updateConfig("leave_embed_title", e.target.value)}
-                  placeholder="Goodbye!"
+                  placeholder="🚪 Member Departed"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-white/10 text-white text-xs focus:outline-none focus:border-rose-500 transition-all"
                 />
               </div>
@@ -140,7 +184,7 @@ export default function WelcomeLeaveEditor({
 
               {/* Presets */}
               <div className="md:col-span-3 flex flex-wrap items-center gap-2 pt-1">
-                <span className="text-[11px] text-slate-400 mr-1">Presets:</span>
+                <span className="text-[11px] text-slate-400 mr-1">Color Presets:</span>
                 {COLOR_PRESETS.map((p) => (
                   <button
                     key={p.hex}
@@ -163,8 +207,8 @@ export default function WelcomeLeaveEditor({
         {/* Message Text */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-semibold text-slate-300">
-              {config.leave_is_embed ? "Embed Description" : "Leave Message Text"}{" "}
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
+              <span>{config.leave_is_embed ? "Embed Description" : "Leave Message Text"}</span>
               <span className="text-rose-400">*</span>
             </label>
             <span className="text-[10px] text-slate-400">
@@ -172,12 +216,24 @@ export default function WelcomeLeaveEditor({
             </span>
           </div>
           <textarea
-            rows={4}
+            rows={6}
             value={config.leave_message || ""}
             onChange={(e) => updateConfig("leave_message", e.target.value)}
-            placeholder="{username} has left the server. We are down to {memberCount} members."
+            placeholder="## 🚪 {displayName} has left the server&#10;&#10;> 👤 **User:** {user} (`{username}`)&#10;> 🆔 **User ID:** `{id}`&#10;> 🏷️ **Normal Name:** {displayName}&#10;> 🛡️ **Roles:** {roles}&#10;> 👥 **Remaining Members:** #{memberCount}"
             className="w-full px-4 py-3 rounded-2xl bg-slate-800/80 border border-white/10 text-white text-xs font-mono leading-relaxed focus:outline-none focus:border-rose-500 transition-all"
           />
+
+          {/* Typography Help Note */}
+          <div className="mt-2 p-2.5 rounded-xl bg-slate-800/40 border border-white/5 flex items-start gap-2 text-[11px] text-slate-300">
+            <HelpCircle className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+            <div className="leading-snug">
+              <span className="font-semibold text-white">Large Font Sizing Tip:</span> Use Discord Markdown headers to make text bigger:{" "}
+              <code className="text-indigo-300 bg-black/30 px-1 py-0.5 rounded font-mono"># Giant Header</code>,{" "}
+              <code className="text-indigo-300 bg-black/30 px-1 py-0.5 rounded font-mono">## Big Header</code>, or{" "}
+              <code className="text-indigo-300 bg-black/30 px-1 py-0.5 rounded font-mono">### Medium Header</code>. Use{" "}
+              <code className="text-indigo-300 bg-black/30 px-1 py-0.5 rounded font-mono">&gt; text</code> for quotes.
+            </div>
+          </div>
         </div>
 
         {/* Leave Embed Footer & Thumbnail */}
@@ -191,7 +247,7 @@ export default function WelcomeLeaveEditor({
                 type="text"
                 value={config.leave_embed_footer || ""}
                 onChange={(e) => updateConfig("leave_embed_footer", e.target.value)}
-                placeholder="Remaining: {memberCount} members"
+                placeholder="User ID: {id} • Remaining: {memberCount} members"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-white/10 text-white text-xs focus:outline-none focus:border-rose-500"
               />
             </div>

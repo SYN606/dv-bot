@@ -39,11 +39,11 @@ const DEFAULT_WELCOME_CONFIG = {
 
   leave_enabled: 0,
   leave_channel_id: "",
-  leave_message: "{username} has left the server. We are down to {memberCount} members.",
-  leave_is_embed: 0,
-  leave_embed_title: "Goodbye!",
+  leave_message: "## 🚪 {displayName} has left the server\n\n> 👤 **User:** {user} (`{username}`)\n> 🆔 **User ID:** `{id}`\n> 🏷️ **Normal Name:** {displayName}\n> 🛡️ **Roles:** {roles}\n> 👥 **Remaining Members:** #{memberCount}",
+  leave_is_embed: 1,
+  leave_embed_title: "🚪 Member Departed",
   leave_embed_color: "#F43F5E",
-  leave_embed_footer: "Remaining: {memberCount} members",
+  leave_embed_footer: "User ID: {id} • Remaining: {memberCount} members",
   leave_show_thumbnail: 1,
   leave_image_url: "",
 
@@ -88,11 +88,11 @@ export function ensureWelcomeConfigTable() {
         dm_show_thumbnail INTEGER DEFAULT 1,
         leave_enabled INTEGER DEFAULT 0,
         leave_channel_id TEXT,
-        leave_message TEXT DEFAULT '{username} has left the server. We are down to {memberCount} members.',
-        leave_is_embed INTEGER DEFAULT 0,
-        leave_embed_title TEXT DEFAULT 'Goodbye!',
+        leave_message TEXT DEFAULT '## 🚪 {displayName} has left the server\\n\\n> 👤 **User:** {user} (\`{username}\`)\\n> 🆔 **User ID:** \`{id}\`\\n> 🏷️ **Normal Name:** {displayName}\\n> 🛡️ **Roles:** {roles}\\n> 👥 **Remaining Members:** #{memberCount}',
+        leave_is_embed INTEGER DEFAULT 1,
+        leave_embed_title TEXT DEFAULT '🚪 Member Departed',
         leave_embed_color TEXT DEFAULT '#F43F5E',
-        leave_embed_footer TEXT DEFAULT 'Remaining: {memberCount} members',
+        leave_embed_footer TEXT DEFAULT 'User ID: {id} • Remaining: {memberCount} members',
         leave_show_thumbnail INTEGER DEFAULT 1,
         leave_image_url TEXT,
         autorole_enabled INTEGER DEFAULT 0,
@@ -118,9 +118,12 @@ export function ensureWelcomeConfigTable() {
       "dm_embed_color TEXT DEFAULT '#10B981'",
       "dm_embed_footer TEXT DEFAULT '{server}'",
       "dm_show_thumbnail INTEGER DEFAULT 1",
-      "leave_embed_footer TEXT DEFAULT 'Remaining: {memberCount} members'",
+      "leave_embed_footer TEXT DEFAULT 'User ID: {id} • Remaining: {memberCount} members'",
       "leave_show_thumbnail INTEGER DEFAULT 1",
       "leave_image_url TEXT",
+      "leave_embed_author TEXT",
+      "leave_embed_author_icon TEXT",
+      "leave_embed_fields TEXT DEFAULT '[]'",
     ];
     for (const col of welcomeCols) {
       try {
@@ -343,16 +346,21 @@ welcomeRoutes.post("/guilds/:guildId/welcome/test", async (c) => {
     return c.json({ success: false, message: "Please save your configuration first before sending a test message." }, 400);
   }
 
-  // Create or resolve test member (using the current user in guild if cached, or a synthetic member)
-  const targetMember = botGuild.members.cache.get(user?.id) || {
-    id: user?.id || "0",
-    displayName: user?.username || "AdminTester",
+  // Create or resolve test member (using the current user in guild if cached, or a rich synthetic member with roles)
+  const actualMember = botGuild.members.cache.get(user?.id);
+  const targetMember = actualMember || {
+    id: user?.id || "104712345678901234",
+    displayName: user?.username ? `${user.username} (Staff Lead)` : "AdminTester",
+    nickname: user?.username ? `${user.username} (Staff Lead)` : "AdminTester",
     guild: botGuild,
+    joinedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 75),
+    roleNames: ["@Server Administrator", "@VIP Supporter", "@Community Mod"],
     user: {
-      id: user?.id || "0",
+      id: user?.id || "104712345678901234",
       username: user?.username || "AdminTester",
+      globalName: user?.username || "AdminTester",
       tag: user?.username ? `${user.username}#0000` : "AdminTester#0000",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 120),
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 180),
       displayAvatarURL: () => (user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=512` : "https://cdn.discordapp.com/embed/avatars/0.png"),
     },
   };

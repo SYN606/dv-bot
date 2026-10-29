@@ -6,12 +6,20 @@ export default function WelcomeSimulator({ config, guildMeta }) {
 
   const serverName = guildMeta?.name || "Cyber Guild";
   const memberCount = guildMeta?.memberCount ? String(guildMeta.memberCount) : "1,337";
+
   const mockUser = {
     username: "AlexDev",
+    displayName: "Alex (Staff Lead)",
+    normalName: "Alex (Staff Lead)",
+    nickname: "Alex (Staff Lead)",
     tag: "AlexDev#0001",
     id: "987654321012345678",
     avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=128&auto=format&fit=crop&q=80",
     accountAge: "6 months old",
+    joinedAge: "4 months ago",
+    roles: "@Moderator, @VIP Supporter, @Community Lead",
+    rolesMentions: "@Moderator @VIP Supporter",
+    roleCount: "3",
   };
 
   const serverIcon = guildMeta?.icon
@@ -22,7 +30,16 @@ export default function WelcomeSimulator({ config, guildMeta }) {
     if (!str || typeof str !== "string") return "";
     return str
       .replace(/\{user\}/gi, `@${mockUser.username}`)
+      .replace(/\{id\}/gi, mockUser.id)
+      .replace(/\{userId\}/gi, mockUser.id)
       .replace(/\{username\}/gi, mockUser.username)
+      .replace(/\{displayName\}/gi, mockUser.displayName)
+      .replace(/\{nickname\}/gi, mockUser.nickname)
+      .replace(/\{normalName\}/gi, mockUser.normalName)
+      .replace(/\{roles\}/gi, mockUser.roles)
+      .replace(/\{rolesMentions\}/gi, mockUser.rolesMentions)
+      .replace(/\{roleCount\}/gi, mockUser.roleCount)
+      .replace(/\{joinedAge\}/gi, mockUser.joinedAge)
       .replace(/\{tag\}/gi, mockUser.tag)
       .replace(/\{server\}/gi, serverName)
       .replace(/\{memberCount\}/gi, memberCount)
@@ -32,15 +49,73 @@ export default function WelcomeSimulator({ config, guildMeta }) {
       .replace(/\{accountAge\}/gi, mockUser.accountAge);
   };
 
-  // Rudimentary markdown bold and links
-  const renderMarkdown = (text) => {
+  const renderInline = (text, keyPrefix = "") => {
     if (!text) return null;
-    const parts = text.split(/(\*\*.*?\*\*)/g);
+    const parts = text.split(/(\*\*.*?\*\*|`.*?`|<@[!&]?\d+>|@\w+)/g);
     return parts.map((part, i) => {
+      const k = `${keyPrefix}-${i}`;
       if (part.startsWith("**") && part.endsWith("**")) {
-        return <strong key={i} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+        return <strong key={k} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return (
+          <code key={k} className="bg-[#1e1f22] text-[#e0e1e5] px-1 py-0.5 rounded font-mono text-[11px] border border-white/5">
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      if (part.startsWith("@") || part.startsWith("<@")) {
+        return (
+          <span key={k} className="bg-[#5865f2]/20 text-[#c9cdfb] font-medium px-1 py-0.5 rounded text-[12px]">
+            {part}
+          </span>
+        );
       }
       return part;
+    });
+  };
+
+  const renderMarkdown = (text) => {
+    if (!text) return null;
+    const lines = text.split("\n");
+    return lines.map((line, idx) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("# ")) {
+        return (
+          <h1 key={idx} className="text-base sm:text-lg font-black text-white tracking-tight mt-1.5 mb-1">
+            {renderInline(trimmed.slice(2), `h1-${idx}`)}
+          </h1>
+        );
+      }
+      if (trimmed.startsWith("## ")) {
+        return (
+          <h2 key={idx} className="text-sm sm:text-base font-bold text-white tracking-tight mt-1 mb-0.5">
+            {renderInline(trimmed.slice(3), `h2-${idx}`)}
+          </h2>
+        );
+      }
+      if (trimmed.startsWith("### ")) {
+        return (
+          <h3 key={idx} className="text-xs sm:text-sm font-bold text-slate-100 mt-1 mb-0.5">
+            {renderInline(trimmed.slice(4), `h3-${idx}`)}
+          </h3>
+        );
+      }
+      if (trimmed.startsWith("> ")) {
+        return (
+          <div key={idx} className="border-l-[3px] border-[#4e5058] pl-2.5 my-0.5 text-[13px] text-[#dbdee1] bg-white/[0.02] py-0.5 rounded-r">
+            {renderInline(trimmed.slice(2), `q-${idx}`)}
+          </div>
+        );
+      }
+      if (trimmed === "") {
+        return <div key={idx} className="h-1.5" />;
+      }
+      return (
+        <div key={idx} className="text-[#dbdee1] text-[13px] leading-relaxed">
+          {renderInline(line, `p-${idx}`)}
+        </div>
+      );
     });
   };
 
@@ -59,8 +134,8 @@ export default function WelcomeSimulator({ config, guildMeta }) {
         </span>
       </div>
 
-      {/* Mode Switcher Tabs */}
-      <div className="flex border-b border-white/[0.06] bg-slate-900/40 p-1.5 gap-1">
+      {/* Tabs for Preview Selector */}
+      <div className="p-2 bg-slate-900/90 border-b border-white/[0.04] flex items-center gap-1">
         <button
           type="button"
           onClick={() => setActiveTab("welcome")}
@@ -138,28 +213,25 @@ export default function WelcomeSimulator({ config, guildMeta }) {
               <span className="bg-[#5865F2] text-white text-[10px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wide">
                 BOT
               </span>
-              <span className="text-[11px] text-[#949ba4] ml-1">Today at 12:00 PM</span>
+              <span className="text-[#949ba4] text-[11px]">Today at 12:00 PM</span>
             </div>
 
             {/* TAB: Welcome */}
             {activeTab === "welcome" && (
               <div>
-                {/* Ping Outside Embed */}
                 {config.welcome_ping_user && (
-                  <div className="text-[#c9cdfb] font-medium bg-[#5865F2]/20 px-1 rounded inline-block mb-1.5 text-xs">
+                  <div className="text-[#c9cdfb] font-medium text-[13px] mb-1">
                     @{mockUser.username}
                   </div>
                 )}
 
-                {/* Plain Text Mode */}
                 {!config.welcome_is_embed ? (
                   <div className="text-[#dbdee1] whitespace-pre-wrap text-[13px] leading-relaxed">
                     {renderMarkdown(replaceVariables(config.welcome_message))}
                   </div>
                 ) : (
-                  /* Modern Rich Embed Mode */
                   <div
-                    className="mt-1.5 max-w-lg rounded-lg bg-[#2b2d31] border-l-4 p-4 shadow-md flex flex-col gap-2.5 relative overflow-hidden"
+                    className="mt-1.5 max-w-lg rounded-lg bg-[#2b2d31] border-l-4 p-4 shadow-md flex flex-col gap-2.5"
                     style={{ borderColor: config.welcome_embed_color || "#6366F1" }}
                   >
                     {/* Author Header */}
@@ -168,8 +240,8 @@ export default function WelcomeSimulator({ config, guildMeta }) {
                         {config.welcome_embed_author_icon && (
                           <img
                             src={replaceVariables(config.welcome_embed_author_icon)}
-                            alt=""
-                            className="w-5 h-5 rounded-full object-cover"
+                            alt="Author Icon"
+                            className="w-4 h-4 rounded-full object-cover"
                             onError={(e) => { e.currentTarget.style.display = "none"; }}
                           />
                         )}
@@ -177,23 +249,14 @@ export default function WelcomeSimulator({ config, guildMeta }) {
                       </div>
                     )}
 
-                    {/* Title with optional URL & Thumbnail */}
+                    {/* Title + Body + Thumbnail row */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         {config.welcome_embed_title && (
                           <div className="font-bold text-white text-[15px] mb-1 flex items-center gap-1.5">
-                            {config.welcome_embed_title_url ? (
-                              <a
-                                href={config.welcome_embed_title_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[#00a8fc] hover:underline flex items-center gap-1"
-                              >
-                                {replaceVariables(config.welcome_embed_title)}
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
-                            ) : (
-                              replaceVariables(config.welcome_embed_title)
+                            <span>{replaceVariables(config.welcome_embed_title)}</span>
+                            {config.welcome_embed_title_url && (
+                              <ExternalLink className="w-3.5 h-3.5 text-indigo-400 opacity-70" />
                             )}
                           </div>
                         )}
@@ -349,10 +412,10 @@ export default function WelcomeSimulator({ config, guildMeta }) {
                       </div>
 
                       {config.dm_show_thumbnail && (
-                        <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/10 shadow bg-slate-900/50">
+                        <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border border-white/10 shadow bg-slate-900/50">
                           <img
                             src={serverIcon}
-                            alt="Server"
+                            alt="Server Icon"
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -362,8 +425,6 @@ export default function WelcomeSimulator({ config, guildMeta }) {
                     {config.dm_embed_footer && (
                       <div className="pt-2 border-t border-white/5 text-[11px] text-[#949ba4] flex items-center gap-1.5">
                         <span>{replaceVariables(config.dm_embed_footer)}</span>
-                        <span>•</span>
-                        <span>Today at 12:00 PM</span>
                       </div>
                     )}
                   </div>

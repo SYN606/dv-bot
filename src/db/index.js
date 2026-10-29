@@ -612,7 +612,10 @@ function ensureSqliteSchema(sqlite) {
     "dm_show_thumbnail INTEGER DEFAULT 1",
     "leave_embed_footer TEXT DEFAULT 'Remaining: {memberCount} members'",
     "leave_show_thumbnail INTEGER DEFAULT 1",
-    "leave_image_url TEXT"
+    "leave_image_url TEXT",
+    "leave_embed_author TEXT",
+    "leave_embed_author_icon TEXT",
+    "leave_embed_fields TEXT DEFAULT '[]'"
   ];
   for (const col of welcomeCols) {
     try {

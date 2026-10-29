@@ -593,14 +593,17 @@ export const welcomeConfig = sqliteTable("welcome_config", {
   leave_enabled: integer("leave_enabled", { mode: "number" }).default(0),
   leave_channel_id: text("leave_channel_id"),
   leave_message: text("leave_message").default(
-    "{username} has left the server. We are down to {memberCount} members."
+    "## 🚪 {displayName} has left the server\n\n> 👤 **User:** {user} (`{username}`)\n> 🆔 **User ID:** `{id}`\n> 🏷️ **Normal Name:** {displayName}\n> 🛡️ **Roles:** {roles}\n> 👥 **Remaining Members:** #{memberCount}"
   ),
-  leave_is_embed: integer("leave_is_embed", { mode: "number" }).default(0),
-  leave_embed_title: text("leave_embed_title").default("Goodbye!"),
+  leave_is_embed: integer("leave_is_embed", { mode: "number" }).default(1),
+  leave_embed_title: text("leave_embed_title").default("🚪 Member Departed"),
   leave_embed_color: text("leave_embed_color").default("#F43F5E"),
-  leave_embed_footer: text("leave_embed_footer").default("Remaining: {memberCount} members"),
+  leave_embed_footer: text("leave_embed_footer").default("User ID: {id} • Remaining: {memberCount} members"),
   leave_show_thumbnail: integer("leave_show_thumbnail", { mode: "number" }).default(1),
   leave_image_url: text("leave_image_url"),
+  leave_embed_author: text("leave_embed_author"),
+  leave_embed_author_icon: text("leave_embed_author_icon"),
+  leave_embed_fields: text("leave_embed_fields").default("[]"),
 
   // Auto-Roles
   autorole_enabled: integer("autorole_enabled", { mode: "number" }).default(0),

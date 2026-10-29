@@ -2,14 +2,18 @@ import React, { useState } from "react";
 import { Sparkles, Copy, Check } from "lucide-react";
 
 export const WELCOME_VARIABLES = [
-  { tag: "{user}", label: "Mention User", desc: "Mentions new member (@User)" },
-  { tag: "{username}", label: "Username", desc: "Member's username" },
-  { tag: "{server}", label: "Server Name", desc: "Guild name" },
-  { tag: "{memberCount}", label: "Member Count", desc: "e.g. 1,420" },
-  { tag: "{memberCountOrdinal}", label: "Ordinal Count", desc: "e.g. 1st, 2nd, 100th" },
-  { tag: "{accountAge}", label: "Account Age", desc: "e.g. 4 months old" },
-  { tag: "{tag}", label: "User Tag", desc: "Username with discriminator" },
-  { tag: "{userAvatar}", label: "Avatar URL", desc: "Direct link to user avatar" },
+  { tag: "{id}", label: "User ID", desc: "Discord snowflake ID (e.g. 104712345678901234)" },
+  { tag: "{displayName}", label: "Display / Nickname", desc: "Server nickname or global display name" },
+  { tag: "{roles}", label: "Server Roles", desc: "All roles held on departure (e.g. @Mod, @VIP)" },
+  { tag: "{joinedAge}", label: "Time on Server", desc: "Time elapsed since member joined (e.g. 4 months old)" },
+  { tag: "{user}", label: "Mention User", desc: "Mentions member (<@User>)" },
+  { tag: "{username}", label: "Username", desc: "Member's Discord username" },
+  { tag: "{server}", label: "Server Name", desc: "Current Discord guild name" },
+  { tag: "{memberCount}", label: "Member Count", desc: "Total guild members count (e.g. 1,420)" },
+  { tag: "{memberCountOrdinal}", label: "Ordinal Count", desc: "Ordinal rank (e.g. 1st, 2nd, 100th)" },
+  { tag: "{accountAge}", label: "Account Age", desc: "Discord account age (e.g. 2 years old)" },
+  { tag: "{tag}", label: "User Tag", desc: "Username with discriminator or clean tag" },
+  { tag: "{userAvatar}", label: "Avatar URL", desc: "Direct link to member avatar" },
   { tag: "{serverIcon}", label: "Server Icon URL", desc: "Direct link to guild icon" },
 ];
 
@@ -33,7 +37,7 @@ export default function WelcomeVariableBar({ onInsertVariable }) {
           <Sparkles className="w-4 h-4 text-indigo-400" />
           <span className="text-xs font-semibold text-slate-200">Dynamic Variables</span>
           <span className="text-[10px] text-slate-400 hidden sm:inline">
-            (Click to insert into active message)
+            (Click any variable to insert)
           </span>
         </div>
         <span className="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
