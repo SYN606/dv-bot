@@ -6,6 +6,9 @@ import { apiCache } from "./cache.js";
 
 export const auditLogRoutes = new Hono();
 
+// In-flight Promise deduplication map to prevent concurrent spikes to Discord API
+const inFlightAuditRequests = new Map();
+
 // Friendly mapping of AuditLogEvent IDs to Category, Name, Severity, and Icon
 const ACTION_DEFINITIONS = {
   // Guild / Server
@@ -120,7 +123,7 @@ function serializeExtra(extra) {
 
 /**
  * GET /guilds/:guildId/audit-logs
- * Fetch real-time Discord internal audit logs with rich metadata, filtering, and diff tracking.
+ * Fetch real-time Discord internal audit logs with 429 rate limit shielding and deduplication.
  */
 auditLogRoutes.get("/guilds/:guildId/audit-logs", async (c) => {
   const guild = c.get("botGuild");
@@ -128,7 +131,7 @@ auditLogRoutes.get("/guilds/:guildId/audit-logs", async (c) => {
     return c.json({ error: "Guild not found on bot instance" }, 404);
   }
 
-  // Verify Bot's permissions
+  // 1. Verify Bot's permissions
   let botMember = guild.members.me;
   if (!botMember && guild.members?.fetchMe) {
     botMember = await guild.members.fetchMe().catch(() => null);
@@ -147,101 +150,159 @@ auditLogRoutes.get("/guilds/:guildId/audit-logs", async (c) => {
 
   const limitParam = parseInt(c.req.query("limit") || "50", 10);
   const limit = Math.min(Math.max(limitParam, 1), 100);
-  const actionParam = c.req.query("action");
-  const executorParam = c.req.query("executorId");
-  const beforeParam = c.req.query("before");
+  const actionParam = c.req.query("action") || "";
+  const executorParam = c.req.query("executorId") || "";
+  const beforeParam = c.req.query("before") || "";
 
-  let auditOptions = { limit };
-  if (actionParam && !isNaN(parseInt(actionParam, 10))) {
-    auditOptions.type = parseInt(actionParam, 10);
+  // 2. Check In-Memory Rate-Limit Shield Cache (15s TTL)
+  const cacheKey = `guild:${guild.id}:audit_logs:${limit}:${actionParam}:${executorParam}:${beforeParam}`;
+  const cachedResponse = apiCache.get(cacheKey);
+  if (cachedResponse) {
+    return c.json({ ...cachedResponse, cached: true });
   }
-  if (executorParam) {
-    auditOptions.user = executorParam;
-  }
-  if (beforeParam) {
-    auditOptions.before = beforeParam;
+
+  // Fallback cache key for 429 recovery
+  const fallbackKey = `guild:${guild.id}:audit_logs:latest_snapshot`;
+
+  // 3. Deduplicate in-flight requests (concurrent calls share the exact same promise)
+  let requestPromise = inFlightAuditRequests.get(cacheKey);
+
+  if (!requestPromise) {
+    let auditOptions = { limit };
+    if (actionParam && !isNaN(parseInt(actionParam, 10))) {
+      auditOptions.type = parseInt(actionParam, 10);
+    }
+    if (executorParam) {
+      auditOptions.user = executorParam;
+    }
+    if (beforeParam) {
+      auditOptions.before = beforeParam;
+    }
+
+    requestPromise = (async () => {
+      try {
+        const rawLogs = await guild.fetchAuditLogs(auditOptions);
+        const entries = [];
+        const stats = {
+          total: 0,
+          moderation: 0,
+          members: 0,
+          channels: 0,
+          roles: 0,
+          messages: 0,
+          server: 0,
+          other: 0,
+        };
+
+        const uniqueExecutors = new Map();
+
+        for (const entry of rawLogs.entries.values()) {
+          const actionInfo = formatActionInfo(entry.action);
+          stats.total += 1;
+          if (stats[actionInfo.category] !== undefined) {
+            stats[actionInfo.category] += 1;
+          } else {
+            stats.other += 1;
+          }
+
+          const executor = entry.executor
+            ? {
+                id: String(entry.executor.id),
+                username: entry.executor.username,
+                discriminator: entry.executor.discriminator,
+                tag: entry.executor.tag || entry.executor.username,
+                avatar: typeof entry.executor.displayAvatarURL === "function" ? entry.executor.displayAvatarURL({ size: 64 }) : null,
+                bot: Boolean(entry.executor.bot),
+              }
+            : null;
+
+          if (executor && !uniqueExecutors.has(executor.id)) {
+            uniqueExecutors.set(executor.id, executor);
+          }
+
+          const changes = Array.isArray(entry.changes)
+            ? entry.changes.map((ch) => ({
+                key: ch.key,
+                old: ch.old !== undefined ? ch.old : null,
+                new: ch.new !== undefined ? ch.new : null,
+              }))
+            : [];
+
+          entries.push({
+            id: String(entry.id),
+            action: entry.action,
+            actionName: actionInfo.name,
+            category: actionInfo.category,
+            severity: actionInfo.severity,
+            reason: entry.reason || null,
+            createdTimestamp: entry.createdTimestamp,
+            createdAt: entry.createdAt ? entry.createdAt.toISOString() : new Date(entry.createdTimestamp).toISOString(),
+            executor,
+            target: serializeTarget(entry.target, entry.targetType, entry.targetId),
+            targetType: entry.targetType,
+            changes,
+            extra: serializeExtra(entry.extra),
+          });
+        }
+
+        const availableActions = Object.entries(ACTION_DEFINITIONS).map(([id, info]) => ({
+          id: parseInt(id, 10),
+          name: info.name,
+          category: info.category,
+        }));
+
+        const result = {
+          missingPermission: false,
+          entries,
+          stats,
+          executors: Array.from(uniqueExecutors.values()),
+          availableActions,
+          lastId: entries.length > 0 ? entries[entries.length - 1].id : null,
+          rateLimited: false,
+        };
+
+        // Cache successful response for 15s to shield Discord rate limits
+        apiCache.set(cacheKey, result, 15000);
+        // Save latest snapshot as resilient fallback (persists 5 minutes)
+        apiCache.set(fallbackKey, result, 300000);
+
+        return result;
+      } catch (err) {
+        // 429 Rate Limit Shielding
+        const isRateLimited = err.status === 429 || err.code === 429 || err.message?.toLowerCase().includes("rate limit");
+        if (isRateLimited) {
+          console.warn(`[AUDIT LOGS] Discord 429 Rate Limit hit for guild ${guild.id}. Serving resilient cache fallback.`);
+          const fallback = apiCache.get(fallbackKey);
+          if (fallback) {
+            return {
+              ...fallback,
+              rateLimited: true,
+              retryAfter: 5,
+              cached: true,
+            };
+          }
+          return {
+            missingPermission: false,
+            rateLimited: true,
+            retryAfter: 5,
+            entries: [],
+            stats: { total: 0, moderation: 0, members: 0, channels: 0, roles: 0, messages: 0, server: 0 },
+            executors: [],
+            availableActions: [],
+          };
+        }
+        throw err;
+      } finally {
+        inFlightAuditRequests.delete(cacheKey);
+      }
+    })();
+
+    inFlightAuditRequests.set(cacheKey, requestPromise);
   }
 
   try {
-    const rawLogs = await guild.fetchAuditLogs(auditOptions);
-    const entries = [];
-    const stats = {
-      total: 0,
-      moderation: 0,
-      members: 0,
-      channels: 0,
-      roles: 0,
-      messages: 0,
-      server: 0,
-      other: 0,
-    };
-
-    const uniqueExecutors = new Map();
-
-    for (const entry of rawLogs.entries.values()) {
-      const actionInfo = formatActionInfo(entry.action);
-      stats.total += 1;
-      if (stats[actionInfo.category] !== undefined) {
-        stats[actionInfo.category] += 1;
-      } else {
-        stats.other += 1;
-      }
-
-      const executor = entry.executor
-        ? {
-            id: String(entry.executor.id),
-            username: entry.executor.username,
-            discriminator: entry.executor.discriminator,
-            tag: entry.executor.tag || entry.executor.username,
-            avatar: typeof entry.executor.displayAvatarURL === "function" ? entry.executor.displayAvatarURL({ size: 64 }) : null,
-            bot: Boolean(entry.executor.bot),
-          }
-        : null;
-
-      if (executor && !uniqueExecutors.has(executor.id)) {
-        uniqueExecutors.set(executor.id, executor);
-      }
-
-      const changes = Array.isArray(entry.changes)
-        ? entry.changes.map((ch) => ({
-            key: ch.key,
-            old: ch.old !== undefined ? ch.old : null,
-            new: ch.new !== undefined ? ch.new : null,
-          }))
-        : [];
-
-      entries.push({
-        id: String(entry.id),
-        action: entry.action,
-        actionName: actionInfo.name,
-        category: actionInfo.category,
-        severity: actionInfo.severity,
-        reason: entry.reason || null,
-        createdTimestamp: entry.createdTimestamp,
-        createdAt: entry.createdAt ? entry.createdAt.toISOString() : new Date(entry.createdTimestamp).toISOString(),
-        executor,
-        target: serializeTarget(entry.target, entry.targetType, entry.targetId),
-        targetType: entry.targetType,
-        changes,
-        extra: serializeExtra(entry.extra),
-      });
-    }
-
-    // Available action filters
-    const availableActions = Object.entries(ACTION_DEFINITIONS).map(([id, info]) => ({
-      id: parseInt(id, 10),
-      name: info.name,
-      category: info.category,
-    }));
-
-    return c.json({
-      missingPermission: false,
-      entries,
-      stats,
-      executors: Array.from(uniqueExecutors.values()),
-      availableActions,
-      lastId: entries.length > 0 ? entries[entries.length - 1].id : null,
-    });
+    const payload = await requestPromise;
+    return c.json(payload);
   } catch (err) {
     console.error("[AUDIT LOGS FETCH ERROR]:", err);
     return c.json({
@@ -255,15 +316,25 @@ auditLogRoutes.get("/guilds/:guildId/audit-logs", async (c) => {
 
 /**
  * GET /guilds/:guildId/audit-logs/config
- * Get moderation log channel configuration.
+ * Get moderation log channel configuration with in-memory caching to prevent DB exhaustion.
  */
 auditLogRoutes.get("/guilds/:guildId/audit-logs/config", async (c) => {
   const guildId = c.req.param("guildId");
+  const cacheKey = `guild:${guildId}:modlog_config`;
+  const cached = apiCache.get(cacheKey);
+  if (cached) {
+    return c.json(cached);
+  }
+
   const modLog = await ModerationLogConfig.findOne({ where: { guild_id: guildId } });
-  return c.json({
+  const payload = {
     modLogChannelId: modLog?.channel_id || "",
     enabled: Boolean(modLog?.enabled),
-  });
+  };
+
+  // Cache config for 60s
+  apiCache.set(cacheKey, payload, 60000);
+  return c.json(payload);
 });
 
 /**
@@ -286,7 +357,9 @@ auditLogRoutes.post("/guilds/:guildId/audit-logs/config", async (c) => {
     await ModerationLogConfig.destroy({ where: { guild_id: guildId } });
   }
 
+  // Invalidate caches immediately
   apiCache.delete(`guild:${guildId}:config`);
+  apiCache.delete(`guild:${guildId}:modlog_config`);
 
   return c.json({
     success: true,

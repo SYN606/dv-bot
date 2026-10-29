@@ -1,7 +1,7 @@
 import React from "react";
 import AuditLogEntryCard from "./AuditLogEntryCard";
 import EmptyState from "../ui/EmptyState";
-import { ShieldAlert, Layers, ExternalLink } from "lucide-react";
+import { ShieldAlert, Layers } from "lucide-react";
 import Button from "../ui/Button";
 
 export default function AuditLogsList({
@@ -9,6 +9,9 @@ export default function AuditLogsList({
   missingPermission = false,
   onResetFilters,
   onRefresh,
+  onFilterByExecutor,
+  onFilterByTarget,
+  onFilterByAction,
 }) {
   // If the bot lacks Discord ViewAuditLog permission
   if (missingPermission) {
@@ -72,7 +75,13 @@ export default function AuditLogsList({
   return (
     <div className="space-y-3.5 animate-in fade-in duration-300">
       {entries.map((entry) => (
-        <AuditLogEntryCard key={entry.id} entry={entry} />
+        <AuditLogEntryCard
+          key={entry.id}
+          entry={entry}
+          onFilterByExecutor={onFilterByExecutor}
+          onFilterByTarget={onFilterByTarget}
+          onFilterByAction={onFilterByAction}
+        />
       ))}
     </div>
   );

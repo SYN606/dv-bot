@@ -7,6 +7,20 @@ import {
   getGuildMeta,
 } from "../../api/client";
 
+// High Impact Actions: Bans, Kicks, Deletions, Role/Guild Deletions
+const HIGH_IMPACT_ACTIONS = [
+  20, // MemberKick
+  21, // MemberPrune
+  22, // MemberBanAdd
+  23, // MemberBanRemove
+  12, // ChannelDelete
+  15, // ChannelOverwriteDelete
+  32, // RoleDelete
+  73, // MessageBulkDelete
+  142, // AutoModRuleDelete
+  143, // AutoModBlockMessage
+];
+
 export function useAuditLogs(guildId, showToast) {
   const [entries, setEntries] = useState([]);
   const [stats, setStats] = useState({
@@ -23,21 +37,24 @@ export function useAuditLogs(guildId, showToast) {
   const [availableActions, setAvailableActions] = useState([]);
   const [channels, setChannels] = useState([]);
   const [missingPermission, setMissingPermission] = useState(false);
+  const [isRateLimited, setIsRateLimited] = useState(false);
 
   // Loading & Async
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
-  // Filters
+  // Modern Filter States (not traditional options)
   const [category, setCategory] = useState("all");
+  const [preset, setPreset] = useState("all"); // "all", "high_impact", "moderation_only", "staff_activity", "channel_perms", "deletions"
+  const [timeWindow, setTimeWindow] = useState("all"); // "all", "1h", "24h", "7d"
   const [actionType, setActionType] = useState("all");
   const [executorId, setExecutorId] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [hideBots, setHideBots] = useState(false);
   const [limit, setLimit] = useState(50);
 
-  // Auto-refresh
+  // Auto-refresh with Tab Visibility Awareness
   const [autoRefresh, setAutoRefresh] = useState(false);
   const autoRefreshTimerRef = useRef(null);
 
@@ -46,7 +63,7 @@ export function useAuditLogs(guildId, showToast) {
   const [savingConfig, setSavingConfig] = useState(false);
   const [testingLog, setTestingLog] = useState(false);
 
-  // Fetch Core Audit Logs
+  // Fetch Core Audit Logs (Rate-Limit Shielded)
   const fetchLogs = useCallback(
     async (isBackground = false) => {
       if (!guildId) return;
@@ -70,6 +87,17 @@ export function useAuditLogs(guildId, showToast) {
           setExecutors(res.executors || []);
           setAvailableActions(res.availableActions || []);
           setError(null);
+
+          if (res.rateLimited) {
+            setIsRateLimited(true);
+            showToast?.({
+              title: "Rate-Limit Shield Active",
+              message: "Discord audit API is cooling down. Serving fast cached snapshot.",
+              type: "warning",
+            });
+          } else {
+            setIsRateLimited(false);
+          }
         }
       } catch (err) {
         console.error("Failed to load audit logs:", err);
@@ -79,10 +107,10 @@ export function useAuditLogs(guildId, showToast) {
         setRefreshing(false);
       }
     },
-    [guildId, limit, actionType, executorId]
+    [guildId, limit, actionType, executorId, showToast]
   );
 
-  // Initial Load + Guild Metadata & Mod Log Config
+  // Initial Bootstrap: Logs + Channels + ModLog Config
   useEffect(() => {
     let mounted = true;
     setLoading(true);
@@ -103,6 +131,7 @@ export function useAuditLogs(guildId, showToast) {
           setStats(logsRes.stats || {});
           setExecutors(logsRes.executors || []);
           setAvailableActions(logsRes.availableActions || []);
+          setIsRateLimited(Boolean(logsRes.rateLimited));
         }
 
         if (configRes) {
@@ -130,74 +159,181 @@ export function useAuditLogs(guildId, showToast) {
     };
   }, [guildId, limit]);
 
-  // Handle dynamic filter changes that require server-side re-query
+  // Server-side refetch on parameter changes
   useEffect(() => {
     if (!loading) {
       fetchLogs();
     }
   }, [fetchLogs]);
 
-  // Handle Auto-Refresh Timer
+  // Handle Tab-Visibility Aware Auto-Refresh (Pauses when user changes browser tabs)
   useEffect(() => {
-    if (autoRefresh) {
-      autoRefreshTimerRef.current = setInterval(() => {
-        fetchLogs(true);
-      }, 20000); // Poll every 20 seconds
-    } else if (autoRefreshTimerRef.current) {
-      clearInterval(autoRefreshTimerRef.current);
-      autoRefreshTimerRef.current = null;
-    }
-
-    return () => {
+    if (!autoRefresh) {
       if (autoRefreshTimerRef.current) {
         clearInterval(autoRefreshTimerRef.current);
+        autoRefreshTimerRef.current = null;
       }
+      return;
+    }
+
+    const startTimer = () => {
+      if (!autoRefreshTimerRef.current) {
+        autoRefreshTimerRef.current = setInterval(() => {
+          if (document.visibilityState === "visible") {
+            fetchLogs(true);
+          }
+        }, 20000);
+      }
+    };
+
+    const stopTimer = () => {
+      if (autoRefreshTimerRef.current) {
+        clearInterval(autoRefreshTimerRef.current);
+        autoRefreshTimerRef.current = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchLogs(true);
+        startTimer();
+      } else {
+        stopTimer();
+      }
+    };
+
+    startTimer();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      stopTimer();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [autoRefresh, fetchLogs]);
 
-  // Client-side Filtered Entries (category, search, hideBots)
+  // Parse Omnisearch Tokens (by:username, target:name, reason:text, action:kick)
+  const parsedSearch = useMemo(() => {
+    const raw = searchQuery.trim();
+    if (!raw) return { terms: [], tokens: {} };
+
+    const tokens = {};
+    const terms = [];
+
+    // Match prefixes like by:name, target:general, reason:spam, action:kick, type:danger
+    const tokenRegex = /(\b(?:by|mod|target|for|reason|action|act|type|level):[^\s]+)/gi;
+    const parts = raw.split(tokenRegex);
+
+    for (const part of parts) {
+      if (!part) continue;
+      const match = part.match(/^([a-z]+):(.*)$/i);
+      if (match) {
+        const key = match[1].toLowerCase();
+        const val = match[2].toLowerCase();
+        if (["by", "mod"].includes(key)) tokens.by = val;
+        else if (["target", "for"].includes(key)) tokens.target = val;
+        else if (["reason"].includes(key)) tokens.reason = val;
+        else if (["action", "act"].includes(key)) tokens.action = val;
+        else if (["type", "level"].includes(key)) tokens.level = val;
+      } else {
+        const trimmed = part.trim().toLowerCase();
+        if (trimmed) terms.push(trimmed);
+      }
+    }
+
+    return { terms, tokens };
+  }, [searchQuery]);
+
+  // Client-Side Filtered & Processed Entries with Time Window, Presets & Tokenized Search
   const filteredEntries = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const now = Date.now();
+    const { terms, tokens } = parsedSearch;
 
     return entries.filter((entry) => {
-      // 1. Category Filter
+      // 1. Time Window Filter
+      if (timeWindow !== "all") {
+        const entryTime = entry.createdTimestamp || new Date(entry.createdAt).getTime();
+        const elapsed = now - entryTime;
+        if (timeWindow === "1h" && elapsed > 60 * 60 * 1000) return false;
+        if (timeWindow === "24h" && elapsed > 24 * 60 * 60 * 1000) return false;
+        if (timeWindow === "7d" && elapsed > 7 * 24 * 60 * 60 * 1000) return false;
+      }
+
+      // 2. Smart Presets Filter
+      if (preset === "high_impact") {
+        if (!HIGH_IMPACT_ACTIONS.includes(entry.action)) return false;
+      } else if (preset === "moderation_only") {
+        if (entry.category !== "moderation") return false;
+      } else if (preset === "staff_activity") {
+        if (!["members", "roles"].includes(entry.category)) return false;
+      } else if (preset === "channel_perms") {
+        if (entry.category !== "channels") return false;
+      } else if (preset === "deletions") {
+        if (entry.category !== "messages" && !entry.actionName.toLowerCase().includes("delete")) return false;
+      }
+
+      // 3. Category Filter
       if (category !== "all" && entry.category !== category) {
         return false;
       }
 
-      // 2. Hide Bots Filter
+      // 4. Hide Bots Filter
       if (hideBots && entry.executor?.bot) {
         return false;
       }
 
-      // 3. Search Query Filter
-      if (q) {
-        const executorMatch =
-          entry.executor?.username?.toLowerCase().includes(q) ||
-          entry.executor?.tag?.toLowerCase().includes(q) ||
-          entry.executor?.id?.includes(q);
+      // 5. Tokenized Search Filters
+      if (tokens.by) {
+        const byMatch =
+          entry.executor?.username?.toLowerCase().includes(tokens.by) ||
+          entry.executor?.tag?.toLowerCase().includes(tokens.by) ||
+          entry.executor?.id?.includes(tokens.by);
+        if (!byMatch) return false;
+      }
 
+      if (tokens.target) {
         const targetMatch =
-          entry.target?.name?.toLowerCase().includes(q) ||
-          entry.target?.id?.includes(q);
+          entry.target?.name?.toLowerCase().includes(tokens.target) ||
+          entry.target?.id?.includes(tokens.target);
+        if (!targetMatch) return false;
+      }
 
-        const actionMatch = entry.actionName?.toLowerCase().includes(q);
-        const reasonMatch = entry.reason?.toLowerCase().includes(q);
+      if (tokens.reason) {
+        if (!entry.reason?.toLowerCase().includes(tokens.reason)) return false;
+      }
 
-        const changeKeyMatch = entry.changes?.some((ch) =>
-          ch.key?.toLowerCase().includes(q)
-        );
+      if (tokens.action) {
+        if (!entry.actionName.toLowerCase().includes(tokens.action)) return false;
+      }
 
-        if (!executorMatch && !targetMatch && !actionMatch && !reasonMatch && !changeKeyMatch) {
-          return false;
+      if (tokens.level) {
+        if (entry.severity.toLowerCase() !== tokens.level) return false;
+      }
+
+      // 6. Free text terms (must match all free terms)
+      if (terms.length > 0) {
+        const executorStr = `${entry.executor?.username || ""} ${entry.executor?.tag || ""} ${entry.executor?.id || ""}`.toLowerCase();
+        const targetStr = `${entry.target?.name || ""} ${entry.target?.id || ""}`.toLowerCase();
+        const actionStr = entry.actionName?.toLowerCase() || "";
+        const reasonStr = entry.reason?.toLowerCase() || "";
+        const changesStr = (entry.changes || [])
+          .map((c) => `${c.key} ${c.old} ${c.new}`)
+          .join(" ")
+          .toLowerCase();
+
+        const combinedHaystack = `${executorStr} ${targetStr} ${actionStr} ${reasonStr} ${changesStr}`;
+
+        for (const term of terms) {
+          if (!combinedHaystack.includes(term)) {
+            return false;
+          }
         }
       }
 
       return true;
     });
-  }, [entries, category, hideBots, searchQuery]);
+  }, [entries, category, preset, timeWindow, hideBots, parsedSearch]);
 
-  // Save Moderation Log Config
+  // Save Moderation Log Config (Caches in apiCache on backend)
   const saveModLogConfig = async (newChannelId) => {
     setSavingConfig(true);
     try {
@@ -252,6 +388,16 @@ export function useAuditLogs(guildId, showToast) {
     }
   };
 
+  // Quick Helper to inject tokens into Omnisearch
+  const appendSearchToken = useCallback((prefix, value) => {
+    setSearchQuery((prev) => {
+      const cleanVal = String(value).replace(/\s+/g, "");
+      const token = `${prefix}:${cleanVal}`;
+      if (prev.includes(token)) return prev;
+      return prev ? `${prev.trim()} ${token}` : token;
+    });
+  }, []);
+
   // Export to JSON
   const exportToJson = useCallback(() => {
     try {
@@ -259,7 +405,7 @@ export function useAuditLogs(guildId, showToast) {
         guildId,
         exportedAt: new Date().toISOString(),
         totalEntries: filteredEntries.length,
-        filters: { category, actionType, executorId, hideBots, searchQuery },
+        filters: { category, preset, timeWindow, actionType, executorId, hideBots, searchQuery },
         entries: filteredEntries,
       };
 
@@ -283,16 +429,17 @@ export function useAuditLogs(guildId, showToast) {
         type: "error",
       });
     }
-  }, [guildId, filteredEntries, category, actionType, executorId, hideBots, searchQuery, showToast]);
+  }, [guildId, filteredEntries, category, preset, timeWindow, actionType, executorId, hideBots, searchQuery, showToast]);
 
   // Export to CSV
   const exportToCsv = useCallback(() => {
     try {
-      const headers = ["Timestamp", "Action", "Category", "Executor Tag", "Executor ID", "Target Name", "Target ID", "Reason", "Changes Count"];
+      const headers = ["Timestamp", "Action", "Category", "Severity", "Executor Tag", "Executor ID", "Target Name", "Target ID", "Reason", "Changes Count"];
       const rows = filteredEntries.map((e) => [
         `"${e.createdAt}"`,
         `"${e.actionName}"`,
         `"${e.category}"`,
+        `"${e.severity}"`,
         `"${e.executor?.tag || e.executor?.username || 'Unknown'}"`,
         `"${e.executor?.id || ''}"`,
         `"${e.target?.name || ''}"`,
@@ -333,12 +480,17 @@ export function useAuditLogs(guildId, showToast) {
     availableActions,
     channels,
     missingPermission,
+    isRateLimited,
     loading,
     refreshing,
     error,
-    // Filters & Setters
+    // Modern Filter States & Setters
     category,
     setCategory,
+    preset,
+    setPreset,
+    timeWindow,
+    setTimeWindow,
     actionType,
     setActionType,
     executorId,
@@ -349,6 +501,8 @@ export function useAuditLogs(guildId, showToast) {
     setHideBots,
     limit,
     setLimit,
+    // Omnisearch token helper
+    appendSearchToken,
     // Auto-refresh
     autoRefresh,
     setAutoRefresh,

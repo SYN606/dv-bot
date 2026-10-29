@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuditLogs } from "../../hooks/audit-logs";
 import { PageError, PageSkeleton } from "../../components/ui";
+import { Zap } from "lucide-react";
 
 import {
   AuditLogsHeader,
@@ -21,11 +22,16 @@ export default function AuditLogsPage({ showToast }) {
     availableActions,
     channels,
     missingPermission,
+    isRateLimited,
     loading,
     refreshing,
     error,
     category,
     setCategory,
+    preset,
+    setPreset,
+    timeWindow,
+    setTimeWindow,
     actionType,
     setActionType,
     executorId,
@@ -36,6 +42,7 @@ export default function AuditLogsPage({ showToast }) {
     setHideBots,
     limit,
     setLimit,
+    appendSearchToken,
     autoRefresh,
     setAutoRefresh,
     modLogConfig,
@@ -50,6 +57,8 @@ export default function AuditLogsPage({ showToast }) {
 
   const handleResetFilters = () => {
     setCategory("all");
+    setPreset("all");
+    setTimeWindow("all");
     setActionType("all");
     setExecutorId("all");
     setSearchQuery("");
@@ -76,6 +85,25 @@ export default function AuditLogsPage({ showToast }) {
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-300 pb-20">
+      {/* Rate-Limit Shield Notification (Non-intrusive) */}
+      {isRateLimited && (
+        <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              <strong>Discord Rate-Limit Shield:</strong> Serving high-speed cached snapshot to prevent Discord API cooldowns.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={refresh}
+            className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-semibold text-[11px] transition-colors shrink-0"
+          >
+            Retry Live
+          </button>
+        </div>
+      )}
+
       {/* 1. Header with Stats, Auto-Refresh, Mod Log Config, and Export */}
       <AuditLogsHeader
         stats={stats}
@@ -89,10 +117,14 @@ export default function AuditLogsPage({ showToast }) {
         modLogChannelName={currentModLogChannel?.name}
       />
 
-      {/* 2. Advanced Filters: Categories, Search, Action, Executor, Hide Bots */}
+      {/* 2. Modern Filter Architecture: Omnisearch, Smart Presets, Heatline & Custom Popovers */}
       <AuditLogFilters
         category={category}
         onSelectCategory={setCategory}
+        preset={preset}
+        onSelectPreset={setPreset}
+        timeWindow={timeWindow}
+        onSelectTimeWindow={setTimeWindow}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         actionType={actionType}
@@ -106,14 +138,18 @@ export default function AuditLogsPage({ showToast }) {
         limit={limit}
         onLimitChange={setLimit}
         totalResults={entries.length}
+        categoryStats={stats}
       />
 
-      {/* 3. Audit Log Feed & Timeline */}
+      {/* 3. Audit Log Feed & Timeline with Interactive Token Clicks */}
       <AuditLogsList
         entries={entries}
         missingPermission={missingPermission}
         onResetFilters={handleResetFilters}
         onRefresh={refresh}
+        onFilterByExecutor={(val) => appendSearchToken("by", val)}
+        onFilterByTarget={(val) => appendSearchToken("target", val)}
+        onFilterByAction={(val) => appendSearchToken("action", val)}
       />
 
       {/* 4. Mod Log Channel Configuration Modal */}

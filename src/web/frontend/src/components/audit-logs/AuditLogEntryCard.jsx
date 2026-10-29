@@ -8,12 +8,13 @@ import {
   Sparkles,
   MessageSquare,
   Bot,
-  AlertTriangle,
   Clock,
   ArrowRight,
   PlusCircle,
   MinusCircle,
   Info,
+  Copy,
+  Check,
 } from "lucide-react";
 import Badge from "../ui/Badge";
 
@@ -66,14 +67,27 @@ function formatRelativeTime(dateString) {
   }
 }
 
-export default function AuditLogEntryCard({ entry }) {
+export default function AuditLogEntryCard({
+  entry,
+  onFilterByExecutor,
+  onFilterByTarget,
+  onFilterByAction,
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
   const Icon = getCategoryIcon(entry.category, entry.severity);
 
   const hasDiffs = (entry.changes && entry.changes.length > 0) || entry.extra;
 
+  const handleCopyId = (e) => {
+    e.stopPropagation();
+    navigator.clipboard?.writeText(entry.id);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
+  };
+
   return (
-    <div className="glass-panel rounded-2xl border border-white/[0.08] bg-slate-900/60 hover:bg-slate-900/80 transition-all p-4 sm:p-5 space-y-3.5 shadow-md shadow-black/20">
+    <div className="glass-panel rounded-2xl border border-white/[0.08] bg-slate-900/60 hover:bg-slate-900/80 transition-all p-4 sm:p-5 space-y-3.5 shadow-md shadow-black/20 group">
       {/* Top Meta Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center gap-3">
@@ -95,9 +109,14 @@ export default function AuditLogEntryCard({ entry }) {
           {/* Action Name and Badges */}
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold text-white tracking-tight">
+              <button
+                type="button"
+                onClick={() => onFilterByAction?.(entry.actionName)}
+                className="text-sm font-bold text-white tracking-tight hover:text-indigo-300 transition-colors text-left"
+                title="Filter by this action type"
+              >
                 {entry.actionName}
-              </span>
+              </button>
               <Badge variant={getSeverityBadge(entry.severity)} size="sm">
                 {entry.category.toUpperCase()}
               </Badge>
@@ -105,20 +124,35 @@ export default function AuditLogEntryCard({ entry }) {
           </div>
         </div>
 
-        {/* Timestamp */}
-        <div
-          className="flex items-center gap-1.5 text-xs text-slate-400 shrink-0 font-mono"
-          title={new Date(entry.createdAt).toLocaleString()}
-        >
-          <Clock className="w-3.5 h-3.5 text-slate-500" />
-          <span>{formatRelativeTime(entry.createdAt)}</span>
+        {/* Timestamp & Copy ID */}
+        <div className="flex items-center gap-2.5 text-xs text-slate-400 shrink-0 font-mono">
+          <button
+            type="button"
+            onClick={handleCopyId}
+            className="p-1 rounded-md hover:bg-white/10 text-slate-500 hover:text-slate-300 transition-colors"
+            title="Copy Audit Event ID"
+          >
+            {copiedId ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
+          <div
+            className="flex items-center gap-1.5"
+            title={new Date(entry.createdAt).toLocaleString()}
+          >
+            <Clock className="w-3.5 h-3.5 text-slate-500" />
+            <span>{formatRelativeTime(entry.createdAt)}</span>
+          </div>
         </div>
       </div>
 
-      {/* Narrative Row: Executor -> Target */}
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs bg-slate-950/50 p-3 rounded-xl border border-white/5">
-        {/* Executor */}
-        <div className="flex items-center gap-2">
+      {/* Narrative Row: Executor -> Target with interactive filter pills */}
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs bg-slate-950/60 p-3 rounded-xl border border-white/5">
+        {/* Executor Pill */}
+        <button
+          type="button"
+          onClick={() => onFilterByExecutor?.(entry.executor?.username || entry.executor?.tag)}
+          className="flex items-center gap-2 hover:bg-white/10 px-2 py-1 rounded-lg transition-colors group/exec"
+          title="Filter all actions by this moderator"
+        >
           {entry.executor?.avatar ? (
             <img
               src={entry.executor.avatar}
@@ -130,7 +164,7 @@ export default function AuditLogEntryCard({ entry }) {
               ?
             </div>
           )}
-          <span className="font-semibold text-white">
+          <span className="font-semibold text-white group-hover/exec:text-indigo-300 transition-colors">
             {entry.executor?.tag || entry.executor?.username || "Unknown Moderator"}
           </span>
           {entry.executor?.bot && (
@@ -138,20 +172,25 @@ export default function AuditLogEntryCard({ entry }) {
               BOT
             </span>
           )}
-        </div>
+        </button>
 
         <ArrowRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
 
-        {/* Target */}
+        {/* Target Pill */}
         {entry.target ? (
-          <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onFilterByTarget?.(entry.target.name || entry.target.id)}
+            className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-1 rounded-lg transition-colors group/target"
+            title="Filter all actions targeting this entity"
+          >
             <span className="text-slate-400">{entry.targetType || "Target"}:</span>
-            <span className="font-semibold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">
+            <span className="font-semibold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20 group-hover/target:border-indigo-400 transition-colors">
               {entry.target.name || entry.target.id}
             </span>
-          </div>
+          </button>
         ) : (
-          <span className="text-slate-500 italic">No specific target</span>
+          <span className="text-slate-500 italic px-2 py-1">No specific target</span>
         )}
 
         {/* Extra Information Tag (e.g. Channel or Count) */}
@@ -167,7 +206,7 @@ export default function AuditLogEntryCard({ entry }) {
         )}
       </div>
 
-      {/* Reason Box (if provided by moderator/action) */}
+      {/* Reason Box */}
       {entry.reason && (
         <div className="text-xs text-slate-300 bg-slate-950/70 border-l-2 border-indigo-500 rounded-r-xl px-3.5 py-2 italic font-sans flex items-start gap-2">
           <span className="text-slate-500 not-italic font-bold">Reason:</span>
@@ -235,7 +274,7 @@ export default function AuditLogEntryCard({ entry }) {
                     return (
                       <div
                         key={idx}
-                        className="text-xs p-2 rounded-lg bg-slate-900 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                        className="text-xs p-2.5 rounded-lg bg-slate-900 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
                       >
                         <span className="font-mono text-slate-300 font-semibold">
                           {change.key}
