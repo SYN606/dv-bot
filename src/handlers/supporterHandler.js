@@ -86,6 +86,7 @@ export async function deleteSupporterAnnouncement(guild, userId, type = "clan", 
 // User Clan details cache to eliminate repetitive REST /users/{id} API calls
 const userClanCache = new Map(); // userId -> { primary: object, timestamp: number }
 const CLAN_CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache TTL
+let clanRestBackoffUntil = 0; // Cooldown for /users/:id to avoid Discord 429 rate limits
 
 export function clearUserClanCache(userId = null) {
   if (userId) {
@@ -135,7 +136,7 @@ function formatMessage(template, member, role = null) {
   return result;
 }
 
-export async function checkGuildTag(member, force = false) {
+export async function checkGuildTag(member, force = false, allowRestFetch = true) {
   if (!member || member.user?.bot || !member.guild) return false;
   const guild = member.guild;
 
@@ -159,18 +160,27 @@ export async function checkGuildTag(member, force = false) {
       const cached = userClanCache.get(member.id);
       if (!force && cached && (now - cached.timestamp < CLAN_CACHE_TTL)) {
         primary = cached.primary;
-      } else if (member.client?.users?.fetch) {
-        const fetched = await member.client.users.fetch(member.id, { force: Boolean(force) }).catch(() => null);
-        if (fetched) {
-          user = fetched;
-          primary = fetched.primaryGuild || fetched.primary_guild || fetched.clan || null;
-          userClanCache.set(member.id, { primary, timestamp: now });
-
-          if (userClanCache.size > 10000) {
-            const cutoff = now - CLAN_CACHE_TTL;
-            for (const [k, v] of userClanCache.entries()) {
-              if (v.timestamp < cutoff) userClanCache.delete(k);
+      } else if (allowRestFetch && member.client?.users?.fetch && now > clanRestBackoffUntil) {
+        try {
+          const fetched = await member.client.users.fetch(member.id, { force: Boolean(force) }).catch((err) => {
+            if (err?.status === 429 || String(err?.message || '').includes('429')) {
+              clanRestBackoffUntil = Date.now() + 35000;
             }
+            return null;
+          });
+          if (fetched) {
+            user = fetched;
+            primary = fetched.primaryGuild || fetched.primary_guild || fetched.clan || null;
+          }
+        } catch (_) {}
+
+        // Cache result (even if null or failed) to prevent hammering REST /users/:id
+        userClanCache.set(member.id, { primary, timestamp: now });
+
+        if (userClanCache.size > 10000) {
+          const cutoff = now - CLAN_CACHE_TTL;
+          for (const [k, v] of userClanCache.entries()) {
+            if (v.timestamp < cutoff) userClanCache.delete(k);
           }
         }
       }
@@ -402,7 +412,8 @@ export async function syncAllSupporters(client) {
           if (changed) roleChanged = true;
         }
         if (config.clan_role_id) {
-          const changed = await checkGuildTag(member, false).catch(() => false);
+          // In bulk sync loop across all guild members, never execute REST user fetches
+          const changed = await checkGuildTag(member, false, false).catch(() => false);
           if (changed) roleChanged = true;
         }
 

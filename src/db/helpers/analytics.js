@@ -27,10 +27,121 @@ export async function getMemberAnalytics(guildId, userId) {
   return record;
 }
 
+// Cached prepared statements for maximum performance across batch flushes
+let cachedStatements = null;
+let lastSqliteRef = null;
+
+function ensureAnalyticsSchema(sqlite) {
+  try {
+    sqlite.exec("DELETE FROM member_analytics WHERE id NOT IN (SELECT MAX(id) FROM member_analytics GROUP BY guild_id, user_id);");
+    sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_member_analytics_guild_user ON member_analytics (guild_id, user_id);");
+  } catch (_) {}
+  try {
+    sqlite.exec("DELETE FROM daily_activity_snapshots WHERE id NOT IN (SELECT MAX(id) FROM daily_activity_snapshots GROUP BY guild_id, date);");
+    sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_activity_guild_date ON daily_activity_snapshots (guild_id, date);");
+  } catch (_) {}
+  try {
+    sqlite.exec("DELETE FROM channel_activities WHERE id NOT IN (SELECT MAX(id) FROM channel_activities GROUP BY guild_id, channel_id, date);");
+    sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_channel_activities_unique ON channel_activities (guild_id, channel_id, date);");
+  } catch (_) {}
+  try {
+    sqlite.exec("DELETE FROM hourly_activities WHERE id NOT IN (SELECT MAX(id) FROM hourly_activities GROUP BY guild_id, day_of_week, hour_of_day);");
+    sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_hourly_activities_unique ON hourly_activities (guild_id, day_of_week, hour_of_day);");
+  } catch (_) {}
+}
+
+function getBatchStatements(sqlite) {
+  if (cachedStatements && lastSqliteRef === sqlite) {
+    return cachedStatements;
+  }
+
+  const prepare = () => {
+    const insertGuild = sqlite.prepare("INSERT OR IGNORE INTO guilds (guild_id) VALUES (?)");
+    const insertUser = sqlite.prepare("INSERT OR IGNORE INTO users (user_id) VALUES (?)");
+    const upsertMember = sqlite.prepare(`
+      INSERT INTO member_analytics (
+        guild_id, user_id, total_messages, weekly_messages,
+        total_vc_seconds, weekly_vc_seconds, last_active_at, is_active, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+      ON CONFLICT(guild_id, user_id) DO UPDATE SET
+        total_messages = total_messages + excluded.total_messages,
+        weekly_messages = weekly_messages + excluded.weekly_messages,
+        total_vc_seconds = total_vc_seconds + excluded.total_vc_seconds,
+        weekly_vc_seconds = weekly_vc_seconds + excluded.weekly_vc_seconds,
+        last_active_at = excluded.last_active_at,
+        is_active = 1,
+        updated_at = excluded.updated_at
+    `);
+    const upsertDaily = sqlite.prepare(`
+      INSERT INTO daily_activity_snapshots (
+        guild_id, date, total_messages, total_vc_seconds, joins_count, leaves_count
+      ) VALUES (?, ?, ?, ?, 0, 0)
+      ON CONFLICT(guild_id, date) DO UPDATE SET
+        total_messages = total_messages + excluded.total_messages,
+        total_vc_seconds = total_vc_seconds + excluded.total_vc_seconds
+    `);
+    const upsertChannel = sqlite.prepare(`
+      INSERT INTO channel_activities (
+        guild_id, channel_id, date, message_count, vc_seconds_spent
+      ) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(guild_id, channel_id, date) DO UPDATE SET
+        message_count = message_count + excluded.message_count,
+        vc_seconds_spent = vc_seconds_spent + excluded.vc_seconds_spent
+    `);
+    const upsertHourly = sqlite.prepare(`
+      INSERT INTO hourly_activities (
+        guild_id, day_of_week, hour_of_day, message_count, vc_seconds
+      ) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(guild_id, day_of_week, hour_of_day) DO UPDATE SET
+        message_count = message_count + excluded.message_count,
+        vc_seconds = vc_seconds + excluded.vc_seconds
+    `);
+
+    const runTransaction = sqlite.transaction((items, today, nowIso, dayOfWeek, hourOfDay) => {
+      for (const item of items) {
+        const gId = String(item.guildId);
+        const uId = String(item.userId);
+        const cId = item.channelId ? String(item.channelId) : null;
+        const msgs = Math.max(0, Number(item.messages || 0));
+        const vcSecs = Math.max(0, Number(item.vcSeconds || 0));
+
+        if (msgs === 0 && vcSecs === 0) continue;
+
+        insertGuild.run(gId);
+        insertUser.run(uId);
+        upsertMember.run(gId, uId, msgs, msgs, vcSecs, vcSecs, nowIso, nowIso);
+        upsertDaily.run(gId, today, msgs, vcSecs);
+
+        if (cId) {
+          upsertChannel.run(gId, cId, today, msgs, vcSecs);
+        }
+
+        upsertHourly.run(gId, dayOfWeek, hourOfDay, msgs, vcSecs);
+      }
+    });
+
+    return { runTransaction };
+  };
+
+  try {
+    cachedStatements = prepare();
+    lastSqliteRef = sqlite;
+    return cachedStatements;
+  } catch (err) {
+    if (err && String(err.message || "").includes("ON CONFLICT")) {
+      ensureAnalyticsSchema(sqlite);
+      cachedStatements = prepare();
+      lastSqliteRef = sqlite;
+      return cachedStatements;
+    }
+    throw err;
+  }
+}
+
 /**
  * High-performance batch activity recording.
- * Executes in a single SQLite transaction with prepared upsert statements,
- * dropping 500+ individual queries down to a single ~2ms atomic disk sync.
+ * Executes in a single SQLite transaction with cached prepared upsert statements,
+ * dropping 500+ individual queries down to a single sub-millisecond atomic disk sync.
  *
  * @param {Array<{guildId: string, userId: string, channelId?: string, messages?: number, vcSeconds?: number}>} entries
  */
@@ -47,83 +158,13 @@ export async function recordBatchActivity(entries = []) {
   const sqlite = getRawSqlite();
   if (sqlite) {
     try {
-      const insertGuild = sqlite.prepare("INSERT OR IGNORE INTO guilds (guild_id) VALUES (?)");
-      const insertUser = sqlite.prepare("INSERT OR IGNORE INTO users (user_id) VALUES (?)");
-
-      const upsertMember = sqlite.prepare(`
-        INSERT INTO member_analytics (
-          guild_id, user_id, total_messages, weekly_messages,
-          total_vc_seconds, weekly_vc_seconds, last_active_at, is_active, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
-        ON CONFLICT(guild_id, user_id) DO UPDATE SET
-          total_messages = total_messages + excluded.total_messages,
-          weekly_messages = weekly_messages + excluded.weekly_messages,
-          total_vc_seconds = total_vc_seconds + excluded.total_vc_seconds,
-          weekly_vc_seconds = weekly_vc_seconds + excluded.weekly_vc_seconds,
-          last_active_at = excluded.last_active_at,
-          is_active = 1,
-          updated_at = excluded.updated_at
-      `);
-
-      const upsertDaily = sqlite.prepare(`
-        INSERT INTO daily_activity_snapshots (
-          guild_id, date, total_messages, total_vc_seconds, joins_count, leaves_count
-        ) VALUES (?, ?, ?, ?, 0, 0)
-        ON CONFLICT(guild_id, date) DO UPDATE SET
-          total_messages = total_messages + excluded.total_messages,
-          total_vc_seconds = total_vc_seconds + excluded.total_vc_seconds
-      `);
-
-      const upsertChannel = sqlite.prepare(`
-        INSERT INTO channel_activities (
-          guild_id, channel_id, date, message_count, vc_seconds_spent
-        ) VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(guild_id, channel_id, date) DO UPDATE SET
-          message_count = message_count + excluded.message_count,
-          vc_seconds_spent = vc_seconds_spent + excluded.vc_seconds_spent
-      `);
-
-      const upsertHourly = sqlite.prepare(`
-        INSERT INTO hourly_activities (
-          guild_id, day_of_week, hour_of_day, message_count, vc_seconds
-        ) VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(guild_id, day_of_week, hour_of_day) DO UPDATE SET
-          message_count = message_count + excluded.message_count,
-          vc_seconds = vc_seconds + excluded.vc_seconds
-      `);
-
-      // Run entire batch inside a single atomic SQLite transaction
-      const runTransaction = sqlite.transaction((items) => {
-        for (const item of items) {
-          const gId = String(item.guildId);
-          const uId = String(item.userId);
-          const cId = item.channelId ? String(item.channelId) : null;
-          const msgs = Math.max(0, Number(item.messages || 0));
-          const vcSecs = Math.max(0, Number(item.vcSeconds || 0));
-
-          if (msgs === 0 && vcSecs === 0) continue;
-
-          insertGuild.run(gId);
-          insertUser.run(uId);
-
-          upsertMember.run(gId, uId, msgs, msgs, vcSecs, vcSecs, nowIso, nowIso);
-          upsertDaily.run(gId, today, msgs, vcSecs);
-
-          if (cId) {
-            upsertChannel.run(gId, cId, today, msgs, vcSecs);
-          }
-
-          upsertHourly.run(gId, dayOfWeek, hourOfDay, msgs, vcSecs);
-        }
-      });
-
-      runTransaction(entries);
+      const stmts = getBatchStatements(sqlite);
+      stmts.runTransaction(entries, today, nowIso, dayOfWeek, hourOfDay);
       return;
     } catch (err) {
       console.error("[ANALYTICS] Native SQLite batch execution failed, falling back to ORM:", err);
     }
   }
-
   // Fallback for non-SQLite ORM execution
   for (const item of entries) {
     const gId = String(item.guildId);

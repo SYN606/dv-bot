@@ -11,6 +11,10 @@ import { apiCache } from "./cache.js";
 
 export const analyticsRoutes = new Hono();
 
+// Shared cache across requests to eliminate repetitive REST /users/{id} rate limits
+const analyticsUserCache = new Map(); // id -> { username, avatar, timestamp }
+let analyticsRestBackoffUntil = 0;
+
 // Detailed Analytics Telemetry, Server Insights & Leaderboards
 analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
   const guildId = c.req.param("guildId");
@@ -127,19 +131,36 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
   ]);
 
   const client = c.get("discordClient");
-  const userCache = new Map();
 
   const resolveUser = async (userId) => {
     const idStr = String(userId);
-    if (userCache.has(idStr)) return userCache.get(idStr);
+    const now = Date.now();
+    if (analyticsUserCache.has(idStr)) {
+      const cached = analyticsUserCache.get(idStr);
+      if (now - cached.timestamp < 3600000) {
+        return cached;
+      }
+    }
 
     let u = botGuild?.members?.cache?.get(idStr)?.user || client?.users?.cache?.get(idStr);
-    if (!u && client?.users?.fetch) {
-      // Catch error / 429 gracefully so we never crash the response
-      u = await client.users.fetch(idStr).catch(() => null);
+    if (!u && client?.users?.fetch && now > analyticsRestBackoffUntil) {
+      try {
+        u = await client.users.fetch(idStr).catch((err) => {
+          if (err?.status === 429 || String(err?.message || "").includes("429")) {
+            analyticsRestBackoffUntil = Date.now() + 35000;
+          }
+          return null;
+        });
+      } catch (_) {}
     }
-    userCache.set(idStr, u || null);
-    return u;
+
+    const resolved = {
+      username: u?.username || ('User ' + idStr.slice(-4)),
+      avatar: u?.displayAvatarURL?.({ size: 64 }) || null,
+      timestamp: now,
+    };
+    analyticsUserCache.set(idStr, resolved);
+    return resolved;
   };
 
   const formatChatter = async (m) => {

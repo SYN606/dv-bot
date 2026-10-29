@@ -545,17 +545,21 @@ function ensureSqliteSchema(sqlite) {
     sqlite.exec("ALTER TABLE warning_punishment_config ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP;");
   } catch (_) {}
 
-  // Unique indexes for existing SQLite databases to prevent analytics duplication
+  // Deduplicate and ensure unique indexes for existing SQLite databases to prevent analytics duplication & ON CONFLICT errors
   try {
+    sqlite.exec("DELETE FROM member_analytics WHERE id NOT IN (SELECT MAX(id) FROM member_analytics GROUP BY guild_id, user_id);");
     sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_member_analytics_guild_user ON member_analytics (guild_id, user_id);");
   } catch (_) {}
   try {
+    sqlite.exec("DELETE FROM daily_activity_snapshots WHERE id NOT IN (SELECT MAX(id) FROM daily_activity_snapshots GROUP BY guild_id, date);");
     sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_activity_guild_date ON daily_activity_snapshots (guild_id, date);");
   } catch (_) {}
   try {
+    sqlite.exec("DELETE FROM channel_activities WHERE id NOT IN (SELECT MAX(id) FROM channel_activities GROUP BY guild_id, channel_id, date);");
     sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_channel_activities_unique ON channel_activities (guild_id, channel_id, date);");
   } catch (_) {}
   try {
+    sqlite.exec("DELETE FROM hourly_activities WHERE id NOT IN (SELECT MAX(id) FROM hourly_activities GROUP BY guild_id, day_of_week, hour_of_day);");
     sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_hourly_activities_unique ON hourly_activities (guild_id, day_of_week, hour_of_day);");
   } catch (_) {}
 }
