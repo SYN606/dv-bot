@@ -8,7 +8,7 @@ function getIsoWeekString(date = new Date()) {
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
   return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
 }
 
@@ -17,6 +17,10 @@ function getIsoWeekString(date = new Date()) {
  * Deduplicated via ISO calendar week in system_meta to guarantee strictly one execution per week.
  */
 export class AutoRoleWorker {
+  public client: any;
+  public timer: any;
+  public isProcessing: boolean;
+  public intervalMs: number;
   constructor(client) {
     this.client = client;
     this.timer = null;
