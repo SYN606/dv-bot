@@ -22,7 +22,7 @@ export async function setSystemMeta(key, value) {
   const k = String(key);
   const v = String(value);
   try {
-    const [record, created] = await SystemMeta.findOrCreate({
+    const [record, created]: any = await SystemMeta.findOrCreate({
       where: { key: k },
       defaults: { key: k, value: v },
     });

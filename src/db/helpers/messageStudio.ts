@@ -86,7 +86,7 @@ export async function saveDraft(guildId, draftData, userId = null) {
     where: { guild_id: gId, id: draftId },
   });
 
-  const payload = {
+  const payload: Record<string, any> = {
     guild_id: gId,
     name: draftData.name ? String(draftData.name).slice(0, 100) : "Untitled Message",
     mode: ["normal", "embed", "hybrid"].includes(draftData.mode) ? draftData.mode : "normal",
@@ -191,7 +191,7 @@ export async function createTemplate(guildId, templateData, userId = null) {
   await ensureGuild(gId);
 
   const templateId = templateData.id ? String(templateData.id) : crypto.randomUUID();
-  const payload = {
+  const payload: Record<string, any> = {
     id: templateId,
     guild_id: gId,
     name: templateData.name ? String(templateData.name).slice(0, 100) : "Reusable Template",
@@ -219,7 +219,7 @@ export async function updateTemplate(guildId, templateId, templateData) {
   });
   if (!existing) return null;
 
-  const payload = {
+  const payload: Record<string, any> = {
     updated_at: new Date().toISOString(),
   };
 
@@ -279,7 +279,7 @@ export async function recordHistory(guildId, data) {
   const gId = String(guildId);
   await ensureGuild(gId);
 
-  const payload = {
+  const payload: Record<string, any> = {
     id: data.id || crypto.randomUUID(),
     guild_id: gId,
     message_id: data.message_id ? String(data.message_id) : null,
@@ -341,7 +341,7 @@ export async function updateHistoryStatus(guildId, identifier, status, { errorMe
 
   if (!row) return null;
 
-  const updates = {
+  const updates: Record<string, any> = {
     status: String(status),
     updated_at: new Date().toISOString(),
   };
@@ -381,7 +381,7 @@ export async function deleteHistoryEntry(guildId, historyId) {
 export async function clearHistory(guildId, { status = null } = {}) {
   const gId = String(guildId);
   await ensureGuild(gId);
-  const where = { guild_id: gId };
+  const where: Record<string, any> = { guild_id: gId };
   if (status) {
     where.status = String(status);
   }

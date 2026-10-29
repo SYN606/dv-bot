@@ -40,7 +40,7 @@ export async function setAutoRoleConfig(guildId, data) {
     top_vc_role_3: data.top_vc_role_3 || null,
   };
 
-  const [record, created] = await AutoRoleRewardConfig.findOrCreate({
+  const [record, created]: any = await AutoRoleRewardConfig.findOrCreate({
     where: { guild_id: gId },
     defaults: { guild_id: gId, ...defaults },
   });

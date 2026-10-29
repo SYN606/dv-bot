@@ -30,12 +30,12 @@ export async function getMediaOnlyChannel(guildId, channelId) {
   return channels.find((c) => String(c.channel_id) === String(channelId)) || null;
 }
 
-export async function setMediaOnlyChannel(guildId, channelId, options = {}) {
+export async function setMediaOnlyChannel(guildId: any, channelId: any, options: any = {}) {
   const gId = String(guildId);
   const cId = String(channelId);
   await ensureGuild(gId);
 
-  const [record, created] = await MediaOnlyChannel.findOrCreate({
+  const [record, created]: any = await MediaOnlyChannel.findOrCreate({
     where: { guild_id: gId, channel_id: cId },
     defaults: {
       guild_id: gId,

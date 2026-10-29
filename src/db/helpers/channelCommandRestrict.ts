@@ -35,7 +35,7 @@ export async function restrictCommand(guildId, channelId, commandName, scope = "
 
   await ensureGuild(gId);
 
-  const [record, created] = await RestrictedCommand.findOrCreate({
+  const [record, created]: any = await RestrictedCommand.findOrCreate({
     where: {
       guild_id: gId,
       channel_id: cId,
@@ -138,7 +138,7 @@ export async function bulkRestrictCommands(guildId, channelId, commandNames, sco
   let count = 0;
   await Promise.all(
     toAdd.map(async (cmd) => {
-      const [record, created] = await RestrictedCommand.findOrCreate({
+      const [record, created]: any = await RestrictedCommand.findOrCreate({
         where: {
           guild_id: gId,
           channel_id: cId,
