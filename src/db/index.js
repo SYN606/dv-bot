@@ -220,7 +220,7 @@ function ensureSqliteSchema(sqlite) {
       mode TEXT DEFAULT 'button',
       min_account_age_hours INTEGER DEFAULT 0,
       embed_title TEXT DEFAULT 'Server Verification',
-      embed_description TEXT DEFAULT '🛡️ Click the button below to verify and get access to the server.',
+      embed_description TEXT DEFAULT 'ðŸ›¡ï¸ Click the button below to verify and get access to the server.',
       button_label TEXT DEFAULT 'Verify Access',
       button_emoji TEXT DEFAULT '✅',
       verify_channel_id TEXT,
@@ -461,6 +461,57 @@ function ensureSqliteSchema(sqlite) {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS system_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS welcome_config (
+      guild_id TEXT PRIMARY KEY,
+      welcome_enabled INTEGER DEFAULT 0,
+      welcome_channel_id TEXT,
+      welcome_message TEXT DEFAULT 'Hey {user}, welcome to **{server}**! Glad to have you here. You are member #{memberCount}! 🎉',
+      welcome_is_embed INTEGER DEFAULT 1,
+      welcome_embed_title TEXT DEFAULT 'Welcome to {server}!',
+      welcome_embed_title_url TEXT,
+      welcome_embed_author TEXT,
+      welcome_embed_author_icon TEXT,
+      welcome_embed_author_url TEXT,
+      welcome_embed_color TEXT DEFAULT '#6366F1',
+      welcome_embed_footer TEXT DEFAULT 'Member #{memberCount}',
+      welcome_embed_footer_icon TEXT,
+      welcome_embed_fields TEXT DEFAULT '[]',
+      welcome_show_thumbnail INTEGER DEFAULT 1,
+      welcome_thumbnail_type TEXT DEFAULT 'user_avatar',
+      welcome_thumbnail_custom TEXT,
+      welcome_image_url TEXT,
+      welcome_ping_user INTEGER DEFAULT 1,
+      welcome_delete_seconds INTEGER DEFAULT 0,
+      welcome_show_timestamp INTEGER DEFAULT 1,
+      dm_enabled INTEGER DEFAULT 0,
+      dm_message TEXT DEFAULT 'Welcome to **{server}**, {username}! Please check out our rules and enjoy your stay.',
+      dm_is_embed INTEGER DEFAULT 0,
+      dm_embed_title TEXT DEFAULT 'Welcome to {server}!',
+      dm_embed_color TEXT DEFAULT '#10B981',
+      dm_embed_footer TEXT DEFAULT '{server}',
+      dm_show_thumbnail INTEGER DEFAULT 1,
+      leave_enabled INTEGER DEFAULT 0,
+      leave_channel_id TEXT,
+      leave_message TEXT DEFAULT '{username} has left the server. We are down to {memberCount} members.',
+      leave_is_embed INTEGER DEFAULT 0,
+      leave_embed_title TEXT DEFAULT 'Goodbye!',
+      leave_embed_color TEXT DEFAULT '#F43F5E',
+      leave_embed_footer TEXT DEFAULT 'Remaining: {memberCount} members',
+      leave_show_thumbnail INTEGER DEFAULT 1,
+      leave_image_url TEXT,
+      autorole_enabled INTEGER DEFAULT 0,
+      join_role_ids TEXT DEFAULT '[]',
+      bot_role_id TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   try {
@@ -532,8 +583,14 @@ function ensureSqliteSchema(sqlite) {
   } catch (_) {}
   try {
     sqlite.exec("ALTER TABLE channel_permission_snapshots ADD COLUMN expires_at TEXT;");
+  } catch (_) {}
+  try {
     sqlite.exec("CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);");
+  } catch (_) {}
+  try {
     sqlite.exec("CREATE TABLE IF NOT EXISTS auto_role_config (guild_id TEXT PRIMARY KEY, role_id TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);");
+  } catch (_) {}
+  try {
     sqlite.exec("CREATE TABLE IF NOT EXISTS welcome_config (guild_id TEXT PRIMARY KEY, welcome_enabled INTEGER DEFAULT 0, welcome_channel_id TEXT, welcome_message TEXT, welcome_is_embed INTEGER DEFAULT 1, welcome_embed_title TEXT, welcome_embed_color TEXT DEFAULT '#6366F1', welcome_embed_footer TEXT, welcome_show_thumbnail INTEGER DEFAULT 1, welcome_image_url TEXT, welcome_ping_user INTEGER DEFAULT 1, welcome_delete_seconds INTEGER DEFAULT 0, dm_enabled INTEGER DEFAULT 0, dm_message TEXT, leave_enabled INTEGER DEFAULT 0, leave_channel_id TEXT, leave_message TEXT, leave_is_embed INTEGER DEFAULT 0, leave_embed_title TEXT, leave_embed_color TEXT DEFAULT '#F43F5E', autorole_enabled INTEGER DEFAULT 0, join_role_ids TEXT DEFAULT '[]', bot_role_id TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);");
   } catch (_) {}
 

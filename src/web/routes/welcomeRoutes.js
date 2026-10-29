@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { WelcomeConfig } from "../../db/models/index.js";
 import { ensureGuild } from "../../db/helpers/common.js";
+import { getRawSqlite } from "../../db/index.js";
 import { apiCache } from "./cache.js";
 import { buildWelcomePayload, formatWelcomeText } from "../../utils/welcomeFormatter.js";
 
@@ -51,6 +52,102 @@ const DEFAULT_WELCOME_CONFIG = {
   bot_role_id: "",
 };
 
+export function ensureWelcomeConfigTable() {
+  const sqlite = getRawSqlite();
+  if (!sqlite) return;
+  try {
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS welcome_config (
+        guild_id TEXT PRIMARY KEY,
+        welcome_enabled INTEGER DEFAULT 0,
+        welcome_channel_id TEXT,
+        welcome_message TEXT DEFAULT 'Hey {user}, welcome to **{server}**! Glad to have you here. You are member #{memberCount}! 🎉',
+        welcome_is_embed INTEGER DEFAULT 1,
+        welcome_embed_title TEXT DEFAULT 'Welcome to {server}!',
+        welcome_embed_title_url TEXT,
+        welcome_embed_author TEXT,
+        welcome_embed_author_icon TEXT,
+        welcome_embed_author_url TEXT,
+        welcome_embed_color TEXT DEFAULT '#6366F1',
+        welcome_embed_footer TEXT DEFAULT 'Member #{memberCount}',
+        welcome_embed_footer_icon TEXT,
+        welcome_embed_fields TEXT DEFAULT '[]',
+        welcome_show_thumbnail INTEGER DEFAULT 1,
+        welcome_thumbnail_type TEXT DEFAULT 'user_avatar',
+        welcome_thumbnail_custom TEXT,
+        welcome_image_url TEXT,
+        welcome_ping_user INTEGER DEFAULT 1,
+        welcome_delete_seconds INTEGER DEFAULT 0,
+        welcome_show_timestamp INTEGER DEFAULT 1,
+        dm_enabled INTEGER DEFAULT 0,
+        dm_message TEXT DEFAULT 'Welcome to **{server}**, {username}! Please check out our rules and enjoy your stay.',
+        dm_is_embed INTEGER DEFAULT 0,
+        dm_embed_title TEXT DEFAULT 'Welcome to {server}!',
+        dm_embed_color TEXT DEFAULT '#10B981',
+        dm_embed_footer TEXT DEFAULT '{server}',
+        dm_show_thumbnail INTEGER DEFAULT 1,
+        leave_enabled INTEGER DEFAULT 0,
+        leave_channel_id TEXT,
+        leave_message TEXT DEFAULT '{username} has left the server. We are down to {memberCount} members.',
+        leave_is_embed INTEGER DEFAULT 0,
+        leave_embed_title TEXT DEFAULT 'Goodbye!',
+        leave_embed_color TEXT DEFAULT '#F43F5E',
+        leave_embed_footer TEXT DEFAULT 'Remaining: {memberCount} members',
+        leave_show_thumbnail INTEGER DEFAULT 1,
+        leave_image_url TEXT,
+        autorole_enabled INTEGER DEFAULT 0,
+        join_role_ids TEXT DEFAULT '[]',
+        bot_role_id TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    const welcomeCols = [
+      "welcome_embed_title_url TEXT",
+      "welcome_embed_author TEXT",
+      "welcome_embed_author_icon TEXT",
+      "welcome_embed_author_url TEXT",
+      "welcome_embed_footer_icon TEXT",
+      "welcome_embed_fields TEXT DEFAULT '[]'",
+      "welcome_thumbnail_type TEXT DEFAULT 'user_avatar'",
+      "welcome_thumbnail_custom TEXT",
+      "welcome_show_timestamp INTEGER DEFAULT 1",
+      "dm_is_embed INTEGER DEFAULT 0",
+      "dm_embed_title TEXT DEFAULT 'Welcome to {server}!'",
+      "dm_embed_color TEXT DEFAULT '#10B981'",
+      "dm_embed_footer TEXT DEFAULT '{server}'",
+      "dm_show_thumbnail INTEGER DEFAULT 1",
+      "leave_embed_footer TEXT DEFAULT 'Remaining: {memberCount} members'",
+      "leave_show_thumbnail INTEGER DEFAULT 1",
+      "leave_image_url TEXT",
+    ];
+    for (const col of welcomeCols) {
+      try {
+        sqlite.exec(`ALTER TABLE welcome_config ADD COLUMN ${col};`);
+      } catch (_) {}
+    }
+  } catch (err) {
+    console.error("[WELCOME SCHEMA BOOTSTRAP ERROR]:", err);
+  }
+}
+
+async function safeFindWelcomeConfig(guildId) {
+  try {
+    return await WelcomeConfig.findByPk(guildId);
+  } catch (err) {
+    if (String(err?.message || "").includes("no such table")) {
+      ensureWelcomeConfigTable();
+      try {
+        return await WelcomeConfig.findByPk(guildId);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
 // 1. GET /guilds/:guildId/welcome
 welcomeRoutes.get("/guilds/:guildId/welcome", async (c) => {
   const guildId = c.req.param("guildId");
@@ -60,8 +157,11 @@ welcomeRoutes.get("/guilds/:guildId/welcome", async (c) => {
     return c.json(cached);
   }
 
-  await ensureGuild(guildId);
-  const record = await WelcomeConfig.findByPk(guildId);
+  try {
+    await ensureGuild(guildId);
+  } catch (_) {}
+
+  const record = await safeFindWelcomeConfig(guildId);
   const raw = record ? record.toJSON() : {};
 
   let parsedJoinRoles = [];
@@ -137,7 +237,9 @@ welcomeRoutes.post("/guilds/:guildId/welcome", async (c) => {
   const guildId = c.req.param("guildId");
   const body = await c.req.json();
 
-  await ensureGuild(guildId);
+  try {
+    await ensureGuild(guildId);
+  } catch (_) {}
 
   const joinRolesSerialized = Array.isArray(body.join_role_ids)
     ? JSON.stringify(body.join_role_ids)
@@ -193,14 +295,28 @@ welcomeRoutes.post("/guilds/:guildId/welcome", async (c) => {
     updated_at: new Date().toISOString(),
   };
 
-  const existing = await WelcomeConfig.findByPk(guildId);
+  ensureWelcomeConfigTable();
+
+  let existing = await safeFindWelcomeConfig(guildId);
   if (existing) {
     await existing.update(updateData);
   } else {
-    await WelcomeConfig.create({
-      guild_id: guildId,
-      ...updateData,
-    });
+    try {
+      await WelcomeConfig.create({
+        guild_id: guildId,
+        ...updateData,
+      });
+    } catch (createErr) {
+      if (String(createErr?.message || "").includes("no such table")) {
+        ensureWelcomeConfigTable();
+        await WelcomeConfig.create({
+          guild_id: guildId,
+          ...updateData,
+        });
+      } else {
+        throw createErr;
+      }
+    }
   }
 
   apiCache.delete(`guild:${guildId}:welcome`);
@@ -222,7 +338,7 @@ welcomeRoutes.post("/guilds/:guildId/welcome/test", async (c) => {
     return c.json({ success: false, message: "Bot is not in this guild" }, 404);
   }
 
-  const config = await WelcomeConfig.findByPk(guildId);
+  const config = await safeFindWelcomeConfig(guildId);
   if (!config) {
     return c.json({ success: false, message: "Please save your configuration first before sending a test message." }, 400);
   }
