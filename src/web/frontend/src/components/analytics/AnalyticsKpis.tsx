@@ -65,9 +65,14 @@ export default function AnalyticsKpis({ summary, loading, timeframe = 7 }) {
           <div key={idx} className="glass-card p-6 rounded-2xl border border-white/5 relative overflow-hidden group">
             <Icon className="absolute top-6 right-6 w-16 h-16 text-white/2 -z-10 group-hover:scale-110 transition-transform" />
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                {kpi.title}
-              </h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white group-hover:scale-110 group-hover:shadow-md group-hover:shadow-indigo-600/25 transition-all duration-200 shrink-0">
+                  <Icon className="w-3.5 h-3.5" />
+                </div>
+                <h3 className="text-[10px] font-mono text-slate-400 uppercase tracking-widest font-semibold">
+                  {kpi.title}
+                </h3>
+              </div>
               {hasDelta && (
                 <span
                   className={`inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-full border ${

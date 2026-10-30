@@ -19,9 +19,9 @@ export default function ChannelActivity({ channelBreakdown, loading }) {
   const channels = channelBreakdown || [];
 
   return (
-    <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-6 flex flex-col h-90">
+    <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-6 flex flex-col h-90 group">
       <div className="flex items-center gap-2 shrink-0">
-        <div className="p-2 rounded-xl bg-white/5 text-slate-300 border border-white/10">
+        <div className="w-8 h-8 rounded-lg bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white group-hover:scale-110 transition-all duration-200 shrink-0">
           <Hash className="w-4 h-4" />
         </div>
         <div>

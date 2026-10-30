@@ -63,13 +63,12 @@ export default function Base({
           background: "radial-gradient(ellipse 80% 40% at 50% -10%, rgba(99, 102, 241, 0.05), transparent 75%)",
         }}
       />
+      {/* White Dot Matrix Canvas Background */}
       <div
-        className="fixed inset-0 pointer-events-none z-0 opacity-40"
+        className="fixed inset-0 pointer-events-none z-0 bg-dot-matrix opacity-70"
         style={{
-          backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-          maskImage: "radial-gradient(ellipse 70% 50% at 50% 0%, #000 60%, transparent 100%)",
-          WebkitMaskImage: "radial-gradient(ellipse 70% 50% at 50% 0%, #000 60%, transparent 100%)",
+          maskImage: "radial-gradient(ellipse 85% 70% at 50% 25%, #000 40%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(ellipse 85% 70% at 50% 25%, #000 40%, transparent 100%)",
         }}
       />
 

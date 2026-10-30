@@ -28,5 +28,6 @@ export function parseDiscordEmoji(str) {
 export function getDiscordAvatarUrl(user) {
   if (!user || !user.avatar) return "https://cdn.discordapp.com/embed/avatars/0.png";
   if (user.avatar.startsWith("http")) return user.avatar;
-  return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
+  const uid = user.id || user.userId;
+  return uid ? `https://cdn.discordapp.com/avatars/${uid}/${user.avatar}.png` : "https://cdn.discordapp.com/embed/avatars/0.png";
 }

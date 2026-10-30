@@ -41,22 +41,24 @@ export function exportAnalyticsCSV(data) {
   }
 
   csv += "--- TOP CHATTERS ---\n";
-  csv += "Rank,Username,Weekly Messages,Total Messages\n";
+  csv += "Rank,Username,Nickname,Weekly Messages,Total Messages\n";
   chatters.forEach((u, i) => {
     const uname = (u.username || "Unknown").replace(/"/g, '""');
+    const nick = (u.nickname || u.displayName || "").replace(/"/g, '""');
     const w = u.weeklyMessages ?? u.messages ?? 0;
     const t = u.totalMessages ?? u.messages ?? 0;
-    csv += `${i + 1},"${uname}",${w},${t}\n`;
+    csv += `${i + 1},"${uname}","${nick}",${w},${t}\n`;
   });
   csv += "\n";
 
   csv += "--- TOP VOICE ---\n";
-  csv += "Rank,Username,Weekly Minutes,Total Minutes\n";
+  csv += "Rank,Username,Nickname,Weekly Minutes,Total Minutes\n";
   voice.forEach((u, i) => {
     const uname = (u.username || "Unknown").replace(/"/g, '""');
+    const nick = (u.nickname || u.displayName || "").replace(/"/g, '""');
     const w = u.weeklyMinutes ?? u.vcMinutes ?? 0;
     const t = u.totalMinutes ?? u.vcMinutes ?? 0;
-    csv += `${i + 1},"${uname}",${w},${t}\n`;
+    csv += `${i + 1},"${uname}","${nick}",${w},${t}\n`;
   });
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });

@@ -71,12 +71,10 @@ export default function DocumentationPage({ user, botInfo }) {
   return (
     <div className="min-h-screen bg-transparent text-neutral-200 flex flex-col antialiased selection:bg-crimson/30 selection:text-white relative overflow-x-hidden">
       
-      {/* Background Grid */}
-      <div className="fixed inset-0 pointer-events-none z-0 transform-gpu" style={{
-        backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)',
-        backgroundSize: '40px 40px',
-        maskImage: 'radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%)',
-        WebkitMaskImage: 'radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%)'
+      {/* White Dot Matrix Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 bg-dot-matrix opacity-60" style={{
+        maskImage: 'radial-gradient(ellipse 85% 60% at 50% 20%, #000 60%, transparent 100%)',
+        WebkitMaskImage: 'radial-gradient(ellipse 85% 60% at 50% 20%, #000 60%, transparent 100%)'
       }} />
 
       {/* Gentle ambient lighting orbs */}
