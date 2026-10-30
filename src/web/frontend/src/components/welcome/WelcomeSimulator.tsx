@@ -212,6 +212,15 @@ export default function WelcomeSimulator({
                   ? (config.welcome_channel_id ? "welcome" : "welcome-channel")
                   : (config.leave_channel_id ? "goodbye" : "goodbye-channel")}
               </span>
+              {activeTab === "welcome" && (
+                <span className="ml-auto text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#232428] text-[#949ba4] border border-white/5">
+                  {config.welcome_trigger === "verification"
+                    ? "Trigger: After Verification"
+                    : config.welcome_trigger === "onboarding"
+                    ? "Trigger: After Onboarding"
+                    : "Trigger: On Join"}
+                </span>
+              )}
             </>
           )}
         </div>

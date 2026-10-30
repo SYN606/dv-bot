@@ -6,7 +6,14 @@ export default function WelcomeAutoRoleEditor({
   config,
   roles,
   updateConfig,
+  isVerificationEnabled = false,
+}: {
+  config: any;
+  roles: any[];
+  updateConfig: (key: string, val: any) => void;
+  isVerificationEnabled?: boolean;
 }) {
+  const trigger = config.welcome_trigger || "join";
   const selectedJoinRoleIds = Array.isArray(config.join_role_ids) ? config.join_role_ids : [];
 
   // Filter assignable roles (exclude @everyone)
@@ -61,13 +68,25 @@ export default function WelcomeAutoRoleEditor({
           </label>
         </div>
 
-        {/* Verification Protection Note */}
+        {/* Verification & Trigger Protection Note */}
         <div className="mt-5 p-4 rounded-2xl bg-slate-850/70 border border-white/5 flex items-start gap-3">
           <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-xs text-slate-300 leading-relaxed">
-            <strong className="text-white">Security Safeguard:</strong> If an active Verification Gate is enabled,
-            member join-roles will only be awarded <em>after</em> the new member completes verification to avoid bypass exploits.
-          </p>
+          <div className="text-xs text-slate-300 leading-relaxed">
+            <strong className="text-white">Trigger Mode:</strong>{" "}
+            {trigger === "verification" ? (
+              <span>
+                Configured to assign human auto-roles <strong>after server verification</strong>. Members will not receive join roles until they verify.
+              </span>
+            ) : trigger === "onboarding" ? (
+              <span>
+                Configured to assign human auto-roles <strong>after completing Discord onboarding / screening</strong>.
+              </span>
+            ) : (
+              <span>
+                Configured to assign auto-roles <strong>immediately upon server join</strong> (unless gated by active verification).
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

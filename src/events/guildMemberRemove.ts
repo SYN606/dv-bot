@@ -4,6 +4,7 @@ import { ensureGuild } from "../db/helpers/common.js";
 import { deleteSupporterAnnouncement } from "../handlers/supporterHandler.js";
 import { buildWelcomePayload } from "../utils/welcomeFormatter.js";
 import { sendModLog } from "../utils/modLog.js";
+import { clearMemberWelcomeCache } from "../services/welcomeService.js";
 
 export default {
   name: Events.GuildMemberRemove,
@@ -15,6 +16,7 @@ export default {
     const today = new Date().toISOString().split("T")[0];
 
     // Telemetry: Increment daily leaves count
+    clearMemberWelcomeCache(guildId, userId);
     try {
       await ensureGuild(guildId);
       const [snapshot]: any = await DailyActivitySnapshot.findOrCreate({

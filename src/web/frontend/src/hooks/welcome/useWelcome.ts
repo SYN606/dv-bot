@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { getGuildMeta, getWelcomeConfig, updateWelcomeConfig, sendTestWelcomeMessage } from "../../api/client";
+import { getGuildMeta, getWelcomeConfig, updateWelcomeConfig, sendTestWelcomeMessage, getVerification } from "../../api/client";
 
 const DEFAULT_WELCOME_CONFIG = {
   welcome_enabled: false,
@@ -22,6 +22,7 @@ const DEFAULT_WELCOME_CONFIG = {
   welcome_ping_user: true,
   welcome_delete_seconds: 0,
   welcome_show_timestamp: true,
+  welcome_trigger: "join",
 
   dm_enabled: false,
   dm_message: "Welcome to **{server}**, {username}! Please check out our rules and enjoy your stay.",
@@ -58,20 +59,23 @@ export function useWelcome(guildId, showToast) {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState(null);
+  const [isVerificationEnabled, setIsVerificationEnabled] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!guildId) return;
     setLoading(true);
     setError(null);
     try {
-      const [meta, welcome] = await Promise.all([
+      const [meta, welcome, verification] = await Promise.all([
         getGuildMeta(guildId),
         getWelcomeConfig(guildId),
+        getVerification(guildId).catch(() => null),
       ]);
 
       setChannels(meta.channels || []);
       setRoles(meta.roles || []);
       setGuildMeta(meta);
+      setIsVerificationEnabled(Boolean(verification?.enabled));
 
       if (welcome) {
         let parsedFields = [];
@@ -104,6 +108,7 @@ export function useWelcome(guildId, showToast) {
           welcome_ping_user: Boolean(welcome.welcome_ping_user ?? true),
           welcome_delete_seconds: Number(welcome.welcome_delete_seconds || 0),
           welcome_show_timestamp: Boolean(welcome.welcome_show_timestamp ?? true),
+          welcome_trigger: welcome.welcome_trigger || DEFAULT_WELCOME_CONFIG.welcome_trigger,
 
           dm_enabled: Boolean(welcome.dm_enabled),
           dm_message: welcome.dm_message ?? DEFAULT_WELCOME_CONFIG.dm_message,
@@ -264,6 +269,7 @@ export function useWelcome(guildId, showToast) {
     channels,
     roles,
     guildMeta,
+    isVerificationEnabled,
     loading,
     saving,
     testing,

@@ -36,6 +36,7 @@ export default function WelcomePage({ showToast }: { showToast?: (t: any) => voi
     channels,
     roles,
     guildMeta,
+    isVerificationEnabled,
     loading,
     saving,
     testing,
@@ -159,6 +160,7 @@ export default function WelcomePage({ showToast }: { showToast?: (t: any) => voi
               updateConfig={updateConfig}
               insertVariable={insertVariable}
               onOpenTestModal={openTestModal}
+              isVerificationEnabled={isVerificationEnabled}
             />
           )}
 
@@ -186,6 +188,7 @@ export default function WelcomePage({ showToast }: { showToast?: (t: any) => voi
               config={config}
               roles={roles}
               updateConfig={updateConfig}
+              isVerificationEnabled={isVerificationEnabled}
             />
           )}
         </div>

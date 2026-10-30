@@ -28,6 +28,7 @@ const DEFAULT_WELCOME_CONFIG = {
   welcome_ping_user: 1,
   welcome_delete_seconds: 0,
   welcome_show_timestamp: 1,
+  welcome_trigger: "join",
 
   dm_enabled: 0,
   dm_message: "Welcome to **{server}**, {username}! Please check out our rules and enjoy your stay.",
@@ -79,6 +80,7 @@ export function ensureWelcomeConfigTable() {
         welcome_ping_user INTEGER DEFAULT 1,
         welcome_delete_seconds INTEGER DEFAULT 0,
         welcome_show_timestamp INTEGER DEFAULT 1,
+        welcome_trigger TEXT DEFAULT 'join',
         dm_enabled INTEGER DEFAULT 0,
         dm_message TEXT DEFAULT 'Welcome to **{server}**, {username}! Please check out our rules and enjoy your stay.',
         dm_is_embed INTEGER DEFAULT 0,
@@ -113,6 +115,7 @@ export function ensureWelcomeConfigTable() {
       "welcome_thumbnail_type TEXT DEFAULT 'user_avatar'",
       "welcome_thumbnail_custom TEXT",
       "welcome_show_timestamp INTEGER DEFAULT 1",
+      "welcome_trigger TEXT DEFAULT 'join'",
       "dm_is_embed INTEGER DEFAULT 0",
       "dm_embed_title TEXT DEFAULT 'Welcome to {server}!'",
       "dm_embed_color TEXT DEFAULT '#10B981'",
@@ -207,6 +210,7 @@ welcomeRoutes.get("/guilds/:guildId/welcome", async (c) => {
     welcome_ping_user: Boolean(raw.welcome_ping_user ?? DEFAULT_WELCOME_CONFIG.welcome_ping_user),
     welcome_delete_seconds: Number(raw.welcome_delete_seconds ?? 0),
     welcome_show_timestamp: Boolean(raw.welcome_show_timestamp ?? DEFAULT_WELCOME_CONFIG.welcome_show_timestamp),
+    welcome_trigger: raw.welcome_trigger || DEFAULT_WELCOME_CONFIG.welcome_trigger,
 
     dm_enabled: Boolean(raw.dm_enabled ?? DEFAULT_WELCOME_CONFIG.dm_enabled),
     dm_message: raw.dm_message ?? DEFAULT_WELCOME_CONFIG.dm_message,
@@ -273,6 +277,9 @@ welcomeRoutes.post("/guilds/:guildId/welcome", async (c) => {
     welcome_ping_user: body.welcome_ping_user ? 1 : 0,
     welcome_delete_seconds: Math.max(0, parseInt(body.welcome_delete_seconds, 10) || 0),
     welcome_show_timestamp: body.welcome_show_timestamp ? 1 : 0,
+    welcome_trigger: ["join", "onboarding", "verification"].includes(String(body.welcome_trigger || "").toLowerCase())
+      ? String(body.welcome_trigger).toLowerCase()
+      : "join",
 
     dm_enabled: body.dm_enabled ? 1 : 0,
     dm_message: body.dm_message !== undefined ? String(body.dm_message) : DEFAULT_WELCOME_CONFIG.dm_message,
