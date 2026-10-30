@@ -316,7 +316,7 @@ auditLogRoutes.get("/guilds/:guildId/audit-logs", async (c) => {
 
 /**
  * GET /guilds/:guildId/audit-logs/config
- * Get moderation log channel configuration with in-memory caching to prevent DB exhaustion.
+ * Get moderation & categorized event log channels configuration.
  */
 auditLogRoutes.get("/guilds/:guildId/audit-logs/config", async (c) => {
   const guildId = c.req.param("guildId");
@@ -326,82 +326,115 @@ auditLogRoutes.get("/guilds/:guildId/audit-logs/config", async (c) => {
     return c.json(cached);
   }
 
-  const modLog = await ModerationLogConfig.findOne({ where: { guild_id: guildId } });
+  const modLog: any = await ModerationLogConfig.findOne({ where: { guild_id: guildId } });
+  let eventsConfig = {};
+  try {
+    if (modLog?.events_config) {
+      eventsConfig = typeof modLog.events_config === "string" ? JSON.parse(modLog.events_config) : modLog.events_config;
+    }
+  } catch {}
+
   const payload = {
     modLogChannelId: modLog?.channel_id || "",
     enabled: Boolean(modLog?.enabled),
+    eventsConfig,
   };
 
-  // Cache config for 60s
-  apiCache.set(cacheKey, payload, 60000);
+  // Cache config for 30s
+  apiCache.set(cacheKey, payload, 30000);
   return c.json(payload);
 });
 
 /**
  * POST /guilds/:guildId/audit-logs/config
- * Update moderation log channel configuration.
+ * Update moderation & event log channels configuration.
  */
 auditLogRoutes.post("/guilds/:guildId/audit-logs/config", async (c) => {
   const guildId = c.req.param("guildId");
   const body = await c.req.json().catch(() => ({}));
-  const channelId = body.channelId || body.modLogChannelId;
-  const enabled = body.enabled !== undefined ? Boolean(body.enabled) : Boolean(channelId);
+  const channelId = body.channelId !== undefined ? body.channelId : (body.modLogChannelId || "");
+  const enabled = body.enabled !== undefined ? Boolean(body.enabled) : true;
+  const eventsConfig = body.eventsConfig
+    ? (typeof body.eventsConfig === "string" ? body.eventsConfig : JSON.stringify(body.eventsConfig))
+    : "{}";
 
-  if (channelId) {
-    await ModerationLogConfig.upsert({
-      guild_id: guildId,
-      channel_id: String(channelId),
-      enabled,
-    });
-  } else {
-    await ModerationLogConfig.destroy({ where: { guild_id: guildId } });
-  }
+  await ModerationLogConfig.upsert({
+    guild_id: guildId,
+    channel_id: String(channelId || ""),
+    enabled,
+    events_config: eventsConfig,
+  });
 
   // Invalidate caches immediately
   apiCache.delete(`guild:${guildId}:config`);
   apiCache.delete(`guild:${guildId}:modlog_config`);
 
+  let parsedEvents = {};
+  try {
+    parsedEvents = typeof eventsConfig === "string" ? JSON.parse(eventsConfig) : eventsConfig;
+  } catch {}
+
   return c.json({
     success: true,
-    modLogChannelId: channelId || "",
+    modLogChannelId: channelId,
     enabled,
+    eventsConfig: parsedEvents,
   });
 });
 
 /**
  * POST /guilds/:guildId/audit-logs/test
- * Send a verification test embed to the configured moderation log channel.
+ * Send a verification test embed to the configured moderation log channel or specific event channel.
  */
 auditLogRoutes.post("/guilds/:guildId/audit-logs/test", async (c) => {
   const guildId = c.req.param("guildId");
-  const guild = c.get("botGuild");
-  const user = c.get("user");
+  const guild: any = (c as any).get("botGuild");
+  const user: any = (c as any).get("user");
+  const body: any = await c.req.json().catch(() => ({}));
 
   if (!guild) {
     return c.json({ error: "Guild not found" }, 404);
   }
 
-  const modLog = await ModerationLogConfig.findOne({ where: { guild_id: guildId } });
-  if (!modLog?.channel_id) {
-    return c.json({ error: "No moderation log channel configured" }, 400);
+  const modLog: any = await ModerationLogConfig.findOne({ where: { guild_id: guildId } });
+  let targetChannelId = body.channelId;
+
+  if (!targetChannelId && body.eventType && modLog?.events_config) {
+    try {
+      const parsed = typeof modLog.events_config === "string" ? JSON.parse(modLog.events_config) : modLog.events_config;
+      if (parsed[body.eventType]?.channel_id) {
+        targetChannelId = parsed[body.eventType].channel_id;
+      }
+    } catch {}
   }
 
-  let channel = guild.channels.cache.get(modLog.channel_id);
+  if (!targetChannelId) {
+    targetChannelId = modLog?.channel_id;
+  }
+
+  if (!targetChannelId) {
+    return c.json({ error: "No target log channel configured for this event" }, 400);
+  }
+
+  let channel = guild.channels?.cache?.get(targetChannelId);
   if (!channel && guild.channels?.fetch) {
-    channel = await guild.channels.fetch(modLog.channel_id).catch(() => null);
+    channel = await guild.channels.fetch(targetChannelId).catch(() => null);
   }
 
   if (!channel || !channel.send) {
     return c.json({ error: "Configured channel not found or bot cannot access it" }, 400);
   }
 
+  const eventLabel = body.eventLabel || (body.eventType ? body.eventType.replace(/_/g, " ").toUpperCase() : "Moderation & System");
+  const eventColor = body.color || COLORS.DARK;
+
   try {
     const testEmbed = makeEmbed({
-      title: "🛡️ Digital Vigital — Moderation Log Test",
-      description: `This is a test log message dispatched from the web dashboard by <@${user?.id || "Admin"}>.\n\n• **Status:** Active & Operating Normally\n• **Channel:** <#${channel.id}>\n• **Time:** <t:${Math.floor(Date.now() / 1000)}:F>`,
+      title: `🛡️ Digital Vigital — ${eventLabel} Test`,
+      description: `Live test log event dispatched from the web dashboard by <@${user?.id || "Admin"}>.\n\n• **Event:** \`${eventLabel}\`\n• **Channel:** <#${channel.id}>\n• **Status:** Pipeline Connected & Operational\n• **Timestamp:** <t:${Math.floor(Date.now() / 1000)}:F>`,
       level: "SUCCESS",
-      color: COLORS.DARK,
-      footer: "DIGITAL_VIGITAL_AUDIT_SYSTEM",
+      color: eventColor,
+      footer: "DIGITAL_VIGITAL_LOG_SYSTEM",
     });
 
     await channel.send({ embeds: [testEmbed] });

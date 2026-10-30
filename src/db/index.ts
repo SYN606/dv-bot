@@ -235,6 +235,7 @@ function ensureSqliteSchema(sqlite) {
       guild_id TEXT PRIMARY KEY,
       channel_id TEXT NOT NULL,
       enabled INTEGER DEFAULT 1,
+      events_config TEXT DEFAULT '{}',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -629,6 +630,9 @@ function ensureSqliteSchema(sqlite) {
   } catch (_) {}
   try {
     sqlite.exec("ALTER TABLE warning_punishment_config ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE moderation_log_config ADD COLUMN events_config TEXT DEFAULT '{}';");
   } catch (_) {}
 
   // Deduplicate and ensure unique indexes for existing SQLite databases to prevent analytics duplication & ON CONFLICT errors

@@ -134,17 +134,37 @@ export async function sendModLog({
   if (!guild) return;
 
   try {
-    const config = await ModerationLogConfig.findByPk(String(guild.id));
-    if (!config || !config.enabled || !config.channel_id) return;
+    const config: any = await ModerationLogConfig.findByPk(String(guild.id));
+    if (!config || !config.enabled) return;
 
-    const channel = guild.channels.cache.get(String(config.channel_id));
+    let targetChannelId = config.channel_id;
+    let customColor = null;
+
+    if (config.events_config) {
+      try {
+        const events = typeof config.events_config === "string" ? JSON.parse(config.events_config) : config.events_config;
+        const eventKey = (title || category || "").toLowerCase().replace(/[^a-z0-9]+/g, "_");
+        const categoryKey = (category || "").toLowerCase();
+
+        const match = events[eventKey] || events[categoryKey];
+        if (match) {
+          if (match.enabled === false) return;
+          if (match.channel_id) targetChannelId = match.channel_id;
+          if (match.color) customColor = match.color;
+        }
+      } catch {}
+    }
+
+    if (!targetChannelId) return;
+
+    const channel = guild.channels.cache.get(String(targetChannelId));
     if (!channel || typeof channel.send !== "function") return;
 
     const theme = resolveActionTheme(category, title);
     const resolvedTarget = resolveTargetUser(guild, target, extraFields);
 
     const embed = new EmbedBuilder()
-      .setColor(theme.color)
+      .setColor(customColor || theme.color)
       .setTimestamp(new Date());
 
     // Title with action emoji

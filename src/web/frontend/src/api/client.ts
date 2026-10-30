@@ -706,10 +706,10 @@ export async function updateAuditLogConfig(guildId, payload) {
   return result;
 }
 
-export async function sendTestAuditLog(guildId) {
+export async function sendTestAuditLog(guildId, payload = {}) {
   return fetchApi(`/api/guilds/${guildId}/audit-logs/test`, {
     method: "POST",
-    body: {},
+    body: payload,
   });
 }
 

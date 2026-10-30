@@ -1,1 +1,17 @@
+/* ============================================================================
+ * DIGITAL VIGITAL - GLOBAL THEME & TYPOGRAPHY CONFIGURATION
+ * ============================================================================
+ * Adjust the base font size or scale factor below to toggle the global text size
+ * across ALL pages (Dashboard, Home, Status, Modals, Forms, Tables).
+ * Presets:
+ *   Compact:   14px
+ *   Standard:  15.5px (Enhanced Default)
+ *   Comfort:   16.5px
+ *   Large:     17.5px
+ * ============================================================================ */
+:root {
+  --font-size-root: 15.5px; /* Global font-size variable: toggle or adjust to scale all pages */
+  --font-scale: 1.06;
+}
+
 @import "./theme.css";
