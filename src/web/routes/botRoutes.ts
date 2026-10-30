@@ -26,7 +26,7 @@ botRoutes.get("/bot", async (c) => {
     return c.json(cached);
   }
 
-  const client = c.get("discordClient");
+  const client: any = (c as any).get("discordClient");
   const botUser = client?.user;
 
   const botAvatar =
@@ -46,12 +46,30 @@ botRoutes.get("/bot", async (c) => {
 
   const guildIds = await getLiveBotGuildIds(client);
 
+  let totalServers = 0;
+  let totalMembers = 0;
+  let totalChannels = 0;
+  if (client?.guilds?.cache) {
+    totalServers = client.guilds.cache.size;
+    for (const guild of client.guilds.cache.values()) {
+      totalMembers += (guild.memberCount || 0);
+      totalChannels += (guild.channels?.cache?.size || 0);
+    }
+  }
+  if (totalServers === 0 && Array.isArray(guildIds)) {
+    totalServers = guildIds.length;
+  }
+
   const payload = {
     id: botUser?.id || null,
     username: botUser?.username || "Digital Vigital",
     avatar: botAvatar,
     banner: botBanner,
     guildIds,
+    totalServers,
+    totalMembers,
+    totalChannels,
+    uptimeSeconds: Math.floor(process.uptime()),
     ping: client?.ws?.ping || 0,
     status: "Online",
   };
@@ -69,7 +87,7 @@ botRoutes.get("/status", async (c) => {
     return c.json(cached);
   }
 
-  const client = c.get("discordClient");
+  const client: any = (c as any).get("discordClient");
   const botUser = client?.user;
 
   // Compute live guilds & members
@@ -212,7 +230,7 @@ botRoutes.get("/commands", async (c) => {
     return c.json(cached);
   }
 
-  const client = c.get("discordClient");
+  const client: any = (c as any).get("discordClient");
   const commandsList = [];
 
   if (client?.commands) {
