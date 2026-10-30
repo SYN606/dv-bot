@@ -50,7 +50,7 @@ export async function fetchDiscordUser(accessToken) {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) {
-    const err = new Error(`Failed to fetch Discord user (Status: ${res.status})`);
+    const err: any = new Error(`Failed to fetch Discord user (Status: ${res.status})`);
     err.status = res.status;
     throw err;
   }
@@ -63,7 +63,7 @@ export async function fetchDiscordGuilds(accessToken) {
   });
   if (!res.ok) {
     const retryAfter = res.headers.get("retry-after") || res.headers.get("x-ratelimit-reset-after");
-    const err = new Error(`Failed to fetch Discord guilds (Status: ${res.status}${retryAfter ? `, Retry-After: ${retryAfter}s` : ""})`);
+    const err: any = new Error(`Failed to fetch Discord guilds (Status: ${res.status}${retryAfter ? `, Retry-After: ${retryAfter}s` : ""})`);
     err.status = res.status;
     err.retryAfter = retryAfter ? parseFloat(retryAfter) : null;
     throw err;

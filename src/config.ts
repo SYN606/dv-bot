@@ -40,6 +40,7 @@ export interface BotConfig {
   BOT_STATUS: string;
   BOT_ACTIVITY_TYPE: string;
   BOT_ACTIVITY_TEXT: string | null;
+  PRESENCE_ROTATE_HOURS?: number | string | null;
   DB_TYPE: string;
   DB_DIR: string | null;
   DB_STORAGE: string | null;
@@ -76,6 +77,7 @@ export const CONFIG: BotConfig = {
   BOT_STATUS: process.env.BOT_STATUS || "idle",
   BOT_ACTIVITY_TYPE: process.env.BOT_ACTIVITY_TYPE || "LISTENING",
   BOT_ACTIVITY_TEXT: process.env.BOT_ACTIVITY_TEXT || null,
+  PRESENCE_ROTATE_HOURS: process.env.PRESENCE_ROTATE_HOURS || 4.5,
 
   // Multi-Database Configuration
   DB_TYPE: (process.env.DB_TYPE || "sqlite").toLowerCase(),
