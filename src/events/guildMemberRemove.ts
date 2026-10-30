@@ -3,6 +3,7 @@ import { DailyActivitySnapshot, MemberAnalytics, WelcomeConfig } from "../db/mod
 import { ensureGuild } from "../db/helpers/common.js";
 import { deleteSupporterAnnouncement } from "../handlers/supporterHandler.js";
 import { buildWelcomePayload } from "../utils/welcomeFormatter.js";
+import { sendModLog } from "../utils/modLog.js";
 
 export default {
   name: Events.GuildMemberRemove,
@@ -68,5 +69,27 @@ export default {
     } catch (err) {
       console.error("[LEAVE GATEKEEPER ERROR]:", err);
     }
+
+    // Mod Log: Member Left Dispatch
+    try {
+      const joinedAgo = member.joinedTimestamp ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>` : "*Unknown*";
+      const rolesList = member.roles?.cache
+        ? member.roles.cache.filter((r: any) => r.id !== member.guild.id).map((r: any) => `<@&${r.id}>`).slice(0, 8).join(", ")
+        : null;
+
+      await sendModLog({
+        guild: member.guild,
+        category: "MEMBERS",
+        title: "Member Left",
+        level: "INFO",
+        target: member.user || null,
+        description: `<@${member.id}> has left the server.`,
+        extraFields: {
+          "Joined Server": joinedAgo,
+          "Roles Held": rolesList || "*None*",
+          "Remaining Members": `${member.guild.memberCount || "N/A"} members`,
+        },
+      });
+    } catch (_) {}
   },
 };

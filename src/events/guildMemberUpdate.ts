@@ -1,11 +1,13 @@
-import { Events } from "discord.js";
+import { Events, type GuildMember } from "discord.js";
 import { checkGuildTag, clearUserClanCache } from "../handlers/supporterHandler.js";
+import { sendModLog } from "../utils/modLog.js";
 
 export default {
   name: Events.GuildMemberUpdate,
   once: false,
-  async execute(client, oldMember, newMember) {
-    if (!oldMember || !newMember) return;
+  async execute(client: any, oldMember: GuildMember, newMember: GuildMember) {
+    if (!oldMember || !newMember || !newMember.guild) return;
+
     const avatarChanged = oldMember.avatar !== newMember.avatar;
     const bannerChanged = oldMember.banner !== newMember.banner;
     const nicknameChanged = oldMember.nickname !== newMember.nickname;
@@ -16,5 +18,37 @@ export default {
       clearUserClanCache(newMember.id);
       await checkGuildTag(newMember, true);
     }
+
+    // Role Changes Detection & Logging
+    try {
+      const oldRoles = oldMember.roles.cache;
+      const newRoles = newMember.roles.cache;
+
+      const addedRoles = newRoles.filter((r) => !oldRoles.has(r.id) && r.id !== newMember.guild.id);
+      const removedRoles = oldRoles.filter((r) => !newRoles.has(r.id) && r.id !== newMember.guild.id);
+
+      if (addedRoles.size > 0 || removedRoles.size > 0) {
+        const extraFields: Record<string, any> = {
+          Member: `<@${newMember.id}> (\`${newMember.user.tag || newMember.user.username}\`)`,
+        };
+
+        if (addedRoles.size > 0) {
+          extraFields["Roles Added"] = addedRoles.map((r) => `<@&${r.id}>`).join(", ");
+        }
+        if (removedRoles.size > 0) {
+          extraFields["Roles Removed"] = removedRoles.map((r) => `<@&${r.id}>`).join(", ");
+        }
+
+        await sendModLog({
+          guild: newMember.guild,
+          category: "MEMBERS",
+          title: "Member Roles Updated",
+          level: "INFO",
+          target: newMember.user,
+          description: `Roles were modified for <@${newMember.id}>.`,
+          extraFields,
+        });
+      }
+    } catch (_) {}
   },
 };
