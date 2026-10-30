@@ -33,6 +33,21 @@ const channelSnipes = new Map<string, SnipeMessage>();
 const userSnipes = new Map<string, SnipeMessage>();
 const guildUserSnipes = new Map<string, SnipeMessage>();
 
+// Background sweeper to prevent memory leaks from inactive channels
+const snipeSweeper = setInterval(() => {
+  const now = Date.now();
+  for (const [key, snipe] of channelSnipes.entries()) {
+    if (now - snipe.deletedAt > SNIPE_TTL_MS) channelSnipes.delete(key);
+  }
+  for (const [key, snipe] of userSnipes.entries()) {
+    if (now - snipe.deletedAt > SNIPE_TTL_MS) userSnipes.delete(key);
+  }
+  for (const [key, snipe] of guildUserSnipes.entries()) {
+    if (now - snipe.deletedAt > SNIPE_TTL_MS) guildUserSnipes.delete(key);
+  }
+}, 15 * 60 * 1000);
+if (snipeSweeper.unref) snipeSweeper.unref();
+
 /**
  * Record a deleted message into the snipe cache.
  * Overwrites prior entries so only the most recent deleted message is kept.

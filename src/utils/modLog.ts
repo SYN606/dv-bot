@@ -1,5 +1,6 @@
 import { EmbedBuilder } from "discord.js";
 import { ModerationLogConfig } from "../db/models/index.js";
+import { LOG_QUEUE } from "../services/logQueueService.js";
 
 /**
  * Standard action theme definitions (colors, emojis, and display badges)
@@ -22,6 +23,16 @@ const ACTION_THEMES = {
 
   PURGE: { color: 0x00a8ff, emoji: "🧹", label: "Message Purge" },
   ROLE: { color: 0x5865f2, emoji: "🎭", label: "Role Modified" },
+  ROLE_CREATE: { color: 0x10b981, emoji: "✨", label: "Role Created" },
+  ROLE_DELETE: { color: 0xed4245, emoji: "🔥", label: "Role Deleted" },
+  ROLE_UPDATE: { color: 0x3b82f6, emoji: "⚙️", label: "Role Updated" },
+  CHANNEL_CREATE: { color: 0x10b981, emoji: "📁", label: "Channel Created" },
+  CHANNEL_DELETE: { color: 0xed4245, emoji: "🗑️", label: "Channel Deleted" },
+  CHANNEL_UPDATE: { color: 0x06b6d4, emoji: "🎛️", label: "Channel Updated" },
+  MEMBER_JOIN: { color: 0x10b981, emoji: "📥", label: "Member Joined" },
+  MEMBER_LEAVE: { color: 0x64748b, emoji: "📤", label: "Member Left" },
+  MESSAGE_EDIT: { color: 0x06b6d4, emoji: "✏️", label: "Message Edited" },
+  MESSAGE_DELETE: { color: 0xed4245, emoji: "🗑️", label: "Message Deleted" },
   NICKNAME: { color: 0x9b59b6, emoji: "📝", label: "Nickname Changed" },
   VERIFICATION: { color: 0x57f287, emoji: "✅", label: "Member Verified" },
   MEDIA: { color: 0xfee75c, emoji: "🖼️", label: "Media Filter Violation" },
@@ -55,6 +66,16 @@ function resolveActionTheme(category = "", title = "") {
   if (normTitle.includes("hide") || normTitle.includes("hidded")) return ACTION_THEMES.HIDE;
   if (normTitle.includes("slowmode")) return ACTION_THEMES.SLOWMODE;
 
+  if (normTitle.includes("message edit") || normTitle.includes("message updated")) return ACTION_THEMES.MESSAGE_EDIT;
+  if (normTitle.includes("message delete") || normTitle.includes("bulk delete")) return ACTION_THEMES.MESSAGE_DELETE;
+  if (normTitle.includes("member join") || normTitle.includes("joined")) return ACTION_THEMES.MEMBER_JOIN;
+  if (normTitle.includes("member left") || normTitle.includes("left")) return ACTION_THEMES.MEMBER_LEAVE;
+  if (normTitle.includes("role create")) return ACTION_THEMES.ROLE_CREATE;
+  if (normTitle.includes("role delete")) return ACTION_THEMES.ROLE_DELETE;
+  if (normTitle.includes("role update")) return ACTION_THEMES.ROLE_UPDATE;
+  if (normTitle.includes("channel create")) return ACTION_THEMES.CHANNEL_CREATE;
+  if (normTitle.includes("channel delete")) return ACTION_THEMES.CHANNEL_DELETE;
+  if (normTitle.includes("channel update")) return ACTION_THEMES.CHANNEL_UPDATE;
   if (normTitle.includes("purge") || normTitle.includes("clean")) return ACTION_THEMES.PURGE;
   if (normTitle.includes("role")) return ACTION_THEMES.ROLE;
   if (normTitle.includes("nick") || normTitle.includes("rename")) return ACTION_THEMES.NICKNAME;
@@ -300,7 +321,7 @@ export async function sendModLog({
       iconURL: actorAvatar || guild.iconURL?.() || undefined,
     });
 
-    await channel.send({ embeds: [embed] }).catch(() => {});
+    LOG_QUEUE.enqueue(guild, targetChannelId, embed);
   } catch (err) {
     // Audit log failures should never disrupt moderation execution
   }

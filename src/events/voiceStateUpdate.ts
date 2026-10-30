@@ -2,6 +2,7 @@ import { VCRoleConfig } from "../db/models/index.js";
 import { ANALYTICS_BATCHER } from "../handlers/analyticsBatcher.js";
 import { checkMemberSupporter } from "../handlers/supporterHandler.js";
 import { logger } from "../utils/logger.js";
+import { sendModLog } from "../utils/modLog.js";
 
 export const activeVoiceSessions = new Map<string, any>(); // `${guildId}:${userId}` -> { startTime, channelId }
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours max session duration
@@ -111,5 +112,55 @@ export default {
         channelId: newState.channelId,
       });
     }
+
+    // 3. Mod Log: Voice Events Dispatch
+    try {
+      if (!oldState.channelId && newState.channelId) {
+        // Voice Join
+        sendModLog({
+          guild,
+          category: "VOICE",
+          title: "Member Joined Voice Channel",
+          level: "SUCCESS",
+          target: member.user,
+          description: `<@${member.id}> connected to <#${newState.channelId}>.`,
+          extraFields: {
+            Channel: `<#${newState.channelId}>`,
+          },
+        }).catch(() => {});
+      } else if (oldState.channelId && !newState.channelId) {
+        // Voice Leave
+        const durationStr = sessionStartTime
+          ? `${Math.max(1, Math.floor((Date.now() - sessionStartTime) / 60000))} minute(s)`
+          : "*Recent session*";
+
+        sendModLog({
+          guild,
+          category: "VOICE",
+          title: "Member Left Voice Channel",
+          level: "INFO",
+          target: member.user,
+          description: `<@${member.id}> disconnected from <#${oldState.channelId}>.`,
+          extraFields: {
+            Channel: `<#${oldState.channelId}>`,
+            "Session Duration": durationStr,
+          },
+        }).catch(() => {});
+      } else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+        // Voice Move
+        sendModLog({
+          guild,
+          category: "VOICE",
+          title: "Member Moved Voice Channel",
+          level: "INFO",
+          target: member.user,
+          description: `<@${member.id}> moved from <#${oldState.channelId}> to <#${newState.channelId}>.`,
+          extraFields: {
+            "From Channel": `<#${oldState.channelId}>`,
+            "To Channel": `<#${newState.channelId}>`,
+          },
+        }).catch(() => {});
+      }
+    } catch (_) {}
   },
 };
