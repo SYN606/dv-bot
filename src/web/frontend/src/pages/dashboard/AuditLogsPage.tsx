@@ -9,10 +9,12 @@ import {
   AuditLogFilters,
   AuditLogsList,
   AuditLogConfigModal,
+  LogChannelsView,
 } from "../../components/audit-logs";
 
-export default function AuditLogsPage({ showToast }) {
+export default function AuditLogsPage({ showToast }: { showToast?: any }) {
   const { guildId } = useParams();
+  const [activeTab, setActiveTab] = useState<"channels" | "stream">("channels");
   const [configModalOpen, setConfigModalOpen] = useState(false);
 
   const {
@@ -66,10 +68,10 @@ export default function AuditLogsPage({ showToast }) {
   };
 
   const currentModLogChannel = channels.find(
-    (c) => c.id === modLogConfig.modLogChannelId
+    (c: any) => c.id === modLogConfig.modLogChannelId
   );
 
-  if (error && entries.length === 0 && !missingPermission) {
+  if (error && entries.length === 0 && !missingPermission && activeTab === "stream") {
     return (
       <PageError
         title="Unable to load Audit Logs"
@@ -79,14 +81,14 @@ export default function AuditLogsPage({ showToast }) {
     );
   }
 
-  if (loading && entries.length === 0) {
+  if (loading && entries.length === 0 && !channels.length) {
     return <PageSkeleton cards={2} rows={3} />;
   }
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-300 pb-20">
       {/* Rate-Limit Shield Notification (Non-intrusive) */}
-      {isRateLimited && (
+      {isRateLimited && activeTab === "stream" && (
         <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-amber-400 shrink-0" />
@@ -104,7 +106,7 @@ export default function AuditLogsPage({ showToast }) {
         </div>
       )}
 
-      {/* 1. Header with Stats, Auto-Refresh, Mod Log Config, and Export */}
+      {/* 1. Header with Stats, Tab Switching, Auto-Refresh, and Export */}
       <AuditLogsHeader
         stats={stats}
         refreshing={refreshing}
@@ -115,44 +117,61 @@ export default function AuditLogsPage({ showToast }) {
         onExportJson={exportToJson}
         onExportCsv={exportToCsv}
         modLogChannelName={currentModLogChannel?.name}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
 
-      {/* 2. Modern Filter Architecture: Omnisearch, Smart Presets, Heatline & Custom Popovers */}
-      <AuditLogFilters
-        category={category}
-        onSelectCategory={setCategory}
-        preset={preset}
-        onSelectPreset={setPreset}
-        timeWindow={timeWindow}
-        onSelectTimeWindow={setTimeWindow}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        actionType={actionType}
-        onActionTypeChange={setActionType}
-        availableActions={availableActions}
-        executorId={executorId}
-        onExecutorChange={setExecutorId}
-        executors={executors}
-        hideBots={hideBots}
-        onToggleHideBots={setHideBots}
-        limit={limit}
-        onLimitChange={setLimit}
-        totalResults={entries.length}
-        categoryStats={stats}
-      />
+      {/* 2. Main Content based on active view mode */}
+      {activeTab === "channels" ? (
+        <LogChannelsView
+          guildId={guildId}
+          channels={channels}
+          modLogConfig={modLogConfig}
+          onSaveConfig={saveModLogConfig}
+          savingConfig={savingConfig}
+          onSendTest={testModLog}
+          testingLog={testingLog}
+        />
+      ) : (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Omnisearch, Smart Presets, Heatline & Custom Popovers */}
+          <AuditLogFilters
+            category={category}
+            onSelectCategory={setCategory}
+            preset={preset}
+            onSelectPreset={setPreset}
+            timeWindow={timeWindow}
+            onSelectTimeWindow={setTimeWindow}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            actionType={actionType}
+            onActionTypeChange={setActionType}
+            availableActions={availableActions}
+            executorId={executorId}
+            onExecutorChange={setExecutorId}
+            executors={executors}
+            hideBots={hideBots}
+            onToggleHideBots={setHideBots}
+            limit={limit}
+            onLimitChange={setLimit}
+            totalResults={entries.length}
+            categoryStats={stats}
+          />
 
-      {/* 3. Audit Log Feed & Timeline with Interactive Token Clicks */}
-      <AuditLogsList
-        entries={entries}
-        missingPermission={missingPermission}
-        onResetFilters={handleResetFilters}
-        onRefresh={refresh}
-        onFilterByExecutor={(val) => appendSearchToken("by", val)}
-        onFilterByTarget={(val) => appendSearchToken("target", val)}
-        onFilterByAction={(val) => appendSearchToken("action", val)}
-      />
+          {/* Audit Log Feed & Timeline with Interactive Token Clicks */}
+          <AuditLogsList
+            entries={entries}
+            missingPermission={missingPermission}
+            onResetFilters={handleResetFilters}
+            onRefresh={refresh}
+            onFilterByExecutor={(val) => appendSearchToken("by", val)}
+            onFilterByTarget={(val) => appendSearchToken("target", val)}
+            onFilterByAction={(val) => appendSearchToken("action", val)}
+          />
+        </div>
+      )}
 
-      {/* 4. Mod Log Channel Configuration Modal */}
+      {/* 3. Quick Config Modal (Optional Shortcut) */}
       <AuditLogConfigModal
         open={configModalOpen}
         onClose={() => setConfigModalOpen(false)}

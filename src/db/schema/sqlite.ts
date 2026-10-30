@@ -212,6 +212,7 @@ export const moderationLogConfig = sqliteTable("moderation_log_config", {
   guild_id: text("guild_id").primaryKey(),
   channel_id: text("channel_id").notNull(),
   enabled: integer("enabled", { mode: "boolean" }).default(true),
+  events_config: text("events_config").default("{}"),
   created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
   updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
 });

@@ -59,7 +59,7 @@ export function useAuditLogs(guildId, showToast) {
   const autoRefreshTimerRef = useRef(null);
 
   // Moderation Log Config
-  const [modLogConfig, setModLogConfig] = useState({ modLogChannelId: "", enabled: false });
+  const [modLogConfig, setModLogConfig] = useState({ modLogChannelId: "", enabled: false, eventsConfig: {} });
   const [savingConfig, setSavingConfig] = useState(false);
   const [testingLog, setTestingLog] = useState(false);
 
@@ -138,6 +138,7 @@ export function useAuditLogs(guildId, showToast) {
           setModLogConfig({
             modLogChannelId: configRes.modLogChannelId || "",
             enabled: Boolean(configRes.enabled),
+            eventsConfig: configRes.eventsConfig || {},
           });
         }
 
@@ -333,23 +334,24 @@ export function useAuditLogs(guildId, showToast) {
     });
   }, [entries, category, preset, timeWindow, hideBots, parsedSearch]);
 
-  // Save Moderation Log Config (Caches in apiCache on backend)
-  const saveModLogConfig = async (newChannelId) => {
+  // Save Moderation & Event Log Config (Caches in apiCache on backend)
+  const saveModLogConfig = async (newChannelId, newEventsConfig) => {
     setSavingConfig(true);
     try {
-      await updateAuditLogConfig(guildId, {
+      const payloadEvents = newEventsConfig !== undefined ? newEventsConfig : (modLogConfig.eventsConfig || {});
+      const res = await updateAuditLogConfig(guildId, {
         modLogChannelId: newChannelId,
-        enabled: Boolean(newChannelId),
+        enabled: Boolean(newChannelId) || Object.keys(payloadEvents).length > 0,
+        eventsConfig: payloadEvents,
       });
       setModLogConfig({
         modLogChannelId: newChannelId,
-        enabled: Boolean(newChannelId),
+        enabled: Boolean(newChannelId) || Object.keys(payloadEvents).length > 0,
+        eventsConfig: res?.eventsConfig || payloadEvents,
       });
       showToast?.({
         title: "Configuration Saved",
-        message: newChannelId
-          ? "Moderation audit log channel updated successfully."
-          : "Moderation logging disabled.",
+        message: "Log channels & event routing configuration updated successfully.",
         type: "success",
       });
       return true;
@@ -366,10 +368,10 @@ export function useAuditLogs(guildId, showToast) {
   };
 
   // Dispatch Test Log
-  const testModLog = async () => {
+  const testModLog = async (testPayload = {}) => {
     setTestingLog(true);
     try {
-      const res = await sendTestAuditLog(guildId);
+      const res = await sendTestAuditLog(guildId, testPayload);
       showToast?.({
         title: "Test Sent",
         message: res.message || "Test audit log dispatched to channel!",
