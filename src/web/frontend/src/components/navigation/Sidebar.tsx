@@ -66,9 +66,9 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 w-72 glass-panel border-r border-white/[0.08] flex flex-col z-50 transform transition-transform duration-300 shrink-0 md:sticky md:top-0 md:left-0 md:h-screen select-none ${mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"}`}>
+      <aside className={`fixed inset-y-0 left-0 w-72 bg-[#0a0d16] border-r border-white/[0.06] flex flex-col z-50 transform transition-transform duration-300 shrink-0 md:sticky md:top-0 md:left-0 md:h-screen select-none ${mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"}`}>
         {/* Brand Header */}
-        <div className="p-4 border-b border-white/[0.06] flex items-center justify-between shrink-0 relative overflow-hidden bg-slate-900/40">
+        <div className="p-4 border-b border-white/[0.06] flex items-center justify-between shrink-0 relative overflow-hidden bg-[#0c0f1a]">
           <Link to="/" className="flex items-center gap-3 group relative z-10" onClick={() => setMobileOpen(false)}>
             <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shadow-md shrink-0 group-hover:border-indigo-500/50 transition-all bg-slate-950">
               <img src={botAvatar} alt="DV" className="w-full h-full object-cover" />
@@ -89,7 +89,7 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
         </div>
 
         {/* Server Context Switcher Card */}
-        <div className="p-3 mx-3 my-2.5 rounded-2xl bg-slate-900/70 border border-white/[0.08] flex items-center gap-3 shrink-0 group relative overflow-hidden hover:border-white/15 transition-all">
+        <div className="p-3 mx-3 my-2.5 rounded-xl bg-[#111524] border border-white/[0.06] flex items-center gap-3 shrink-0 group relative overflow-hidden hover:border-white/15 transition-all">
           <div className="w-10 h-10 rounded-xl border border-white/10 p-0.5 shrink-0 bg-slate-950 shadow-inner">
             <div className="w-full h-full rounded-lg overflow-hidden flex items-center justify-center bg-slate-850">
               {currentGuild.icon ? (
@@ -141,7 +141,7 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
 
         {/* User Profile Card */}
         {user && (
-          <div className="p-3 mx-3 mb-2 rounded-2xl bg-slate-900/80 border border-white/[0.08] flex items-center justify-between gap-3 shrink-0 shadow-sm">
+          <div className="p-3 mx-3 mb-2 rounded-xl bg-[#111524] border border-white/[0.06] flex items-center justify-between gap-3 shrink-0 shadow-sm">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/10 shrink-0 bg-slate-950 shadow-inner">
                 <img
