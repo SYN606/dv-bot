@@ -165,7 +165,7 @@ welcomeRoutes.get("/guilds/:guildId/welcome", async (c) => {
   } catch (_) {}
 
   const record = await safeFindWelcomeConfig(guildId);
-  const raw = record ? record.toJSON() : {};
+  const raw: Record<string, any> = record ? record.toJSON() : {};
 
   let parsedJoinRoles = [];
   try {
@@ -238,7 +238,7 @@ welcomeRoutes.get("/guilds/:guildId/welcome", async (c) => {
 // 2. POST /guilds/:guildId/welcome
 welcomeRoutes.post("/guilds/:guildId/welcome", async (c) => {
   const guildId = c.req.param("guildId");
-  const body = await c.req.json();
+  const body: Record<string, any> = await c.req.json();
 
   try {
     await ensureGuild(guildId);
@@ -252,7 +252,7 @@ welcomeRoutes.post("/guilds/:guildId/welcome", async (c) => {
     ? JSON.stringify(body.welcome_embed_fields)
     : (typeof body.welcome_embed_fields === "string" ? body.welcome_embed_fields : "[]");
 
-  const updateData = {
+  const updateData: Record<string, any> = {
     welcome_enabled: body.welcome_enabled ? 1 : 0,
     welcome_channel_id: body.welcome_channel_id ? String(body.welcome_channel_id) : null,
     welcome_message: body.welcome_message !== undefined ? String(body.welcome_message) : DEFAULT_WELCOME_CONFIG.welcome_message,
@@ -333,22 +333,50 @@ welcomeRoutes.post("/guilds/:guildId/welcome", async (c) => {
 // 3. POST /guilds/:guildId/welcome/test
 welcomeRoutes.post("/guilds/:guildId/welcome/test", async (c) => {
   const guildId = c.req.param("guildId");
-  const { type = "channel" } = await c.req.json();
-  const botGuild = c.get("botGuild");
-  const user = c.get("user");
+  const body: Record<string, any> = await c.req.json().catch(() => ({}));
+  const rawType = String(body.type || "channel").toLowerCase().trim();
+  const type = (rawType === "welcome" || rawType === "welcome_channel")
+    ? "channel"
+    : (rawType === "goodbye" || rawType === "leave_channel")
+    ? "leave"
+    : rawType;
+
+  const draftConfig = body.config && typeof body.config === "object" ? body.config : null;
+  const overrideChannelId = body.channelId ? String(body.channelId).trim() : null;
+  const autoDeleteSeconds = Math.max(0, parseInt(body.autoDeleteSeconds, 10) || 0);
+
+  const client: any = (c as any).get("discordClient");
+  let botGuild: any = (c as any).get("botGuild") || client?.guilds?.cache?.get(guildId);
+  if (!botGuild && client?.guilds?.fetch) {
+    botGuild = await client.guilds.fetch(guildId).catch(() => null);
+  }
+  const user: any = (c as any).get("user");
 
   if (!botGuild) {
-    return c.json({ success: false, message: "Bot is not in this guild" }, 404);
+    return c.json({
+      success: false,
+      error: "Bot is not in this guild or guild not found",
+      message: "Bot is not in this guild or guild not found",
+    }, 404);
   }
 
-  const config = await safeFindWelcomeConfig(guildId);
-  if (!config) {
-    return c.json({ success: false, message: "Please save your configuration first before sending a test message." }, 400);
+  const baseRecord = await safeFindWelcomeConfig(guildId);
+  const baseConfig: Record<string, any> = baseRecord ? baseRecord.toJSON() : {};
+
+  // Merge draft over saved configuration so unsaved drafts can be previewed directly in Discord
+  const config: Record<string, any> = {
+    ...DEFAULT_WELCOME_CONFIG,
+    ...baseConfig,
+    ...(draftConfig || {}),
+  };
+
+  // Create or resolve test member (using the current user in guild if cached/fetchable, or a rich synthetic member with roles)
+  let actualMember = user?.id ? botGuild.members?.cache?.get(user.id) : null;
+  if (!actualMember && user?.id && botGuild.members?.fetch) {
+    actualMember = await botGuild.members.fetch(user.id).catch(() => null);
   }
 
-  // Create or resolve test member (using the current user in guild if cached, or a rich synthetic member with roles)
-  const actualMember = botGuild.members.cache.get(user?.id);
-  const targetMember = actualMember || {
+  const targetMember: any = actualMember || {
     id: user?.id || "104712345678901234",
     displayName: user?.username ? `${user.username} (Staff Lead)` : "AdminTester",
     nickname: user?.username ? `${user.username} (Staff Lead)` : "AdminTester",
@@ -367,55 +395,184 @@ welcomeRoutes.post("/guilds/:guildId/welcome/test", async (c) => {
 
   try {
     if (type === "channel") {
-      if (!config.welcome_channel_id) {
-        return c.json({ success: false, message: "No welcome channel configured" }, 400);
+      const targetChannelId = overrideChannelId || config.welcome_channel_id;
+      if (!targetChannelId) {
+        return c.json({
+          success: false,
+          error: "No welcome channel specified. Please select a channel to send the test message to.",
+          message: "No welcome channel specified. Please select a channel to send the test message to."
+        }, 400);
       }
-      let channel = botGuild.channels.cache.get(config.welcome_channel_id);
-      if (!channel && botGuild.channels.fetch) {
-        channel = await botGuild.channels.fetch(config.welcome_channel_id).catch(() => null);
+
+      let channel = botGuild.channels?.cache?.get(targetChannelId);
+      if (!channel && botGuild.channels?.fetch) {
+        channel = await botGuild.channels.fetch(targetChannelId).catch(() => null);
       }
-      if (!channel || !channel.isTextBased()) {
-        return c.json({ success: false, message: "Welcome channel not found or bot lacks access" }, 404);
+      if (!channel || typeof channel.send !== "function") {
+        return c.json({
+          success: false,
+          error: "Selected welcome channel not found or bot lacks access to view/send messages in it.",
+          message: "Selected welcome channel not found or bot lacks access to view/send messages in it."
+        }, 404);
       }
-      const payload = buildWelcomePayload(config, targetMember, "welcome");
-      await channel.send(payload);
-      return c.json({ success: true, message: `Test welcome message sent to #${channel.name}` });
+
+      const payload: any = buildWelcomePayload(config, targetMember, "welcome");
+      if (payload && typeof payload === "object") {
+        payload.allowedMentions = { parse: ["users"] };
+      }
+
+      let sentMsg = null;
+      try {
+        sentMsg = await channel.send(payload);
+      } catch (sendErr: any) {
+        if (sendErr?.code === 50013) {
+          return c.json({
+            success: false,
+            error: `Bot lacks 'Send Messages' or 'Embed Links' permission in #${channel.name}.`,
+            message: `Bot lacks 'Send Messages' or 'Embed Links' permission in #${channel.name}.`,
+          }, 403);
+        }
+        if (sendErr?.code === 50001) {
+          return c.json({
+            success: false,
+            error: `Bot lacks 'View Channel' access to #${channel.name}.`,
+            message: `Bot lacks 'View Channel' access to #${channel.name}.`,
+          }, 403);
+        }
+        throw sendErr;
+      }
+
+      if (autoDeleteSeconds > 0 && sentMsg?.delete) {
+        setTimeout(() => {
+          sentMsg.delete().catch(() => null);
+        }, autoDeleteSeconds * 1000);
+      }
+
+      return c.json({
+        success: true,
+        message: `Test welcome message sent to #${channel.name}${autoDeleteSeconds > 0 ? ` (auto-deletes in ${autoDeleteSeconds}s)` : ""}`,
+      });
     }
 
     if (type === "leave") {
-      if (!config.leave_channel_id) {
-        return c.json({ success: false, message: "No leave channel configured" }, 400);
+      const targetChannelId = overrideChannelId || config.leave_channel_id;
+      if (!targetChannelId) {
+        return c.json({
+          success: false,
+          error: "No goodbye channel specified. Please select a channel to send the test message to.",
+          message: "No goodbye channel specified. Please select a channel to send the test message to."
+        }, 400);
       }
-      let channel = botGuild.channels.cache.get(config.leave_channel_id);
-      if (!channel && botGuild.channels.fetch) {
-        channel = await botGuild.channels.fetch(config.leave_channel_id).catch(() => null);
+
+      let channel = botGuild.channels?.cache?.get(targetChannelId);
+      if (!channel && botGuild.channels?.fetch) {
+        channel = await botGuild.channels.fetch(targetChannelId).catch(() => null);
       }
-      if (!channel || !channel.isTextBased()) {
-        return c.json({ success: false, message: "Leave channel not found or bot lacks access" }, 404);
+      if (!channel || typeof channel.send !== "function") {
+        return c.json({
+          success: false,
+          error: "Selected goodbye channel not found or bot lacks access to view/send messages in it.",
+          message: "Selected goodbye channel not found or bot lacks access to view/send messages in it."
+        }, 404);
       }
-      const payload = buildWelcomePayload(config, targetMember, "leave");
-      await channel.send(payload);
-      return c.json({ success: true, message: `Test goodbye message sent to #${channel.name}` });
+
+      const payload: any = buildWelcomePayload(config, targetMember, "leave");
+      if (payload && typeof payload === "object") {
+        payload.allowedMentions = { parse: ["users"] };
+      }
+
+      let sentMsg = null;
+      try {
+        sentMsg = await channel.send(payload);
+      } catch (sendErr: any) {
+        if (sendErr?.code === 50013) {
+          return c.json({
+            success: false,
+            error: `Bot lacks 'Send Messages' or 'Embed Links' permission in #${channel.name}.`,
+            message: `Bot lacks 'Send Messages' or 'Embed Links' permission in #${channel.name}.`,
+          }, 403);
+        }
+        if (sendErr?.code === 50001) {
+          return c.json({
+            success: false,
+            error: `Bot lacks 'View Channel' access to #${channel.name}.`,
+            message: `Bot lacks 'View Channel' access to #${channel.name}.`,
+          }, 403);
+        }
+        throw sendErr;
+      }
+
+      if (autoDeleteSeconds > 0 && sentMsg?.delete) {
+        setTimeout(() => {
+          sentMsg.delete().catch(() => null);
+        }, autoDeleteSeconds * 1000);
+      }
+
+      return c.json({
+        success: true,
+        message: `Test goodbye message sent to #${channel.name}${autoDeleteSeconds > 0 ? ` (auto-deletes in ${autoDeleteSeconds}s)` : ""}`,
+      });
     }
 
     if (type === "dm") {
       if (!user?.id) {
-        return c.json({ success: false, message: "Could not identify current admin user" }, 400);
+        return c.json({
+          success: false,
+          error: "Could not identify current admin user session.",
+          message: "Could not identify current admin user session."
+        }, 400);
       }
-      const discordUser = await botGuild.client.users.fetch(user.id).catch(() => null);
+
+      const discordUser = await (botGuild.client || client)?.users?.fetch(user.id).catch(() => null);
       if (!discordUser) {
-        return c.json({ success: false, message: "Could not fetch Discord user" }, 404);
+        return c.json({
+          success: false,
+          error: "Could not fetch your Discord user account.",
+          message: "Could not fetch your Discord user account."
+        }, 404);
       }
-      const dmPayload = buildWelcomePayload(config, targetMember, "dm");
-      await discordUser.send(dmPayload);
-      return c.json({ success: true, message: "Test onboarding DM delivered to your direct messages!" });
+
+      const dmPayload: any = buildWelcomePayload(config, targetMember, "dm");
+      if (dmPayload && typeof dmPayload === "object") {
+        dmPayload.allowedMentions = { parse: ["users"] };
+      }
+
+      let sentDm = null;
+      try {
+        sentDm = await discordUser.send(dmPayload);
+      } catch (dmErr: any) {
+        if (dmErr?.code === 50007) {
+          return c.json({
+            success: false,
+            error: "Cannot send direct message to your Discord account. Please enable 'Direct Messages' from server members in your Discord Privacy Settings.",
+            message: "Cannot send direct message to your Discord account. Please enable 'Direct Messages' from server members in your Discord Privacy Settings.",
+          }, 403);
+        }
+        throw dmErr;
+      }
+
+      if (autoDeleteSeconds > 0 && sentDm?.delete) {
+        setTimeout(() => {
+          sentDm.delete().catch(() => null);
+        }, autoDeleteSeconds * 1000);
+      }
+
+      return c.json({
+        success: true,
+        message: `Test onboarding DM delivered to your direct messages!${autoDeleteSeconds > 0 ? ` (auto-deletes in ${autoDeleteSeconds}s)` : ""}`,
+      });
     }
 
-    return c.json({ success: false, message: "Invalid test type" }, 400);
-  } catch (err) {
+    return c.json({
+      success: false,
+      error: "Invalid test type specified.",
+      message: "Invalid test type specified."
+    }, 400);
+  } catch (err: any) {
     console.error("[WELCOME TEST DISPATCH ERROR]:", err);
     return c.json({
       success: false,
+      error: err.message || "Discord API error",
       message: `Failed to dispatch test message: ${err.message || "Discord API error"}`,
     }, 500);
   }

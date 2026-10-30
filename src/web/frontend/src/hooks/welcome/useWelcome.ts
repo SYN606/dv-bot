@@ -180,29 +180,69 @@ export function useWelcome(guildId, showToast) {
     setConfig(baselineConfig);
   }, [baselineConfig]);
 
-  const sendTest = async (type = "channel") => {
+  const sendTest = async (optionsOrType: any = "channel", customChannelId: any = null, customAutoDelete: any = 0) => {
+    let type = "channel";
+    let channelId = customChannelId;
+    let autoDeleteSeconds = customAutoDelete;
+    let overrideConfig = null;
+
+    if (typeof optionsOrType === "string") {
+      type = optionsOrType;
+    } else if (optionsOrType && typeof optionsOrType === "object") {
+      type = optionsOrType.type || "channel";
+      channelId = optionsOrType.channelId ?? customChannelId;
+      autoDeleteSeconds = optionsOrType.autoDeleteSeconds ?? customAutoDelete;
+      overrideConfig = optionsOrType.config ?? null;
+    }
+
+    const activeCfg = overrideConfig || config;
+    if (type === "channel" && !channelId && !activeCfg?.welcome_channel_id) {
+      showToast?.({
+        title: "No Channel Selected",
+        message: "Please select a Welcome Channel in the settings below first, or choose a sandbox channel in the test dialog.",
+        type: "error",
+      });
+      return false;
+    }
+    if (type === "leave" && !channelId && !activeCfg?.leave_channel_id) {
+      showToast?.({
+        title: "No Channel Selected",
+        message: "Please select a Goodbye Channel in the settings below first, or choose a sandbox channel in the test dialog.",
+        type: "error",
+      });
+      return false;
+    }
+
     setTesting(true);
     try {
-      const res = await sendTestWelcomeMessage(guildId, { type });
+      const res = await sendTestWelcomeMessage(guildId, {
+        type,
+        channelId,
+        autoDeleteSeconds,
+        config: activeCfg,
+      });
       if (res?.success) {
         showToast?.({
           title: "Test Dispatched",
           message: res.message || "Test message sent successfully!",
           type: "success",
         });
+        return true;
       } else {
         showToast?.({
           title: "Dispatch Failed",
           message: res?.message || "Failed to deliver test message.",
           type: "error",
         });
+        return false;
       }
-    } catch (err) {
+    } catch (err: any) {
       showToast?.({
         title: "Error",
         message: err.message || "Failed to dispatch test message.",
         type: "error",
       });
+      return false;
     } finally {
       setTesting(false);
     }

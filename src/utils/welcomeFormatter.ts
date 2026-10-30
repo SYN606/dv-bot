@@ -373,6 +373,11 @@ export function buildWelcomePayload(config, member, type = "welcome") {
     pingContent = `<@${member.id}>`;
   }
 
+  // Safety fallback: ensure embed is never completely empty so Discord API never rejects with 50006
+  if (!embed.data.title && !embed.data.description && (!embed.data.fields || embed.data.fields.length === 0)) {
+    embed.setDescription(type === "leave" ? "Member departed from the server." : "Welcome to the server!");
+  }
+
   return {
     content: pingContent,
     embeds: [embed],
