@@ -1,5 +1,5 @@
 import React from "react";
-import { UserMinus, Palette, Image as ImageIcon, Sparkles, LayoutTemplate, HelpCircle } from "lucide-react";
+import { UserMinus, Palette, Image as ImageIcon, Sparkles, LayoutTemplate, HelpCircle, Send } from "lucide-react";
 import WelcomeVariableBar from "./WelcomeVariableBar";
 import { ChannelSelector } from "../discord";
 
@@ -16,6 +16,13 @@ export default function WelcomeLeaveEditor({
   channels,
   updateConfig,
   insertVariable,
+  onOpenTestModal,
+}: {
+  config: any;
+  channels: any[];
+  updateConfig: (key: string, val: any) => void;
+  insertVariable: (field: string, tag: string) => void;
+  onOpenTestModal?: (type?: "channel" | "leave" | "dm") => void;
 }) {
   const applyTemplate = (type) => {
     if (type === "audit") {
@@ -56,16 +63,30 @@ export default function WelcomeLeaveEditor({
             </div>
           </div>
 
-          {/* Toggle */}
-          <label className="relative inline-flex items-center cursor-pointer self-start sm:self-center">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={Boolean(config.leave_enabled)}
-              onChange={(e) => updateConfig("leave_enabled", e.target.checked)}
-            />
-            <div className="w-12 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600 shadow-inner"></div>
-          </label>
+          <div className="flex items-center gap-3 self-start sm:self-center">
+            {onOpenTestModal && (
+              <button
+                type="button"
+                onClick={() => onOpenTestModal("leave")}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all hover:scale-105 shadow-sm"
+                title="Dispatch Goodbye message test to Discord"
+              >
+                <Send className="w-3.5 h-3.5 text-rose-400" />
+                <span>Test in Discord</span>
+              </button>
+            )}
+
+            {/* Toggle */}
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={Boolean(config.leave_enabled)}
+                onChange={(e) => updateConfig("leave_enabled", e.target.checked)}
+              />
+              <div className="w-12 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600 shadow-inner"></div>
+            </label>
+          </div>
         </div>
 
         {/* Channel Selector */}

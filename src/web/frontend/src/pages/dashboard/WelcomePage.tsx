@@ -10,12 +10,26 @@ import {
   WelcomeLeaveEditor,
   WelcomeAutoRoleEditor,
   WelcomeSimulator,
+  WelcomeTestModal,
 } from "../../components/welcome";
 import { MessageSquare, Mail, UserMinus, UserCheck } from "lucide-react";
 
-export default function WelcomePage({ showToast }) {
+export default function WelcomePage({ showToast }: { showToast?: (t: any) => void }) {
   const { guildId } = useParams();
   const [activeTab, setActiveTab] = useState("channel"); // "channel" | "dm" | "leave" | "autorole"
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const [testModalType, setTestModalType] = useState<"channel" | "leave" | "dm">("channel");
+
+  const openTestModal = (type?: "channel" | "leave" | "dm") => {
+    if (type) {
+      setTestModalType(type);
+    } else if (activeTab === "leave" || activeTab === "dm") {
+      setTestModalType(activeTab);
+    } else {
+      setTestModalType("channel");
+    }
+    setIsTestModalOpen(true);
+  };
 
   const {
     config,
@@ -95,9 +109,11 @@ export default function WelcomePage({ showToast }) {
         hasChanges={hasChanges}
         saving={saving}
         testing={testing}
+        activeTab={activeTab}
         onSave={save}
         onReset={discardChanges}
         onSendTest={sendTest}
+        onOpenTestModal={openTestModal}
       />
 
       {/* Module Selector Navigation Tabs */}
@@ -142,6 +158,7 @@ export default function WelcomePage({ showToast }) {
               channels={channels}
               updateConfig={updateConfig}
               insertVariable={insertVariable}
+              onOpenTestModal={openTestModal}
             />
           )}
 
@@ -150,6 +167,7 @@ export default function WelcomePage({ showToast }) {
               config={config}
               updateConfig={updateConfig}
               insertVariable={insertVariable}
+              onOpenTestModal={openTestModal}
             />
           )}
 
@@ -159,6 +177,7 @@ export default function WelcomePage({ showToast }) {
               channels={channels}
               updateConfig={updateConfig}
               insertVariable={insertVariable}
+              onOpenTestModal={openTestModal}
             />
           )}
 
@@ -173,9 +192,25 @@ export default function WelcomePage({ showToast }) {
 
         {/* Right Column: Live Interactive Discord Simulator */}
         <div className="lg:col-span-5">
-          <WelcomeSimulator config={config} guildMeta={guildMeta} />
+          <WelcomeSimulator
+            config={config}
+            guildMeta={guildMeta}
+            onOpenTestModal={openTestModal}
+          />
         </div>
       </div>
+
+      {/* Advanced Interactive Test Dispatcher Modal */}
+      <WelcomeTestModal
+        open={isTestModalOpen}
+        onClose={() => setIsTestModalOpen(false)}
+        initialType={testModalType}
+        channels={channels}
+        config={config}
+        hasChanges={hasChanges}
+        testing={testing}
+        onSendTest={sendTest}
+      />
     </div>
   );
 }

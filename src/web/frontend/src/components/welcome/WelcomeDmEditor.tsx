@@ -1,5 +1,5 @@
 import React from "react";
-import { Mail, Info, Palette } from "lucide-react";
+import { Mail, Info, Palette, Send } from "lucide-react";
 import WelcomeVariableBar from "./WelcomeVariableBar";
 
 const COLOR_PRESETS = [
@@ -14,6 +14,12 @@ export default function WelcomeDmEditor({
   config,
   updateConfig,
   insertVariable,
+  onOpenTestModal,
+}: {
+  config: any;
+  updateConfig: (key: string, val: any) => void;
+  insertVariable: (field: string, tag: string) => void;
+  onOpenTestModal?: (type?: "channel" | "leave" | "dm") => void;
 }) {
   return (
     <div className="space-y-6">
@@ -32,16 +38,30 @@ export default function WelcomeDmEditor({
             </div>
           </div>
 
-          {/* Toggle */}
-          <label className="relative inline-flex items-center cursor-pointer self-start sm:self-center">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={Boolean(config.dm_enabled)}
-              onChange={(e) => updateConfig("dm_enabled", e.target.checked)}
-            />
-            <div className="w-12 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600 shadow-inner"></div>
-          </label>
+          <div className="flex items-center gap-3 self-start sm:self-center">
+            {onOpenTestModal && (
+              <button
+                type="button"
+                onClick={() => onOpenTestModal("dm")}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-all hover:scale-105 shadow-sm"
+                title="Dispatch Direct Message test to your Discord account"
+              >
+                <Send className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Test DM</span>
+              </button>
+            )}
+
+            {/* Toggle */}
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={Boolean(config.dm_enabled)}
+                onChange={(e) => updateConfig("dm_enabled", e.target.checked)}
+              />
+              <div className="w-12 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600 shadow-inner"></div>
+            </label>
+          </div>
         </div>
 
         {/* Info Banner */}

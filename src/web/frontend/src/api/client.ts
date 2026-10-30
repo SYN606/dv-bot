@@ -108,7 +108,7 @@ export async function fetchApi(endpoint, options = {}) {
     .then(async (response) => {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const err = new Error(data.error || "Request failed with status " + response.status);
+        const err: any = new Error(data.error || data.message || "Request failed with status " + response.status);
         err.status = response.status;
         err.data = data;
         throw err;
@@ -731,9 +731,12 @@ export async function updateWelcomeConfig(guildId, payload) {
   return result;
 }
 
-export async function sendTestWelcomeMessage(guildId, { type = "channel" } = {}) {
+export async function sendTestWelcomeMessage(
+  guildId,
+  { type = "channel", config = null, channelId = null, autoDeleteSeconds = 0 } = {}
+) {
   return fetchApi(`/api/guilds/${guildId}/welcome/test`, {
     method: "POST",
-    body: { type },
+    body: { type, config, channelId, autoDeleteSeconds },
   });
 }

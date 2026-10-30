@@ -325,7 +325,7 @@ export function useUnsavedChangesContext() {
  * @param {string} [options.pageTitle] - Human-friendly name of the section or page
  * @param {string} [options.message] - Custom message for floating bar
  */
-export function useUnsavedChanges({ isDirty, onSave, onReset, pageTitle, message }) {
+export function useUnsavedChanges({ isDirty, onSave, onReset, pageTitle, message = "" }: any) {
   const { registerUnsavedChanges, clearUnsavedChanges } = useUnsavedChangesContext();
 
   // Save latest callbacks in refs to avoid re-registering on every render

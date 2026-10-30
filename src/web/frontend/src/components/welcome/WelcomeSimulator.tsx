@@ -1,7 +1,15 @@
 import React, { useState } from "react";
-import { Eye, Hash, MessageSquare, Mail, UserMinus, ExternalLink } from "lucide-react";
+import { Eye, Hash, MessageSquare, Mail, UserMinus, ExternalLink, Send, Sparkles } from "lucide-react";
 
-export default function WelcomeSimulator({ config, guildMeta }) {
+export default function WelcomeSimulator({
+  config,
+  guildMeta,
+  onOpenTestModal,
+}: {
+  config: any;
+  guildMeta?: any;
+  onOpenTestModal?: (type?: "channel" | "leave" | "dm") => void;
+}) {
   const [activeTab, setActiveTab] = useState("welcome"); // "welcome" | "leave" | "dm"
 
   const serverName = guildMeta?.name || "Cyber Guild";
@@ -124,14 +132,27 @@ export default function WelcomeSimulator({ config, guildMeta }) {
   return (
     <div className="sticky top-6 rounded-3xl bg-slate-900/80 border border-white/[0.08] backdrop-blur-2xl overflow-hidden shadow-2xl">
       {/* Simulator Header */}
-      <div className="p-4 bg-slate-950/70 border-b border-white/[0.06] flex items-center justify-between">
+      <div className="p-4 bg-slate-950/70 border-b border-white/[0.06] flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Eye className="w-4 h-4 text-indigo-400" />
           <span className="text-xs font-bold text-white tracking-wide">Live Discord Simulator</span>
         </div>
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-white/5">
-          Real-Time Preview
-        </span>
+        <div className="flex items-center gap-2">
+          {onOpenTestModal && (
+            <button
+              type="button"
+              onClick={() => onOpenTestModal(activeTab === "welcome" ? "channel" : activeTab as any)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-[11px] font-semibold transition-all hover:scale-105 shadow-sm"
+              title="Dispatch this preview directly into Discord"
+            >
+              <Send className="w-3 h-3 text-indigo-400" />
+              <span>Test in Discord</span>
+            </button>
+          )}
+          <span className="hidden sm:inline-flex text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-white/5">
+            Real-Time Preview
+          </span>
+        </div>
       </div>
 
       {/* Tabs for Preview Selector */}

@@ -5,12 +5,28 @@ export default function WelcomeHeader({
   hasChanges,
   saving,
   testing,
+  activeTab = "channel",
   onSave,
   onReset,
   onSendTest,
+  onOpenTestModal,
+}: {
+  hasChanges?: boolean;
+  saving?: boolean;
+  testing?: boolean;
+  activeTab?: string;
+  onSave?: () => void;
+  onReset?: () => void;
+  onSendTest?: (type: string) => void;
+  onOpenTestModal?: (type?: "channel" | "leave" | "dm") => void;
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  const currentTabType: "channel" | "leave" | "dm" =
+    activeTab === "leave" ? "leave" : activeTab === "dm" ? "dm" : "channel";
+  const currentTabLabel =
+    activeTab === "leave" ? "Goodbye" : activeTab === "dm" ? "DM" : "Welcome";
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -22,9 +38,23 @@ export default function WelcomeHeader({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleTestClick = (type) => {
+  const handleTestClick = (type: string) => {
     setDropdownOpen(false);
-    onSendTest(type);
+    onSendTest?.(type);
+  };
+
+  const handleOpenModal = (type?: "channel" | "leave" | "dm") => {
+    setDropdownOpen(false);
+    if (onOpenTestModal) {
+      onOpenTestModal(type || currentTabType);
+    } else {
+      onSendTest?.(type || currentTabType);
+    }
+  };
+
+  const handleMainTestClick = () => {
+    setDropdownOpen(false);
+    onSendTest?.(currentTabType);
   };
 
   return (
@@ -60,46 +90,67 @@ export default function WelcomeHeader({
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-3 self-start md:self-center">
           {/* Test Dispatcher Dropdown */}
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative inline-flex items-center rounded-xl bg-slate-800/90 border border-white/10 hover:border-white/20 shadow-md" ref={dropdownRef}>
+            <button
+              type="button"
+              disabled={testing}
+              onClick={handleMainTestClick}
+              className="inline-flex items-center gap-2 pl-4 pr-2.5 py-2.5 hover:bg-white/5 text-slate-200 text-xs font-semibold rounded-l-xl transition-all disabled:opacity-50"
+              title={`Dispatch test ${currentTabLabel} message to Discord`}
+            >
+              <Send className={`w-3.5 h-3.5 text-indigo-400 ${testing ? "animate-spin" : ""}`} />
+              <span>{testing ? "Dispatching..." : `Send Test (${currentTabLabel})`}</span>
+            </button>
             <button
               type="button"
               disabled={testing}
               onClick={() => setDropdownOpen((prev) => !prev)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10 hover:border-white/20 text-xs font-semibold shadow-md transition-all disabled:opacity-50"
+              aria-label="Test options"
+              className="p-2.5 hover:bg-white/5 text-slate-400 hover:text-white rounded-r-xl border-l border-white/10 transition-all disabled:opacity-50"
             >
-              <Send className={`w-3.5 h-3.5 text-indigo-400 ${testing ? "animate-spin" : ""}`} />
-              <span>{testing ? "Dispatching..." : "Send Test Message"}</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <ChevronDown className="w-3 h-3" />
             </button>
 
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-slate-900/95 border border-white/10 shadow-2xl backdrop-blur-xl p-1.5 z-50 animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-slate-900/95 border border-white/10 shadow-2xl backdrop-blur-xl p-1.5 z-50 animate-in fade-in zoom-in-95">
                 <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Select Dispatch Target
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleTestClick("channel")}
-                  className="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-indigo-600/20 transition-all flex items-center justify-between group"
+                  onClick={() => handleOpenModal(currentTabType)}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-indigo-300 hover:text-white hover:bg-indigo-600/25 transition-all flex items-center justify-between group"
                 >
-                  <span>Test Welcome Channel</span>
-                  <Sparkles className="w-3 h-3 text-indigo-400 opacity-60 group-hover:opacity-100" />
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Configure Sandbox Test...</span>
+                  </span>
+                  <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-mono">Modal</span>
+                </button>
+                <div className="my-1 border-t border-white/5" />
+                <button
+                  type="button"
+                  onClick={() => handleTestClick("channel")}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-all flex items-center justify-between group"
+                >
+                  <span>Quick Test Welcome Channel</span>
+                  <Send className="w-3 h-3 text-indigo-400 opacity-60 group-hover:opacity-100" />
                 </button>
                 <button
                   type="button"
                   onClick={() => handleTestClick("leave")}
-                  className="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-rose-600/20 transition-all flex items-center justify-between group"
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-all flex items-center justify-between group"
                 >
-                  <span>Test Goodbye Channel</span>
-                  <Sparkles className="w-3 h-3 text-rose-400 opacity-60 group-hover:opacity-100" />
+                  <span>Quick Test Goodbye Channel</span>
+                  <Send className="w-3 h-3 text-rose-400 opacity-60 group-hover:opacity-100" />
                 </button>
                 <button
                   type="button"
                   onClick={() => handleTestClick("dm")}
-                  className="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-emerald-600/20 transition-all flex items-center justify-between group"
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white hover:bg-white/5 transition-all flex items-center justify-between group"
                 >
-                  <span>Test Member DM (To You)</span>
-                  <Sparkles className="w-3 h-3 text-emerald-400 opacity-60 group-hover:opacity-100" />
+                  <span>Quick Test Member DM (To You)</span>
+                  <Send className="w-3 h-3 text-emerald-400 opacity-60 group-hover:opacity-100" />
                 </button>
               </div>
             )}

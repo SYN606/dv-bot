@@ -13,3 +13,5 @@ export { permissionsRoutes } from "./permissionsRoutes.js";
 export { supporterRoutes } from "./supporterRoutes.js";
 export { autoroleRoutes } from "./autoroleRoutes.js";
 export { messageStudioRoutes } from "./messageStudioRoutes.js";
+export { auditLogRoutes } from "./auditLogRoutes.js";
+export { welcomeRoutes } from "./welcomeRoutes.js";

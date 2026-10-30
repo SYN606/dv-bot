@@ -5,3 +5,4 @@ export { default as WelcomeDmEditor } from "./WelcomeDmEditor";
 export { default as WelcomeLeaveEditor } from "./WelcomeLeaveEditor";
 export { default as WelcomeAutoRoleEditor } from "./WelcomeAutoRoleEditor";
 export { default as WelcomeSimulator } from "./WelcomeSimulator";
+export { default as WelcomeTestModal } from "./WelcomeTestModal";
