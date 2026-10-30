@@ -2,12 +2,12 @@ import React from "react";
 import { Loader2 } from "lucide-react";
 
 const VARIANTS = {
-  primary: "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 active:scale-[0.98]",
-  secondary: "bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 hover:border-white/20 active:scale-[0.98]",
-  danger: "bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20 active:scale-[0.98]",
-  success: "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 active:scale-[0.98]",
-  outline: "bg-transparent hover:bg-white/5 text-slate-300 hover:text-white border border-white/15 hover:border-white/30 active:scale-[0.98]",
-  ghost: "bg-transparent hover:bg-white/5 text-slate-400 hover:text-white active:scale-[0.98]",
+  primary: "bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-600/25 active:scale-[0.98]",
+  secondary: "bg-[#141829] hover:bg-[#1b2138] text-slate-200 border border-white/[0.08] hover:border-white/15 active:scale-[0.98]",
+  danger: "bg-rose-600 hover:bg-rose-500 text-white shadow-sm shadow-rose-600/20 active:scale-[0.98]",
+  success: "bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm shadow-emerald-600/20 active:scale-[0.98]",
+  outline: "bg-transparent hover:bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.1] hover:border-white/20 active:scale-[0.98]",
+  ghost: "bg-transparent hover:bg-white/[0.05] text-slate-400 hover:text-slate-200 active:scale-[0.98]",
 };
 
 const SIZES = {

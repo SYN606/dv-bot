@@ -359,7 +359,7 @@ export default function LogChannelsView({
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* 1. Global Default Channel Banner */}
-      <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 relative overflow-hidden bg-gradient-to-br from-slate-900/80 via-slate-950/80 to-slate-900/80 shadow-2xl">
+      <div className="p-6 sm:p-8 rounded-2xl border border-white/[0.08] relative overflow-hidden bg-[#0e111d] shadow-xl">
         <div className="absolute top-0 right-0 p-8 text-8xl font-display text-white opacity-[0.02] pointer-events-none select-none">
           LOGS
         </div>
@@ -500,10 +500,10 @@ export default function LogChannelsView({
                 return (
                   <div
                     key={ev.id}
-                    className={`glass-card p-5 rounded-3xl border transition-all duration-300 flex flex-col justify-between gap-4 relative overflow-hidden ${
+                    className={`p-5 rounded-xl border transition-all duration-200 flex flex-col justify-between gap-4 relative overflow-hidden ${
                       state.enabled
-                        ? "border-white/10 hover:border-white/20 bg-linear-to-b from-slate-900/90 to-slate-950/90 shadow-xl"
-                        : "border-white/5 opacity-60 bg-slate-950/50"
+                        ? "border-white/[0.08] hover:border-white/15 bg-[#121524] shadow-md"
+                        : "border-white/[0.04] opacity-50 bg-[#0a0d16]"
                     }`}
                   >
                     {/* Top Row: Icon + Title + Switch */}

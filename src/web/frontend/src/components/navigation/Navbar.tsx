@@ -8,7 +8,7 @@ export default function Navbar({ user, botInfo }) {
   const botAvatar = botInfo?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png";
 
   return (
-    <header className="w-full relative z-50 border-b border-white/5 bg-slate-950/60 backdrop-blur-md">
+    <header className="w-full relative z-50 border-b border-white/[0.06] bg-[#07080c]/85 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         
         {/* Brand */}
@@ -36,7 +36,7 @@ export default function Navbar({ user, botInfo }) {
         <div className="flex items-center gap-3 sm:gap-4">
           {user ? (
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-900/80 border border-white/10 shadow-sm">
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-[#0e111d] border border-white/[0.08] shadow-sm">
                 <img
                   src={getDiscordAvatarUrl(user)}
                   alt={user.username || "User"}

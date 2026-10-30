@@ -97,7 +97,7 @@ export default function OverviewPage({ showToast }) {
     <div className="w-full space-y-8 animate-in fade-in duration-300 pb-16">
       
       {/* Hero Section */}
-      <div className="relative overflow-hidden glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 shrink-0 bg-slate-900/60 shadow-xl">
+      <div className="relative overflow-hidden p-6 sm:p-8 rounded-2xl border border-white/[0.08] shrink-0 bg-[#0e111d] shadow-xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
           <div>
             <div className="flex items-center gap-2.5 mb-2.5">
@@ -113,7 +113,7 @@ export default function OverviewPage({ showToast }) {
           
           {/* Server Badge */}
           {guild && (
-            <div className="glass-card p-3.5 rounded-2xl flex items-center gap-3.5 shrink-0 shadow-lg bg-black/40 backdrop-blur-xl border border-white/10">
+            <div className="p-3.5 rounded-xl flex items-center gap-3.5 shrink-0 bg-[#121524] border border-white/[0.08]">
               <div className="w-12 h-12 rounded-xl border border-white/15 p-0.5 overflow-hidden bg-slate-900 shadow-inner">
                 {guild.icon ? (
                   <img src={guild.icon} alt={guild.name} className="w-full h-full object-cover rounded-lg" />

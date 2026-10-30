@@ -56,18 +56,22 @@ export default function Base({
     <div className="h-screen w-screen flex bg-transparent text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200 antialiased overflow-hidden relative">
       <CommandPalette isOpen={commandOpen} setIsOpen={setCommandOpen} currentGuild={activeGuild} />
 
-      {/* Unique Base Grid Background */}
-      <div className="fixed inset-0 pointer-events-none z-0" style={{
-        backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)',
-        backgroundSize: '40px 40px',
-        maskImage: 'radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%)',
-        WebkitMaskImage: 'radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%)'
-      }} />
-
-      {/* Ambient background glows */}
-      <div className="fixed -top-50 -left-50 w-200 h-200 rounded-full glow-orb-primary pointer-events-none -z-10" />
-      <div className="fixed -bottom-50t-[-200px] w-225 h-225 rounded-full glow-orb-secondary pointer-events-none -z-10" />
-      <div className="fixed top-[40%] left-[50%] -translate-x-1/2 w-150 h-150 rounded-full glow-orb-tertiary pointer-events-none -z-10" />
+      {/* Clean, Grounded Dark Canvas Background with subtle atmospheric header gradient */}
+      <div
+        className="fixed inset-0 pointer-events-none -z-10"
+        style={{
+          background: "radial-gradient(ellipse 80% 40% at 50% -10%, rgba(99, 102, 241, 0.05), transparent 75%)",
+        }}
+      />
+      <div
+        className="fixed inset-0 pointer-events-none z-0 opacity-40"
+        style={{
+          backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+          maskImage: "radial-gradient(ellipse 70% 50% at 50% 0%, #000 60%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(ellipse 70% 50% at 50% 0%, #000 60%, transparent 100%)",
+        }}
+      />
 
       {/* Stationary Sidebar (never moves on scroll) */}
       {!hideSidebar && (
