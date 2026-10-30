@@ -182,6 +182,16 @@ export async function verifyMember({ guild, user, member, config }) {
     }
   } catch (_) {}
 
+  // Trigger Welcome message delivery if configured for verification
+  try {
+    const { dispatchWelcomeOnTrigger } = await import("./welcomeService.js");
+    await dispatchWelcomeOnTrigger({
+      guild,
+      member,
+      trigger: "verification",
+    });
+  } catch (_) {}
+
   // Custom log channel if configured
   if (config.log_channel_id) {
     let logChannel = guild.channels?.cache?.get(String(config.log_channel_id));

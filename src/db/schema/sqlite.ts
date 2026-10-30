@@ -578,6 +578,7 @@ export const welcomeConfig = sqliteTable("welcome_config", {
   welcome_ping_user: integer("welcome_ping_user", { mode: "number" }).default(1),
   welcome_delete_seconds: integer("welcome_delete_seconds", { mode: "number" }).default(0),
   welcome_show_timestamp: integer("welcome_show_timestamp", { mode: "number" }).default(1),
+  welcome_trigger: text("welcome_trigger").default("join"),
 
   // Direct Message (DM) Onboarding
   dm_enabled: integer("dm_enabled", { mode: "number" }).default(0),

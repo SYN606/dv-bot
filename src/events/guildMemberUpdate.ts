@@ -1,6 +1,7 @@
 import { Events, type GuildMember } from "discord.js";
 import { checkGuildTag, clearUserClanCache } from "../handlers/supporterHandler.js";
 import { sendModLog } from "../utils/modLog.js";
+import { dispatchWelcomeOnTrigger } from "../services/welcomeService.js";
 
 export default {
   name: Events.GuildMemberUpdate,
@@ -17,6 +18,17 @@ export default {
     if (avatarChanged || bannerChanged || nicknameChanged || displayNameChanged) {
       clearUserClanCache(newMember.id);
       await checkGuildTag(newMember, true);
+    }
+
+    // Discord Membership Screening & Onboarding Completion Detection
+    if (oldMember.pending && !newMember.pending) {
+      try {
+        await dispatchWelcomeOnTrigger({
+          guild: newMember.guild,
+          member: newMember,
+          trigger: "onboarding",
+        });
+      } catch (_) {}
     }
 
     // Role Changes Detection & Logging

@@ -1,7 +1,8 @@
 import React from "react";
 import {
   MessageSquare, Clock, Palette, Image as ImageIcon, AtSign, Link as LinkIcon,
-  User, Plus, Trash2, LayoutList, CheckSquare, Send
+  User, Plus, Trash2, LayoutList, CheckSquare, Send,
+  UserPlus, ShieldCheck, CheckCircle2, Info, Sparkles
 } from "lucide-react";
 import WelcomeVariableBar from "./WelcomeVariableBar";
 import { ChannelSelector } from "../discord";
@@ -31,13 +32,16 @@ export default function WelcomeChannelEditor({
   updateConfig,
   insertVariable,
   onOpenTestModal,
+  isVerificationEnabled = false,
 }: {
   config: any;
   channels: any[];
   updateConfig: (key: string, val: any) => void;
   insertVariable: (field: string, tag: string) => void;
   onOpenTestModal?: (type?: "channel" | "leave" | "dm") => void;
+  isVerificationEnabled?: boolean;
 }) {
+  const currentTrigger = config.welcome_trigger || "join";
   const fields = Array.isArray(config.welcome_embed_fields) ? config.welcome_embed_fields : [];
 
   const handleAddField = () => {
@@ -166,7 +170,133 @@ export default function WelcomeChannelEditor({
         </div>
       </div>
 
-      {/* 2. Message Body & Variable Engine */}
+      {/* 2. Dispatch Timing & Gatekeeper Trigger Selection */}
+      <div className="p-6 rounded-3xl bg-slate-900/60 border border-white/[0.08] backdrop-blur-xl">
+        <div className="flex items-center gap-3 pb-4 border-b border-white/[0.06]">
+          <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-white">Welcome Trigger Timing</h2>
+            <p className="text-xs text-slate-400">
+              Control exactly when welcome messages and join auto-roles are dispatched to arriving members.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-5">
+          {/* Option 1: On Member Join */}
+          <button
+            type="button"
+            onClick={() => updateConfig("welcome_trigger", "join")}
+            className={`p-4 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
+              currentTrigger === "join"
+                ? "bg-indigo-600/15 border-indigo-500/50 shadow-lg shadow-indigo-500/10 ring-1 ring-indigo-500/30"
+                : "bg-slate-800/40 border-white/[0.06] hover:bg-slate-800/70 hover:border-white/10"
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                  currentTrigger === "join" ? "bg-indigo-500/20 text-indigo-400" : "bg-slate-700/50 text-slate-400"
+                }`}>
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                {currentTrigger === "join" && (
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+                )}
+              </div>
+              <h3 className="text-xs font-bold text-white mb-1">On Member Join</h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Sends immediately the second a member joins your server.
+              </p>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-white/[0.06] text-[10px] font-semibold text-slate-400">
+              Immediate Delivery
+            </div>
+          </button>
+
+          {/* Option 2: After Onboarding / Screening */}
+          <button
+            type="button"
+            onClick={() => updateConfig("welcome_trigger", "onboarding")}
+            className={`p-4 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
+              currentTrigger === "onboarding"
+                ? "bg-cyan-600/15 border-cyan-500/50 shadow-lg shadow-cyan-500/10 ring-1 ring-cyan-500/30"
+                : "bg-slate-800/40 border-white/[0.06] hover:bg-slate-800/70 hover:border-white/10"
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                  currentTrigger === "onboarding" ? "bg-cyan-500/20 text-cyan-400" : "bg-slate-700/50 text-slate-400"
+                }`}>
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                {currentTrigger === "onboarding" && (
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                )}
+              </div>
+              <h3 className="text-xs font-bold text-white mb-1">After Onboarding</h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Waits until member accepts server rules or completes Discord onboarding questions.
+              </p>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-white/[0.06] text-[10px] font-semibold text-cyan-400">
+              Community Screening
+            </div>
+          </button>
+
+          {/* Option 3: After Verification Gate */}
+          <button
+            type="button"
+            onClick={() => updateConfig("welcome_trigger", "verification")}
+            className={`p-4 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
+              currentTrigger === "verification"
+                ? "bg-emerald-600/15 border-emerald-500/50 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500/30"
+                : "bg-slate-800/40 border-white/[0.06] hover:bg-slate-800/70 hover:border-white/10"
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                  currentTrigger === "verification" ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-700/50 text-slate-400"
+                }`}>
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                {currentTrigger === "verification" && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                )}
+              </div>
+              <h3 className="text-xs font-bold text-white mb-1">After Verification</h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Delays welcome until the member completes the server verification gate.
+              </p>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-white/[0.06] text-[10px] font-semibold flex items-center gap-1.5">
+              {isVerificationEnabled ? (
+                <span className="text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Gate Active
+                </span>
+              ) : (
+                <span className="text-amber-400">⚠️ Module Disabled</span>
+              )}
+            </div>
+          </button>
+        </div>
+
+        {/* Verification Inactive Warning if verification is selected */}
+        {currentTrigger === "verification" && !isVerificationEnabled && (
+          <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2.5 animate-in fade-in duration-200">
+            <Info className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              <strong>Note:</strong> The Server Verification module is currently disabled for this server. Arriving members will automatically fall back to being welcomed on join until verification is enabled.
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Message Body & Variable Engine */}
       <div className="p-6 rounded-3xl bg-slate-900/60 border border-white/[0.08] backdrop-blur-xl space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
