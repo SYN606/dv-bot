@@ -122,13 +122,19 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
                       key={item.id}
                       to={item.path}
                       onClick={() => setMobileOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-medium transition-all ${
                         isActive
                           ? "bg-indigo-600/15 text-white font-semibold border border-indigo-500/30 shadow-sm shadow-indigo-500/10"
-                          : "text-slate-300 hover:text-white hover:bg-white/[0.06] border border-transparent"
+                          : "text-slate-300 hover:text-white hover:bg-white/[0.04] border border-transparent"
                       }`}
                     >
-                      <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? "text-indigo-400" : "text-slate-400"}`} />
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200 ${
+                        isActive
+                          ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
+                          : "bg-white/[0.05] text-slate-400 group-hover:bg-white/[0.1] group-hover:text-white group-hover:scale-110 border border-white/[0.06]"
+                      }`}>
+                        <Icon className="w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-105" />
+                      </div>
                       <span className="truncate">{item.label}</span>
                       {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400" />}
                     </Link>

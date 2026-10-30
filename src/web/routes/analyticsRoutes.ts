@@ -12,7 +12,7 @@ import { apiCache } from "./cache.js";
 export const analyticsRoutes = new Hono();
 
 // Shared cache across requests to eliminate repetitive REST /users/{id} rate limits
-const analyticsUserCache = new Map(); // id -> { username, avatar, timestamp }
+const analyticsUserCache = new Map<string, any>(); // id -> { username, nickname, displayName, avatar, timestamp }
 let analyticsRestBackoffUntil = 0;
 
 // Detailed Analytics Telemetry, Server Insights & Leaderboards
@@ -142,7 +142,8 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
       }
     }
 
-    let u = botGuild?.members?.cache?.get(idStr)?.user || client?.users?.cache?.get(idStr);
+    const member = botGuild?.members?.cache?.get(idStr);
+    let u = member?.user || client?.users?.cache?.get(idStr);
     if (!u && client?.users?.fetch && now > analyticsRestBackoffUntil) {
       try {
         u = await client.users.fetch(idStr).catch((err) => {
@@ -156,7 +157,9 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
 
     const resolved = {
       username: u?.username || ('User ' + idStr.slice(-4)),
-      avatar: u?.displayAvatarURL?.({ size: 64 }) || null,
+      nickname: member?.nickname || null,
+      displayName: member?.displayName || u?.globalName || u?.username || ('User ' + idStr.slice(-4)),
+      avatar: member?.displayAvatarURL?.({ size: 64 }) || u?.displayAvatarURL?.({ size: 64 }) || null,
       timestamp: now,
     };
     analyticsUserCache.set(idStr, resolved);
@@ -170,7 +173,9 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
     return {
       userId: String(m.user_id),
       username: userObj?.username || `User ${m.user_id}`,
-      avatar: userObj?.displayAvatarURL?.({ size: 64 }) || null,
+      nickname: userObj?.nickname || null,
+      displayName: userObj?.displayName || userObj?.username || `User ${m.user_id}`,
+      avatar: userObj?.avatar || null,
       messages: numDays <= 7 ? weeklyMessages : totalMessages,
       weeklyMessages,
       totalMessages,
@@ -185,7 +190,9 @@ analyticsRoutes.get("/guilds/:guildId/analytics", async (c) => {
     return {
       userId: String(m.user_id),
       username: userObj?.username || `User ${m.user_id}`,
-      avatar: userObj?.displayAvatarURL?.({ size: 64 }) || null,
+      nickname: userObj?.nickname || null,
+      displayName: userObj?.displayName || userObj?.username || `User ${m.user_id}`,
+      avatar: userObj?.avatar || null,
       vcMinutes: numDays <= 7 ? weeklyMinutes : totalMinutes,
       totalMinutes,
       weeklyMinutes,

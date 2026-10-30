@@ -42,12 +42,10 @@ export default function HomePage({ user, botInfo }: { user?: any; botInfo?: any 
       <div className="fixed top-[-20%] left-[-10%] w-[60vw] h-[60vw] rounded-full glow-orb-primary opacity-30 pointer-events-none -z-10" />
       <div className="fixed bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full glow-orb-cyan opacity-30 pointer-events-none -z-10" />
       
-      {/* Grid Pattern */}
-      <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.15]" style={{
-        backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)',
-        backgroundSize: '40px 40px',
-        maskImage: 'radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%)',
-        WebkitMaskImage: 'radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%)'
+      {/* White Dot Matrix Pattern */}
+      <div className="fixed inset-0 pointer-events-none z-0 bg-dot-matrix opacity-60" style={{
+        maskImage: 'radial-gradient(ellipse 85% 60% at 50% 20%, #000 60%, transparent 100%)',
+        WebkitMaskImage: 'radial-gradient(ellipse 85% 60% at 50% 20%, #000 60%, transparent 100%)'
       }} />
 
       <Navbar user={user} botInfo={botInfo} />

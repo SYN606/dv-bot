@@ -34,7 +34,7 @@ export default function Leaderboard({ topChatters = [], topVoice = [], leaderboa
 
     if (search.trim()) {
       const lower = search.toLowerCase();
-      list = list.filter((u) => u.username?.toLowerCase().includes(lower) || u.userId?.includes(lower));
+      list = list.filter((u) => u.username?.toLowerCase().includes(lower) || u.nickname?.toLowerCase().includes(lower) || u.displayName?.toLowerCase().includes(lower) || u.userId?.includes(lower));
     }
 
     return list.map((item, idx) => ({ ...item, rank: idx + 1, activeVal: getVal(item) }));
@@ -72,7 +72,7 @@ export default function Leaderboard({ topChatters = [], topVoice = [], leaderboa
       {/* Header & Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-brand-crimson border border-white/10 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 hover:bg-amber-500 hover:text-white hover:scale-110 hover:shadow-lg hover:shadow-amber-500/25 transition-all duration-200 shadow-sm shrink-0">
             <Trophy className="w-5 h-5" />
           </div>
           <div>
@@ -200,17 +200,26 @@ export default function Leaderboard({ topChatters = [], topVoice = [], leaderboa
                     {medalText}
                   </span>
                   <img
-                    src={getDiscordAvatarUrl(u)}
-                    alt={u.username}
+                    src={u.avatar || getDiscordAvatarUrl(u)}
+                    alt={u.displayName || u.username}
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png";
                     }}
-                    className="w-9 h-9 rounded-full bg-slate-800 object-cover ring-1 ring-white/10"
+                    className="w-10 h-10 rounded-full bg-slate-800 object-cover ring-1 ring-white/10 shrink-0"
                     loading="lazy"
                   />
-                  <div>
-                    <div className="text-sm font-semibold text-slate-200">{u.username || "Unknown"}</div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-slate-100 truncate">
+                        {u.nickname || u.displayName || u.username || "Unknown"}
+                      </span>
+                      {u.username && (
+                        <span className="text-xs text-slate-400 font-mono font-normal">
+                          @{u.username}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[10px] text-slate-500 font-mono hidden sm:block">
                       ID: {u.userId || "N/A"}
                     </div>
