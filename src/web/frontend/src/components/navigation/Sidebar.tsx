@@ -63,7 +63,7 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 w-72 bg-[#0a0d16] border-r border-white/[0.06] flex flex-col z-50 transform transition-transform duration-300 shrink-0 md:sticky md:top-0 md:left-0 md:h-screen select-none ${mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"}`}>
+      <aside className={`fixed inset-y-0 left-0 w-72 md:w-[18.5rem] bg-[#0a0d16] border-r border-white/[0.06] flex flex-col z-50 transform transition-transform duration-300 shrink-0 md:sticky md:top-0 md:left-0 md:h-screen select-none ${mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"}`}>
         {/* Brand Header */}
         <div className="p-4 border-b border-white/[0.06] flex items-center justify-between shrink-0 relative overflow-hidden bg-[#0c0f1a]">
           <Link to="/" className="flex items-center gap-3 group relative z-10" onClick={() => setMobileOpen(false)}>
@@ -71,10 +71,10 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
               <img src={botAvatar} alt="DV" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col">
-              <span className="font-heading font-bold text-base tracking-tight text-white leading-tight">DV Command</span>
+              <span className="font-heading font-bold text-[17px] tracking-tight text-white leading-tight">DV Command</span>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-[11px] font-mono text-emerald-400 font-semibold tracking-wider uppercase">ONLINE</span>
+                <span className="text-xs font-mono text-emerald-400 font-semibold tracking-wider uppercase">ONLINE</span>
               </div>
             </div>
           </Link>
@@ -97,8 +97,8 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
             </div>
           </div>
           <div className="flex-1 min-w-0 z-10">
-            <p className="font-semibold text-sm text-slate-100 truncate leading-snug">{currentGuild.name}</p>
-            <Link to="/dashboard" className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium mt-0.5 transition-colors" title="Switch Server">
+            <p className="font-bold text-[15px] text-slate-100 truncate leading-snug">{currentGuild.name}</p>
+            <Link to="/dashboard" className="inline-flex items-center gap-1 text-[13px] text-indigo-400 hover:text-indigo-300 font-semibold mt-0.5 transition-colors" title="Switch Server">
               <ArrowLeftRight className="w-3.5 h-3.5" /> Switch server
             </Link>
           </div>
@@ -108,7 +108,7 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
         <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto min-h-0 scrollbar-thin">
           {navGroups.map((group) => (
             <div key={group.group}>
-              <div className="px-3 mb-2 text-xs font-bold tracking-wider text-slate-400 uppercase font-sans">{group.group}</div>
+              <div className="px-3 mb-2 text-[12px] font-extrabold tracking-wider text-slate-400/90 uppercase font-sans">{group.group}</div>
               <div className="space-y-1">
                 {group.items.map((item) => {
                   const Icon = item.icon;
@@ -119,18 +119,18 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
                       key={item.id}
                       to={item.path}
                       onClick={() => setMobileOpen(false)}
-                      className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                      className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[15px] font-semibold transition-all ${
                         isActive
                           ? "bg-indigo-600/15 text-white border border-indigo-500/30 shadow-sm shadow-indigo-500/10"
                           : "text-slate-300 hover:text-white hover:bg-white/[0.04] border border-transparent"
                       }`}
                     >
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ${
+                      <div className={`w-8.5 h-8.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ${
                         isActive
                           ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
                           : "bg-white/[0.05] text-slate-400 group-hover:bg-white/[0.1] group-hover:text-white group-hover:scale-110 border border-white/[0.06]"
                       }`}>
-                        <Icon className="w-4 h-4 transition-transform duration-200 group-hover:scale-105 fill-current" />
+                        <Icon className="w-4.5 h-4.5 transition-transform duration-200 group-hover:scale-105 fill-current" />
                       </div>
                       <span className="truncate">{item.label}</span>
                       {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400" />}
@@ -155,12 +155,12 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-sm font-semibold text-slate-200 truncate leading-snug">
+                  <span className="text-[15px] font-semibold text-slate-200 truncate leading-snug">
                     {user.global_name || user.username}
                   </span>
                   {user.isSuperuser && <SuperuserBadge size="sm" />}
                 </div>
-                <span className="text-xs text-slate-400 font-mono block truncate">
+                <span className="text-[13px] text-slate-400 font-mono block truncate">
                   @{user.username}
                 </span>
               </div>
@@ -185,12 +185,12 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span className="text-xs font-semibold text-slate-200">Digital Vigital</span>
+              <span className="text-[13px] font-semibold text-slate-200">Digital Vigital</span>
             </div>
-            <span className="text-xs font-mono text-emerald-400 font-medium">Operational</span>
+            <span className="text-[13px] font-mono text-emerald-400 font-medium">Operational</span>
           </div>
-          <div className="mt-2 text-xs text-slate-400 flex justify-between items-center px-0.5">
-             <span>Press <kbd className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-[11px] text-slate-200 border border-white/10">Ctrl K</kbd> to search</span>
+          <div className="mt-2 text-[13px] text-slate-400 flex justify-between items-center px-0.5">
+             <span>Press <kbd className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-xs text-slate-200 border border-white/10">Ctrl K</kbd> to search</span>
           </div>
         </div>
       </aside>

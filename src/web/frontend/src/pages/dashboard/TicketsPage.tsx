@@ -85,8 +85,11 @@ export default function TicketsPage({ showToast }) {
       id: `pnl_${Math.random().toString(36).substring(2, 9)}`,
       title: `🎫 Support Panel #${panels.length + 1}`,
     };
-    savePanel(newPanel).then(() => {
-      setSelectedPanelIndex(panels.length);
+    savePanel(newPanel).then((saved) => {
+      if (saved) {
+        setSelectedPanelIndex(panels.length);
+        setPanelDraft(JSON.parse(JSON.stringify(saved)));
+      }
     });
   };
 
@@ -96,7 +99,10 @@ export default function TicketsPage({ showToast }) {
 
   const handleSaveCurrentPanel = async () => {
     if (!panelDraft) return;
-    await savePanel(panelDraft);
+    const saved = await savePanel(panelDraft);
+    if (saved) {
+      setPanelDraft(JSON.parse(JSON.stringify(saved)));
+    }
   };
 
   const handleDeployCurrentPanel = async () => {
@@ -153,21 +159,39 @@ export default function TicketsPage({ showToast }) {
         enabled={config.enabled}
         onToggle={(val) => {
           updateConfigField("enabled", val);
-          saveConfig();
+          saveConfig({ enabled: val });
         }}
         switchLabel="Ticket System"
         actions={
-          hasConfigChanges && (
+          activeTab === "panels" ? (
             <button
               type="button"
-              onClick={saveConfig}
+              onClick={handleSaveCurrentPanel}
+              disabled={savingPanel || !panelDraft}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                isPanelDirty
+                  ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400/50"
+                  : "bg-white/10 hover:bg-white/15 text-slate-300 hover:text-white"
+              }`}
+            >
+              <Save className="w-4 h-4" />
+              <span>{savingPanel ? "Saving..." : isPanelDirty ? "Save Panel *" : "Save Panel"}</span>
+            </button>
+          ) : activeTab === "settings" ? (
+            <button
+              type="button"
+              onClick={() => saveConfig()}
               disabled={savingConfig}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-md shadow-indigo-600/30 transition-all disabled:opacity-50"
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                hasConfigChanges
+                  ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 ring-2 ring-indigo-400/50"
+                  : "bg-white/10 hover:bg-white/15 text-slate-300 hover:text-white"
+              }`}
             >
               <Check className="w-4 h-4" />
-              <span>{savingConfig ? "Saving..." : "Save Settings"}</span>
+              <span>{savingConfig ? "Saving..." : hasConfigChanges ? "Save Settings *" : "Save Settings"}</span>
             </button>
-          )
+          ) : null
         }
       />
 
@@ -223,16 +247,18 @@ export default function TicketsPage({ showToast }) {
                     </div>
 
                     <div className="flex items-center gap-2.5">
-                      {isPanelDirty && (
-                        <button
-                          onClick={handleSaveCurrentPanel}
-                          disabled={savingPanel}
-                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50"
-                        >
-                          <Save className="w-4 h-4" />
-                          <span>{savingPanel ? "Saving..." : "Save Panel"}</span>
-                        </button>
-                      )}
+                      <button
+                        onClick={handleSaveCurrentPanel}
+                        disabled={savingPanel || !panelDraft}
+                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 ${
+                          isPanelDirty
+                            ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20"
+                            : "bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
+                        }`}
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>{savingPanel ? "Saving..." : isPanelDirty ? "Save Panel *" : "Save Panel"}</span>
+                      </button>
 
                       <button
                         onClick={handleDeployCurrentPanel}
@@ -459,6 +485,35 @@ export default function TicketsPage({ showToast }) {
                     </div>
                   )}
                 </div>
+
+                {/* Panel Bottom Action Bar */}
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/60 border border-white/5">
+                  <span className="text-xs text-slate-400">
+                    {isPanelDirty ? "You have unsaved changes to this panel." : "Panel settings are up to date."}
+                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      onClick={handleSaveCurrentPanel}
+                      disabled={savingPanel || !panelDraft}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 ${
+                        isPanelDirty
+                          ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400/40"
+                          : "bg-white/10 hover:bg-white/15 text-slate-200"
+                      }`}
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>{savingPanel ? "Saving..." : isPanelDirty ? "Save Panel *" : "Save Panel"}</span>
+                    </button>
+                    <button
+                      onClick={handleDeployCurrentPanel}
+                      disabled={deployingPanelId === panelDraft.id || !panelDraft.channel_id}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-md shadow-indigo-600/30 transition-all disabled:opacity-50"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>{deployingPanelId === panelDraft.id ? "Deploying..." : "Post to Channel"}</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Right Col: Live Discord Preview */}
@@ -611,6 +666,25 @@ export default function TicketsPage({ showToast }) {
                   #{config.ticket_counter || 0}
                 </span>
               </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+              <span className="text-xs text-slate-400">
+                {hasConfigChanges ? "You have unsaved configuration changes." : "All ticket settings are saved."}
+              </span>
+              <button
+                type="button"
+                onClick={() => saveConfig()}
+                disabled={savingConfig}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                  hasConfigChanges
+                    ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 ring-2 ring-indigo-400/50"
+                    : "bg-white/10 hover:bg-white/15 text-slate-300 hover:text-white"
+                }`}
+              >
+                <Check className="w-4 h-4" />
+                <span>{savingConfig ? "Saving..." : "Save Settings"}</span>
+              </button>
             </div>
           </div>
         </div>
