@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Command, ArrowRight, ShieldCheck, Pin, Terminal, Activity, Sliders, Server, History, ScrollText, UserPlus, PenTool, Bot, Trophy, Award, Image as ImageIcon, ShieldAlert, AlertTriangle, MessageSquareHeart } from "lucide-react";
+import { Search, Command, ArrowRight, ShieldCheck, Pin, Terminal, Activity, Sliders, Server, History, ScrollText, UserPlus, PenTool, Bot, Trophy, Award, Image as ImageIcon, ShieldAlert, AlertTriangle, MessageSquareHeart, Ticket } from "lucide-react";
 
 export default function CommandPalette({ isOpen, setIsOpen, currentGuild }) {
   const [query, setQuery] = useState("");
@@ -32,6 +32,7 @@ export default function CommandPalette({ isOpen, setIsOpen, currentGuild }) {
     { label: "Warning Escalations & Punishments", path: `/dashboard/${currentGuild.id}/warning-punishments`, icon: AlertTriangle, keywords: "warnings strikes timeouts kicks bans escalation threshold moderation punishments" },
     { label: "Staff Dashboard Access Roles", path: `/dashboard/${currentGuild.id}/admin-roles`, icon: ShieldCheck, keywords: "admin roles staff access mod perms dashboard access bot admins" },
     { label: "Verification Gate", path: `/dashboard/${currentGuild.id}/verification`, icon: ShieldCheck, keywords: "verification captcha gatekeeper unverified role gate antiraid" },
+    { label: "Ticket Tooling & Departments", path: `/dashboard/${currentGuild.id}/tickets`, icon: Ticket, keywords: "tickets support panel reason categories departments transcript claims" },
     { label: "Welcome & Leave Gatekeeper", path: `/dashboard/${currentGuild.id}/welcome`, icon: UserPlus, keywords: "welcome leave autorole onboarding verification message card join leave" },
     { label: "Leaderboard Auto-Roles", path: `/dashboard/${currentGuild.id}/autorole`, icon: Award, keywords: "autorole auto roles leaderboard rewards active talkers voice rank" },
     { label: "Supporter Rewards", path: `/dashboard/${currentGuild.id}/supporter`, icon: Trophy, keywords: "supporter booster custom roles rewards perks patron" },

@@ -552,7 +552,74 @@ function ensureSqliteSchema(sqlite) {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS ticket_config (
+      guild_id TEXT PRIMARY KEY,
+      enabled INTEGER DEFAULT 0,
+      transcript_channel_id TEXT,
+      category_id TEXT,
+      support_role_ids TEXT DEFAULT '[]',
+      max_tickets_per_user INTEGER DEFAULT 3,
+      ticket_counter INTEGER DEFAULT 0,
+      auto_close_hours INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS ticket_panels (
+      id TEXT PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      channel_id TEXT,
+      message_id TEXT,
+      title TEXT DEFAULT '🎫 Support Tickets',
+      description TEXT DEFAULT 'Need assistance? Click a button or select a department below.',
+      color TEXT DEFAULT '#6366F1',
+      image_url TEXT,
+      button_text TEXT DEFAULT 'Open Ticket',
+      button_emoji TEXT DEFAULT '📩',
+      button_style TEXT DEFAULT 'Primary',
+      select_placeholder TEXT DEFAULT 'Select a ticket reason / category...',
+      enable_reason_categories INTEGER DEFAULT 0,
+      reason_categories TEXT DEFAULT '[]',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS tickets (
+      id TEXT PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      ticket_number INTEGER NOT NULL,
+      user_id TEXT NOT NULL,
+      user_tag TEXT NOT NULL,
+      channel_id TEXT,
+      panel_id TEXT,
+      category_name TEXT DEFAULT 'General Support',
+      reason TEXT,
+      status TEXT DEFAULT 'open',
+      claimed_by TEXT,
+      claimed_by_tag TEXT,
+      closed_by TEXT,
+      closed_by_tag TEXT,
+      close_reason TEXT,
+      transcript_url TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      closed_at TEXT,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_ticket_panels_guild ON ticket_panels (guild_id);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_tickets_guild_number ON tickets (guild_id, ticket_number);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_tickets_guild_status ON tickets (guild_id, status);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_tickets_channel ON tickets (channel_id);");
+  } catch (_) {}
 
   try {
     sqlite.exec("CREATE INDEX IF NOT EXISTS idx_confessions_guild_number ON confessions (guild_id, confession_number);");

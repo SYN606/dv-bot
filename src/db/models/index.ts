@@ -27,6 +27,9 @@ import {
   WelcomeConfig,
   ConfessionConfig,
   Confession,
+  TicketConfig,
+  TicketPanel,
+  Ticket,
 } from "./featureModels.js";
 import {
   AutoResponder,
@@ -82,6 +85,9 @@ export {
   WelcomeConfig,
   ConfessionConfig,
   Confession,
+  TicketConfig,
+  TicketPanel,
+  Ticket,
   TempbanConfig,
   TempbanRecord,
   WarningRecord,
