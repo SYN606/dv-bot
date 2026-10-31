@@ -77,9 +77,13 @@ export default {
         const leftChannel = oldState.channelId && !newState.channelId;
 
         if (joinedChannel) {
-          await member.roles.add(roleId).catch(() => {});
+          if (!member.roles.cache.has(roleId)) {
+            await member.roles.add(roleId).catch(() => {});
+          }
         } else if (leftChannel) {
-          await member.roles.remove(roleId).catch(() => {});
+          if (member.roles.cache.has(roleId)) {
+            await member.roles.remove(roleId).catch(() => {});
+          }
         }
       }
     } catch {}
@@ -120,6 +124,7 @@ export default {
         sendModLog({
           guild,
           category: "VOICE",
+          eventType: "voice_joined",
           title: "Member Joined Voice Channel",
           level: "SUCCESS",
           target: member.user,
@@ -137,6 +142,7 @@ export default {
         sendModLog({
           guild,
           category: "VOICE",
+          eventType: "voice_left",
           title: "Member Left Voice Channel",
           level: "INFO",
           target: member.user,
@@ -151,6 +157,7 @@ export default {
         sendModLog({
           guild,
           category: "VOICE",
+          eventType: "voice_moved",
           title: "Member Moved Voice Channel",
           level: "INFO",
           target: member.user,

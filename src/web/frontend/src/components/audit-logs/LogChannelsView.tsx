@@ -253,7 +253,6 @@ export default function LogChannelsView({
   onSendTest,
   testingLog = false,
 }) {
-  const [defaultChannelId, setDefaultChannelId] = useState(modLogConfig.modLogChannelId || "");
   const [masterEnabled, setMasterEnabled] = useState(modLogConfig.enabled ?? true);
   const [eventsState, setEventsState] = useState<Record<string, any>>({});
   const [hasChanges, setHasChanges] = useState(false);
@@ -262,7 +261,6 @@ export default function LogChannelsView({
 
   // Sync state when incoming config loads
   useEffect(() => {
-    setDefaultChannelId(modLogConfig.modLogChannelId || "");
     setMasterEnabled(modLogConfig.enabled ?? true);
 
     const initialEvents: Record<string, any> = {};
@@ -316,12 +314,11 @@ export default function LogChannelsView({
   };
 
   const handleSave = async () => {
-    await onSaveConfig(defaultChannelId, eventsState);
+    await onSaveConfig("", eventsState);
     setHasChanges(false);
   };
 
   const handleReset = () => {
-    setDefaultChannelId(modLogConfig.modLogChannelId || "");
     setMasterEnabled(modLogConfig.enabled ?? true);
     const initialEvents: Record<string, any> = {};
     const existing = modLogConfig.eventsConfig || {};
@@ -340,7 +337,8 @@ export default function LogChannelsView({
 
   const handleTestEvent = async (ev: LogEventMeta) => {
     const evConfig = eventsState[ev.id] || {};
-    const targetChannel = evConfig.channel_id || defaultChannelId;
+    const targetChannel = evConfig.channel_id;
+    if (!targetChannel) return;
     setTestingEventId(ev.id);
     try {
       await onSendTest({
@@ -354,8 +352,6 @@ export default function LogChannelsView({
     }
   };
 
-  const defaultChannelObj = channels.find((c) => c.id === defaultChannelId);
-
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* 1. Global Default Channel Banner */}
@@ -364,7 +360,7 @@ export default function LogChannelsView({
           LOGS
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/[0.08] relative z-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <span className="w-2.5 h-2.5 rounded-full bg-brand-crimson animate-pulse" />
@@ -376,14 +372,14 @@ export default function LogChannelsView({
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
-              Route specific Discord events to dedicated channels, customize embed accent colors, or let unassigned events automatically inherit your server default log channel.
+              Route specific Discord events to dedicated channels and customize embed accent colors.
             </p>
           </div>
 
           {/* Master Switch & Unsaved Bar */}
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2.5 rounded-2xl">
-              <span className="text-xs font-semibold text-slate-300">Master Logging:</span>
+              <span className="text-xs font-semibold text-slate-300">Logging Active:</span>
               <Switch
                 checked={masterEnabled}
                 onChange={(val) => {
@@ -420,52 +416,6 @@ export default function LogChannelsView({
             )}
           </div>
         </div>
-
-        {/* Global Default Channel Selector */}
-        <div className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-center relative z-10">
-          <div>
-            <label className="block text-xs font-mono text-slate-300 uppercase tracking-widest font-bold mb-2">
-              Default Fallback Log Channel
-            </label>
-            <ChannelSelector
-              guildId={guildId}
-              channels={channels}
-              value={defaultChannelId}
-              onChange={(val) => {
-                setDefaultChannelId(val);
-                setHasChanges(true);
-              }}
-              allowedTypes={[0, 5]}
-              placeholder="Select default log channel (#mod-logs, #audit-logs)..."
-              specialOptions={[
-                { value: "", label: "None / Disabled", description: "Events must configure specific channels" },
-              ]}
-            />
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between gap-4">
-            <div>
-              <div className="text-xs font-bold text-white mb-0.5">Test Global Log Dispatch</div>
-              <div className="text-[11px] text-slate-400">
-                {defaultChannelObj
-                  ? `Delivers verification test embed to #${defaultChannelObj.name}`
-                  : "Select a default channel above to send a test"}
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onSendTest({ channelId: defaultChannelId, eventLabel: "Default Mod Log" })}
-              disabled={!defaultChannelId || testingLog}
-              isLoading={testingLog && !testingEventId}
-              loadingText="Sending..."
-              className="text-xs shrink-0"
-            >
-              <Send className="w-3.5 h-3.5 mr-1.5" />
-              Send Test
-            </Button>
-          </div>
-        </div>
       </div>
 
       {/* 2. Categorized Event Groups Grid */}
@@ -495,7 +445,7 @@ export default function LogChannelsView({
                 };
                 const isConfigured = Boolean(state.channel_id);
                 const isTestingThis = testingEventId === ev.id;
-                const targetChannelObj = channels.find((c) => c.id === (state.channel_id || defaultChannelId));
+                const targetChannelObj = channels.find((c) => c.id === state.channel_id);
 
                 return (
                   <div
@@ -608,18 +558,12 @@ export default function LogChannelsView({
                             value={state.channel_id}
                             onChange={(val) => handleChannelChange(ev.id, val)}
                             allowedTypes={[0, 5]}
-                            placeholder={
-                              defaultChannelObj
-                                ? `Inherit default (#${defaultChannelObj.name})`
-                                : "Select destination channel..."
-                            }
+                            placeholder="Select destination channel..."
                             specialOptions={[
                               {
                                 value: "",
-                                label: defaultChannelObj
-                                  ? `Inherit Default (#${defaultChannelObj.name})`
-                                  : "Use Default Channel",
-                                description: "Fall back to global default log channel",
+                                label: "None / Disabled",
+                                description: "Event will not be logged",
                               },
                             ]}
                           />

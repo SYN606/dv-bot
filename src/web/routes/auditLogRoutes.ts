@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { PermissionFlagsBits, AuditLogEvent } from "discord.js";
-import { ModerationLogConfig } from "../../db/models/index.js";
+import { ModerationLogConfig, VCRoleConfig } from "../../db/models/index.js";
 import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { apiCache } from "./cache.js";
 
@@ -194,9 +194,28 @@ auditLogRoutes.get("/guilds/:guildId/audit-logs", async (c) => {
           other: 0,
         };
 
-        const uniqueExecutors = new Map();
+        const uniqueExecutors = new Map<string, any>();
+        const vcConfig: any = await VCRoleConfig.findByPk(guild.id).catch(() => null);
+        const vcRoleId = vcConfig?.role_id ? String(vcConfig.role_id) : null;
+        const botUserId = guild.client?.user?.id;
 
         for (const entry of rawLogs.entries.values()) {
+          // Suppress automated bot VC auto-role assignments from flooding audit logs
+          if (
+            entry.action === AuditLogEvent.MemberRoleUpdate &&
+            botUserId &&
+            entry.executor?.id === botUserId &&
+            vcRoleId
+          ) {
+            const rawChanges = Array.isArray(entry.changes) ? entry.changes : [];
+            const isOnlyVcRole = rawChanges.length > 0 && rawChanges.every((ch) => {
+              const rolesList = Array.isArray(ch.new) ? ch.new : (Array.isArray(ch.old) ? ch.old : []);
+              return rolesList.every((r: any) => String(r.id) === vcRoleId);
+            });
+            if (isOnlyVcRole) {
+              continue;
+            }
+          }
           const actionInfo = formatActionInfo(entry.action);
           stats.total += 1;
           if (stats[actionInfo.category] !== undefined) {
