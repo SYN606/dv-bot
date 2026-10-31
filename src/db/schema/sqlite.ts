@@ -614,3 +614,49 @@ export const welcomeConfig = sqliteTable("welcome_config", {
   created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
   updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
 });
+
+export const confessionConfig = sqliteTable("confession_config", {
+  guild_id: text("guild_id").primaryKey(),
+  enabled: integer("enabled", { mode: "boolean" }).default(false),
+  channel_id: text("channel_id"),
+  review_channel_id: text("review_channel_id"),
+  reviewer_role_ids: text("reviewer_role_ids").default("[]"),
+  show_author_in_review: integer("show_author_in_review", { mode: "boolean" }).default(true),
+  allow_anonymous: integer("allow_anonymous", { mode: "boolean" }).default(true),
+  require_approval: integer("require_approval", { mode: "boolean" }).default(true),
+  auto_thread: integer("auto_thread", { mode: "boolean" }).default(true),
+  cooldown_seconds: integer("cooldown_seconds", { mode: "number" }).default(60),
+  banned_words: text("banned_words").default(""),
+  regex_filter: text("regex_filter").default(""),
+  regex_filter_enabled: integer("regex_filter_enabled", { mode: "boolean" }).default(false),
+  current_number: integer("current_number", { mode: "number" }).default(0),
+  created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
+
+export const confessions = sqliteTable(
+  "confessions",
+  {
+    id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+    confession_number: integer("confession_number", { mode: "number" }).notNull(),
+    guild_id: text("guild_id").notNull(),
+    user_id: text("user_id").notNull(),
+    user_tag: text("user_tag").notNull(),
+    content: text("content").notNull(),
+    image_url: text("image_url"),
+    status: text("status").default("pending"),
+    is_anonymous: integer("is_anonymous", { mode: "boolean" }).default(true),
+    channel_id: text("channel_id"),
+    message_id: text("message_id"),
+    review_message_id: text("review_message_id"),
+    reviewed_by: text("reviewed_by"),
+    reviewed_by_tag: text("reviewed_by_tag"),
+    rejection_reason: text("rejection_reason"),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+    updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    guildNumberIdx: index("idx_confessions_guild_number").on(table.guild_id, table.confession_number),
+    guildStatusIdx: index("idx_confessions_guild_status").on(table.guild_id, table.status),
+  })
+);

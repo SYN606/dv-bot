@@ -3,7 +3,7 @@ import { useParams, Link, useOutletContext } from "react-router-dom";
 import {
   ShieldCheck, Pin, Image as ImageIcon,
   Bot, Terminal, Shield, ShieldAlert, Key, ScrollText, Sliders, AlertTriangle,
-  Users, Hash, Server, ArrowRight, CheckCircle2, XCircle, UserPlus, Award, Trophy, PenTool
+  Users, Hash, Server, ArrowRight, CheckCircle2, XCircle, UserPlus, Award, Trophy, PenTool, MessageSquareHeart
 } from "lucide-react";
 import {
   getGuildMeta, getVerification, getMediaOnly,
@@ -278,10 +278,14 @@ export default function OverviewPage({ showToast }) {
             <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-4 flex items-center gap-2.5 uppercase font-sans">
               <span className="font-mono text-xs text-indigo-400 font-semibold">03 /</span> Engagement & Content
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <ModuleCard 
                 title="Message Studio" path={`/dashboard/${guildId}/message-studio`} icon={PenTool} accent="var(--color-brand-indigo)"
                 active={true} statusText="Ready"
+              />
+              <ModuleCard 
+                title="Confessions" path={`/dashboard/${guildId}/confessions`} icon={MessageSquareHeart} accent="var(--color-brand-indigo)"
+                active={true} statusText="Configured"
               />
               <ModuleCard 
                 title="Autoresponder" path={`/dashboard/${guildId}/autoresponder`} icon={Bot} accent="var(--color-brand-indigo)"

@@ -513,7 +513,53 @@ function ensureSqliteSchema(sqlite) {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS confession_config (
+      guild_id TEXT PRIMARY KEY,
+      enabled INTEGER DEFAULT 0,
+      channel_id TEXT,
+      review_channel_id TEXT,
+      reviewer_role_ids TEXT DEFAULT '[]',
+      show_author_in_review INTEGER DEFAULT 1,
+      allow_anonymous INTEGER DEFAULT 1,
+      require_approval INTEGER DEFAULT 1,
+      auto_thread INTEGER DEFAULT 1,
+      cooldown_seconds INTEGER DEFAULT 60,
+      banned_words TEXT DEFAULT '',
+      regex_filter TEXT DEFAULT '',
+      regex_filter_enabled INTEGER DEFAULT 0,
+      current_number INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS confessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      confession_number INTEGER NOT NULL,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      user_tag TEXT NOT NULL,
+      content TEXT NOT NULL,
+      image_url TEXT,
+      status TEXT DEFAULT 'pending',
+      is_anonymous INTEGER DEFAULT 1,
+      channel_id TEXT,
+      message_id TEXT,
+      review_message_id TEXT,
+      reviewed_by TEXT,
+      reviewed_by_tag TEXT,
+      rejection_reason TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_confessions_guild_number ON confessions (guild_id, confession_number);");
+  } catch (_) {}
+  try {
+    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_confessions_guild_status ON confessions (guild_id, status);");
+  } catch (_) {}
 
   try {
     sqlite.exec("CREATE INDEX IF NOT EXISTS idx_message_drafts_guild ON message_drafts (guild_id);");

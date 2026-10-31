@@ -740,3 +740,33 @@ export async function sendTestWelcomeMessage(
     body: { type, config, channelId, autoDeleteSeconds },
   });
 }
+
+// ============================================================================
+// Anonymous Confessions API
+// ============================================================================
+
+export async function getConfessionConfig(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/confessions/config`);
+}
+
+export async function updateConfessionConfig(guildId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/confessions/config`, {
+    method: "PUT",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/confessions/config`);
+  return result;
+}
+
+export async function testConfessionFilter(guildId, payload) {
+  return fetchApi(`/api/guilds/${guildId}/confessions/test-filter`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function sendConfessionPanel(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/confessions/send-panel`, {
+    method: "POST",
+  });
+}

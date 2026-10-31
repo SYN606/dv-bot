@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Command, ArrowRight, ShieldCheck, Pin, Terminal, Activity, Sliders, Server, History, ScrollText, UserPlus, PenTool, Bot, Trophy, Award, Image as ImageIcon, ShieldAlert, AlertTriangle } from "lucide-react";
+import { Search, Command, ArrowRight, ShieldCheck, Pin, Terminal, Activity, Sliders, Server, History, ScrollText, UserPlus, PenTool, Bot, Trophy, Award, Image as ImageIcon, ShieldAlert, AlertTriangle, MessageSquareHeart } from "lucide-react";
 
 export default function CommandPalette({ isOpen, setIsOpen, currentGuild }) {
   const [query, setQuery] = useState("");
@@ -36,6 +36,7 @@ export default function CommandPalette({ isOpen, setIsOpen, currentGuild }) {
     { label: "Leaderboard Auto-Roles", path: `/dashboard/${currentGuild.id}/autorole`, icon: Award, keywords: "autorole auto roles leaderboard rewards active talkers voice rank" },
     { label: "Supporter Rewards", path: `/dashboard/${currentGuild.id}/supporter`, icon: Trophy, keywords: "supporter booster custom roles rewards perks patron" },
     { label: "Message Studio", path: `/dashboard/${currentGuild.id}/message-studio`, icon: PenTool, keywords: "message studio embed builder webhook announcements creator" },
+    { label: "Anonymous Confessions", path: `/dashboard/${currentGuild.id}/confessions`, icon: MessageSquareHeart, keywords: "confessions confess anonymous review queue word filter" },
     { label: "Autoresponder", path: `/dashboard/${currentGuild.id}/autoresponder`, icon: Bot, keywords: "autoresponder triggers keywords bot replies automation responses" },
     { label: "Sticky Messages", path: `/dashboard/${currentGuild.id}/sticky`, icon: Pin, keywords: "sticky pin messages auto stick channel notice recurring" },
     { label: "Media-Only Channels", path: `/dashboard/${currentGuild.id}/media-only`, icon: ImageIcon, keywords: "media only gallery attachments photos clips channels" },
