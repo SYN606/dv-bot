@@ -43,23 +43,28 @@ export const commandRoutes = new Hono();
 export const MODULE_METADATA = {
   moderation: {
     name: "Moderation",
-    description: "Ban, kick, timeout, unban, and warnings moderation suite",
+    description: "Ban, kick, timeout, purge, unban, and warning enforcement suite",
     icon: "ShieldAlert",
   },
   admin: {
-    name: "Administration",
-    description: "Server administration, admin roles, media channels, purge, and logs",
+    name: "Administration & Security",
+    description: "Permission audits, security scans, role management, and privileged lookup",
     icon: "ShieldCheck",
+  },
+  channels: {
+    name: "Channel Management",
+    description: "Channel lockdown, visibility control, and message slowmode rate limits",
+    icon: "Hash",
+  },
+  voice: {
+    name: "Voice Tools",
+    description: "Voice channel dragging, mass move, and automated VC tools",
+    icon: "Volume2",
   },
   analytics: {
     name: "Analytics & Tracking",
     description: "Member leaderboards, message statistics, and server activity charts",
     icon: "BarChart3",
-  },
-  channels: {
-    name: "Channel Management",
-    description: "Channel lockdown and message slowmode rate limits",
-    icon: "Hash",
   },
   utility: {
     name: "General Utility",
@@ -70,11 +75,6 @@ export const MODULE_METADATA = {
     name: "Fun & Roleplay",
     description: "Social anime roleplay interactions, love compatibility ship calculator, and fun commands",
     icon: "Sparkles",
-  },
-  voice: {
-    name: "Voice Tools",
-    description: "Voice channel dragging, mass move, and automated VC roles",
-    icon: "Volume2",
   },
 };
 
@@ -213,7 +213,15 @@ export async function getGuildCommandsState(guildId, rawChannelId, client) {
     mod.channelRule = catRule;
   }
 
-  const modules = Array.from(categoryMap.values());
+  const PREFERRED_ORDER = ["moderation", "admin", "channels", "voice", "analytics", "utility", "fun"];
+  const modules = Array.from(categoryMap.values()).sort((a, b) => {
+    const idxA = PREFERRED_ORDER.indexOf(a.id);
+    const idxB = PREFERRED_ORDER.indexOf(b.id);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.name.localeCompare(b.name);
+  });
   const totalCount = enrichedCommands.length;
   const disabledCount = enrichedCommands.filter((c) => c.disabled).length;
   const protectedCount = enrichedCommands.filter((c) => c.isProtected).length;

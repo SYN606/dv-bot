@@ -3,7 +3,7 @@ import { useParams, Link, useOutletContext } from "react-router-dom";
 import {
   ShieldCheck, Pin, Image as ImageIcon,
   Bot, Terminal, Shield, ShieldAlert, Key, ScrollText, Sliders, AlertTriangle,
-  Users, Hash, Server, ArrowRight, CheckCircle2, XCircle
+  Users, Hash, Server, ArrowRight, CheckCircle2, XCircle, UserPlus, Award, Trophy, PenTool
 } from "lucide-react";
 import {
   getGuildMeta, getVerification, getMediaOnly,
@@ -228,45 +228,9 @@ export default function OverviewPage({ showToast }) {
           
           <section>
             <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-4 flex items-center gap-2.5 uppercase font-sans">
-              <span className="font-mono text-xs text-indigo-400 font-semibold">01 /</span> Community & Engagement
+              <span className="font-mono text-xs text-indigo-400 font-semibold">01 /</span> Security & Moderation
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <ModuleCard 
-                title="Verification Gate" path={`/dashboard/${guildId}/verification`} icon={ShieldCheck} accent="var(--color-brand-indigo)"
-                active={!!modules.verification} statusText={modules.verification ? "Active" : "Disabled"}
-              />
-              <ModuleCard 
-                title="Sticky Messages" path={`/dashboard/${guildId}/sticky`} icon={Pin} accent="var(--color-brand-indigo)"
-                active={modules.sticky.length > 0} statusText={modules.sticky.length > 0 ? `${modules.sticky.length} Pins` : "Disabled"}
-              />
-              <ModuleCard 
-                title="Media-Only Channels" path={`/dashboard/${guildId}/media-only`} icon={ImageIcon} accent="var(--color-brand-indigo)"
-                active={modules.media.length > 0} statusText={modules.media.length > 0 ? `${modules.media.length} Channels` : "Disabled"}
-              />
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-4 flex items-center gap-2.5 uppercase font-sans">
-              <span className="font-mono text-xs text-indigo-400 font-semibold">02 /</span> Automation & Workflows
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <ModuleCard 
-                title="Autoresponder" path={`/dashboard/${guildId}/autoresponder`} icon={Bot} accent="var(--color-brand-indigo)"
-                active={modules.autoresponder.length > 0} statusText={modules.autoresponder.length > 0 ? `${modules.autoresponder.length} Rules` : "Disabled"}
-              />
-              <ModuleCard 
-                title="Command Restrictions" path={`/dashboard/${guildId}/commands`} icon={Terminal} accent="var(--color-brand-indigo)"
-                active={true} statusText="Configured"
-              />
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-4 flex items-center gap-2.5 uppercase font-sans">
-              <span className="font-mono text-xs text-indigo-400 font-semibold">03 /</span> Security & Auditing
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <ModuleCard 
                 title="Permissions Audit" path={`/dashboard/${guildId}/permissions`} icon={ShieldAlert} accent="var(--color-brand-indigo)"
                 active={true} statusText="Protected"
@@ -276,11 +240,75 @@ export default function OverviewPage({ showToast }) {
                 active={true} statusText="Active"
               />
               <ModuleCard 
+                title="Warning Escalations" path={`/dashboard/${guildId}/warning-punishments`} icon={AlertTriangle} accent="var(--color-brand-indigo)"
+                active={true} statusText="Configured"
+              />
+              <ModuleCard 
                 title="Staff Access Roles" path={`/dashboard/${guildId}/admin-roles`} icon={Shield} accent="var(--color-brand-indigo)"
                 active={modules.adminRoles.length > 0} statusText={modules.adminRoles.length > 0 ? `${modules.adminRoles.length} Roles` : "Disabled"}
               />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-4 flex items-center gap-2.5 uppercase font-sans">
+              <span className="font-mono text-xs text-indigo-400 font-semibold">02 /</span> Community & Onboarding
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <ModuleCard 
-                title="Warning Escalations" path={`/dashboard/${guildId}/warning-punishments`} icon={AlertTriangle} accent="var(--color-brand-indigo)"
+                title="Verification Gate" path={`/dashboard/${guildId}/verification`} icon={ShieldCheck} accent="var(--color-brand-indigo)"
+                active={!!modules.verification} statusText={modules.verification ? "Active" : "Disabled"}
+              />
+              <ModuleCard 
+                title="Welcome & Leave" path={`/dashboard/${guildId}/welcome`} icon={UserPlus} accent="var(--color-brand-indigo)"
+                active={true} statusText="Configured"
+              />
+              <ModuleCard 
+                title="Auto-Roles" path={`/dashboard/${guildId}/autorole`} icon={Award} accent="var(--color-brand-indigo)"
+                active={true} statusText="Active"
+              />
+              <ModuleCard 
+                title="Supporter Perks" path={`/dashboard/${guildId}/supporter`} icon={Trophy} accent="var(--color-brand-indigo)"
+                active={true} statusText="Configured"
+              />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-4 flex items-center gap-2.5 uppercase font-sans">
+              <span className="font-mono text-xs text-indigo-400 font-semibold">03 /</span> Engagement & Content
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <ModuleCard 
+                title="Message Studio" path={`/dashboard/${guildId}/message-studio`} icon={PenTool} accent="var(--color-brand-indigo)"
+                active={true} statusText="Ready"
+              />
+              <ModuleCard 
+                title="Autoresponder" path={`/dashboard/${guildId}/autoresponder`} icon={Bot} accent="var(--color-brand-indigo)"
+                active={modules.autoresponder.length > 0} statusText={modules.autoresponder.length > 0 ? `${modules.autoresponder.length} Rules` : "Disabled"}
+              />
+              <ModuleCard 
+                title="Sticky Messages" path={`/dashboard/${guildId}/sticky`} icon={Pin} accent="var(--color-brand-indigo)"
+                active={modules.sticky.length > 0} statusText={modules.sticky.length > 0 ? `${modules.sticky.length} Pins` : "Disabled"}
+              />
+              <ModuleCard 
+                title="Media-Only" path={`/dashboard/${guildId}/media-only`} icon={ImageIcon} accent="var(--color-brand-indigo)"
+                active={modules.media.length > 0} statusText={modules.media.length > 0 ? `${modules.media.length} Channels` : "Disabled"}
+              />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-4 flex items-center gap-2.5 uppercase font-sans">
+              <span className="font-mono text-xs text-indigo-400 font-semibold">04 /</span> System & Controls
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <ModuleCard 
+                title="Command Permissions" path={`/dashboard/${guildId}/commands`} icon={Terminal} accent="var(--color-brand-indigo)"
+                active={true} statusText="Configured"
+              />
+              <ModuleCard 
+                title="Bot Settings" path={`/dashboard/${guildId}/config`} icon={Sliders} accent="var(--color-brand-indigo)"
                 active={true} statusText="Configured"
               />
             </div>

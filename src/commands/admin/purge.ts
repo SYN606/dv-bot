@@ -43,7 +43,7 @@ const slashBuilder = new SlashCommandBuilder()
 export default createCommand({
   name: "purge",
   description: "Bulk delete up to 1000 messages from the current channel.",
-  category: "Admin",
+  category: "Moderation",
   usage: "<amount> [user]",
   examples: [
     "/purge amount:20",

@@ -13,25 +13,30 @@ import { EMOJIS } from "../../core/emojis.js";
 import { getRestrictedCommands } from "../../db/helpers/channelCommandRestrict.js";
 
 const CATEGORY_META = {
+  moderation: {
+    name: "Moderation",
+    emoji: "🔨",
+    description: "Banning, kicking, timeouts, message purges, and warning enforcement.",
+  },
   admin: {
-    name: "Admin",
+    name: "Admin & Security",
     emoji: "🛡️",
     description: "Auditing, permissions, roles, and administrative controls.",
-  },
-  analytics: {
-    name: "Analytics",
-    emoji: "📊",
-    description: "Activity tracking, chat and voice leaderboards, and user stats.",
   },
   channels: {
     name: "Channels",
     emoji: "📁",
     description: "Verification-aware channel locking, hiding, and slowmode controls.",
   },
-  moderation: {
-    name: "Moderation",
-    emoji: "🔨",
-    description: "Banning, kicking, timeouts, tempbans, and warning enforcement.",
+  voice: {
+    name: "Voice Tools",
+    emoji: "🔊",
+    description: "Voice channel dragging, member movements, and VC tools.",
+  },
+  analytics: {
+    name: "Analytics",
+    emoji: "📊",
+    description: "Activity tracking, chat and voice leaderboards, and user stats.",
   },
   utility: {
     name: "Utility",
@@ -39,14 +44,9 @@ const CATEGORY_META = {
     description: "General utility tools, avatars, server info, and user lookups.",
   },
   fun: {
-    name: "Fun",
+    name: "Fun & Roleplay",
     emoji: "🎉",
     description: "Social anime roleplay interactions, ship calculator, and fun commands.",
-  },
-  voice: {
-    name: "Voice",
-    emoji: "🔊",
-    description: "Voice channel moderation, dragging, and member movement.",
   },
 };
 
@@ -288,7 +288,17 @@ export default createCommand({
       categoriesMap.get(catName).push(cmd);
     }
 
-    const categoriesList = Array.from(categoriesMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    const PREFERRED_ORDER = ["moderation", "admin", "channels", "voice", "analytics", "utility", "fun"];
+    const categoriesList = Array.from(categoriesMap.entries()).sort((a, b) => {
+      const keyA = a[1][0]?.category?.toLowerCase() || a[0].toLowerCase();
+      const keyB = b[1][0]?.category?.toLowerCase() || b[0].toLowerCase();
+      const idxA = PREFERRED_ORDER.indexOf(keyA);
+      const idxB = PREFERRED_ORDER.indexOf(keyB);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a[0].localeCompare(b[0]);
+    });
 
     if (categoriesList.length === 0) {
       return await ctx.reply({

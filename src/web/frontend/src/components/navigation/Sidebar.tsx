@@ -20,46 +20,36 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
       ]
     },
     {
-      group: "COMMUNITY",
+      group: "SECURITY & MODERATION",
       items: [
-        { id: "verification", label: "Verification Gate", icon: ShieldCheck, path: `/dashboard/${currentGuild.id}/verification` },
-        { id: "welcome", label: "Welcome & Leave", icon: UserPlus, path: `/dashboard/${currentGuild.id}/welcome` },
-        { id: "supporter", label: "Supporter Rewards", icon: Trophy, path: `/dashboard/${currentGuild.id}/supporter` },
-        { id: "autorole", label: "Leaderboard Auto-Roles", icon: Award, path: `/dashboard/${currentGuild.id}/autorole` }
+        { id: "permissions", label: "Permissions & Risk Audit", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/permissions` },
+        { id: "audit_logs", label: "Logs & Audit Center", icon: ScrollText, path: `/dashboard/${currentGuild.id}/audit-logs` },
+        { id: "warning_punishments", label: "Warning Escalations", icon: AlertTriangle, path: `/dashboard/${currentGuild.id}/warning-punishments` },
+        { id: "admin_roles", label: "Staff Dashboard Access", icon: Shield, path: `/dashboard/${currentGuild.id}/admin-roles` },
       ]
     },
     {
-      group: "CONTENT",
+      group: "COMMUNITY & ONBOARDING",
+      items: [
+        { id: "verification", label: "Verification Gate", icon: ShieldCheck, path: `/dashboard/${currentGuild.id}/verification` },
+        { id: "welcome", label: "Welcome & Leave", icon: UserPlus, path: `/dashboard/${currentGuild.id}/welcome` },
+        { id: "autorole", label: "Leaderboard Auto-Roles", icon: Award, path: `/dashboard/${currentGuild.id}/autorole` },
+        { id: "supporter", label: "Supporter Rewards", icon: Trophy, path: `/dashboard/${currentGuild.id}/supporter` },
+      ]
+    },
+    {
+      group: "ENGAGEMENT & CONTENT",
       items: [
         { id: "message_studio", label: "Message Studio", icon: PenTool, path: `/dashboard/${currentGuild.id}/message-studio` },
+        { id: "autoresponder", label: "Autoresponder", icon: Bot, path: `/dashboard/${currentGuild.id}/autoresponder` },
         { id: "sticky", label: "Sticky Messages", icon: Pin, path: `/dashboard/${currentGuild.id}/sticky` },
         { id: "media_only", label: "Media-Only Channels", icon: ImageIcon, path: `/dashboard/${currentGuild.id}/media-only` }
       ]
     },
     {
-      group: "AUTOMATION",
+      group: "SYSTEM & CONTROLS",
       items: [
-        { id: "autoresponder", label: "Autoresponder", icon: Bot, path: `/dashboard/${currentGuild.id}/autoresponder` },
-        { id: "commands", label: "Command Restrictions", icon: Terminal, path: `/dashboard/${currentGuild.id}/commands` }
-      ]
-    },
-    {
-      group: "SECURITY & AUDIT",
-      items: [
-        { id: "audit_logs", label: "Logs & Audit Center", icon: ScrollText, path: `/dashboard/${currentGuild.id}/audit-logs` },
-        { id: "permissions", label: "Permissions & Risk Audit", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/permissions` },
-        { id: "admin_roles", label: "Staff Dashboard Access", icon: Shield, path: `/dashboard/${currentGuild.id}/admin-roles` },
-      ]
-    },
-    {
-      group: "MODERATION",
-      items: [
-        { id: "warning_punishments", label: "Warning Escalations", icon: AlertTriangle, path: `/dashboard/${currentGuild.id}/warning-punishments` },
-      ]
-    },
-    {
-      group: "SYSTEM",
-      items: [
+        { id: "commands", label: "Command Permissions", icon: Terminal, path: `/dashboard/${currentGuild.id}/commands` },
         { id: "config", label: "Bot Settings", icon: Sliders, path: `/dashboard/${currentGuild.id}/config` }
       ]
     }
