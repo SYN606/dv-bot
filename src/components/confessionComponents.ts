@@ -48,6 +48,13 @@ export function registerConfessionComponents(client: any) {
       });
     }
 
+    if (config.channel_id && interaction.channelId !== config.channel_id) {
+      return await interaction.reply({
+        content: `❌ Confessions can only be submitted in <#${config.channel_id}>.`,
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
     const modal = new ModalBuilder()
       .setCustomId("confess_modal_submit")
       .setTitle("Submit Anonymous Confession");
@@ -97,6 +104,12 @@ export function registerConfessionComponents(client: any) {
     if (!config || !config.enabled) {
       return await interaction.editReply({
         content: "Confessions are currently disabled in this server.",
+      });
+    }
+
+    if (config.channel_id && interaction.channelId !== config.channel_id) {
+      return await interaction.editReply({
+        content: `❌ Confessions can only be submitted from <#${config.channel_id}>.`,
       });
     }
 
