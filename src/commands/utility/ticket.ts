@@ -87,7 +87,7 @@ export default createCommand({
     // 1. CLOSE TICKET
     if (subcommand === "close") {
       const ticket = await getTicketByChannel(channel.id);
-      if (!ticket) {
+      if (!ticket || ticket.status === "closed") {
         return await ctx.reply({
           content: "❌ This channel is not an active support ticket.",
           flags: MessageFlags.Ephemeral,
@@ -122,7 +122,7 @@ export default createCommand({
     // 2. CLAIM TICKET
     if (subcommand === "claim") {
       const ticket = await getTicketByChannel(channel.id);
-      if (!ticket) {
+      if (!ticket || ticket.status === "closed") {
         return await ctx.reply({
           content: "❌ This channel is not an active support ticket.",
           flags: MessageFlags.Ephemeral,
@@ -157,7 +157,7 @@ export default createCommand({
     // 3. ADD USER TO TICKET
     if (subcommand === "add") {
       const ticket = await getTicketByChannel(channel.id);
-      if (!ticket) {
+      if (!ticket || ticket.status === "closed") {
         return await ctx.reply({
           content: "❌ This channel is not an active support ticket.",
           flags: MessageFlags.Ephemeral,
@@ -196,7 +196,7 @@ export default createCommand({
     // 4. REMOVE USER FROM TICKET
     if (subcommand === "remove") {
       const ticket = await getTicketByChannel(channel.id);
-      if (!ticket) {
+      if (!ticket || ticket.status === "closed") {
         return await ctx.reply({
           content: "❌ This channel is not an active support ticket.",
           flags: MessageFlags.Ephemeral,

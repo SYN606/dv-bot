@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
   Ticket as TicketIcon,
@@ -19,6 +19,7 @@ import {
   Sparkles,
   MessageSquare,
   Tag,
+  Save,
 } from "lucide-react";
 import { useTickets, DEFAULT_PANEL } from "../../hooks/tickets/useTickets";
 import { PageHeader, PageSkeleton, PageError, Switch, Tabs } from "../../components/ui";
@@ -52,6 +53,24 @@ export default function TicketsPage({ showToast }) {
     refresh,
   } = useTickets(guildId, showToast);
 
+  // Local draft state for the selected panel to prevent per-keystroke API spamming
+  const [panelDraft, setPanelDraft] = useState<any>(null);
+
+  const activePanelFromDb = panels[selectedPanelIndex] || null;
+
+  useEffect(() => {
+    if (activePanelFromDb) {
+      setPanelDraft(JSON.parse(JSON.stringify(activePanelFromDb)));
+    } else if (panels.length === 0) {
+      setPanelDraft(null);
+    }
+  }, [selectedPanelIndex, panels]);
+
+  const isPanelDirty = useMemo(() => {
+    if (!panelDraft || !activePanelFromDb) return false;
+    return JSON.stringify(panelDraft) !== JSON.stringify(activePanelFromDb);
+  }, [panelDraft, activePanelFromDb]);
+
   if (loading) {
     return <PageSkeleton cards={3} rows={0} />;
   }
@@ -59,8 +78,6 @@ export default function TicketsPage({ showToast }) {
   if (error) {
     return <PageError title="Failed to load ticket system" description={error} onRetry={refresh} />;
   }
-
-  const currentPanel = panels[selectedPanelIndex] || null;
 
   const handleAddNewPanel = () => {
     const newPanel = {
@@ -73,15 +90,26 @@ export default function TicketsPage({ showToast }) {
     });
   };
 
-  const handleUpdateCurrentPanel = (key: string, value: any) => {
-    if (!currentPanel) return;
-    const updated = { ...currentPanel, [key]: value };
-    savePanel(updated);
+  const handleUpdateDraft = (key: string, value: any) => {
+    setPanelDraft((prev: any) => (prev ? { ...prev, [key]: value } : prev));
+  };
+
+  const handleSaveCurrentPanel = async () => {
+    if (!panelDraft) return;
+    await savePanel(panelDraft);
+  };
+
+  const handleDeployCurrentPanel = async () => {
+    if (!panelDraft) return;
+    if (isPanelDirty) {
+      await savePanel(panelDraft);
+    }
+    await deploy(panelDraft.id);
   };
 
   const handleAddReasonCategory = () => {
-    if (!currentPanel) return;
-    const existing = currentPanel.reason_categories || [];
+    if (!panelDraft) return;
+    const existing = panelDraft.reason_categories || [];
     const newCat = {
       id: `cat_${Date.now()}`,
       label: "New Department",
@@ -89,20 +117,20 @@ export default function TicketsPage({ showToast }) {
       description: "Describe what this category is for",
       require_reason: true,
     };
-    handleUpdateCurrentPanel("reason_categories", [...existing, newCat]);
+    handleUpdateDraft("reason_categories", [...existing, newCat]);
   };
 
   const handleUpdateReasonCategory = (catId: string, field: string, val: any) => {
-    if (!currentPanel) return;
-    const existing = currentPanel.reason_categories || [];
+    if (!panelDraft) return;
+    const existing = panelDraft.reason_categories || [];
     const updated = existing.map((c: any) => (c.id === catId ? { ...c, [field]: val } : c));
-    handleUpdateCurrentPanel("reason_categories", updated);
+    handleUpdateDraft("reason_categories", updated);
   };
 
   const handleRemoveReasonCategory = (catId: string) => {
-    if (!currentPanel) return;
-    const existing = currentPanel.reason_categories || [];
-    handleUpdateCurrentPanel(
+    if (!panelDraft) return;
+    const existing = panelDraft.reason_categories || [];
+    handleUpdateDraft(
       "reason_categories",
       existing.filter((c: any) => c.id !== catId)
     );
@@ -134,9 +162,9 @@ export default function TicketsPage({ showToast }) {
               type="button"
               onClick={saveConfig}
               disabled={savingConfig}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-md shadow-indigo-600/30 transition-all disabled:opacity-50"
             >
-              <Check className="w-3.5 h-3.5" />
+              <Check className="w-4 h-4" />
               <span>{savingConfig ? "Saving..." : "Save Settings"}</span>
             </button>
           )
@@ -156,10 +184,10 @@ export default function TicketsPage({ showToast }) {
                 <button
                   key={p.id}
                   onClick={() => setSelectedPanelIndex(idx)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
                     selectedPanelIndex === idx
                       ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                      : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10"
+                      : "bg-white/5 text-slate-300 hover:text-white hover:bg-white/10"
                   }`}
                 >
                   {p.title || `Panel #${idx + 1}`}
@@ -170,84 +198,95 @@ export default function TicketsPage({ showToast }) {
             <button
               onClick={handleAddNewPanel}
               disabled={savingPanel}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition-all ml-auto"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-semibold border border-white/10 transition-all ml-auto"
             >
-              <Plus className="w-3.5 h-3.5 text-indigo-400" />
+              <Plus className="w-4 h-4 text-indigo-400" />
               <span>Create New Panel</span>
             </button>
           </div>
 
-          {currentPanel ? (
+          {panelDraft ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left 2 Cols: Panel Config & Reason Categories */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Panel Details Card */}
                 <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-5 bg-slate-900/60">
                   <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                        <Layers className="w-4 h-4" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                        <Layers className="w-4.5 h-4.5" />
                       </div>
                       <div>
-                        <h2 className="text-sm font-bold text-white tracking-wide">Panel Appearance & Target</h2>
-                        <p className="text-xs text-slate-400">Where this panel lives and how it presents to users.</p>
+                        <h2 className="text-base font-bold text-white tracking-wide">Panel Appearance & Destination</h2>
+                        <p className="text-sm text-slate-400">Where this panel lives and how it presents to server members.</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
+                      {isPanelDirty && (
+                        <button
+                          onClick={handleSaveCurrentPanel}
+                          disabled={savingPanel}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50"
+                        >
+                          <Save className="w-4 h-4" />
+                          <span>{savingPanel ? "Saving..." : "Save Panel"}</span>
+                        </button>
+                      )}
+
                       <button
-                        onClick={() => deploy(currentPanel.id)}
-                        disabled={deployingPanelId === currentPanel.id || !currentPanel.channel_id}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
+                        onClick={handleDeployCurrentPanel}
+                        disabled={deployingPanelId === panelDraft.id || !panelDraft.channel_id}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
                         title="Deploy or refresh panel in Discord"
                       >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>{deployingPanelId === currentPanel.id ? "Deploying..." : "Post to Channel"}</span>
+                        <Send className="w-4 h-4" />
+                        <span>{deployingPanelId === panelDraft.id ? "Deploying..." : "Post to Channel"}</span>
                       </button>
 
                       {panels.length > 1 && (
                         <button
-                          onClick={() => removePanel(currentPanel.id)}
-                          className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-all"
+                          onClick={() => removePanel(panelDraft.id)}
+                          className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-all"
                           title="Delete Panel"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                      <label className="block text-sm font-semibold text-slate-200 mb-1.5">
                         Destination Channel <span className="text-rose-400">*</span>
                       </label>
                       <ChannelSelector
                         guildId={guildId}
                         channels={channels}
-                        value={currentPanel.channel_id}
-                        onChange={(val) => handleUpdateCurrentPanel("channel_id", val)}
+                        value={panelDraft.channel_id}
+                        onChange={(val) => handleUpdateDraft("channel_id", val)}
                         allowedTypes={["text"]}
                         placeholder="Select channel (e.g. #tickets)..."
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                      <label className="block text-sm font-semibold text-slate-200 mb-1.5">
                         Embed Accent Color
                       </label>
                       <div className="flex items-center gap-2.5">
                         <input
                           type="color"
-                          value={currentPanel.color || "#6366F1"}
-                          onChange={(e) => handleUpdateCurrentPanel("color", e.target.value)}
-                          className="w-9 h-9 rounded-lg border border-white/10 bg-transparent cursor-pointer p-0.5"
+                          value={panelDraft.color || "#6366F1"}
+                          onChange={(e) => handleUpdateDraft("color", e.target.value)}
+                          className="w-10 h-10 rounded-xl border border-white/10 bg-transparent cursor-pointer p-0.5"
                         />
                         <input
                           type="text"
-                          value={currentPanel.color || "#6366F1"}
-                          onChange={(e) => handleUpdateCurrentPanel("color", e.target.value)}
-                          className="flex-1 bg-slate-950/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+                          value={panelDraft.color || "#6366F1"}
+                          onChange={(e) => handleUpdateDraft("color", e.target.value)}
+                          className="flex-1 bg-slate-950/60 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white font-mono focus:outline-none focus:border-indigo-500"
                         />
                       </div>
                     </div>
@@ -255,28 +294,28 @@ export default function TicketsPage({ showToast }) {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                      <label className="block text-sm font-semibold text-slate-200 mb-1.5">
                         Panel Title
                       </label>
                       <input
                         type="text"
-                        value={currentPanel.title}
-                        onChange={(e) => handleUpdateCurrentPanel("title", e.target.value)}
+                        value={panelDraft.title}
+                        onChange={(e) => handleUpdateDraft("title", e.target.value)}
                         placeholder="e.g. 🎫 Support & Inquiries"
-                        className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                      <label className="block text-sm font-semibold text-slate-200 mb-1.5">
                         Panel Description
                       </label>
                       <textarea
                         rows={3}
-                        value={currentPanel.description}
-                        onChange={(e) => handleUpdateCurrentPanel("description", e.target.value)}
+                        value={panelDraft.description}
+                        onChange={(e) => handleUpdateDraft("description", e.target.value)}
                         placeholder="Explain how users can get support..."
-                        className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+                        className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
                       />
                     </div>
                   </div>
@@ -285,37 +324,37 @@ export default function TicketsPage({ showToast }) {
                 {/* Optional Reason Categories Builder */}
                 <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-5 bg-slate-900/60">
                   <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400">
-                        <Tag className="w-4 h-4" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400">
+                        <Tag className="w-4.5 h-4.5" />
                       </div>
                       <div>
-                        <h2 className="text-sm font-bold text-white tracking-wide">Reason Categories (Optional)</h2>
-                        <p className="text-xs text-slate-400">
+                        <h2 className="text-base font-bold text-white tracking-wide">Reason Categories (Optional)</h2>
+                        <p className="text-sm text-slate-400">
                           Allow users to pick a department or reason, prompting for specific details via modal.
                         </p>
                       </div>
                     </div>
 
                     <Switch
-                      checked={currentPanel.enable_reason_categories}
-                      onChange={(val) => handleUpdateCurrentPanel("enable_reason_categories", val)}
+                      checked={panelDraft.enable_reason_categories}
+                      onChange={(val) => handleUpdateDraft("enable_reason_categories", val)}
                       size="sm"
                     />
                   </div>
 
-                  {currentPanel.enable_reason_categories ? (
+                  {panelDraft.enable_reason_categories ? (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                        <label className="block text-sm font-semibold text-slate-200 mb-1.5">
                           Select Menu Placeholder
                         </label>
                         <input
                           type="text"
-                          value={currentPanel.select_placeholder}
-                          onChange={(e) => handleUpdateCurrentPanel("select_placeholder", e.target.value)}
+                          value={panelDraft.select_placeholder}
+                          onChange={(e) => handleUpdateDraft("select_placeholder", e.target.value)}
                           placeholder="Select a department or reason..."
-                          className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                         />
                       </div>
 
@@ -323,29 +362,29 @@ export default function TicketsPage({ showToast }) {
                       <div className="space-y-3 pt-2">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                            Configured Reason Categories ({currentPanel.reason_categories?.length || 0})
+                            Configured Reason Categories ({panelDraft.reason_categories?.length || 0})
                           </span>
                           <button
                             type="button"
                             onClick={handleAddReasonCategory}
-                            className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
+                            className="flex items-center gap-1.5 text-sm text-indigo-400 hover:text-indigo-300 font-semibold"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-4 h-4" />
                             <span>Add Category</span>
                           </button>
                         </div>
 
-                        {(currentPanel.reason_categories || []).map((cat: any, cIdx: number) => (
+                        {(panelDraft.reason_categories || []).map((cat: any, cIdx: number) => (
                           <div
                             key={cat.id || cIdx}
-                            className="p-4 rounded-xl bg-slate-950/50 border border-white/5 space-y-3.5 relative group"
+                            className="p-4 rounded-xl bg-slate-950/60 border border-white/5 space-y-3.5 relative group"
                           >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2.5">
                               <input
                                 type="text"
                                 value={cat.emoji || "📌"}
                                 onChange={(e) => handleUpdateReasonCategory(cat.id, "emoji", e.target.value)}
-                                className="w-10 text-center bg-slate-900 border border-white/10 rounded-lg py-1.5 text-sm focus:outline-none"
+                                className="w-12 text-center bg-slate-900 border border-white/10 rounded-xl py-2 text-base focus:outline-none"
                                 title="Emoji"
                               />
                               <input
@@ -353,15 +392,15 @@ export default function TicketsPage({ showToast }) {
                                 value={cat.label}
                                 onChange={(e) => handleUpdateReasonCategory(cat.id, "label", e.target.value)}
                                 placeholder="Department / Reason Title"
-                                className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                                className="flex-1 bg-slate-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
                               />
                               <button
                                 type="button"
                                 onClick={() => handleRemoveReasonCategory(cat.id)}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                                className="p-2 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                                 title="Remove reason category"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
 
@@ -370,13 +409,13 @@ export default function TicketsPage({ showToast }) {
                               value={cat.description || ""}
                               onChange={(e) => handleUpdateReasonCategory(cat.id, "description", e.target.value)}
                               placeholder="Brief description shown under dropdown option..."
-                              className="w-full bg-slate-900/60 border border-white/5 rounded-lg px-3 py-1 text-[11px] text-slate-300 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                              className="w-full bg-slate-900/60 border border-white/5 rounded-xl px-3.5 py-1.5 text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                             />
 
                             <div className="flex items-center justify-between pt-1 border-t border-white/5">
                               <div>
-                                <span className="text-xs font-semibold text-white block">Prompt for Reason (Modal)</span>
-                                <span className="text-[10px] text-slate-400 block">
+                                <span className="text-sm font-semibold text-white block">Prompt for Reason (Modal)</span>
+                                <span className="text-xs text-slate-400 block">
                                   Opens a modal asking the member to describe their issue before creating the ticket.
                                 </span>
                               </div>
@@ -394,27 +433,27 @@ export default function TicketsPage({ showToast }) {
                     /* Single Button Settings if Reason Categories are disabled */
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                        <label className="block text-sm font-semibold text-slate-200 mb-1.5">
                           Button Text
                         </label>
                         <input
                           type="text"
-                          value={currentPanel.button_text}
-                          onChange={(e) => handleUpdateCurrentPanel("button_text", e.target.value)}
+                          value={panelDraft.button_text}
+                          onChange={(e) => handleUpdateDraft("button_text", e.target.value)}
                           placeholder="Open Ticket"
-                          className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                        <label className="block text-sm font-semibold text-slate-200 mb-1.5">
                           Button Emoji
                         </label>
                         <input
                           type="text"
-                          value={currentPanel.button_emoji}
-                          onChange={(e) => handleUpdateCurrentPanel("button_emoji", e.target.value)}
+                          value={panelDraft.button_emoji}
+                          onChange={(e) => handleUpdateDraft("button_emoji", e.target.value)}
                           placeholder="📩"
-                          className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
                         />
                       </div>
                     </div>
@@ -426,34 +465,34 @@ export default function TicketsPage({ showToast }) {
               <div className="space-y-4">
                 <div className="sticky top-6 space-y-4">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                    <Sparkles className="w-4 h-4 text-indigo-400" />
                     <span>Live Discord Preview</span>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-[#1e1f22] border border-white/10 shadow-2xl space-y-3 font-sans">
                     {/* Simulated Embed */}
                     <div
-                      className="p-3.5 rounded-lg bg-[#2b2d31] space-y-2 border-l-4"
-                      style={{ borderLeftColor: currentPanel.color || "#6366F1" }}
+                      className="p-4 rounded-lg bg-[#2b2d31] space-y-2.5 border-l-4"
+                      style={{ borderLeftColor: panelDraft.color || "#6366F1" }}
                     >
-                      <h3 className="text-sm font-bold text-white leading-tight">
-                        {currentPanel.title || "🎫 Support Tickets"}
+                      <h3 className="text-base font-bold text-white leading-tight">
+                        {panelDraft.title || "🎫 Support Tickets"}
                       </h3>
-                      <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
-                        {currentPanel.description || "Need assistance? Select a department below."}
+                      <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                        {panelDraft.description || "Need assistance? Select a department below."}
                       </p>
                     </div>
 
                     {/* Simulated Component */}
-                    {currentPanel.enable_reason_categories ? (
-                      <div className="p-2.5 rounded-lg bg-[#2b2d31] border border-white/10 flex items-center justify-between text-xs text-slate-300">
-                        <span>{currentPanel.select_placeholder || "Select a department or reason..."}</span>
-                        <span className="text-slate-500 text-[10px]">▼</span>
+                    {panelDraft.enable_reason_categories ? (
+                      <div className="p-3 rounded-lg bg-[#2b2d31] border border-white/10 flex items-center justify-between text-sm text-slate-300">
+                        <span>{panelDraft.select_placeholder || "Select a department or reason..."}</span>
+                        <span className="text-slate-500 text-xs">▼</span>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-center gap-1.5 py-2 px-4 rounded-md bg-[#5865f2] text-white text-xs font-semibold shadow-md">
-                        <span>{currentPanel.button_emoji || "📩"}</span>
-                        <span>{currentPanel.button_text || "Open Ticket"}</span>
+                      <div className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-md bg-[#5865f2] text-white text-sm font-semibold shadow-md">
+                        <span>{panelDraft.button_emoji || "📩"}</span>
+                        <span>{panelDraft.button_text || "Open Ticket"}</span>
                       </div>
                     )}
                   </div>
@@ -463,15 +502,15 @@ export default function TicketsPage({ showToast }) {
           ) : (
             <div className="p-12 text-center rounded-2xl bg-slate-900/40 border border-white/5 space-y-3">
               <TicketIcon className="w-10 h-10 text-slate-600 mx-auto" />
-              <h3 className="text-sm font-bold text-white">No panels configured</h3>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              <h3 className="text-base font-bold text-white">No panels configured</h3>
+              <p className="text-sm text-slate-400 max-w-sm mx-auto">
                 Create your first ticket panel to deploy a support box with reason categories in your Discord server.
               </p>
               <button
                 onClick={handleAddNewPanel}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition-all"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-md transition-all"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-4 h-4" />
                 <span>Create First Panel</span>
               </button>
             </div>
@@ -482,22 +521,22 @@ export default function TicketsPage({ showToast }) {
       {/* TAB 2: GENERAL & ROUTING RULES */}
       {activeTab === "settings" && (
         <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-6 bg-slate-900/60 max-w-3xl">
-          <div className="flex items-center gap-2.5 border-b border-white/5 pb-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-              <Shield className="w-4 h-4" />
+          <div className="flex items-center gap-3 border-b border-white/5 pb-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+              <Shield className="w-4.5 h-4.5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white tracking-wide">Global Ticket Routing & Safeguards</h2>
-              <p className="text-xs text-slate-400">Default categories, support staff roles, and transcript logs.</p>
+              <h2 className="text-base font-bold text-white tracking-wide">Global Ticket Routing & Safeguards</h2>
+              <p className="text-sm text-slate-400">Default categories, support staff roles, and transcript logs.</p>
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-sm font-semibold text-slate-200 mb-1.5">
                 Archived Transcripts Channel
               </label>
-              <p className="text-xs text-slate-400 mb-2">
+              <p className="text-sm text-slate-400 mb-2">
                 Channel where completed HTML transcripts and close summaries are sent upon ticket resolution.
               </p>
               <ChannelSelector
@@ -511,16 +550,16 @@ export default function TicketsPage({ showToast }) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-sm font-semibold text-slate-200 mb-1.5">
                 Default Ticket Category (Discord Category)
               </label>
-              <p className="text-xs text-slate-400 mb-2">
+              <p className="text-sm text-slate-400 mb-2">
                 The Discord channel category where newly created ticket channels are placed by default.
               </p>
               <select
                 value={config.category_id || ""}
                 onChange={(e) => updateConfigField("category_id", e.target.value)}
-                className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
               >
                 <option value="">None (Spawn in server root)</option>
                 {categoryChannels.map((cat: any) => (
@@ -532,10 +571,10 @@ export default function TicketsPage({ showToast }) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-sm font-semibold text-slate-200 mb-1.5">
                 Authorized Support Roles
               </label>
-              <p className="text-xs text-slate-400 mb-2">
+              <p className="text-sm text-slate-400 mb-2">
                 Staff roles granted automatic access to view, claim, and close all tickets.
               </p>
               <RoleSelector
@@ -548,9 +587,9 @@ export default function TicketsPage({ showToast }) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <div className="p-3.5 rounded-xl bg-slate-950/50 border border-white/5 space-y-1.5">
-                <span className="text-xs font-semibold text-white block">Max Open Tickets Per User</span>
-                <span className="text-[11px] text-slate-400 block mb-2">
+              <div className="p-4 rounded-xl bg-slate-950/50 border border-white/5 space-y-1.5">
+                <span className="text-sm font-semibold text-white block">Max Open Tickets Per User</span>
+                <span className="text-xs text-slate-400 block mb-2">
                   Prevents users from spamming multiple open tickets simultaneously.
                 </span>
                 <input
@@ -559,16 +598,16 @@ export default function TicketsPage({ showToast }) {
                   max={10}
                   value={config.max_tickets_per_user}
                   onChange={(e) => updateConfigField("max_tickets_per_user", Number(e.target.value))}
-                  className="w-24 bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white font-mono focus:outline-none"
+                  className="w-24 bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-sm text-white font-mono focus:outline-none"
                 />
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-950/50 border border-white/5 space-y-1.5">
-                <span className="text-xs font-semibold text-white block">Total Resolved Tickets</span>
-                <span className="text-[11px] text-slate-400 block mb-2">
+              <div className="p-4 rounded-xl bg-slate-950/50 border border-white/5 space-y-1.5">
+                <span className="text-sm font-semibold text-white block">Total Resolved Tickets</span>
+                <span className="text-xs text-slate-400 block mb-2">
                   Sequential counter used for ticket numbering.
                 </span>
-                <span className="text-lg font-mono font-bold text-indigo-400">
+                <span className="text-xl font-mono font-bold text-indigo-400">
                   #{config.ticket_counter || 0}
                 </span>
               </div>
@@ -589,7 +628,7 @@ export default function TicketsPage({ showToast }) {
                     setTicketFilter(st);
                     fetchTickets(st);
                   }}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all ${
+                  className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold capitalize transition-all ${
                     ticketFilter === st
                       ? "bg-indigo-600 text-white"
                       : "text-slate-400 hover:text-white"
@@ -604,7 +643,7 @@ export default function TicketsPage({ showToast }) {
           {ticketsData.tickets.length === 0 ? (
             <div className="p-12 text-center rounded-2xl bg-slate-900/40 border border-white/5 space-y-2">
               <TicketIcon className="w-8 h-8 text-slate-600 mx-auto" />
-              <p className="text-xs text-slate-400">No tickets found matching the selected filter.</p>
+              <p className="text-sm text-slate-400">No tickets found matching the selected filter.</p>
             </div>
           ) : (
             <div className="space-y-2.5">
@@ -613,13 +652,13 @@ export default function TicketsPage({ showToast }) {
                   key={t.id}
                   className="p-4 rounded-xl bg-slate-900/60 border border-white/5 flex items-center justify-between gap-4 flex-wrap hover:border-white/10 transition-all"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 font-mono text-xs font-bold text-indigo-400">
+                  <div className="flex items-center gap-3.5">
+                    <span className="px-3 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 font-mono text-sm font-bold text-indigo-400">
                       #{t.ticket_number}
                     </span>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-white">{t.category_name || "General Support"}</span>
+                        <span className="text-sm font-semibold text-white">{t.category_name || "General Support"}</span>
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                             t.status === "open"
@@ -632,21 +671,21 @@ export default function TicketsPage({ showToast }) {
                           {t.status}
                         </span>
                       </div>
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-xs text-slate-400">
                         Opened by <strong className="text-slate-300">{t.user_tag}</strong> • {new Date(t.created_at).toLocaleDateString()}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs text-slate-400">
+                  <div className="flex items-center gap-4 text-sm text-slate-400">
                     {t.reason && (
-                      <span className="max-w-xs truncate text-[11px] text-slate-400 italic">
+                      <span className="max-w-xs truncate text-xs text-slate-400 italic">
                         "{t.reason}"
                       </span>
                     )}
                     {t.claimed_by_tag && (
-                      <span className="flex items-center gap-1 text-[11px] text-indigo-300">
-                        <UserCheck className="w-3.5 h-3.5" />
+                      <span className="flex items-center gap-1.5 text-xs text-indigo-300">
+                        <UserCheck className="w-4 h-4" />
                         <span>{t.claimed_by_tag}</span>
                       </span>
                     )}
