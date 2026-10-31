@@ -173,6 +173,8 @@ export class DVClient extends Client {
   async loadComponents(): Promise<void> {
     const { registerVerificationComponent } = await import("../components/verifyButton.js");
     registerVerificationComponent(this);
+    const { registerConfessionComponents } = await import("../components/confessionComponents.js");
+    registerConfessionComponents(this);
     logger.info(`[CLIENT] Registered ${this.components.size} interaction component handlers.`);
   }
 

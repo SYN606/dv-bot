@@ -25,6 +25,8 @@ import {
   MessageHistory,
   SystemMeta,
   WelcomeConfig,
+  ConfessionConfig,
+  Confession,
 } from "./featureModels.js";
 import {
   AutoResponder,
@@ -78,6 +80,8 @@ export {
   MessageHistory,
   SystemMeta,
   WelcomeConfig,
+  ConfessionConfig,
+  Confession,
   TempbanConfig,
   TempbanRecord,
   WarningRecord,

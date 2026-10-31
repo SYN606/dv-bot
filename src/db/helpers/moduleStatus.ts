@@ -15,6 +15,7 @@ export function normalizeModuleName(mod) {
   if (m === "autorole" || m === "auto_roles" || m === "autoroles") return "autorole";
   if (m === "supporter" || m === "supporter_rewards") return "supporter";
   if (m === "verification" || m === "verify") return "verification";
+  if (m === "confessions" || m === "confession") return "confessions";
   return m;
 }
 
