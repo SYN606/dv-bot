@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useParams, Link } from "react-router-dom";
 import {
   ChevronDown,
   ChevronUp,
@@ -73,6 +74,7 @@ export default function AuditLogEntryCard({
   onFilterByTarget,
   onFilterByAction,
 }) {
+  const { guildId } = useParams();
   const [expanded, setExpanded] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const Icon = getCategoryIcon(entry.category, entry.severity);
@@ -178,17 +180,30 @@ export default function AuditLogEntryCard({
 
         {/* Target Pill */}
         {entry.target ? (
-          <button
-            type="button"
-            onClick={() => onFilterByTarget?.(entry.target.name || entry.target.id)}
-            className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-1 rounded-lg transition-colors group/target"
-            title="Filter all actions targeting this entity"
-          >
-            <span className="text-slate-400">{entry.targetType || "Target"}:</span>
-            <span className="font-semibold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20 group-hover/target:border-indigo-400 transition-colors">
-              {entry.target.name || entry.target.id}
-            </span>
-          </button>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => onFilterByTarget?.(entry.target.name || entry.target.id)}
+              className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-1 rounded-lg transition-colors group/target"
+              title="Filter all actions targeting this entity"
+            >
+              <span className="text-slate-400">{entry.targetType || "Target"}:</span>
+              <span className="font-semibold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20 group-hover/target:border-indigo-400 transition-colors">
+                {entry.target.name || entry.target.id}
+              </span>
+            </button>
+            {guildId && entry.target?.id && (entry.targetType === "Member" || entry.targetType === "User" || entry.category === "members" || entry.category === "moderation") && (
+              <Link
+                to={`/dashboard/${guildId}/permissions?inspect=${entry.target.id}`}
+                className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-brand-crimson/10 hover:bg-brand-crimson/20 text-rose-300 border border-brand-crimson/20 transition-colors"
+                title="Inspect member permissions breakdown"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Shield className="w-2.5 h-2.5" />
+                <span>Inspect Perms</span>
+              </Link>
+            )}
+          </div>
         ) : (
           <span className="text-slate-500 italic px-2 py-1">No specific target</span>
         )}

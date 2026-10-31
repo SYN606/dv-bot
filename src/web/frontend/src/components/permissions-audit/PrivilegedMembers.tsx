@@ -1,14 +1,17 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
 import Badge from "../ui/Badge";
 import Pagination from "../ui/Pagination";
 import { getRiskLabel, getRiskVariant } from "../../utils/permissions-audit";
 import { getDiscordAvatarUrl } from "../../utils/discord";
-import { Search, ShieldAlert, Bot, User, Crown, ArrowUpDown, ExternalLink, Filter } from "lucide-react";
+import { Search, ShieldAlert, Bot, User, Crown, ArrowUpDown, ExternalLink, Filter, History } from "lucide-react";
 
 export default function PrivilegedMembers({ members = [], onInspect }) {
+  const { guildId } = useParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [riskFilter, setRiskFilter] = useState("all"); // "all", "critical", "elevated", "moderate"
   const [actorFilter, setActorFilter] = useState("all"); // "all", "human", "bot"
+  const [adminOnly, setAdminOnly] = useState(false);
   const [sort, setSort] = useState("threatDesc");
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -16,7 +19,7 @@ export default function PrivilegedMembers({ members = [], onInspect }) {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [members, searchQuery, riskFilter, actorFilter, sort, itemsPerPage]);
+  }, [members, searchQuery, riskFilter, actorFilter, adminOnly, sort, itemsPerPage]);
 
   const filteredMembers = useMemo(() => {
     let arr = [...members];
@@ -37,6 +40,18 @@ export default function PrivilegedMembers({ members = [], onInspect }) {
       arr = arr.filter((m) => getRiskLabel(m.threatLevel).toLowerCase() === riskFilter.toLowerCase());
     }
 
+    // Administrator only filter
+    if (adminOnly) {
+      arr = arr.filter(
+        (m) =>
+          m.isAdmin ||
+          m.isOwner ||
+          m.permissions?.some(
+            (p) => (p.name || p.permission)?.toLowerCase() === "administrator"
+          )
+      );
+    }
+
     // Actor type filter
     if (actorFilter === "human") {
       arr = arr.filter((m) => !m.bot);
@@ -54,7 +69,7 @@ export default function PrivilegedMembers({ members = [], onInspect }) {
     }
 
     return arr;
-  }, [members, searchQuery, riskFilter, actorFilter, sort]);
+  }, [members, searchQuery, riskFilter, actorFilter, adminOnly, sort]);
 
   const totalPages = Math.ceil(filteredMembers.length / itemsPerPage) || 1;
   const paginatedMembers = filteredMembers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -115,6 +130,19 @@ export default function PrivilegedMembers({ members = [], onInspect }) {
               {item.label}
             </button>
           ))}
+
+          <button
+            type="button"
+            onClick={() => setAdminOnly(!adminOnly)}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border flex items-center gap-1.5 ml-1 ${
+              adminOnly
+                ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-500/10"
+                : "bg-slate-900 text-slate-400 border-white/5 hover:bg-slate-800"
+            }`}
+          >
+            <Crown className="w-3 h-3 text-amber-400" />
+            <span>Admins Only</span>
+          </button>
         </div>
 
         {/* Actor Pills (Humans vs Bots) & Sorting */}
@@ -252,13 +280,26 @@ export default function PrivilegedMembers({ members = [], onInspect }) {
                     <div className="text-sm font-bold text-white font-mono">{m.threatScore || 0}</div>
                   </div>
 
-                  <button
-                    onClick={() => onInspect(m.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-white text-xs font-semibold transition-all border border-white/10 group-hover:border-white/20"
-                  >
-                    <span>Inspect</span>
-                    <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onInspect(m.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-white text-xs font-semibold transition-all border border-white/10 group-hover:border-white/20"
+                      title="Inspect member permissions breakdown"
+                    >
+                      <span>Inspect</span>
+                      <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100" />
+                    </button>
+                    {guildId && (
+                      <Link
+                        to={`/dashboard/${guildId}/audit-logs?tab=stream&by=${m.id}`}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-indigo-200 text-xs font-semibold transition-all border border-indigo-500/20"
+                        title="View audit logs executed by this member"
+                      >
+                        <History className="w-3 h-3 opacity-70" />
+                        <span className="hidden sm:inline">Logs</span>
+                      </Link>
+                    )}
+                  </div>
                 </div>
               </div>
             );
