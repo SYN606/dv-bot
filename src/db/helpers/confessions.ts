@@ -4,6 +4,21 @@ import { ensureGuild } from "./common.js";
 // Fast in-memory cache for config
 const configCache = new Map<string, any>();
 const userCooldownMap = new Map<string, number>(); // `${guildId}:${userId}` -> timestamp
+const guildCreationMutex = new Map<string, Promise<any>>();
+
+// Sweeper: Prevent memory leaks by pruning expired cooldown entries every 60 seconds
+const COOLDOWN_TTL_MS = 60 * 60 * 1000; // 1 hour max retention
+const cooldownSweeper = setInterval(() => {
+  const cutoff = Date.now() - COOLDOWN_TTL_MS;
+  for (const [key, timestamp] of userCooldownMap.entries()) {
+    if (timestamp < cutoff) {
+      userCooldownMap.delete(key);
+    }
+  }
+}, 60000);
+if (typeof cooldownSweeper.unref === "function") {
+  cooldownSweeper.unref();
+}
 
 export async function getConfessionConfig(guildId: string) {
   const gId = String(guildId);
@@ -105,11 +120,18 @@ export function checkWordFilter(content: string, config: any): { flagged: boolea
       .filter((w: string) => w.length > 0);
 
     for (const word of rawWords) {
-      // Use regex with word boundaries where possible
-      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const wordRegex = new RegExp(`\\b${escaped}\\b`, "i");
-      if (wordRegex.test(content) || textToScan.includes(word)) {
-        return { flagged: true, matched: word, reason: `Matches blacklisted word: "${word}"` };
+      // Use Unicode word boundaries when word consists of word characters to avoid Scunthorpe false positives (e.g. "pass" matching "compass")
+      const isWordCharOnly = /^[\p{L}\p{N}_]+$/u.test(word);
+      if (isWordCharOnly) {
+        const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const wordRegex = new RegExp(`(?<!\\p{L})${escaped}(?!\\p{L})`, "iu");
+        if (wordRegex.test(content)) {
+          return { flagged: true, matched: word, reason: `Matches blacklisted word: "${word}"` };
+        }
+      } else {
+        if (textToScan.includes(word)) {
+          return { flagged: true, matched: word, reason: `Matches blacklisted term: "${word}"` };
+        }
       }
     }
   }
@@ -135,21 +157,27 @@ export function checkWordFilter(content: string, config: any): { flagged: boolea
 }
 
 /**
- * Checks and updates user cooldown. Returns remaining cooldown seconds (or 0 if allowed).
+ * Checks if a user is currently on submission cooldown without consuming it.
+ * Returns remaining cooldown seconds (or 0 if allowed).
  */
 export function checkUserCooldown(guildId: string, userId: string, cooldownSeconds: number): number {
   if (!cooldownSeconds || cooldownSeconds <= 0) return 0;
   const key = `${guildId}:${userId}`;
-  const now = Date.now();
   const lastTime = userCooldownMap.get(key) || 0;
-  const elapsed = (now - lastTime) / 1000;
+  const elapsed = (Date.now() - lastTime) / 1000;
 
   if (elapsed < cooldownSeconds) {
     return Math.ceil(cooldownSeconds - elapsed);
   }
-
-  userCooldownMap.set(key, now);
   return 0;
+}
+
+/**
+ * Records user cooldown timestamp after a confession has passed validation and been accepted.
+ */
+export function recordUserCooldown(guildId: string, userId: string): void {
+  const key = `${guildId}:${userId}`;
+  userCooldownMap.set(key, Date.now());
 }
 
 export async function createConfession(data: {
@@ -162,26 +190,51 @@ export async function createConfession(data: {
   status?: string;
 }) {
   const gId = String(data.guildId);
-  const config = await getConfessionConfig(gId);
-  const nextNumber = (config.current_number || 0) + 1;
 
-  // Persist incremented counter
-  await saveConfessionConfig(gId, { current_number: nextNumber });
+  // Serialize per-guild execution to guarantee race-condition free confession numbering
+  const previousOp = guildCreationMutex.get(gId) || Promise.resolve();
 
-  const record = await Confession.create({
-    confession_number: nextNumber,
-    guild_id: gId,
-    user_id: String(data.userId),
-    user_tag: data.userTag || "Unknown User",
-    content: data.content,
-    image_url: data.imageUrl || null,
-    status: data.status || (config.require_approval ? "pending" : "approved"),
-    is_anonymous: data.isAnonymous !== undefined ? data.isAnonymous : true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+  const currentOp = (async () => {
+    await previousOp.catch(() => {});
+
+    const config = await getConfessionConfig(gId);
+
+    // Retrieve highest recorded confession number in DB for this guild
+    const latestConfession = await Confession.findOne({
+      where: { guild_id: gId },
+      order: [["confession_number", "DESC"]],
+    });
+
+    const maxRecorded = latestConfession ? Number(latestConfession.confession_number) || 0 : 0;
+    const nextNumber = Math.max(maxRecorded, Number(config.current_number) || 0) + 1;
+
+    // Persist incremented counter
+    await saveConfessionConfig(gId, { current_number: nextNumber });
+
+    const record = await Confession.create({
+      confession_number: nextNumber,
+      guild_id: gId,
+      user_id: String(data.userId),
+      user_tag: data.userTag || "Unknown User",
+      content: data.content,
+      image_url: data.imageUrl || null,
+      status: data.status || (config.require_approval ? "pending" : "approved"),
+      is_anonymous: data.isAnonymous !== undefined ? data.isAnonymous : true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    return record;
+  })();
+
+  guildCreationMutex.set(gId, currentOp);
+  currentOp.finally(() => {
+    if (guildCreationMutex.get(gId) === currentOp) {
+      guildCreationMutex.delete(gId);
+    }
   });
 
-  return record;
+  return await currentOp;
 }
 
 export async function getConfessionByNumber(guildId: string, confessionNumber: number) {

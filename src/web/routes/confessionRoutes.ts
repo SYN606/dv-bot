@@ -40,7 +40,17 @@ confessionRoutes.put("/guilds/:guildId/confessions/config", async (c) => {
   if (body.auto_thread !== undefined) updates.auto_thread = Boolean(body.auto_thread);
   if (body.cooldown_seconds !== undefined) updates.cooldown_seconds = Math.max(0, Number(body.cooldown_seconds) || 0);
   if (body.banned_words !== undefined) updates.banned_words = String(body.banned_words || "");
-  if (body.regex_filter !== undefined) updates.regex_filter = String(body.regex_filter || "");
+  if (body.regex_filter !== undefined) {
+    const rawPattern = String(body.regex_filter || "").trim();
+    if (rawPattern.length > 0) {
+      try {
+        new RegExp(rawPattern, "i");
+      } catch (err: any) {
+        return c.json({ error: `Invalid regular expression: ${err.message}` }, 400);
+      }
+    }
+    updates.regex_filter = rawPattern;
+  }
   if (body.regex_filter_enabled !== undefined) updates.regex_filter_enabled = Boolean(body.regex_filter_enabled);
 
   const updated = await saveConfessionConfig(guildId, updates);

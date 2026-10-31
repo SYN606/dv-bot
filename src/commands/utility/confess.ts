@@ -20,6 +20,7 @@ import {
   createConfession,
   checkWordFilter,
   checkUserCooldown,
+  recordUserCooldown,
 } from "../../db/helpers/confessions.js";
 import {
   postPublicConfession,
@@ -168,7 +169,14 @@ export default createCommand({
         });
       }
 
-      // Check cooldown
+      if (messageArg.trim().length > 2000) {
+        return await ctx.reply({
+          content: "Confession content cannot exceed 2000 characters.",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+      // Check cooldown (non-consuming)
       const cooldownRemaining = checkUserCooldown(guild.id, user.id, config.cooldown_seconds);
       if (cooldownRemaining > 0) {
         return await ctx.reply({
@@ -198,17 +206,33 @@ export default createCommand({
         });
       }
 
+      // Sanitize and validate image URL format
+      let validatedImageUrl: string | null = null;
+      if (ctx.options.image) {
+        const rawUrl = String(ctx.options.image).trim();
+        if (/^https?:\/\/.+\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(rawUrl)) {
+          validatedImageUrl = rawUrl;
+        } else {
+          return await ctx.reply({
+            content: "❌ Provided image must be a valid direct HTTP/HTTPS URL ending in .png, .jpg, .jpeg, .gif, or .webp.",
+            flags: MessageFlags.Ephemeral,
+          });
+        }
+      }
+
       const isAnonymous = ctx.options.anonymous !== undefined ? Boolean(ctx.options.anonymous) : true;
-      const imageUrl = ctx.options.image || null;
 
       const confession = await createConfession({
         guildId: guild.id,
         userId: user.id,
         userTag: user.tag || user.username,
         content: messageArg,
-        imageUrl,
+        imageUrl: validatedImageUrl,
         isAnonymous: config.allow_anonymous ? isAnonymous : false,
       });
+
+      // Record cooldown only after successful creation
+      recordUserCooldown(guild.id, user.id);
 
       const heartEmoji = EMOJIS.get("heart") || "💌";
 

@@ -57,6 +57,14 @@ export async function postPublicConfession(
     throw new Error("Configured confession channel was not found or is inaccessible.");
   }
 
+  const me = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+  if (me) {
+    const perms = channel.permissionsFor(me);
+    if (perms && (!perms.has(PermissionFlagsBits.ViewChannel) || !perms.has(PermissionFlagsBits.SendMessages) || !perms.has(PermissionFlagsBits.EmbedLinks))) {
+      throw new Error(`Bot lacks permissions to view, send messages, or post embeds in <#${channel.id}>.`);
+    }
+  }
+
   const heartEmoji = EMOJIS.get("heart") || "💌";
   const num = confession.confession_number;
 
@@ -133,6 +141,14 @@ export async function sendReviewConfession(
   const reviewChannel = (await guild.channels.fetch(config.review_channel_id).catch(() => null)) as TextChannel | null;
   if (!reviewChannel || !reviewChannel.isTextBased()) {
     throw new Error("Staff review channel was not found or is inaccessible.");
+  }
+
+  const me = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+  if (me) {
+    const reviewPerms = reviewChannel.permissionsFor(me);
+    if (reviewPerms && (!reviewPerms.has(PermissionFlagsBits.ViewChannel) || !reviewPerms.has(PermissionFlagsBits.SendMessages) || !reviewPerms.has(PermissionFlagsBits.EmbedLinks))) {
+      throw new Error(`Bot lacks permissions to view, send messages, or post embeds in review channel <#${reviewChannel.id}>.`);
+    }
   }
 
   const num = confession.confession_number;
