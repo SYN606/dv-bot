@@ -33,6 +33,7 @@ permissionsRoutes.get("/guilds/:guildId/permissions/audit", async (c) => {
     }
 
     if (dangerous.length > 0) {
+      const isBotManaged = Boolean(role.managed || role.tags?.botId);
       auditResult.roles.push({
         id: role.id,
         name: role.name,
@@ -41,6 +42,9 @@ permissionsRoutes.get("/guilds/:guildId/permissions/audit", async (c) => {
         position: role.position,
         permissions: dangerous,
         memberCount: role.members.size,
+        managed: isBotManaged,
+        botId: role.tags?.botId || null,
+        isBotRole: isBotManaged,
       });
     }
   }

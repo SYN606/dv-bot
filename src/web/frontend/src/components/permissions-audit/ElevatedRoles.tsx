@@ -2,18 +2,19 @@ import React, { useState, useMemo, useEffect } from "react";
 import Badge from "../ui/Badge";
 import Pagination from "../ui/Pagination";
 import { getRiskLabel, getRiskVariant } from "../../utils/permissions-audit";
-import { ShieldCheck, Search, Filter, Key, Users, AlertTriangle } from "lucide-react";
+import { ShieldCheck, Search, Filter, Key, Users, AlertTriangle, Bot, User } from "lucide-react";
 
 export default function ElevatedRoles({ roles = [] }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [permFilter, setPermFilter] = useState("all");
+  const [roleTypeFilter, setRoleTypeFilter] = useState("all"); // "all", "bot", "custom"
   const [sort, setSort] = useState("posDesc");
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [roles, searchQuery, permFilter, sort, itemsPerPage]);
+  }, [roles, searchQuery, permFilter, roleTypeFilter, sort, itemsPerPage]);
 
   const filteredRoles = useMemo(() => {
     let arr = [...roles];
@@ -43,6 +44,13 @@ export default function ElevatedRoles({ roles = [] }) {
       );
     }
 
+    // Role type / bot-managed filter
+    if (roleTypeFilter === "bot") {
+      arr = arr.filter((r) => Boolean(r.managed || r.isBotRole || r.botId || r.tags?.botId));
+    } else if (roleTypeFilter === "custom") {
+      arr = arr.filter((r) => !r.managed && !r.isBotRole && !r.botId && !r.tags?.botId);
+    }
+
     // Sort
     if (sort === "posDesc") {
       arr.sort((a, b) => (b.position || 0) - (a.position || 0));
@@ -55,7 +63,7 @@ export default function ElevatedRoles({ roles = [] }) {
     }
 
     return arr;
-  }, [roles, searchQuery, permFilter, sort]);
+  }, [roles, searchQuery, permFilter, roleTypeFilter, sort]);
 
   const totalPages = Math.ceil(filteredRoles.length / itemsPerPage) || 1;
   const paginatedRoles = filteredRoles.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -116,9 +124,42 @@ export default function ElevatedRoles({ roles = [] }) {
               {item.label}
             </button>
           ))}
+
+          {/* Quick Bot Managed Toggle */}
+          <button
+            type="button"
+            onClick={() => setRoleTypeFilter(roleTypeFilter === "bot" ? "all" : "bot")}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border flex items-center gap-1.5 ml-1 ${
+              roleTypeFilter === "bot"
+                ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 shadow-sm shadow-indigo-500/10"
+                : "bg-slate-900 text-slate-400 border-white/5 hover:bg-slate-800"
+            }`}
+          >
+            <Bot className="w-3 h-3 text-indigo-400" />
+            <span>Bot Managed</span>
+          </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Role Type Segmented Control */}
+          <div className="flex items-center bg-slate-900 p-0.5 rounded-lg border border-white/5">
+            {[
+              { id: "all", label: "All Types" },
+              { id: "bot", label: "Bots" },
+              { id: "custom", label: "Custom" },
+            ].map((type) => (
+              <button
+                key={type.id}
+                onClick={() => setRoleTypeFilter(type.id)}
+                className={`px-2.5 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                  roleTypeFilter === type.id ? "bg-white/15 text-white font-semibold" : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                {type.label}
+              </button>
+            ))}
+          </div>
+
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
@@ -157,6 +198,7 @@ export default function ElevatedRoles({ roles = [] }) {
             const isAdminRole = r.permissions?.some(
               (p) => p.name === "Administrator" || p.permission === "Administrator"
             );
+            const isBotManaged = Boolean(r.managed || r.isBotRole || r.botId || r.tags?.botId);
 
             return (
               <div
@@ -173,6 +215,17 @@ export default function ElevatedRoles({ roles = [] }) {
                       style={{ backgroundColor: roleColor }}
                     />
                     <span className="font-bold text-sm sm:text-base text-white truncate">@{r.name}</span>
+                    {isBotManaged && (
+                      <button
+                        type="button"
+                        onClick={() => setRoleTypeFilter("bot")}
+                        className="text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1 hover:bg-indigo-500/30 transition-colors"
+                        title="Filter all bot-managed roles"
+                      >
+                        <Bot className="w-3 h-3 text-indigo-400" />
+                        <span>BOT MANAGED</span>
+                      </button>
+                    )}
                     {isAdminRole && (
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-brand-crimson/20 text-rose-300 border border-brand-crimson/30">
                         ADMINISTRATOR
@@ -220,8 +273,15 @@ export default function ElevatedRoles({ roles = [] }) {
                 </div>
 
                 {/* Role ID Footer */}
-                <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-2 border-t border-white/5">
-                  <span>Role ID: {r.id}</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[10px] text-slate-500 font-mono pt-2 border-t border-white/5">
+                  <div className="flex items-center gap-3">
+                    <span>Role ID: {r.id}</span>
+                    {isBotManaged && (
+                      <span className="text-indigo-400/90 flex items-center gap-1 font-sans">
+                        <Bot className="w-3 h-3 text-indigo-400 shrink-0" /> Bot Integration Managed
+                      </span>
+                    )}
+                  </div>
                   {r.memberCount > 50 && isAdminRole && (
                     <span className="text-amber-400 flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3" /> Large member pool with Administrator access
