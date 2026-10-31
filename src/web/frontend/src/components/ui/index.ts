@@ -25,5 +25,7 @@ export { default as Pagination } from "./Pagination";
 export { default as CommandPalette } from "./CommandPalette";
 export { default as Toast } from "./Toast";
 export { default as SuperuserBadge } from "./SuperuserBadge";
+export { default as StatusBadge } from "./StatusBadge";
+export { default as ModuleCard } from "./ModuleCard";
 export { default as UnsavedChangesBar } from "./UnsavedChangesBar";
 export { default as UnsavedChangesModal } from "./UnsavedChangesModal";
