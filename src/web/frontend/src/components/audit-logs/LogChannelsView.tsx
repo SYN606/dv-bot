@@ -338,7 +338,6 @@ export default function LogChannelsView({
   const handleTestEvent = async (ev: LogEventMeta) => {
     const evConfig = eventsState[ev.id] || {};
     const targetChannel = evConfig.channel_id;
-    if (!targetChannel) return;
     setTestingEventId(ev.id);
     try {
       await onSendTest({

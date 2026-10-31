@@ -16,8 +16,24 @@ interface ChannelQueueState {
 // Bounded limits to prevent memory leaks
 const MAX_QUEUE_PER_CHANNEL = 100;
 const MAX_EMBEDS_PER_MESSAGE = 10;
+const MAX_BATCH_CHARACTERS = 5000; // Stay comfortably under Discord's 6,000 total characters cap across embeds
 const MIN_SEND_INTERVAL_MS = 1100; // Safe pacing to never exceed Discord's 5 msgs / 5 sec rate limit
 const CHANNEL_ERROR_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes backoff for missing permissions
+
+function getEmbedCharacterCount(embed: EmbedBuilder): number {
+  const data = embed.data;
+  let count = 0;
+  if (data.title) count += data.title.length;
+  if (data.description) count += data.description.length;
+  if (data.author?.name) count += data.author.name.length;
+  if (data.footer?.text) count += data.footer.text.length;
+  if (data.fields) {
+    for (const f of data.fields) {
+      count += (f.name?.length || 0) + (f.value?.length || 0);
+    }
+  }
+  return count;
+}
 
 class LogQueueService {
   private channelQueues = new Map<string, ChannelQueueState>();
@@ -94,11 +110,27 @@ class LogQueueService {
           await new Promise((resolve) => setTimeout(resolve, MIN_SEND_INTERVAL_MS - elapsedSinceLastSend));
         }
 
-        // 3. Batch up to 10 embeds into a single message payload (Discord native limit)
+        // 3. Batch embeds respecting both message counts and Discord's 6,000 character limit
         const batch: EmbedBuilder[] = [];
+        let totalChars = 0;
+        let imagesCount = 0;
+
         while (state.queue.length > 0 && batch.length < MAX_EMBEDS_PER_MESSAGE) {
-          const item = state.queue.shift();
-          if (item) batch.push(item.embed);
+          const nextItem = state.queue[0];
+          if (!nextItem) break;
+
+          const embedLen = getEmbedCharacterCount(nextItem.embed);
+          const hasImage = Boolean(nextItem.embed.data?.image?.url);
+
+          // Stop batching if adding this embed would exceed safe limits
+          if (batch.length > 0 && (totalChars + embedLen > MAX_BATCH_CHARACTERS || (hasImage && imagesCount >= 2))) {
+            break;
+          }
+
+          state.queue.shift();
+          batch.push(nextItem.embed);
+          totalChars += embedLen;
+          if (hasImage) imagesCount++;
         }
 
         if (batch.length === 0) break;
@@ -133,8 +165,11 @@ class LogQueueService {
             logger.warn(`[LOG QUEUE] 429 Rate limit on channel #${channel.name || channelId}. Pausing for ${backoff}ms.`);
             state.pauseUntil = Date.now() + backoff;
 
-            // Re-insert un-sent embeds at the front of the queue
+            // Re-insert un-sent embeds at the front of the queue with boundary enforcement
             state.queue.unshift(...batch.map((embed) => ({ embed, timestamp: Date.now() })));
+            if (state.queue.length > MAX_QUEUE_PER_CHANNEL) {
+              state.queue.length = MAX_QUEUE_PER_CHANNEL;
+            }
             continue;
           }
 

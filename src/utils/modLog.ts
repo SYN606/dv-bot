@@ -2,6 +2,34 @@ import { EmbedBuilder } from "discord.js";
 import { ModerationLogConfig } from "../db/models/index.js";
 import { LOG_QUEUE } from "../services/logQueueService.js";
 
+// In-memory cache for ModerationLogConfig to prevent database bombardment on high-frequency events
+interface CachedLogConfig {
+  config: any;
+  cachedAt: number;
+}
+const configCache = new Map<string, CachedLogConfig>();
+const CONFIG_CACHE_TTL = 30 * 1000; // 30s TTL
+
+export function invalidateLogConfigCache(guildId?: string): void {
+  if (guildId) {
+    configCache.delete(String(guildId));
+  } else {
+    configCache.clear();
+  }
+}
+
+const configSweeper = setInterval(() => {
+  const now = Date.now();
+  for (const [gId, item] of configCache.entries()) {
+    if (now - item.cachedAt > 60 * 1000) {
+      configCache.delete(gId);
+    }
+  }
+}, 60 * 1000);
+if (typeof configSweeper.unref === "function") {
+  configSweeper.unref();
+}
+
 /**
  * Standard action theme definitions (colors, emojis, and display badges)
  * Styled in alignment with modern professional Discord audit logging (Carl-bot, Dyno, ProBot).
@@ -183,6 +211,7 @@ export async function sendModLog({
   target = null,
   extraFields = {},
   eventType = null,
+  image = null,
 }: {
   guild: any;
   category?: string;
@@ -193,11 +222,20 @@ export async function sendModLog({
   target?: any;
   extraFields?: Record<string, any>;
   eventType?: string | null;
+  image?: string | null;
 }) {
   if (!guild) return;
 
   try {
-    const config: any = await ModerationLogConfig.findByPk(String(guild.id));
+    const gId = String(guild.id);
+    let config: any = null;
+    const cachedItem = configCache.get(gId);
+    if (cachedItem && Date.now() - cachedItem.cachedAt < CONFIG_CACHE_TTL) {
+      config = cachedItem.config;
+    } else {
+      config = await ModerationLogConfig.findByPk(gId);
+      configCache.set(gId, { config, cachedAt: Date.now() });
+    }
     if (!config || !config.enabled) return;
 
     let targetChannelId = config.channel_id;
@@ -270,23 +308,43 @@ export async function sendModLog({
       embed.setThumbnail(guild.iconURL({ size: 256 }));
     }
 
-    // 1. Target Member Field
-    if (resolvedTarget) {
+    const isMessageEvent =
+      String(category).toUpperCase() === "MESSAGES" ||
+      ["message_deleted", "message_edited", "messages_bulk_deleted"].includes(String(eventType));
+
+    if (isMessageEvent) {
+      if (resolvedTarget?.avatar) {
+        embed.setAuthor({
+          name: resolvedTarget.tag,
+          iconURL: resolvedTarget.avatar,
+        });
+      }
+      if (resolvedTarget) {
+        embed.addFields({
+          name: "👤 Author",
+          value: `<@${resolvedTarget.id}>\n\`${resolvedTarget.tag}\`\n\`ID: ${resolvedTarget.id}\``,
+          inline: true,
+        });
+      }
+    } else {
+      // 1. Target Member Field
+      if (resolvedTarget) {
+        embed.addFields({
+          name: "👤 Target User",
+          value: `<@${resolvedTarget.id}>\n\`${resolvedTarget.tag}\`\n\`ID: ${resolvedTarget.id}\``,
+          inline: true,
+        });
+      }
+
+      // 2. Moderator Field
       embed.addFields({
-        name: "👤 Target User",
-        value: `<@${resolvedTarget.id}>\n\`${resolvedTarget.tag}\`\n\`ID: ${resolvedTarget.id}\``,
+        name: "🛡️ Moderator",
+        value: actorId
+          ? `<@${actorId}>\n\`${actorTag}\`\n\`ID: ${actorId}\``
+          : `\`${actorTag}\``,
         inline: true,
       });
     }
-
-    // 2. Moderator Field
-    embed.addFields({
-      name: "🛡️ Moderator",
-      value: actorId
-        ? `<@${actorId}>\n\`${actorTag}\`\n\`ID: ${actorId}\``
-        : `\`${actorTag}\``,
-      inline: true,
-    });
 
     // Extract specialized fields from extraFields
     const fieldsToOmit = new Set();
@@ -383,6 +441,10 @@ export async function sendModLog({
       text: footerParts.join(" • "),
       iconURL: actorAvatar || guild.iconURL?.() || undefined,
     });
+
+    if (image) {
+      embed.setImage(image);
+    }
 
     LOG_QUEUE.enqueue(guild, targetChannelId, embed);
   } catch (err) {
