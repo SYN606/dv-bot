@@ -47,13 +47,21 @@ export default function CommandsPage({ showToast }) {
 
   // Group commands by category preserving scope data
   const categoriesMap = useMemo(() => {
+    const PREFERRED_ORDER = ["moderation", "admin", "channels", "voice", "analytics", "utility", "fun"];
     if (modules && modules.length > 0) {
-      return modules;
+      return [...modules].sort((a, b) => {
+        const idxA = PREFERRED_ORDER.indexOf(a.id);
+        const idxB = PREFERRED_ORDER.indexOf(b.id);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return (a.name || a.id).localeCompare(b.name || b.id);
+      });
     }
 
     const map = new Map();
     commands.forEach((cmd) => {
-      const cat = cmd.category || "General";
+      const cat = (cmd.category || "General").toLowerCase();
       if (!map.has(cat)) {
         map.set(cat, {
           id: cat,
@@ -63,7 +71,14 @@ export default function CommandsPage({ showToast }) {
       }
       map.get(cat).commands.push(cmd);
     });
-    return Array.from(map.values()).sort((a, b) => a.id.localeCompare(b.id));
+    return Array.from(map.values()).sort((a, b) => {
+      const idxA = PREFERRED_ORDER.indexOf(a.id);
+      const idxB = PREFERRED_ORDER.indexOf(b.id);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.id.localeCompare(b.id);
+    });
   }, [modules, commands]);
 
   // Toolbar category filter options with command counts

@@ -25,7 +25,7 @@ const slashBuilder = new SlashCommandBuilder()
 export default createCommand({
   name: "permscan",
   description: "Run a security audit on a member or the entire server.",
-  category: "Moderation",
+  category: "Admin",
   aliases: ["audit", "paudit"],
   usage: "<server|member> [user]",
   examples: [
