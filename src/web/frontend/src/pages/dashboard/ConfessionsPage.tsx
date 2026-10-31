@@ -242,19 +242,7 @@ export default function ConfessionsPage({ showToast }) {
               />
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/50 border border-white/5">
-              <div>
-                <span className="text-xs font-semibold text-white block">Allow Anonymous Confessions</span>
-                <span className="text-[11px] text-slate-400 block">
-                  Allow members to hide their username from the public confession embed.
-                </span>
-              </div>
-              <Switch
-                checked={config.allow_anonymous}
-                onChange={(val) => updateConfig("allow_anonymous", val)}
-                size="sm"
-              />
-            </div>
+
 
             <div className="p-3 rounded-xl bg-slate-950/50 border border-white/5">
               <div className="flex items-center justify-between mb-1.5">

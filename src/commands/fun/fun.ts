@@ -23,6 +23,7 @@ const FUN_COMMAND_NAMES = [
   "poke",
   "bonk",
   "roast",
+  "confess",
 ];
 
 const slashBuilder = new SlashCommandBuilder()
