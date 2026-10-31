@@ -127,26 +127,32 @@ export function useTickets(guildId: string, showToast?: any) {
     return JSON.stringify(config) !== JSON.stringify(initialConfig);
   }, [config, initialConfig]);
 
-  const saveConfig = useCallback(async () => {
-    if (!guildId) return;
-    setSavingConfig(true);
+  const saveConfig = useCallback(
+    async (overridePayload?: any) => {
+      if (!guildId) return;
+      setSavingConfig(true);
 
-    try {
-      const res = await updateTicketConfig(guildId, config);
-      const updated = {
-        ...DEFAULT_TICKET_CONFIG,
-        ...(res?.config || config),
-      };
-      setConfig(updated);
-      setInitialConfig(updated);
-      showToast?.("Ticket settings saved successfully!", "success");
-    } catch (err: any) {
-      console.error("[SAVE TICKET CONFIG ERROR]:", err);
-      showToast?.(err.message || "Failed to save ticket settings", "error");
-    } finally {
-      setSavingConfig(false);
-    }
-  }, [guildId, config, showToast]);
+      try {
+        const payloadToSend = overridePayload ? { ...config, ...overridePayload } : config;
+        const res = await updateTicketConfig(guildId, payloadToSend);
+        const updated = {
+          ...DEFAULT_TICKET_CONFIG,
+          ...(res?.config || payloadToSend),
+        };
+        setConfig(updated);
+        setInitialConfig(updated);
+        showToast?.("Ticket settings saved successfully!", "success");
+        return updated;
+      } catch (err: any) {
+        console.error("[SAVE TICKET CONFIG ERROR]:", err);
+        showToast?.(err.message || "Failed to save ticket settings", "error");
+        return null;
+      } finally {
+        setSavingConfig(false);
+      }
+    },
+    [guildId, config, showToast]
+  );
 
   const savePanel = useCallback(
     async (panelData: any) => {
@@ -170,6 +176,7 @@ export function useTickets(guildId: string, showToast?: any) {
         }
       } catch (err: any) {
         showToast?.(err.message || "Failed to save panel", "error");
+        return null;
       } finally {
         setSavingPanel(false);
       }
