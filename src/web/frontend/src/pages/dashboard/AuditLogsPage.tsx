@@ -8,14 +8,12 @@ import {
   AuditLogsHeader,
   AuditLogFilters,
   AuditLogsList,
-  AuditLogConfigModal,
   LogChannelsView,
 } from "../../components/audit-logs";
 
 export default function AuditLogsPage({ showToast }: { showToast?: any }) {
   const { guildId } = useParams();
   const [activeTab, setActiveTab] = useState<"channels" | "stream">("channels");
-  const [configModalOpen, setConfigModalOpen] = useState(false);
 
   const {
     entries,
@@ -67,10 +65,6 @@ export default function AuditLogsPage({ showToast }: { showToast?: any }) {
     setHideBots(false);
   };
 
-  const currentModLogChannel = channels.find(
-    (c: any) => c.id === modLogConfig.modLogChannelId
-  );
-
   if (error && entries.length === 0 && !missingPermission && activeTab === "stream") {
     return (
       <PageError
@@ -113,10 +107,8 @@ export default function AuditLogsPage({ showToast }: { showToast?: any }) {
         autoRefresh={autoRefresh}
         onToggleAutoRefresh={() => setAutoRefresh(!autoRefresh)}
         onRefresh={refresh}
-        onOpenConfig={() => setConfigModalOpen(true)}
         onExportJson={exportToJson}
         onExportCsv={exportToCsv}
-        modLogChannelName={currentModLogChannel?.name}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
@@ -170,19 +162,6 @@ export default function AuditLogsPage({ showToast }: { showToast?: any }) {
           />
         </div>
       )}
-
-      {/* 3. Quick Config Modal (Optional Shortcut) */}
-      <AuditLogConfigModal
-        open={configModalOpen}
-        onClose={() => setConfigModalOpen(false)}
-        guildId={guildId}
-        channels={channels}
-        currentChannelId={modLogConfig.modLogChannelId}
-        onSaveConfig={saveModLogConfig}
-        savingConfig={savingConfig}
-        onSendTest={testModLog}
-        testingLog={testingLog}
-      />
     </div>
   );
 }

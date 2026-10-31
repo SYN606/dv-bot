@@ -1,4 +1,5 @@
 import { Events, type GuildMember } from "discord.js";
+import { VCRoleConfig } from "../db/models/index.js";
 import { checkGuildTag, clearUserClanCache } from "../handlers/supporterHandler.js";
 import { sendModLog } from "../utils/modLog.js";
 import { dispatchWelcomeOnTrigger } from "../services/welcomeService.js";
@@ -36,8 +37,18 @@ export default {
       const oldRoles = oldMember.roles.cache;
       const newRoles = newMember.roles.cache;
 
-      const addedRoles = newRoles.filter((r) => !oldRoles.has(r.id) && r.id !== newMember.guild.id);
-      const removedRoles = oldRoles.filter((r) => !newRoles.has(r.id) && r.id !== newMember.guild.id);
+      let addedRoles = newRoles.filter((r) => !oldRoles.has(r.id) && r.id !== newMember.guild.id);
+      let removedRoles = oldRoles.filter((r) => !newRoles.has(r.id) && r.id !== newMember.guild.id);
+
+      // Suppress automated VC auto-role assignments from role logs
+      try {
+        const vcConfig: any = await VCRoleConfig.findByPk(newMember.guild.id);
+        if (vcConfig && vcConfig.role_id) {
+          const vcRoleId = String(vcConfig.role_id);
+          addedRoles = addedRoles.filter((r) => r.id !== vcRoleId);
+          removedRoles = removedRoles.filter((r) => r.id !== vcRoleId);
+        }
+      } catch (_) {}
 
       if (addedRoles.size > 0 || removedRoles.size > 0) {
         const extraFields: Record<string, any> = {
@@ -54,6 +65,7 @@ export default {
         await sendModLog({
           guild: newMember.guild,
           category: "MEMBERS",
+          eventType: "member_roles_updated",
           title: "Member Roles Updated",
           level: "INFO",
           target: newMember.user,

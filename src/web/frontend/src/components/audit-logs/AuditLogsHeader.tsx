@@ -19,10 +19,8 @@ export default function AuditLogsHeader({
   autoRefresh,
   onToggleAutoRefresh,
   onRefresh,
-  onOpenConfig,
   onExportJson,
   onExportCsv,
-  modLogChannelName,
   activeTab = "channels",
   onTabChange,
 }: any) {

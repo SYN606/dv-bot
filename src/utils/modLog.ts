@@ -38,6 +38,9 @@ const ACTION_THEMES = {
   MEDIA: { color: 0xfee75c, emoji: "🖼️", label: "Media Filter Violation" },
   CONFIG: { color: 0x8e44ad, emoji: "⚙️", label: "Configuration Updated" },
   VOICE: { color: 0x5865f2, emoji: "🔊", label: "Voice Channel Action" },
+  VOICE_JOIN: { color: 0x10b981, emoji: "🔊", label: "Member Joined Voice Channel" },
+  VOICE_LEAVE: { color: 0xf43f5e, emoji: "🔇", label: "Member Left Voice Channel" },
+  VOICE_MOVE: { color: 0x8b5cf6, emoji: "🔀", label: "Member Moved Voice Channel" },
   DEFAULT: { color: 0x2b2d31, emoji: "🛡️", label: "Moderation Audit" },
 };
 
@@ -82,6 +85,9 @@ function resolveActionTheme(category = "", title = "") {
   if (normCategory === "VERIFICATION" || normTitle.includes("verif")) return ACTION_THEMES.VERIFICATION;
   if (normCategory === "MEDIA" || normTitle.includes("media")) return ACTION_THEMES.MEDIA;
   if (normCategory === "CONFIG" || normTitle.includes("command")) return ACTION_THEMES.CONFIG;
+  if (normTitle.includes("joined voice") || normTitle.includes("voice join")) return ACTION_THEMES.VOICE_JOIN;
+  if (normTitle.includes("left voice") || normTitle.includes("voice leave") || normTitle.includes("disconnected from")) return ACTION_THEMES.VOICE_LEAVE;
+  if (normTitle.includes("moved voice") || normTitle.includes("voice move")) return ACTION_THEMES.VOICE_MOVE;
   if (normCategory === "VOICE" || normTitle.includes("voice") || normTitle.includes("move")) return ACTION_THEMES.VOICE;
 
   return ACTION_THEMES.DEFAULT;
@@ -137,6 +143,31 @@ function resolveTargetUser(guild, target, extraFields = {}) {
   return null;
 }
 
+const ALIAS_MAP: Record<string, string> = {
+  member_joined_voice_channel: "voice_joined",
+  member_left_voice_channel: "voice_left",
+  member_moved_voice_channel: "voice_moved",
+  voice_join: "voice_joined",
+  voice_leave: "voice_left",
+  voice_move: "voice_moved",
+  voice_channel_action: "voice_joined",
+  voice: "voice_joined",
+  member_roles_updated: "member_roles_updated",
+  member_joined: "member_joined",
+  member_left: "member_left",
+  role_created: "role_created",
+  role_deleted: "role_deleted",
+  role_updated: "role_updated",
+  channel_created: "channel_created",
+  channel_deleted: "channel_deleted",
+  channel_updated: "channel_updated",
+  message_deleted: "message_deleted",
+  message_edited: "message_edited",
+  message_updated: "message_edited",
+  messages_bulk_deleted: "messages_bulk_deleted",
+  message_purge: "messages_bulk_deleted",
+};
+
 /**
  * High-fidelity audit & moderation logger.
  * Formats structured, professional embeds with emojis, actor/target cards,
@@ -151,6 +182,17 @@ export async function sendModLog({
   actor = null,
   target = null,
   extraFields = {},
+  eventType = null,
+}: {
+  guild: any;
+  category?: string;
+  title: string;
+  description?: string;
+  level?: string;
+  actor?: any;
+  target?: any;
+  extraFields?: Record<string, any>;
+  eventType?: string | null;
 }) {
   if (!guild) return;
 
@@ -164,21 +206,42 @@ export async function sendModLog({
     if (config.events_config) {
       try {
         const events = typeof config.events_config === "string" ? JSON.parse(config.events_config) : config.events_config;
-        const eventKey = (title || category || "").toLowerCase().replace(/[^a-z0-9]+/g, "_");
-        const categoryKey = (category || "").toLowerCase();
+        const normalizedTitleKey = (title || "").toLowerCase().replace(/[^a-z0-9]+/g, "_");
+        const normalizedCategoryKey = (category || "").toLowerCase().replace(/[^a-z0-9]+/g, "_");
 
-        const match = events[eventKey] || events[categoryKey];
+        const candidateKeys = [
+          eventType,
+          eventType ? ALIAS_MAP[eventType] : null,
+          normalizedTitleKey,
+          ALIAS_MAP[normalizedTitleKey],
+          normalizedCategoryKey,
+          ALIAS_MAP[normalizedCategoryKey],
+        ].filter(Boolean) as string[];
+
+        let match = null;
+        for (const key of candidateKeys) {
+          if (events[key]) {
+            match = events[key];
+            break;
+          }
+        }
+
         if (match) {
           if (match.enabled === false) return;
           if (match.channel_id) targetChannelId = match.channel_id;
           if (match.color) customColor = match.color;
+        } else if (events[normalizedTitleKey]?.enabled === false || events[normalizedCategoryKey]?.enabled === false) {
+          return;
         }
       } catch {}
     }
 
     if (!targetChannelId) return;
 
-    const channel = guild.channels.cache.get(String(targetChannelId));
+    let channel = guild.channels.cache.get(String(targetChannelId));
+    if (!channel && guild.channels?.fetch) {
+      channel = await guild.channels.fetch(String(targetChannelId)).catch(() => null);
+    }
     if (!channel || typeof channel.send !== "function") return;
 
     const theme = resolveActionTheme(category, title);
