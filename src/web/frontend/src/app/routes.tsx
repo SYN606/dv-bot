@@ -35,6 +35,7 @@ const WarningPunishmentsPage = lazy(() => import("../pages/dashboard/WarningPuni
 const MessageStudioPage = lazy(() => import("../pages/dashboard/MessageStudioPage"));
 const AuditLogsPage = lazy(() => import("../pages/dashboard/AuditLogsPage"));
 const ConfessionsPage = lazy(() => import("../pages/dashboard/ConfessionsPage"));
+const TicketsPage = lazy(() => import("../pages/dashboard/TicketsPage"));
 
 export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
   return (
@@ -90,6 +91,7 @@ export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
           <Route path="autorole" element={<AutoRoleRewardsPage showToast={showToast} />} />
           <Route path="warning-punishments" element={<WarningPunishmentsPage showToast={showToast} />} />
           <Route path="confessions" element={<ConfessionsPage showToast={showToast} />} />
+          <Route path="tickets" element={<TicketsPage showToast={showToast} />} />
         </Route>
 
         {/* Fallback */}

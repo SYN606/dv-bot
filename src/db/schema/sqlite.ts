@@ -660,3 +660,71 @@ export const confessions = sqliteTable(
     guildStatusIdx: index("idx_confessions_guild_status").on(table.guild_id, table.status),
   })
 );
+
+export const ticketConfig = sqliteTable("ticket_config", {
+  guild_id: text("guild_id").primaryKey(),
+  enabled: integer("enabled", { mode: "boolean" }).default(false),
+  transcript_channel_id: text("transcript_channel_id"),
+  category_id: text("category_id"),
+  support_role_ids: text("support_role_ids").default("[]"),
+  max_tickets_per_user: integer("max_tickets_per_user", { mode: "number" }).default(3),
+  ticket_counter: integer("ticket_counter", { mode: "number" }).default(0),
+  auto_close_hours: integer("auto_close_hours", { mode: "number" }).default(0),
+  created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
+
+export const ticketPanels = sqliteTable(
+  "ticket_panels",
+  {
+    id: text("id").primaryKey(),
+    guild_id: text("guild_id").notNull(),
+    channel_id: text("channel_id"),
+    message_id: text("message_id"),
+    title: text("title").default("🎫 Support Tickets"),
+    description: text("description").default("Need assistance? Click a button or select a department below."),
+    color: text("color").default("#6366F1"),
+    image_url: text("image_url"),
+    button_text: text("button_text").default("Open Ticket"),
+    button_emoji: text("button_emoji").default("📩"),
+    button_style: text("button_style").default("Primary"),
+    select_placeholder: text("select_placeholder").default("Select a ticket reason / category..."),
+    enable_reason_categories: integer("enable_reason_categories", { mode: "boolean" }).default(false),
+    reason_categories: text("reason_categories").default("[]"),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+    updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    guildIdx: index("idx_ticket_panels_guild").on(table.guild_id),
+  })
+);
+
+export const tickets = sqliteTable(
+  "tickets",
+  {
+    id: text("id").primaryKey(),
+    guild_id: text("guild_id").notNull(),
+    ticket_number: integer("ticket_number", { mode: "number" }).notNull(),
+    user_id: text("user_id").notNull(),
+    user_tag: text("user_tag").notNull(),
+    channel_id: text("channel_id"),
+    panel_id: text("panel_id"),
+    category_name: text("category_name").default("General Support"),
+    reason: text("reason"),
+    status: text("status").default("open"),
+    claimed_by: text("claimed_by"),
+    claimed_by_tag: text("claimed_by_tag"),
+    closed_by: text("closed_by"),
+    closed_by_tag: text("closed_by_tag"),
+    close_reason: text("close_reason"),
+    transcript_url: text("transcript_url"),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+    closed_at: text("closed_at"),
+    updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    guildNumberIdx: index("idx_tickets_guild_number").on(table.guild_id, table.ticket_number),
+    guildStatusIdx: index("idx_tickets_guild_status").on(table.guild_id, table.status),
+    channelIdx: index("idx_tickets_channel").on(table.channel_id),
+  })
+);

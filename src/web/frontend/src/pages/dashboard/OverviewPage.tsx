@@ -3,7 +3,7 @@ import { useParams, Link, useOutletContext } from "react-router-dom";
 import {
   ShieldCheck, Pin, Image as ImageIcon,
   Bot, Terminal, Shield, ShieldAlert, Key, ScrollText, Sliders, AlertTriangle,
-  Users, Hash, Server, ArrowRight, CheckCircle2, XCircle, UserPlus, Award, Trophy, PenTool, MessageSquareHeart
+  Users, Hash, Server, ArrowRight, CheckCircle2, XCircle, UserPlus, Award, Trophy, PenTool, MessageSquareHeart, Ticket
 } from "lucide-react";
 import {
   getGuildMeta, getVerification, getMediaOnly,
@@ -246,6 +246,10 @@ export default function OverviewPage({ showToast }) {
               <ModuleCard 
                 title="Supporter Perks" path={`/dashboard/${guildId}/supporter`} icon={Trophy} accent="var(--color-brand-indigo)"
                 active={true} statusText="Configured"
+              />
+              <ModuleCard 
+                title="Ticket Tooling" path={`/dashboard/${guildId}/tickets`} icon={Ticket} accent="var(--color-brand-indigo)"
+                active={true} statusText="Active"
               />
             </div>
           </section>

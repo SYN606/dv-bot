@@ -770,3 +770,61 @@ export async function sendConfessionPanel(guildId) {
     method: "POST",
   });
 }
+
+// ============================================================================
+// Ticket Tooling & Reason Categories API
+// ============================================================================
+
+export async function getTicketConfig(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/tickets/config`);
+}
+
+export async function updateTicketConfig(guildId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/tickets/config`, {
+    method: "PUT",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/tickets/config`);
+  return result;
+}
+
+export async function getTicketPanels(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/tickets/panels`);
+}
+
+export async function saveTicketPanel(guildId, payload) {
+  const result = await fetchApi(`/api/guilds/${guildId}/tickets/panels`, {
+    method: "POST",
+    body: payload,
+  });
+  invalidatePath(`/api/guilds/${guildId}/tickets/panels`);
+  return result;
+}
+
+export async function deleteTicketPanel(guildId, panelId) {
+  const result = await fetchApi(`/api/guilds/${guildId}/tickets/panels/${panelId}`, {
+    method: "DELETE",
+  });
+  invalidatePath(`/api/guilds/${guildId}/tickets/panels`);
+  return result;
+}
+
+export async function deployTicketPanel(guildId, panelId) {
+  return fetchApi(`/api/guilds/${guildId}/tickets/panels/${panelId}/deploy`, {
+    method: "POST",
+  });
+}
+
+export async function getTicketsList(guildId, { status = "all", limit = 25, offset = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (status) params.append("status", status);
+  if (limit) params.append("limit", String(limit));
+  if (offset) params.append("offset", String(offset));
+
+  const q = params.toString() ? `?${params.toString()}` : "";
+  return fetchApi(`/api/guilds/${guildId}/tickets/list${q}`);
+}
+
+export async function getTicketDetails(guildId, ticketId) {
+  return fetchApi(`/api/guilds/${guildId}/tickets/${ticketId}`);
+}

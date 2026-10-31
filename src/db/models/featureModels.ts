@@ -20,6 +20,9 @@ import {
   welcomeConfig,
   confessionConfig,
   confessions,
+  ticketConfig,
+  ticketPanels,
+  tickets,
 } from "../schema/sqlite.js";
 
 export const AFK = createModel("AFK", afk, "id");
@@ -46,3 +49,6 @@ export const SystemMeta = createModel("SystemMeta", systemMeta, "key");
 export const WelcomeConfig = createModel("WelcomeConfig", welcomeConfig, "guild_id");
 export const ConfessionConfig = createModel("ConfessionConfig", confessionConfig, "guild_id");
 export const Confession = createModel("Confession", confessions, "id");
+export const TicketConfig = createModel("TicketConfig", ticketConfig, "guild_id");
+export const TicketPanel = createModel("TicketPanel", ticketPanels, "id");
+export const Ticket = createModel("Ticket", tickets, "id");

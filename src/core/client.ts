@@ -175,6 +175,8 @@ export class DVClient extends Client {
     registerVerificationComponent(this);
     const { registerConfessionComponents } = await import("../components/confessionComponents.js");
     registerConfessionComponents(this);
+    const { registerTicketComponents } = await import("../components/ticketComponents.js");
+    registerTicketComponents(this);
     logger.info(`[CLIENT] Registered ${this.components.size} interaction component handlers.`);
   }
 

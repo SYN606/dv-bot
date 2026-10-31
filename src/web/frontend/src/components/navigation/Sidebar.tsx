@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, TrendingUp, ShieldCheck, Pin, Image as ImageIcon,
-  Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award, PenTool, LogOut, ScrollText, UserPlus, MessageSquareHeart
+  Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award, PenTool, LogOut, ScrollText, UserPlus, MessageSquareHeart, Ticket
 } from "lucide-react";
 import SuperuserBadge from "../ui/SuperuserBadge";
 import { getDiscordAvatarUrl } from "../../utils/discord";
@@ -32,6 +32,7 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
       group: "COMMUNITY & ONBOARDING",
       items: [
         { id: "verification", label: "Verification Gate", icon: ShieldCheck, path: `/dashboard/${currentGuild.id}/verification` },
+        { id: "tickets", label: "Ticket Tooling", icon: Ticket, path: `/dashboard/${currentGuild.id}/tickets` },
         { id: "welcome", label: "Welcome & Leave", icon: UserPlus, path: `/dashboard/${currentGuild.id}/welcome` },
         { id: "autorole", label: "Leaderboard Auto-Roles", icon: Award, path: `/dashboard/${currentGuild.id}/autorole` },
         { id: "supporter", label: "Supporter Rewards", icon: Trophy, path: `/dashboard/${currentGuild.id}/supporter` },
