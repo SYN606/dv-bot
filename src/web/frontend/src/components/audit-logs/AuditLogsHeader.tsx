@@ -61,9 +61,9 @@ export default function AuditLogsHeader({
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span>Log Channels Architecture</span>
+              <span>Log Channels</span>
               <span className="px-1.5 py-0.2 rounded-md bg-white/15 text-[10px] font-mono">
-                Noctaly-Style
+                Routing
               </span>
             </button>
             <button

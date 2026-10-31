@@ -368,7 +368,7 @@ export default function LogChannelsView({
                 Log Channels Architecture
               </h2>
               <span className="px-2.5 py-0.5 rounded-full bg-brand-crimson/10 border border-brand-crimson/20 text-brand-crimson font-mono text-[11px] font-semibold">
-                NOCTALY ARCHITECTURE
+                EVENT ROUTING
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
@@ -434,7 +434,7 @@ export default function LogChannelsView({
               </div>
             </div>
 
-            {/* Event Cards Grid matching Noctaly architecture */}
+            {/* Event Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-5">
               {group.events.map((ev) => {
                 const Icon = ev.icon;
