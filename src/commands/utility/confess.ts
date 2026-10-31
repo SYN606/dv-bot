@@ -107,8 +107,8 @@ export default createCommand({
     const subcommand = ctx.subcommand || ctx.options.subcommand || "submit";
     const config = await getConfessionConfig(guild.id);
 
-    // 1. SUBMIT CONFESSION
-    if (subcommand === "submit") {
+    // Enforce channel restriction and active status for member commands (submit, list, view)
+    if (subcommand !== "panel") {
       if (!config || !config.enabled) {
         return await ctx.reply({
           embeds: [
@@ -121,6 +121,36 @@ export default createCommand({
           flags: MessageFlags.Ephemeral,
         });
       }
+
+      if (!config.channel_id) {
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "Confessions Not Configured",
+              description: `${EMOJIS.get("warning") || "⚠️"} A confession channel has not been configured yet. Please ask an admin to configure the confession channel in the dashboard.`,
+              level: "WARNING",
+            }),
+          ],
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+      if (ctx.channel?.id !== config.channel_id) {
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "Channel Restricted",
+              description: `❌ The \`/confess\` command can only be used in <#${config.channel_id}>.`,
+              level: "WARNING",
+            }),
+          ],
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+    }
+
+    // 1. SUBMIT CONFESSION
+    if (subcommand === "submit") {
 
       const messageArg = ctx.options.message || ctx.options._args?.join(" ");
 
