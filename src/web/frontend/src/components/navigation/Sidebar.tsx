@@ -44,12 +44,17 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
       ]
     },
     {
-      group: "MODERATION",
+      group: "SECURITY & AUDIT",
       items: [
         { id: "audit_logs", label: "Logs & Audit Center", icon: ScrollText, path: `/dashboard/${currentGuild.id}/audit-logs` },
-        { id: "warning_punishments", label: "Warning Punishments", icon: AlertTriangle, path: `/dashboard/${currentGuild.id}/warning-punishments` },
-        { id: "admin_roles", label: "Admin Roles", icon: Shield, path: `/dashboard/${currentGuild.id}/admin-roles` },
-        { id: "permissions", label: "Permissions Audit", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/permissions` }
+        { id: "permissions", label: "Permissions & Risk Audit", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/permissions` },
+        { id: "admin_roles", label: "Staff Dashboard Access", icon: Shield, path: `/dashboard/${currentGuild.id}/admin-roles` },
+      ]
+    },
+    {
+      group: "MODERATION",
+      items: [
+        { id: "warning_punishments", label: "Warning Escalations", icon: AlertTriangle, path: `/dashboard/${currentGuild.id}/warning-punishments` },
       ]
     },
     {

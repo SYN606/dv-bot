@@ -24,20 +24,26 @@ export default function CommandPalette({ isOpen, setIsOpen, currentGuild }) {
   if (!isOpen) return null;
 
   const features = currentGuild ? [
-    { label: "Dashboard Overview", path: `/dashboard/${currentGuild.id}`, icon: Server },
-    { label: "Welcome & Leave Gatekeeper", path: `/dashboard/${currentGuild.id}/welcome`, icon: UserPlus },
-    { label: "Server Audit Logs", path: `/dashboard/${currentGuild.id}/audit-logs`, icon: ScrollText },
-    { label: "Analytics & Metrics", path: `/dashboard/${currentGuild.id}/analytics`, icon: Activity },
-    { label: "Verification Settings", path: `/dashboard/${currentGuild.id}/verification`, icon: ShieldCheck },
-    { label: "Command Restrictions", path: `/dashboard/${currentGuild.id}/commands`, icon: Terminal },
-    { label: "Sticky Messages", path: `/dashboard/${currentGuild.id}/sticky`, icon: Pin },
-    { label: "Bot Settings", path: `/dashboard/${currentGuild.id}/config`, icon: Sliders },
-    { label: "Permissions Vulnerability Audit", path: `/dashboard/${currentGuild.id}/permissions`, icon: History },
+    { label: "Dashboard Overview", path: `/dashboard/${currentGuild.id}`, icon: Server, keywords: "home main server stats" },
+    { label: "Server Audit Logs & Live Stream", path: `/dashboard/${currentGuild.id}/audit-logs?tab=stream`, icon: ScrollText, keywords: "audit logs live stream history events tracking modlogs deleted messages kicks bans" },
+    { label: "Log Channels Routing", path: `/dashboard/${currentGuild.id}/audit-logs?tab=channels`, icon: ScrollText, keywords: "log channels route destination channels voice logs role logs mod logs routing pipeline" },
+    { label: "Permissions & Risk Vulnerability Audit", path: `/dashboard/${currentGuild.id}/permissions`, icon: History, keywords: "permissions audit administrator who has admin elevated roles danger perms security" },
+    { label: "Staff Dashboard Access Roles", path: `/dashboard/${currentGuild.id}/admin-roles`, icon: ShieldCheck, keywords: "admin roles staff access mod perms dashboard access bot admins" },
+    { label: "Warning Escalations & Punishments", path: `/dashboard/${currentGuild.id}/warning-punishments`, icon: Sliders, keywords: "warnings strikes timeouts kicks bans escalation threshold" },
+    { label: "Welcome & Leave Gatekeeper", path: `/dashboard/${currentGuild.id}/welcome`, icon: UserPlus, keywords: "welcome leave autorole onboarding verification message card" },
+    { label: "Verification Gate", path: `/dashboard/${currentGuild.id}/verification`, icon: ShieldCheck, keywords: "verification captcha gatekeeper unverified role gate" },
+    { label: "Analytics & Server Trends", path: `/dashboard/${currentGuild.id}/analytics`, icon: Activity, keywords: "analytics voice chat leaderboard top chatters metrics traffic" },
+    { label: "Command Restrictions", path: `/dashboard/${currentGuild.id}/commands`, icon: Terminal, keywords: "commands disable allow channels roles restriction" },
+    { label: "Sticky Messages", path: `/dashboard/${currentGuild.id}/sticky`, icon: Pin, keywords: "sticky pin messages auto stick channel notice" },
+    { label: "Bot Settings", path: `/dashboard/${currentGuild.id}/config`, icon: Sliders, keywords: "settings bot prefix voice role config setup" },
   ] : [
-    { label: "Return Home", path: "/", icon: Server }
+    { label: "Return Home", path: "/", icon: Server, keywords: "home landing exit" }
   ];
 
-  const filtered = features.filter((f) => f.label.toLowerCase().includes(query.toLowerCase()));
+  const q = query.toLowerCase().trim();
+  const filtered = features.filter((f) =>
+    f.label.toLowerCase().includes(q) || (f.keywords && f.keywords.toLowerCase().includes(q))
+  );
 
   const handleSelect = (path) => {
     setIsOpen(false);

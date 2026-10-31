@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link, useOutletContext } from "react-router-dom";
 import {
   ShieldCheck, Pin, Image as ImageIcon,
-  Bot, Terminal, Shield, ShieldAlert,
+  Bot, Terminal, Shield, ShieldAlert, Key, ScrollText, Sliders, AlertTriangle,
   Users, Hash, Server, ArrowRight, CheckCircle2, XCircle
 } from "lucide-react";
 import {
@@ -133,6 +133,95 @@ export default function OverviewPage({ showToast }) {
         </div>
       </div>
 
+      {/* Security & Audit Quick Hub */}
+      <div className="p-5 sm:p-6 rounded-2xl border border-white/[0.08] bg-[#0e111d] shadow-lg relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/[0.06]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-indigo-400 shrink-0">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-white tracking-tight">Security & Governance Hub</h2>
+                <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono font-semibold">
+                  GUARD ACTIVE
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Centralized audit tracking, real-time Discord stream events, and administrator privilege exposure monitoring.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              to={`/dashboard/${guildId}/permissions`}
+              className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 hover:border-white/20 transition-all flex items-center gap-1.5"
+            >
+              <Key className="w-3.5 h-3.5 text-amber-400" />
+              <span>Permissions Audit</span>
+            </Link>
+            <Link
+              to={`/dashboard/${guildId}/audit-logs?tab=stream`}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm shadow-indigo-600/30 transition-all flex items-center gap-1.5"
+            >
+              <ScrollText className="w-3.5 h-3.5" />
+              <span>Live Audit Stream</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Tactical 3-Way Quick Jump Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
+          <Link
+            to={`/dashboard/${guildId}/permissions`}
+            className="p-3.5 rounded-xl bg-[#121524] border border-white/[0.06] hover:border-white/15 transition-all group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Access Exposure</div>
+              <div className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors flex items-center gap-1.5 mt-0.5">
+                <span>Inspect Admins & Roles</span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+              </div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+              <Key className="w-4 h-4" />
+            </div>
+          </Link>
+
+          <Link
+            to={`/dashboard/${guildId}/audit-logs?tab=channels`}
+            className="p-3.5 rounded-xl bg-[#121524] border border-white/[0.06] hover:border-white/15 transition-all group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Event Dispatch</div>
+              <div className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors flex items-center gap-1.5 mt-0.5">
+                <span>Log Channels Routing</span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+              </div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+              <Sliders className="w-4 h-4" />
+            </div>
+          </Link>
+
+          <Link
+            to={`/dashboard/${guildId}/admin-roles`}
+            className="p-3.5 rounded-xl bg-[#121524] border border-white/[0.06] hover:border-white/15 transition-all group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Dashboard Security</div>
+              <div className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors flex items-center gap-1.5 mt-0.5">
+                <span>Staff Access Roles</span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+              </div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+              <Shield className="w-4 h-4" />
+            </div>
+          </Link>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Modules */}
         <div className="lg:col-span-2 space-y-8">
@@ -175,16 +264,24 @@ export default function OverviewPage({ showToast }) {
 
           <section>
             <h2 className="text-xs font-bold text-slate-400 tracking-wider mb-4 flex items-center gap-2.5 uppercase font-sans">
-              <span className="font-mono text-xs text-indigo-400 font-semibold">03 /</span> Moderation & Security
+              <span className="font-mono text-xs text-indigo-400 font-semibold">03 /</span> Security & Auditing
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <ModuleCard 
-                title="Admin Roles" path={`/dashboard/${guildId}/admin-roles`} icon={Shield} accent="var(--color-brand-indigo)"
+                title="Permissions Audit" path={`/dashboard/${guildId}/permissions`} icon={ShieldAlert} accent="var(--color-brand-indigo)"
+                active={true} statusText="Protected"
+              />
+              <ModuleCard 
+                title="Audit Logs Center" path={`/dashboard/${guildId}/audit-logs`} icon={ScrollText} accent="var(--color-brand-indigo)"
+                active={true} statusText="Active"
+              />
+              <ModuleCard 
+                title="Staff Access Roles" path={`/dashboard/${guildId}/admin-roles`} icon={Shield} accent="var(--color-brand-indigo)"
                 active={modules.adminRoles.length > 0} statusText={modules.adminRoles.length > 0 ? `${modules.adminRoles.length} Roles` : "Disabled"}
               />
               <ModuleCard 
-                title="Permissions Audit" path={`/dashboard/${guildId}/permissions`} icon={ShieldAlert} accent="var(--color-brand-indigo)"
-                active={true} statusText="Monitoring"
+                title="Warning Escalations" path={`/dashboard/${guildId}/warning-punishments`} icon={AlertTriangle} accent="var(--color-brand-indigo)"
+                active={true} statusText="Configured"
               />
             </div>
           </section>

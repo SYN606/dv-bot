@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { usePermissionsAudit } from "../../hooks/permissions-audit";
 import { PageError, PageSkeleton } from "../../components/ui";
 import { Key, Users, UserCheck, ShieldAlert, SlidersHorizontal } from "lucide-react";
@@ -15,7 +15,10 @@ import {
 
 export default function PermissionsAuditPage({ showToast }) {
   const { guildId } = useParams();
-  const [activeTab, setActiveTab] = useState("members"); // "members", "roles", "inspector"
+  const [searchParams] = useSearchParams();
+  const inspectParam = searchParams.get("inspect");
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabParam || (inspectParam ? "inspector" : "members"));
 
   const {
     auditData,
@@ -29,6 +32,14 @@ export default function PermissionsAuditPage({ showToast }) {
     refresh,
     auditMember
   } = usePermissionsAudit(guildId, showToast);
+
+  // Auto-inspect if directed via URL ?inspect=<userId>
+  useEffect(() => {
+    if (inspectParam) {
+      setActiveTab("inspector");
+      auditMember(inspectParam);
+    }
+  }, [inspectParam]);
 
   const handleInspectMember = (memberId) => {
     setActiveTab("inspector");
