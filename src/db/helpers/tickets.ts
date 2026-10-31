@@ -5,6 +5,7 @@ import { ensureGuild } from "./common.js";
 // In-memory cache
 const configCache = new Map<string, any>();
 const panelsCache = new Map<string, any[]>();
+const ticketCounterMutex = new Map<string, Promise<any>>();
 
 export interface ReasonCategoryItem {
   id: string;
@@ -195,15 +196,30 @@ export async function deleteTicketPanel(guildId: string, panelId: string) {
 
 export async function getNextTicketNumber(guildId: string): Promise<number> {
   const gId = String(guildId);
-  const config = await getTicketConfig(gId);
-  const nextNum = (config.ticket_counter || 0) + 1;
+  while (ticketCounterMutex.has(gId)) {
+    await ticketCounterMutex.get(gId);
+  }
 
-  const payload: Record<string, any> = { ticket_counter: nextNum, updated_at: new Date().toISOString() };
-  const where: Record<string, any> = { guild_id: gId };
-  await TicketConfig.update(payload, { where });
-  configCache.delete(gId);
+  let resolveMutex: () => void;
+  const promise = new Promise<void>((res) => {
+    resolveMutex = res;
+  });
+  ticketCounterMutex.set(gId, promise);
 
-  return nextNum;
+  try {
+    const config = await getTicketConfig(gId);
+    const nextNum = (config.ticket_counter || 0) + 1;
+
+    const payload: Record<string, any> = { ticket_counter: nextNum, updated_at: new Date().toISOString() };
+    const where: Record<string, any> = { guild_id: gId };
+    await TicketConfig.update(payload, { where });
+    configCache.delete(gId);
+
+    return nextNum;
+  } finally {
+    ticketCounterMutex.delete(gId);
+    resolveMutex!();
+  }
 }
 
 export async function createTicket(ticketData: {

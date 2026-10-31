@@ -26,9 +26,12 @@ import {
   updateTicket,
   type ReasonCategoryItem,
 } from "../db/helpers/tickets.js";
+import { Ticket } from "../db/models/index.js";
 import { getWarnings } from "../db/helpers/warnings.js";
 import { logger } from "../utils/logger.js";
 import { sendModLog } from "../utils/modLog.js";
+
+const activeTicketActions = new Set<string>();
 
 /**
  * Checks whether a guild member has permission to moderate/claim/close tickets.
@@ -238,14 +241,23 @@ export async function openTicketChannel(params: {
     }
   }
 
-  // Create Channel
-  const ticketChannel = await guild.channels.create({
-    name: channelName,
-    type: ChannelType.GuildText,
-    parent: targetCategoryId,
-    topic: `Ticket #${newTicket.ticket_number} • Opened by ${member.user.tag} (${member.id}) • Category: ${categoryLabel}`,
-    permissionOverwrites,
-  });
+  // Create Channel with robust error handling to prevent orphaned ghost tickets
+  let ticketChannel: TextChannel;
+  try {
+    ticketChannel = (await guild.channels.create({
+      name: channelName,
+      type: ChannelType.GuildText,
+      parent: targetCategoryId,
+      topic: `Ticket #${newTicket.ticket_number} • Opened by ${member.user.tag} (${member.id}) • Category: ${categoryLabel}`,
+      permissionOverwrites,
+    })) as TextChannel;
+  } catch (err: any) {
+    logger.error("[TICKET CHANNEL CREATE ERROR]:", err);
+    await Ticket.destroy({ where: { id: newTicket.id } }).catch(() => null);
+    throw new Error(
+      `Failed to create ticket channel: ${err.message || "Unknown error"}. Check bot permissions or server channel limits.`
+    );
+  }
 
   // Link channel ID to ticket in DB
   await updateTicket(newTicket.id, { channel_id: ticketChannel.id });
@@ -330,39 +342,49 @@ export async function claimTicket(params: {
   ticketId: string;
 }) {
   const { guild, member, ticketId } = params;
-  const ticket = await getTicketById(ticketId);
-  if (!ticket) throw new Error("Ticket record not found.");
 
-  if (ticket.status === "claimed") {
-    throw new Error(`This ticket is already claimed by <@${ticket.claimed_by}>.`);
+  if (activeTicketActions.has(ticketId)) {
+    throw new Error("An action is already being processed on this ticket.");
   }
+  activeTicketActions.add(ticketId);
 
-  if (ticket.status === "closed") {
-    throw new Error("This ticket is already closed.");
-  }
+  try {
+    const ticket = await getTicketById(ticketId);
+    if (!ticket) throw new Error("Ticket record not found.");
 
-  const updated = await updateTicket(ticketId, {
-    status: "claimed",
-    claimed_by: member.id,
-    claimed_by_tag: member.user.tag,
-  });
-
-  if (ticket.channel_id) {
-    const channel = (await guild.channels.fetch(ticket.channel_id).catch(() => null)) as TextChannel | null;
-    if (channel) {
-      await channel.send({
-        embeds: [
-          makeEmbed({
-            title: "Ticket Claimed",
-            description: `🙋 **${member.user.tag}** (<@${member.id}>) has claimed this ticket and will be handling your request.`,
-            color: "#10B981",
-          }),
-        ],
-      });
+    if (ticket.status === "claimed") {
+      throw new Error(`This ticket is already claimed by <@${ticket.claimed_by}>.`);
     }
-  }
 
-  return updated;
+    if (ticket.status === "closed") {
+      throw new Error("This ticket is already closed.");
+    }
+
+    const updated = await updateTicket(ticketId, {
+      status: "claimed",
+      claimed_by: member.id,
+      claimed_by_tag: member.user.tag,
+    });
+
+    if (ticket.channel_id) {
+      const channel = (await guild.channels.fetch(ticket.channel_id).catch(() => null)) as TextChannel | null;
+      if (channel) {
+        await channel.send({
+          embeds: [
+            makeEmbed({
+              title: "Ticket Claimed",
+              description: `🙋 **${member.user.tag}** (<@${member.id}>) has claimed this ticket and will be handling your request.`,
+              color: "#10B981",
+            }),
+          ],
+        });
+      }
+    }
+
+    return updated;
+  } finally {
+    activeTicketActions.delete(ticketId);
+  }
 }
 
 /**
@@ -456,12 +478,19 @@ export async function closeTicket(params: {
   reason?: string | null;
 }) {
   const { client, guild, ticketId, closedByMember, reason } = params;
-  const ticket = await getTicketById(ticketId);
-  if (!ticket) throw new Error("Ticket record not found.");
 
-  if (ticket.status === "closed") {
-    throw new Error("This ticket is already closed.");
+  if (activeTicketActions.has(ticketId)) {
+    throw new Error("This ticket is already in the process of being closed.");
   }
+  activeTicketActions.add(ticketId);
+
+  try {
+    const ticket = await getTicketById(ticketId);
+    if (!ticket) throw new Error("Ticket record not found.");
+
+    if (ticket.status === "closed") {
+      throw new Error("This ticket is already closed.");
+    }
 
   const config = await getTicketConfig(guild.id);
   const channel = ticket.channel_id
@@ -548,4 +577,7 @@ export async function closeTicket(params: {
   }
 
   return updatedTicket;
+} finally {
+  activeTicketActions.delete(ticketId);
+}
 }

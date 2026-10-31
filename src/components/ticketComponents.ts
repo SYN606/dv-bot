@@ -262,6 +262,13 @@ export function registerTicketComponents(client: any) {
       });
     }
 
+    if (ticket.status === "closed") {
+      return await interaction.reply({
+        content: "❌ This ticket is already closed.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
     const config = await getTicketConfig(guild.id);
     const isOpener = ticket.user_id === interaction.user.id;
     const canManage = canMemberManageTickets(member, config);

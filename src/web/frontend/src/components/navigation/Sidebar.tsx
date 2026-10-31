@@ -108,7 +108,7 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
         <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto min-h-0 scrollbar-thin">
           {navGroups.map((group) => (
             <div key={group.group}>
-              <div className="px-3 mb-1.5 text-[11px] font-bold tracking-wider text-slate-400 uppercase font-sans">{group.group}</div>
+              <div className="px-3 mb-2 text-xs font-bold tracking-wider text-slate-400 uppercase font-sans">{group.group}</div>
               <div className="space-y-1">
                 {group.items.map((item) => {
                   const Icon = item.icon;
@@ -119,18 +119,18 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
                       key={item.id}
                       to={item.path}
                       onClick={() => setMobileOpen(false)}
-                      className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-medium transition-all ${
+                      className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                         isActive
-                          ? "bg-indigo-600/15 text-white font-semibold border border-indigo-500/30 shadow-sm shadow-indigo-500/10"
+                          ? "bg-indigo-600/15 text-white border border-indigo-500/30 shadow-sm shadow-indigo-500/10"
                           : "text-slate-300 hover:text-white hover:bg-white/[0.04] border border-transparent"
                       }`}
                     >
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200 ${
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ${
                         isActive
                           ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
                           : "bg-white/[0.05] text-slate-400 group-hover:bg-white/[0.1] group-hover:text-white group-hover:scale-110 border border-white/[0.06]"
                       }`}>
-                        <Icon className="w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-105" />
+                        <Icon className="w-4 h-4 transition-transform duration-200 group-hover:scale-105 fill-current" />
                       </div>
                       <span className="truncate">{item.label}</span>
                       {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400" />}
