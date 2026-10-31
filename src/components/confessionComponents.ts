@@ -75,18 +75,9 @@ export function registerConfessionComponents(client: any) {
       .setPlaceholder("https://example.com/image.png (Optional)")
       .setRequired(false);
 
-    const anonymousInput = new TextInputBuilder()
-      .setCustomId("confession_anonymous")
-      .setLabel("Stay Anonymous? (yes / no)")
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder("yes")
-      .setValue("yes")
-      .setRequired(false);
-
     modal.addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(contentInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(imageInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(anonymousInput)
+      new ActionRowBuilder<TextInputBuilder>().addComponents(imageInput)
     );
 
     await interaction.showModal(modal);
@@ -115,8 +106,7 @@ export function registerConfessionComponents(client: any) {
 
     const content = interaction.fields.getTextInputValue("confession_content")?.trim();
     const rawImage = interaction.fields.getTextInputValue("confession_image")?.trim();
-    const rawAnon = interaction.fields.getTextInputValue("confession_anonymous")?.trim().toLowerCase();
-    const isAnonymous = config.allow_anonymous ? rawAnon !== "no" : false;
+    const isAnonymous = true;
 
     // Cooldown verification (non-consuming check)
     const cooldownRemaining = checkUserCooldown(guild.id, interaction.user.id, config.cooldown_seconds);
