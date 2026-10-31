@@ -1,6 +1,7 @@
 import { Events, type Message } from "discord.js";
 import { recordDeletedMessage } from "../services/snipeService.js";
 import { sendModLog } from "../utils/modLog.js";
+import { extractMediaData, formatMediaFields } from "../utils/mediaLogHelper.js";
 
 export default {
   name: Events.MessageDelete,
@@ -16,25 +17,45 @@ export default {
     // Skip bot deleted messages to prevent self-logging spam
     if (message.author?.bot) return;
 
+    // Skip uncached empty messages with no author and no content
+    if (!message.author && !message.content && (!message.attachments || message.attachments.size === 0)) {
+      return;
+    }
+
     try {
-      const attachmentsCount = message.attachments?.size || 0;
+      const media = extractMediaData(message);
+      const mediaFields = formatMediaFields(media);
+      const channelName = (message.channel as any)?.name ? `#${(message.channel as any).name}` : "channel";
+
+      const cleanContent = message.content?.trim();
+      const truncated = cleanContent
+        ? cleanContent.length > 1500
+          ? cleanContent.slice(0, 1500) + "..."
+          : cleanContent
+        : "*[No text content - Media/Attachment only]*";
+
       const extraFields: Record<string, any> = {
         Channel: `<#${message.channel.id}>`,
-        Author: message.author ? `<@${message.author.id}> (\`${message.author.tag || message.author.username}\`)` : "*Unknown Author*",
+        "Message ID": `\`${message.id}\``,
       };
 
-      if (attachmentsCount > 0) {
-        extraFields["Attachments"] = `${attachmentsCount} attached file(s)`;
+      if (message.createdTimestamp) {
+        extraFields["Sent"] = `<t:${Math.floor(message.createdTimestamp / 1000)}:R>`;
       }
+
+      // Merge formatted media fields (Attached Files, Media Links, Stickers)
+      Object.assign(extraFields, mediaFields);
 
       await sendModLog({
         guild: message.guild,
         category: "MESSAGES",
-        title: "Message Deleted",
+        eventType: "message_deleted",
+        title: `Message Deleted in ${channelName}`,
         level: "WARNING",
         target: message.author || null,
-        description: message.content ? `**Deleted Content:**\n${message.content.length > 800 ? message.content.slice(0, 800) + "..." : message.content}` : "*[No text content - Media/attachment only]*",
+        description: `> ${truncated.replace(/\n/g, "\n> ")}`,
         extraFields,
+        image: media.previewImageUrl,
       });
     } catch (_) {}
   },

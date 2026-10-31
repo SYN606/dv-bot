@@ -1,5 +1,6 @@
 import { Events, type Message } from "discord.js";
 import { sendModLog } from "../utils/modLog.js";
+import { extractMediaData, formatMediaFields } from "../utils/mediaLogHelper.js";
 
 export default {
   name: Events.MessageUpdate,
@@ -14,20 +15,34 @@ export default {
     if (!oldContent || !newContent || oldContent === newContent) return;
 
     try {
-      const truncate = (str: string, len = 500) => (str.length > len ? str.slice(0, len) + "..." : str);
+      const truncate = (str: string, len = 900) => (str.length > len ? str.slice(0, len) + "..." : str);
+      const newMedia = extractMediaData(newMessage);
+      const mediaFields = formatMediaFields(newMedia);
+      const channelName = (newMessage.channel as any)?.name ? `#${(newMessage.channel as any).name}` : "channel";
+
+      const extraFields: Record<string, any> = {
+        Channel: `<#${newMessage.channel.id}>`,
+        "Message ID": `\`${newMessage.id}\``,
+        "Jump to Message": `[Click to View](${newMessage.url})`,
+      };
+
+      if (newMessage.createdTimestamp) {
+        extraFields["Originally Sent"] = `<t:${Math.floor(newMessage.createdTimestamp / 1000)}:R>`;
+      }
+
+      // Add media fields if updated message has media
+      Object.assign(extraFields, mediaFields);
 
       await sendModLog({
         guild: newMessage.guild,
         category: "MESSAGES",
-        title: "Message Edited",
+        eventType: "message_edited",
+        title: `Message Edited in ${channelName}`,
         level: "INFO",
         target: newMessage.author || null,
-        description: `**Before:**\n${truncate(oldContent)}\n\n**After:**\n${truncate(newContent)}`,
-        extraFields: {
-          Channel: `<#${newMessage.channel.id}>`,
-          Author: `<@${newMessage.author.id}> (\`${newMessage.author.tag || newMessage.author.username}\`)`,
-          "Jump to Message": `[Click to View](${newMessage.url})`,
-        },
+        description: `**Before:**\n> ${truncate(oldContent).replace(/\n/g, "\n> ")}\n\n**After:**\n> ${truncate(newContent).replace(/\n/g, "\n> ")}`,
+        extraFields,
+        image: newMedia.previewImageUrl,
       });
     } catch (_) {}
   },

@@ -3,6 +3,7 @@ import { PermissionFlagsBits, AuditLogEvent } from "discord.js";
 import { ModerationLogConfig, VCRoleConfig } from "../../db/models/index.js";
 import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { apiCache } from "./cache.js";
+import { invalidateLogConfigCache } from "../../utils/modLog.js";
 
 export const auditLogRoutes = new Hono();
 
@@ -387,6 +388,7 @@ auditLogRoutes.post("/guilds/:guildId/audit-logs/config", async (c) => {
   // Invalidate caches immediately
   apiCache.delete(`guild:${guildId}:config`);
   apiCache.delete(`guild:${guildId}:modlog_config`);
+  invalidateLogConfigCache(guildId);
 
   let parsedEvents = {};
   try {
@@ -448,13 +450,53 @@ auditLogRoutes.post("/guilds/:guildId/audit-logs/test", async (c) => {
   const eventColor = body.color || COLORS.DARK;
 
   try {
-    const testEmbed = makeEmbed({
-      title: `🛡️ Digital Vigital — ${eventLabel} Test`,
-      description: `Live test log event dispatched from the web dashboard by <@${user?.id || "Admin"}>.\n\n• **Event:** \`${eventLabel}\`\n• **Channel:** <#${channel.id}>\n• **Status:** Pipeline Connected & Operational\n• **Timestamp:** <t:${Math.floor(Date.now() / 1000)}:F>`,
-      level: "SUCCESS",
-      color: eventColor,
-      footer: "DIGITAL_VIGITAL_LOG_SYSTEM",
-    });
+    let testEmbed: any;
+    if (body.eventType === "message_deleted") {
+      testEmbed = makeEmbed({
+        title: `🗑️ Message Deleted in #${channel.name}`,
+        description: `> This is a simulated deleted message dispatched from the dashboard to verify your log formatting.`,
+        level: "WARNING",
+        color: eventColor,
+        footer: `Author ID: ${user?.id || "0"} • Channel ID: ${channel.id}`,
+      });
+      testEmbed.setAuthor({
+        name: user?.username || "Dashboard Admin",
+        iconURL: user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : undefined,
+      });
+      testEmbed.addFields(
+        { name: "👤 Author", value: `<@${user?.id || "Admin"}>\n\`${user?.username || "Admin"}\``, inline: true },
+        { name: "📁 Channel", value: `<#${channel.id}>`, inline: true },
+        { name: "🆔 Message ID", value: "`1234567890987654321`", inline: true },
+        { name: "Attached Files (1)", value: "🖼️ [sample_image.png](https://cdn.discordapp.com) `(1.2 MB)`", inline: false },
+        { name: "Media Links (1)", value: "[Tenor GIF](https://tenor.com)", inline: false }
+      );
+    } else if (body.eventType === "message_edited") {
+      testEmbed = makeEmbed({
+        title: `✏️ Message Edited in #${channel.name}`,
+        description: `**Before:**\n> Hello world! Check out this cool picture.\n\n**After:**\n> Hello server! Check out this cool picture & link.`,
+        level: "INFO",
+        color: eventColor,
+        footer: `Author ID: ${user?.id || "0"} • Channel ID: ${channel.id}`,
+      });
+      testEmbed.setAuthor({
+        name: user?.username || "Dashboard Admin",
+        iconURL: user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : undefined,
+      });
+      testEmbed.addFields(
+        { name: "👤 Author", value: `<@${user?.id || "Admin"}>\n\`${user?.username || "Admin"}\``, inline: true },
+        { name: "📁 Channel", value: `<#${channel.id}>`, inline: true },
+        { name: "🆔 Message ID", value: "`1234567890987654321`", inline: true },
+        { name: "Jump to Message", value: `[Click to View](https://discord.com)`, inline: true }
+      );
+    } else {
+      testEmbed = makeEmbed({
+        title: `🛡️ Digital Vigital — ${eventLabel} Test`,
+        description: `Live test log event dispatched from the web dashboard by <@${user?.id || "Admin"}>.\n\n• **Event:** \`${eventLabel}\`\n• **Channel:** <#${channel.id}>\n• **Status:** Pipeline Connected & Operational\n• **Timestamp:** <t:${Math.floor(Date.now() / 1000)}:F>`,
+        level: "SUCCESS",
+        color: eventColor,
+        footer: "DIGITAL_VIGITAL_LOG_SYSTEM",
+      });
+    }
 
     await channel.send({ embeds: [testEmbed] });
     return c.json({ success: true, message: `Test dispatch delivered to #${channel.name}!` });
