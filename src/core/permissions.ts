@@ -96,9 +96,7 @@ export async function hasModerationAccess(target: any, requiredPermission: any =
 
   if (requiredPermission) {
     const permBit = typeof requiredPermission === "string" ? (PermissionFlagsBits as any)[requiredPermission] : requiredPermission;
-    if (permBit && member.permissions.has(permBit)) {
-      return true;
-    }
+    return Boolean(permBit && member.permissions.has(permBit));
   }
 
   // General moderation permissions

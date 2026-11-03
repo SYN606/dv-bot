@@ -1,8 +1,9 @@
-import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { PermissionFlagsBits, PermissionsBitField, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { PunishmentRecord, WarningRecord, TempbanRecord } from "../../db/models/index.js";
 import { EMOJIS } from "../../core/emojis.js";
+import { isBotAdmin } from "../../core/permissions.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("punishments")
@@ -29,8 +30,32 @@ export default createCommand({
   slashBuilder,
 
   async execute(ctx) {
-    const { guild, client } = ctx;
+    const { guild, client, user } = ctx;
     if (!guild) return;
+
+    const modPerms =
+      ctx.member?.permissions instanceof PermissionsBitField
+        ? ctx.member.permissions
+        : new PermissionsBitField(BigInt(ctx.member?.permissions || 0));
+
+    const canView =
+      guild.ownerId === user.id ||
+      modPerms.has(PermissionFlagsBits.Administrator) ||
+      modPerms.has(PermissionFlagsBits.ModerateMembers) ||
+      (await isBotAdmin(ctx));
+
+    if (!canView) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Permission Denied",
+            description: `${EMOJIS.get("fail") || "❌"} You require the **Moderate Members** or **Administrator** permission to view punishment records.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
 
     const rawTarget = ctx.options.user || ctx.options._args?.[0];
     const targetUserId = rawTarget ? String(rawTarget).match(/\d{17,20}/)?.[0] : null;

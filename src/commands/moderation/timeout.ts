@@ -1,9 +1,10 @@
-import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { PermissionFlagsBits, PermissionsBitField, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import { ModerationService } from "../../services/index.js";
 import { parseDuration, formatDuration } from "../../utils/duration.js";
+import { isBotAdmin } from "../../core/permissions.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("timeout")
@@ -33,6 +34,30 @@ export default createCommand({
   async execute(ctx) {
     const { guild, user } = ctx;
     if (!guild) return;
+
+    const modPerms =
+      ctx.member?.permissions instanceof PermissionsBitField
+        ? ctx.member.permissions
+        : new PermissionsBitField(BigInt(ctx.member?.permissions || 0));
+
+    const canTimeout =
+      guild.ownerId === user.id ||
+      modPerms.has(PermissionFlagsBits.Administrator) ||
+      modPerms.has(PermissionFlagsBits.ModerateMembers) ||
+      (await isBotAdmin(ctx));
+
+    if (!canTimeout) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Permission Denied",
+            description: `${EMOJIS.get("fail") || "❌"} You require the **Moderate Members** (Timeout) or **Administrator** permission to use this command.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
 
     const rawTarget = ctx.options.user || ctx.options._args?.[0];
     const targetUserId = rawTarget ? String(rawTarget).match(/\d{17,20}/)?.[0] : null;

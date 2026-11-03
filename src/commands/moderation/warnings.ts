@@ -1,4 +1,4 @@
-import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { PermissionFlagsBits, PermissionsBitField, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
@@ -13,6 +13,7 @@ import { isModuleEnabled } from "../../db/helpers/moduleStatus.js";
 import { executeTempban } from "../../services/tempbanService.js";
 import { sendModLog } from "../../utils/modLog.js";
 import { formatDuration } from "../../utils/duration.js";
+import { isBotAdmin } from "../../core/permissions.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("warnings")
@@ -64,6 +65,30 @@ export default createCommand({
   async execute(ctx) {
     const { guild, user, member: modMember } = ctx;
     if (!guild) return;
+
+    const modPerms =
+      ctx.member?.permissions instanceof PermissionsBitField
+        ? ctx.member.permissions
+        : new PermissionsBitField(BigInt(ctx.member?.permissions || 0));
+
+    const canManageWarnings =
+      guild.ownerId === user.id ||
+      modPerms.has(PermissionFlagsBits.Administrator) ||
+      modPerms.has(PermissionFlagsBits.ModerateMembers) ||
+      (await isBotAdmin(ctx));
+
+    if (!canManageWarnings) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Permission Denied",
+            description: `${EMOJIS.get("fail") || "❌"} You require the **Moderate Members** or **Administrator** permission to manage warnings.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
 
     let sub = ctx.subcommand || "list";
     if (ctx.options._args && !ctx.interaction) {
