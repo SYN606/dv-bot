@@ -13,14 +13,31 @@ import {
   size
 } from '@floating-ui/react';
 
+export interface RoleSelectorProps {
+  roles?: any[];
+  value?: any;
+  onChange?: (val: any) => void;
+  multiple?: boolean;
+  specialOptions?: any[];
+  placeholder?: string;
+  guildId?: string;
+  className?: string;
+  disabled?: boolean;
+  [key: string]: any;
+}
+
 export default function RoleSelector({
   roles = [],
   value,
-  onChange,
+  onChange = () => {},
   multiple = false,
   specialOptions = [],
-  placeholder = "Select or search role..."
-}) {
+  placeholder = "Select or search role...",
+  guildId,
+  className,
+  disabled = false,
+  ...rest
+}: RoleSelectorProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef(null);

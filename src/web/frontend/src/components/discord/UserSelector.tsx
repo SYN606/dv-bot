@@ -278,9 +278,9 @@ export default function UserSelector({
                           <img
                             src={avatarUrl}
                             alt={m.username}
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png";
+                            onError={(e: any) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = "https://cdn.discordapp.com/embed/avatars/0.png";
                             }}
                             className="w-7 h-7 rounded-full bg-slate-800 object-cover shrink-0"
                             loading="lazy"

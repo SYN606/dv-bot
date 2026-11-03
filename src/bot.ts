@@ -22,7 +22,7 @@ process.on("uncaughtException", (error: Error) => {
 async function main(): Promise<void> {
   logger.info("==========================================");
   logger.info(`Starting DV-BOT (Bun ${typeof Bun !== "undefined" ? Bun.version : process.version} + discord.js v14)`);
-  logger.info(`Runtime Platform: ${process.platform} (${process.arch}) | ENV: ${CONFIG.ENV}`);
+  logger.info(`Runtime Platform: ${process.platform} (${process.arch}) | ENV: ${CONFIG.ENV} | Libuv Pool: ${process.env.UV_THREADPOOL_SIZE || "default"}`);
   logger.info("==========================================");
 
   await initDb();
@@ -70,6 +70,14 @@ async function main(): Promise<void> {
 // Graceful Shutdown
 async function handleShutdown(signal: string): Promise<void> {
   logger.warn(`[SHUTDOWN] Received ${signal}. Gracefully stopping bot...`);
+
+  // Hard watchdog timeout: prevent hanging processes from blocking deployment or container stops
+  const watchdog = setTimeout(() => {
+    logger.fatal("[SHUTDOWN] Watchdog timeout reached (10s). Forcing process exit.");
+    process.exit(1);
+  }, 10000);
+  if (typeof watchdog.unref === "function") watchdog.unref();
+
   try {
     if (webServer?.stop) {
       webServer.stop();
@@ -80,15 +88,21 @@ async function handleShutdown(signal: string): Promise<void> {
       logger.info("[SHUTDOWN] Vite Dev Server stopped.");
     }
     if ((client as any).workers) {
-      (client as any).workers.tempbanWorker?.stop();
-      (client as any).workers.autoroleWorker?.stop();
-      (client as any).workers.supporterWorker?.stop();
+      const stops = [
+        (client as any).workers.tempbanWorker?.stop?.(),
+        (client as any).workers.autoroleWorker?.stop?.(),
+        (client as any).workers.supporterWorker?.stop?.(),
+        (client as any).workers.ticketJobRunner?.stop?.(),
+      ];
+      await Promise.allSettled(stops);
+      logger.info("[SHUTDOWN] Background workers stopped.");
     }
     await ANALYTICS_BATCHER.stop();
     await closeDb();
     client.destroy();
     logger.info("[SHUTDOWN] Bot stopped cleanly.");
   } finally {
+    clearTimeout(watchdog);
     await logger.flush();
     process.exit(0);
   }

@@ -17,12 +17,14 @@ export default function WelcomeLeaveEditor({
   updateConfig,
   insertVariable,
   onOpenTestModal,
+  guildId,
 }: {
   config: any;
   channels: any[];
   updateConfig: (key: string, val: any) => void;
   insertVariable: (field: string, tag: string) => void;
   onOpenTestModal?: (type?: "channel" | "leave" | "dm") => void;
+  guildId?: string;
 }) {
   const applyTemplate = (type) => {
     if (type === "audit") {
@@ -158,6 +160,7 @@ export default function WelcomeLeaveEditor({
 
         {/* Variables */}
         <WelcomeVariableBar
+          guildId={guildId}
           onInsertVariable={(tag) => insertVariable("leave_message", tag)}
         />
 

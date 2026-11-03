@@ -89,8 +89,8 @@ export default function MemberAuditResult({ memberAudit, loading }) {
               src={avatarUrl}
               alt={user.username}
               className="w-16 h-16 rounded-full border-2 border-white/10 object-cover shadow-lg"
-              onError={(e) => {
-                e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png";
+              onError={(e: any) => {
+                e.currentTarget.src = "https://cdn.discordapp.com/embed/avatars/0.png";
               }}
             />
           </div>

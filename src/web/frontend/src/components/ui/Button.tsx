@@ -19,6 +19,21 @@ const SIZES = {
   "icon-sm": "p-1.5 rounded-lg shrink-0",
 };
 
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  children?: React.ReactNode;
+  variant?: "primary" | "secondary" | "danger" | "success" | "outline" | "ghost" | string;
+  size?: "xs" | "sm" | "md" | "lg" | "icon" | "icon-sm" | string;
+  isLoading?: boolean;
+  loadingText?: string;
+  icon?: React.ElementType;
+  iconPosition?: "left" | "right";
+  disabled?: boolean;
+  className?: string;
+  type?: "button" | "submit" | "reset";
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  [key: string]: any;
+}
+
 export default function Button({
   children,
   variant = "primary",
@@ -32,7 +47,7 @@ export default function Button({
   type = "button",
   onClick,
   ...props
-}) {
+}: ButtonProps) {
   const variantClass = VARIANTS[variant] || VARIANTS.primary;
   const sizeClass = SIZES[size] || SIZES.md;
   const isDisabled = disabled || isLoading;

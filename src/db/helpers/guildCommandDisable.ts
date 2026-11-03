@@ -26,7 +26,7 @@ export function invalidateGuildCommandCache(guildId, commandName = null) {
 
 /**
  * Check if a command is globally disabled in a guild.
- * Admins are NOT checked here â€” caller is responsible for bypassing admins.
+ * Admins are NOT checked here — caller is responsible for bypassing admins.
  */
 export async function isCommandGloballyDisabled(guildId, commandName) {
   const cmd = normalize(commandName);

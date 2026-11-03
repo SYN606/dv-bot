@@ -11,6 +11,8 @@ export interface ModuleCardProps {
   statusText?: string;
   description?: string;
   className?: string;
+  accent?: string;
+  [key: string]: any;
 }
 
 export default function ModuleCard({

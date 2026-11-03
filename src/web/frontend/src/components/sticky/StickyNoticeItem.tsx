@@ -2,13 +2,24 @@ import React from "react";
 import Badge from "../ui/Badge";
 import { Pin } from "lucide-react";
 
-export default function StickyNoticeItem({ notice, channelName, onEdit, onDelete, isDeleting }) {
-  const rawContent = notice.content || notice.sticky_content || "";
+export interface StickyNoticeItemProps {
+  notice?: any;
+  channel?: any;
+  channelName?: string;
+  onEdit?: (notice?: any) => void;
+  onDelete?: (channelId?: any) => void;
+  isDeleting?: boolean;
+  [key: string]: any;
+}
+
+export default function StickyNoticeItem({ notice, channel, channelName, onEdit, onDelete, isDeleting }: StickyNoticeItemProps) {
+  const resolvedChannelName = channelName || channel?.name;
+  const rawContent = notice?.content || notice?.sticky_content || "";
   const contentPreview = rawContent.length > 120 
     ? rawContent.substring(0, 120) + "..."
     : rawContent;
 
-  const repins = Number(notice.repins || notice.counter || 0);
+  const repins = Number(notice?.repins || notice?.counter || 0);
 
   return (
     <div className="glass-panel p-5 rounded-2xl border border-white/5 flex flex-col md:flex-row md:items-start justify-between gap-6 hover:border-white/10 transition-colors">
@@ -16,7 +27,7 @@ export default function StickyNoticeItem({ notice, channelName, onEdit, onDelete
         <div className="flex flex-wrap items-center gap-2.5 mb-2">
           <div className="flex items-center gap-1.5 font-bold text-white text-base truncate">
             <Pin className="w-4 h-4 text-brand-crimson shrink-0" />
-            <span>#{channelName || `channel-${notice.channel_id?.slice(-4)}`}</span>
+            <span>#{resolvedChannelName || `channel-${notice?.channel_id?.slice(-4)}`}</span>
           </div>
 
           <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">

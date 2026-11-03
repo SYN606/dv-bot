@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { RoleSelector } from "../discord";
 import { ShieldOff, AlertTriangle, X, Trash2, CheckCircle2 } from "lucide-react";
 
-export default function RoleBlacklistPanel({ roles = [], blacklist = [], updateBlacklist, config = {} }) {
+export default function RoleBlacklistPanel({ roles = [], blacklist = [], updateBlacklist, config = {} as Record<string, any> }) {
   // Check if any reward role is also blacklisted to warn the user
   const rewardRoles = [
     config.top_chat_role_1, config.top_chat_role_2, config.top_chat_role_3,

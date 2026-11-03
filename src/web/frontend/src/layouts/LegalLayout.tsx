@@ -2,7 +2,7 @@ import React from "react";
 import { Link, Outlet } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-export default function LegalLayout({ botInfo }) {
+export default function LegalLayout({ botInfo, user, ...rest }: any) {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-300 font-sans selection:bg-brand-violet/30 selection:text-white flex flex-col relative overflow-hidden">
 

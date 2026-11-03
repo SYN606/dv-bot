@@ -1,7 +1,7 @@
 import React from "react";
 import { PageHeader } from "../ui";
 
-export default function AutoRoleHeader({ enabled, isEnabled, onToggle }) {
+export default function AutoRoleHeader({ enabled, isEnabled = false, onToggle }: any) {
   const active = enabled !== undefined ? enabled : Boolean(isEnabled);
 
   return (

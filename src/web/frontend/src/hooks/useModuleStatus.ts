@@ -1,33 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { getModuleStatus, setModuleStatus } from "../api/client.js";
 
-/**
- * Fetch module status directly without external transport dependency
- */
-export async function getModuleStatus(guildId, moduleName) {
-  try {
-    const res = await fetch(`/api/guilds/${guildId}/modules/${moduleName}`, {
-      credentials: "include",
-    });
-    if (!res.ok) return { enabled: true };
-    return await res.json();
-  } catch {
-    return { enabled: true };
-  }
-}
-
-/**
- * Update module status directly
- */
-export async function setModuleStatus(guildId, moduleName, enabled) {
-  const res = await fetch(`/api/guilds/${guildId}/modules/${moduleName}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ enabled }),
-  });
-  if (!res.ok) throw new Error("Failed to update module status");
-  return await res.json();
-}
+export { getModuleStatus, setModuleStatus };
 
 export function useModuleStatus(guildId, moduleName, showToast) {
   const [enabled, setEnabled] = useState(true);

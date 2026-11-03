@@ -3,6 +3,27 @@ import { RefreshCw, AlertTriangle } from "lucide-react";
 import Switch from "./Switch";
 import Button from "./Button";
 
+export interface PageHeaderProps {
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  category?: string;
+  breadcrumb?: string;
+  categoryColor?: string;
+  actions?: React.ReactNode;
+  stats?: any;
+  children?: React.ReactNode;
+  enabled?: boolean;
+  onToggle?: (val: boolean) => void;
+  hasModuleSwitch?: boolean;
+  switchTitle?: string;
+  switchLabel?: string;
+  onRefresh?: () => void | Promise<void>;
+  isRefreshing?: boolean;
+  disabledAlert?: any;
+  className?: string;
+  [key: string]: any;
+}
+
 export default function PageHeader({
   title,
   description,
@@ -24,7 +45,7 @@ export default function PageHeader({
   // Disabled alert banner
   disabledAlert,
   className = "",
-}) {
+}: PageHeaderProps) {
   const showSwitch = hasModuleSwitch || typeof onToggle === "function";
   const isModuleEnabled = enabled !== undefined ? Boolean(enabled) : true;
 

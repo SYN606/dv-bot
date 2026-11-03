@@ -1,5 +1,16 @@
 import React from "react";
 
+export interface EmptyStateProps {
+  icon?: React.ElementType;
+  title?: string;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+  compact?: boolean;
+  dashed?: boolean;
+  className?: string;
+  [key: string]: any;
+}
+
 export default function EmptyState({
   icon: Icon,
   title = "No items found",
@@ -8,7 +19,7 @@ export default function EmptyState({
   compact = false,
   dashed = true,
   className = "",
-}) {
+}: EmptyStateProps) {
   return (
     <div
       className={`glass-panel text-center flex flex-col items-center justify-center rounded-3xl ${

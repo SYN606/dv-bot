@@ -8,6 +8,9 @@ import { logger } from "../../utils/logger";
 const ADMINISTRATOR = 0x8;
 const MANAGE_GUILD = 0x20;
 
+// Deduplicate concurrent in-flight fetches for the same user to prevent Discord 429 stampedes
+const inFlightGuildFetches = new Map<string, Promise<any>>();
+
 export async function requireAuth(c: Context, next: Next) {
   const token = getCookie(c, "dv_session");
   const session = verifySessionToken(token);
@@ -23,16 +26,29 @@ export async function requireAuth(c: Context, next: Next) {
   let userGuilds = apiCache.get(`user_guilds:${session.user.id}`);
   
   if (!userGuilds) {
+    let fetchPromise = inFlightGuildFetches.get(session.user.id);
+    if (!fetchPromise) {
+      fetchPromise = (async () => {
+        try {
+          const rawGuilds = await fetchDiscordGuilds(session.accessToken);
+          const mapped = rawGuilds.map((g: any) => ({
+            id: g.id,
+            name: g.name,
+            icon: g.icon,
+            permissions: g.permissions,
+            owner: g.owner,
+          }));
+          apiCache.set(`user_guilds:${session.user.id}`, mapped, 1000 * 60 * 60);
+          return mapped;
+        } finally {
+          inFlightGuildFetches.delete(session.user.id);
+        }
+      })();
+      inFlightGuildFetches.set(session.user.id, fetchPromise);
+    }
+
     try {
-      const rawGuilds = await fetchDiscordGuilds(session.accessToken);
-      userGuilds = rawGuilds.map((g: any) => ({
-        id: g.id,
-        name: g.name,
-        icon: g.icon,
-        permissions: g.permissions,
-        owner: g.owner,
-      }));
-      apiCache.set(`user_guilds:${session.user.id}`, userGuilds, 1000 * 60 * 60);
+      userGuilds = await fetchPromise;
     } catch (err: any) {
       if (err.status === 429) {
         // Discord API Rate Limited (@me/guilds): Fallback to bot client cache without kicking out user

@@ -222,7 +222,7 @@ export default function DocumentationPage({ user, botInfo }) {
       </main>
 
       {/* Footer */}
-      <Footer />
+      <Footer botInfo={undefined} />
     </div>
   );
 }

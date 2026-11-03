@@ -5,7 +5,7 @@ import MessageComposer from "../../components/message-studio/MessageComposer";
 
 export default function MessageStudioPage({ showToast }) {
   const { guildId } = useParams();
-  const { botInfo } = useOutletContext() || {};
+  const { botInfo }: any = useOutletContext() || {};
 
   const {
     channels,

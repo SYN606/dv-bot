@@ -86,9 +86,6 @@ export default {
       commandString = afterMention;
     } else if (rawContent.toLowerCase().startsWith(prefix)) {
       commandString = rawContent.slice(prefix.length).trim();
-
-
-
     }
 
     if (commandString === null) return;
@@ -115,7 +112,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Access Restricted",
-            description: `${EMOJIS.get("warning") || "âš ï¸"} ${aclCheck.reason}`,
+            description: `${EMOJIS.get("warning") || "\u26A0\uFE0F"} ${aclCheck.reason}`,
             level: "WARNING",
           }),
         ],
@@ -133,7 +130,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Command Disabled",
-            description: `${EMOJIS.get("fail") || "âŒ"} This command has been **disabled** in this server by an administrator.`,
+            description: `${EMOJIS.get("fail") || "\u274C"} This command has been **disabled** in this server by an administrator.`,
             level: "ERROR",
           }),
         ],
@@ -151,7 +148,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Command Restricted",
-            description: `${EMOJIS.get("fail") || "âŒ"} This command cannot be used in this channel.\n\n${EMOJIS.get("arrow_point") || "ðŸ‘‰"} Please try using it in another channel.`,
+            description: `${EMOJIS.get("fail") || "\u274C"} This command cannot be used in this channel.\n\n${EMOJIS.get("arrow_point") || "\u{1F449}"} Please try using it in another channel.`,
             level: "ERROR",
           }),
         ],
@@ -166,7 +163,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `${EMOJIS.get("fail") || "âŒ"} You require **Administrator** or **Bot Admin** authority to use this command.`,
+            description: `${EMOJIS.get("fail") || "\u274C"} You require **Administrator** or **Bot Admin** authority to use this command.`,
             level: "ERROR",
           }),
         ],
@@ -180,7 +177,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `${EMOJIS.get("fail") || "âŒ"} You require **Manage Server** or **Config** authority to use this command.`,
+            description: `${EMOJIS.get("fail") || "\u274C"} You require **Manage Server** or **Config** authority to use this command.`,
             level: "ERROR",
           }),
         ],
@@ -194,7 +191,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Permission Denied",
-            description: `${EMOJIS.get("fail") || "âŒ"} You lack the required moderation permissions to run this command.`,
+            description: `${EMOJIS.get("fail") || "\u274C"} You lack the required moderation permissions to run this command.`,
             level: "ERROR",
           }),
         ],
@@ -210,7 +207,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Rate Limited",
-            description: `${EMOJIS.get("warning") || "âš ï¸"} You are on cooldown. Please wait **${retry.toFixed(1)}s**.`,
+            description: `${EMOJIS.get("warning") || "\u26A0\uFE0F"} You are on cooldown. Please wait **${retry.toFixed(1)}s**.`,
             level: "WARNING",
           }),
         ],
@@ -243,7 +240,7 @@ export default {
         embeds: [
           makeEmbed({
             title: "Command Error",
-            description: `${EMOJIS.get("fail") || "âŒ"} An unexpected error occurred while processing this command.`,
+            description: `${EMOJIS.get("fail") || "\u274C"} An unexpected error occurred while processing this command.`,
             level: "ERROR",
           }),
         ],
@@ -263,26 +260,26 @@ async function sendMentionReply(client, message, prefix) {
 
   const embed = makeEmbed({
     author: {
-      name: `${botName} â€¢ Moderation & Server Security`,
+      name: `${botName} \u2022 Moderation & Server Security`,
       iconURL: avatar,
     },
-    title: `Hey, ${message.author.username}! ðŸ‘‹`,
+    title: `Hey, ${message.author.username}! \u{1F44B}`,
     description:
       `I'm **${botName}**, your server's moderation, verification, and security assistant.\n\n` +
-      `â€¢ **Default Prefix:** \`${prefix}\`\n` +
-      `â€¢ **Commands Directory:** Type **\`${prefix}help\`** or **\`/help\`**\n` +
-      `â€¢ **Away-From-Keyboard:** Type **\`${prefix}afk [reason]\`**\n` +
-      `â€¢ **Web Configuration:** Manage modlogs & roles on the **[Web Dashboard](${CONFIG.DASHBOARD_URL})**`,
+      `${EMOJIS.get("arrow_point") || "\u2022"} **Default Prefix:** \`${prefix}\`\n` +
+      `${EMOJIS.get("arrow_point") || "\u2022"} **Commands Directory:** Type **\`${prefix}help\`** or **\`/help\`**\n` +
+      `${EMOJIS.get("arrow_point") || "\u2022"} **Away-From-Keyboard:** Type **\`${prefix}afk [reason]\`**\n` +
+      `${EMOJIS.get("arrow_point") || "\u2022"} **Web Configuration:** Manage modlogs & roles on the **[Web Dashboard](${CONFIG.DASHBOARD_URL})**`,
     level: "PRIMARY",
     color: COLORS.DARK,
     thumbnail: avatar,
     fields: [
-      { name: "ðŸ›¡ï¸ Protection", value: "`Active`", inline: true },
-      { name: "ðŸ“¡ Latency", value: `\`${wsPing}ms\``, inline: true },
-      { name: "âš¡ Prefix", value: `\`${prefix}\``, inline: true },
+      { name: `${EMOJIS.get("moderation") || "\u{1F6E1}\uFE0F"} Protection`, value: "`Active`", inline: true },
+      { name: `${EMOJIS.get("good_connection") || "\u{1F4E1}"} Latency`, value: `\`${wsPing}ms\``, inline: true },
+      { name: `${EMOJIS.get("bot") || "\u26A1"} Prefix`, value: `\`${prefix}\``, inline: true },
     ],
     footer: {
-      text: `${botName} â€¢ Moderation, Verification & Analytics`,
+      text: `${botName} \u2022 Moderation, Verification & Analytics`,
       iconURL: avatar,
     },
   });

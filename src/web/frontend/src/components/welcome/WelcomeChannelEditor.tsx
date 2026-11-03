@@ -33,6 +33,7 @@ export default function WelcomeChannelEditor({
   insertVariable,
   onOpenTestModal,
   isVerificationEnabled = false,
+  guildId,
 }: {
   config: any;
   channels: any[];
@@ -40,6 +41,7 @@ export default function WelcomeChannelEditor({
   insertVariable: (field: string, tag: string) => void;
   onOpenTestModal?: (type?: "channel" | "leave" | "dm") => void;
   isVerificationEnabled?: boolean;
+  guildId?: string;
 }) {
   const currentTrigger = config.welcome_trigger || "join";
   const fields = Array.isArray(config.welcome_embed_fields) ? config.welcome_embed_fields : [];
@@ -311,6 +313,7 @@ export default function WelcomeChannelEditor({
 
         {/* Dynamic Variable Chips */}
         <WelcomeVariableBar
+          guildId={guildId}
           onInsertVariable={(tag) => insertVariable("welcome_message", tag)}
         />
 

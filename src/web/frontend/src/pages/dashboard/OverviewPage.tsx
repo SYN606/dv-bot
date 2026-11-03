@@ -12,7 +12,7 @@ import {
 import { SuperuserBadge, ModuleCard, StatusBadge } from "../../components/ui";
 
 export default function OverviewPage({ showToast }) {
-  const { user, botInfo, currentGuild } = useOutletContext() || {};
+  const { user, botInfo, currentGuild }: any = useOutletContext() || {};
   const { guildId } = useParams();
   
   const [meta, setMeta] = useState(null);

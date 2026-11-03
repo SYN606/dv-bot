@@ -31,10 +31,13 @@ metaRoutes.put("/guilds/:guildId/modules/:moduleName", async (c) => {
 // Guild Metadata (Text Channels, Roles with Hierarchy, Custom Emojis)
 metaRoutes.get("/guilds/:guildId/meta", async (c) => {
   const guildId = c.req.param("guildId");
+  const forceRefresh = c.req.query("force") === "true" || c.req.query("refresh") === "true";
   const cacheKey = `guild:${guildId}:meta`;
-  const cached = apiCache.get(cacheKey);
-  if (cached) {
-    return c.json(cached);
+  if (!forceRefresh) {
+    const cached = apiCache.get(cacheKey);
+    if (cached) {
+      return c.json(cached);
+    }
   }
 
   const botGuild = c.get("botGuild");
@@ -43,16 +46,39 @@ metaRoutes.get("/guilds/:guildId/meta", async (c) => {
   }
 
   let channelsCollection = botGuild.channels.cache;
-  if (!channelsCollection || channelsCollection.size === 0) {
+  // Always attempt a fresh fetch if forced or the cache appears incomplete (missing categories is the main failure mode).
+  const hasCategoryInCache = channelsCollection
+    ? Array.from(channelsCollection.values()).some((ch) => ch && (ch.type === ChannelType.GuildCategory || ch.type === 4 || (ch as any).type === "4"))
+    : false;
+  if (forceRefresh || !channelsCollection || channelsCollection.size === 0 || !hasCategoryInCache) {
     channelsCollection = await botGuild.channels.fetch().catch(() => botGuild.channels.cache);
   }
 
-  const channels = channelsCollection
-    ? Array.from(channelsCollection.values())
-        .filter((ch) => ch && (ch.type === ChannelType.GuildText || ch.type === ChannelType.GuildAnnouncement || (ch.isTextBased?.() && !ch.isThread?.() && !ch.isVoiceBased?.())))
-        .map((ch) => ({ id: ch.id, name: ch.name }))
-        .sort((a, b) => a.name.localeCompare(b.name))
-    : [];
+  let allChannelValues = channelsCollection ? Array.from(channelsCollection.values()).filter(Boolean) : [];
+  if (allChannelValues.length === 0 && (botGuild as any).client?.channels?.cache) {
+    allChannelValues = Array.from((botGuild as any).client.channels.cache.values()).filter((ch: any) => ch && ch.guildId === guildId) as any[];
+  }
+
+  const categoryMap = new Map<string, string>();
+  const categories = allChannelValues
+    .filter((ch: any) => ch && (ch.type === ChannelType.GuildCategory || ch.type === 4 || (ch as any).type === "4"))
+    .map((ch: any) => {
+      const item = { id: String(ch.id), name: ch.name, position: (ch as any).position ?? 0, type: 4 };
+      categoryMap.set(item.id, item.name);
+      return item;
+    })
+    .sort((a, b) => a.position - b.position);
+
+  const channels = allChannelValues
+    .filter((ch: any) => ch && (ch.type === ChannelType.GuildText || ch.type === ChannelType.GuildAnnouncement || (ch.isTextBased?.() && !ch.isThread?.() && !ch.isVoiceBased?.())))
+    .map((ch: any) => ({
+      id: String(ch.id),
+      name: ch.name,
+      type: ch.type,
+      parentId: ch.parentId || null,
+      parentName: ch.parentId ? categoryMap.get(String(ch.parentId)) || null : null,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const botMember = botGuild?.members?.me;
   const roles = botGuild.roles.cache
@@ -85,6 +111,7 @@ metaRoutes.get("/guilds/:guildId/meta", async (c) => {
 
   const payload = {
     channels,
+    categories,
     roles,
     emojis,
     guild: {

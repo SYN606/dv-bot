@@ -30,6 +30,16 @@ const SIZES = {
   md: "px-2.5 py-1 text-xs",
 };
 
+export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  children?: React.ReactNode;
+  variant?: "default" | "neutral" | "brand" | "indigo" | "success" | "danger" | "warning" | "cyan" | "purple" | string;
+  size?: "xs" | "sm" | "md" | string;
+  dot?: boolean;
+  icon?: React.ElementType;
+  className?: string;
+  [key: string]: any;
+}
+
 export default function Badge({
   children,
   variant = "default",
@@ -38,7 +48,7 @@ export default function Badge({
   icon: Icon,
   className = "",
   ...props
-}) {
+}: BadgeProps) {
   const style = VARIANTS[variant] || VARIANTS.default;
   const sizeStyle = SIZES[size] || SIZES.sm;
   const dotColor = DOT_COLORS[variant] || DOT_COLORS.default;

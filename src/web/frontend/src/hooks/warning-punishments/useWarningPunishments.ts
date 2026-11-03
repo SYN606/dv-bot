@@ -52,7 +52,7 @@ export function useWarningPunishments(guildId, showToast) {
   }, [fetchRules]);
 
   const addRule = useCallback(async () => {
-    const count = parseInt(warnCount, 10);
+    const count = parseInt(String(warnCount), 10);
     if (!count || count < MIN_WARNING_THRESHOLD || count > MAX_WARNING_THRESHOLD) return false;
     if (rules.find((r) => r.warn_count === count)) return false;
 
@@ -62,7 +62,7 @@ export function useWarningPunishments(guildId, showToast) {
       await addWarningPunishment(guildId, {
         warnCount: count,
         actionType,
-        duration: pType?.requiresDuration ? parseInt(duration, 10) : null,
+        duration: pType?.requiresDuration ? parseInt(String(duration), 10) : null,
       });
       showToast?.({
         title: "Success",

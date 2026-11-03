@@ -63,7 +63,7 @@ export default function AuditLogFilters({
   limit,
   onLimitChange,
   totalResults,
-  categoryStats = {},
+  categoryStats = {} as Record<string, any>,
 }) {
   const [executorDropdownOpen, setExecutorDropdownOpen] = useState(false);
   const [actionDropdownOpen, setActionDropdownOpen] = useState(false);

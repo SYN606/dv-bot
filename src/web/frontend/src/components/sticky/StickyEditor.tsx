@@ -92,16 +92,15 @@ export default function StickyEditor({
               placeholder="Write your sticky notice..."
             />
             <div className="px-3 py-2 border-t border-white/5 bg-slate-900/50 rounded-b-xl flex justify-between items-center">
-              <div className="scale-90 origin-left">
-                <EmojiSelector 
-                  guildId={guildId}
-                  value={[]}
-                  onChange={(val) => {
-                    if (val.length > 0) insertEmoji(val[0]);
-                  }}
-                  multiple={false}
-                />
-              </div>
+              <EmojiSelector 
+                guildId={guildId}
+                onChange={(val) => {
+                  const emojiStr = Array.isArray(val) ? val[0] : val;
+                  if (emojiStr) insertEmoji(emojiStr);
+                }}
+                mode="insert"
+                multiple={false}
+              />
               <span className={`text-[10px] font-mono ${isOverLimit ? "text-rose-400 font-bold" : "text-slate-500"}`}>
                 {editor.content.length} / 2000 chars
               </span>

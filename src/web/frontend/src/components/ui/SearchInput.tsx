@@ -1,6 +1,18 @@
 import React from "react";
 import { Search, X } from "lucide-react";
 
+export interface SearchInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size" | "onChange"> {
+  value?: string;
+  onChange?: (val: string) => void;
+  onClear?: () => void;
+  placeholder?: string;
+  size?: "sm" | "md" | string;
+  shortcut?: string;
+  className?: string;
+  autoFocus?: boolean;
+  [key: string]: any;
+}
+
 export default function SearchInput({
   value = "",
   onChange,
@@ -11,7 +23,7 @@ export default function SearchInput({
   className = "",
   autoFocus = false,
   ...props
-}) {
+}: SearchInputProps) {
   const sizeClasses = {
     sm: "pl-8 pr-7 py-1.5 text-xs rounded-lg",
     md: "pl-9 pr-8 py-2 text-xs sm:text-sm rounded-xl",

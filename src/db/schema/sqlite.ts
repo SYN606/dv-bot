@@ -559,7 +559,7 @@ export const welcomeConfig = sqliteTable("welcome_config", {
   welcome_enabled: integer("welcome_enabled", { mode: "number" }).default(0),
   welcome_channel_id: text("welcome_channel_id"),
   welcome_message: text("welcome_message").default(
-    "Hey {user}, welcome to **{server}**! Glad to have you here. You are member #{memberCount}! ðŸŽ‰"
+    "Hey {user}, welcome to **{server}**! Glad to have you here. You are member #{memberCount}! 🎉"
   ),
   welcome_is_embed: integer("welcome_is_embed", { mode: "number" }).default(1),
   welcome_embed_title: text("welcome_embed_title").default("Welcome to {server}!"),
@@ -665,11 +665,14 @@ export const ticketConfig = sqliteTable("ticket_config", {
   guild_id: text("guild_id").primaryKey(),
   enabled: integer("enabled", { mode: "boolean" }).default(false),
   transcript_channel_id: text("transcript_channel_id"),
+  logging_channel_id: text("logging_channel_id"),
   category_id: text("category_id"),
   support_role_ids: text("support_role_ids").default("[]"),
   max_tickets_per_user: integer("max_tickets_per_user", { mode: "number" }).default(3),
   ticket_counter: integer("ticket_counter", { mode: "number" }).default(0),
+  channel_name_pattern: text("channel_name_pattern").default("ticket-{number}"),
   auto_close_hours: integer("auto_close_hours", { mode: "number" }).default(0),
+  save_transcripts: integer("save_transcripts", { mode: "boolean" }).default(true),
   created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
   updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
 });
@@ -691,6 +694,7 @@ export const ticketPanels = sqliteTable(
     select_placeholder: text("select_placeholder").default("Select a ticket reason / category..."),
     enable_reason_categories: integer("enable_reason_categories", { mode: "boolean" }).default(false),
     reason_categories: text("reason_categories").default("[]"),
+    channel_name_pattern: text("channel_name_pattern"),
     created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
     updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
   },
@@ -718,6 +722,14 @@ export const tickets = sqliteTable(
     closed_by_tag: text("closed_by_tag"),
     close_reason: text("close_reason"),
     transcript_url: text("transcript_url"),
+    voice_channel_id: text("voice_channel_id"),
+    priority: text("priority").default("normal"),
+    assigned_to: text("assigned_to"),
+    assigned_to_tag: text("assigned_to_tag"),
+    first_response_at: text("first_response_at"),
+    resolved_at: text("resolved_at"),
+    feedback_rating: integer("feedback_rating", { mode: "number" }),
+    feedback_comment: text("feedback_comment"),
     created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
     closed_at: text("closed_at"),
     updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
@@ -726,5 +738,120 @@ export const tickets = sqliteTable(
     guildNumberIdx: index("idx_tickets_guild_number").on(table.guild_id, table.ticket_number),
     guildStatusIdx: index("idx_tickets_guild_status").on(table.guild_id, table.status),
     channelIdx: index("idx_tickets_channel").on(table.channel_id),
+  })
+);
+
+export const ticketNotes = sqliteTable(
+  "ticket_notes",
+  {
+    id: text("id").primaryKey(),
+    ticket_id: text("ticket_id").notNull(),
+    guild_id: text("guild_id").notNull(),
+    author_id: text("author_id").notNull(),
+    author_tag: text("author_tag").notNull(),
+    content: text("content").notNull(),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+    updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    ticketIdx: index("idx_ticket_notes_ticket").on(table.ticket_id),
+    guildIdx: index("idx_ticket_notes_guild").on(table.guild_id),
+  })
+);
+
+export const ticketEvents = sqliteTable(
+  "ticket_events",
+  {
+    id: text("id").primaryKey(),
+    ticket_id: text("ticket_id").notNull(),
+    guild_id: text("guild_id").notNull(),
+    actor_id: text("actor_id").notNull(),
+    actor_tag: text("actor_tag").notNull(),
+    event_type: text("event_type").notNull(),
+    event_data: text("event_data").default("{}"),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    ticketIdx: index("idx_ticket_events_ticket").on(table.ticket_id),
+    guildIdx: index("idx_ticket_events_guild").on(table.guild_id),
+  })
+);
+
+export const ticketAssignments = sqliteTable(
+  "ticket_assignments",
+  {
+    id: text("id").primaryKey(),
+    ticket_id: text("ticket_id").notNull(),
+    guild_id: text("guild_id").notNull(),
+    staff_id: text("staff_id").notNull(),
+    staff_tag: text("staff_tag").notNull(),
+    assigned_by: text("assigned_by").notNull(),
+    assigned_by_tag: text("assigned_by_tag").notNull(),
+    assigned_at: text("assigned_at").default(sql`(CURRENT_TIMESTAMP)`),
+    unassigned_at: text("unassigned_at"),
+  },
+  (table) => ({
+    ticketIdx: index("idx_ticket_assignments_ticket").on(table.ticket_id),
+    staffIdx: index("idx_ticket_assignments_staff").on(table.staff_id),
+  })
+);
+
+export const ticketSla = sqliteTable(
+  "ticket_sla",
+  {
+    id: text("id").primaryKey(),
+    ticket_id: text("ticket_id").notNull(),
+    guild_id: text("guild_id").notNull(),
+    priority: text("priority").default("normal"),
+    first_response_deadline: text("first_response_deadline"),
+    resolution_deadline: text("resolution_deadline"),
+    first_response_at: text("first_response_at"),
+    resolved_at: text("resolved_at"),
+    is_breached: integer("is_breached", { mode: "boolean" }).default(false),
+    breached_at: text("breached_at"),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    ticketIdx: index("idx_ticket_sla_ticket").on(table.ticket_id),
+    guildIdx: index("idx_ticket_sla_guild").on(table.guild_id),
+  })
+);
+
+export const ticketJobs = sqliteTable(
+  "ticket_jobs",
+  {
+    id: text("id").primaryKey(),
+    guild_id: text("guild_id").notNull(),
+    ticket_id: text("ticket_id"),
+    job_type: text("job_type").notNull(),
+    payload: text("payload").default("{}"),
+    run_at: text("run_at").notNull(),
+    status: text("status").default("pending"),
+    attempts: integer("attempts", { mode: "number" }).default(0),
+    last_error: text("last_error"),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+    updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    statusRunIdx: index("idx_ticket_jobs_status_run").on(table.status, table.run_at),
+    guildIdx: index("idx_ticket_jobs_guild").on(table.guild_id),
+  })
+);
+
+export const ticketFeedback = sqliteTable(
+  "ticket_feedback",
+  {
+    id: text("id").primaryKey(),
+    ticket_id: text("ticket_id").notNull(),
+    guild_id: text("guild_id").notNull(),
+    user_id: text("user_id").notNull(),
+    user_tag: text("user_tag").notNull(),
+    rating: integer("rating", { mode: "number" }).notNull(),
+    comment: text("comment"),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    ticketIdx: index("idx_ticket_feedback_ticket").on(table.ticket_id),
+    guildIdx: index("idx_ticket_feedback_guild").on(table.guild_id),
   })
 );

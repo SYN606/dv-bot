@@ -19,11 +19,21 @@ const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".webp"];
 export const mediaViolationCounter = new Map();
 
 // Mod log throttle cache: key "${guildId}:${userId}" -> timestamp (ms)
-const modLogThrottle = new Map();
+const modLogThrottle = new Map<string, number>();
 const MOD_LOG_COOLDOWN_MS = 30000;
 
 // Warning message throttle to prevent 429 on spam: key "${guildId}:${userId}:${channelId}" -> timestamp (ms)
-const warningThrottle = new Map();
+const warningThrottle = new Map<string, number>();
+const MAX_THROTTLE_ENTRIES = 2000;
+
+function pruneThrottleMap(map: Map<string, number>, maxAgeMs: number) {
+  if (map.size <= MAX_THROTTLE_ENTRIES) return;
+  const cutoff = Date.now() - maxAgeMs;
+  for (const [k, t] of map.entries()) {
+    if (t < cutoff) map.delete(k);
+    if (map.size <= MAX_THROTTLE_ENTRIES / 2) break;
+  }
+}
 const WARNING_COOLDOWN_MS = 8000;
 
 // Decay timers tracking: key "${guildId}:${userId}" -> timeoutId
@@ -174,6 +184,7 @@ export async function handleMediaOnly(message) {
   if (message.author.bot) {
     if (!mediaValid && message.deletable) {
       await message.delete().catch(() => {});
+      return true;
     }
     return false;
   }
@@ -218,6 +229,7 @@ export async function handleMediaOnly(message) {
 
   if (shouldLog) {
     modLogThrottle.set(key, now);
+    pruneThrottleMap(modLogThrottle, MOD_LOG_COOLDOWN_MS * 2);
     sendModLog({
       guild: message.guild,
       category: "MEDIA",
@@ -239,6 +251,7 @@ export async function handleMediaOnly(message) {
   const lastWarn = warningThrottle.get(warnKey) || 0;
   if (now - lastWarn >= WARNING_COOLDOWN_MS) {
     warningThrottle.set(warnKey, now);
+    pruneThrottleMap(warningThrottle, WARNING_COOLDOWN_MS * 2);
 
     const warning = makeEmbed({
       title: "Media-Only Channel",

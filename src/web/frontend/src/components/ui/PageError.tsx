@@ -2,6 +2,16 @@ import React from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import Button from "./Button";
 
+export interface PageErrorProps {
+  title?: string;
+  description?: string;
+  message?: string;
+  onRetry?: () => void | Promise<void>;
+  icon?: React.ElementType;
+  className?: string;
+  [key: string]: any;
+}
+
 export default function PageError({
   title = "Unable to load data",
   description = "Failed to communicate with the bot gateway or backend server.",
@@ -9,7 +19,7 @@ export default function PageError({
   onRetry,
   icon: Icon = AlertTriangle,
   className = "",
-}) {
+}: PageErrorProps) {
   const desc = message || description;
 
   return (

@@ -161,6 +161,7 @@ export default function WelcomePage({ showToast }: { showToast?: (t: any) => voi
               insertVariable={insertVariable}
               onOpenTestModal={openTestModal}
               isVerificationEnabled={isVerificationEnabled}
+              guildId={guildId}
             />
           )}
 
@@ -170,6 +171,7 @@ export default function WelcomePage({ showToast }: { showToast?: (t: any) => voi
               updateConfig={updateConfig}
               insertVariable={insertVariable}
               onOpenTestModal={openTestModal}
+              guildId={guildId}
             />
           )}
 
@@ -180,6 +182,7 @@ export default function WelcomePage({ showToast }: { showToast?: (t: any) => voi
               updateConfig={updateConfig}
               insertVariable={insertVariable}
               onOpenTestModal={openTestModal}
+              guildId={guildId}
             />
           )}
 

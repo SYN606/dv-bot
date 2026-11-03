@@ -1,7 +1,17 @@
 import React from "react";
 import { Terminal, ShieldCheck, PowerOff, Lock } from "lucide-react";
 
-export default function CommandStats({ stats = {} }) {
+export interface CommandStatsProps {
+  stats?: {
+    total?: number;
+    active?: number;
+    disabled?: number;
+    protected?: number;
+    [key: string]: any;
+  };
+}
+
+export default function CommandStats({ stats = {} }: CommandStatsProps) {
   const statItems = [
     {
       label: "Total Commands",

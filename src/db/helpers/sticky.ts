@@ -98,6 +98,7 @@ export async function updateStickyLastMessage(guildId, channelId, messageId) {
   const cId = String(channelId);
   const record = await getStickyMessage(guildId, cId);
   if (record) {
+    if (record.last_message_id === String(messageId)) return;
     record.last_message_id = String(messageId);
     record.counter = (record.counter || 0) + 1;
     await record.save();

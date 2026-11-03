@@ -40,7 +40,7 @@ export async function handleSticky(message) {
       level: "SYSTEM",
     });
 
-    const newMsgId = await dispatchStickyNotice({
+    await dispatchStickyNotice({
       channel: message.channel,
       embed,
       lastMessageId: lastMsgId,
@@ -51,10 +51,6 @@ export async function handleSticky(message) {
         }
       },
     });
-
-    if (newMsgId && newMsgId !== lastMsgId) {
-      await updateStickyLastMessage(guildId, channelId, newMsgId);
-    }
   } catch (err) {
     console.error(`[STICKY ERROR] Channel ${channelId}:`, err);
   }

@@ -1,6 +1,7 @@
 import React from "react";
 import { ShieldCheck, UserCheck } from "lucide-react";
 import { getDiscordAvatarUrl } from "../../utils/discord";
+import { EmojiBadge } from "../discord";
 
 export default function VerificationPreview({ config, roles, botInfo }) {
   const verifiedRole = roles.find(r => r.id === config.verifiedRoleId);
@@ -11,8 +12,7 @@ export default function VerificationPreview({ config, roles, botInfo }) {
   const resolvedDescription = (config.embedDescription || "")
     .replace(/{verifiedRole}/g, verifiedRole ? `@${verifiedRole.name}` : "@Verified");
 
-  const isAnimatedEmoji = config.buttonEmoji?.startsWith("<a:");
-  const emojiMatch = config.buttonEmoji?.match(/<(a)?:([a-zA-Z0-9_]+):([0-9]+)>/);
+
 
   return (
     <div className="sticky top-8">
@@ -47,15 +47,7 @@ export default function VerificationPreview({ config, roles, botInfo }) {
                 type="button"
                 className="flex items-center gap-2 px-4 py-2 rounded-[3px] bg-slate-700 hover:bg-slate-600 transition-colors pointer-events-none border border-slate-900/50"
               >
-                {emojiMatch ? (
-                  <img
-                    src={`https://cdn.discordapp.com/emojis/${emojiMatch[3]}.${isAnimatedEmoji ? "gif" : "png"}`}
-                    alt="emoji"
-                    className="w-5 h-5 object-contain"
-                  />
-                ) : (
-                  <span className="text-lg leading-none">{config.buttonEmoji || "✅"}</span>
-                )}
+                <EmojiBadge emoji={config.buttonEmoji || "✅"} size="sm" showName={false} bare={true} />
                 <span className="text-sm font-medium text-white">{config.buttonLabel || "Verify Access"}</span>
               </button>
             </div>

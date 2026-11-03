@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Sparkles, Copy, Check } from "lucide-react";
+import { EmojiSelector } from "../discord";
 
 export const WELCOME_VARIABLES = [
   { tag: "{id}", label: "User ID", desc: "Discord snowflake ID (e.g. 104712345678901234)" },
@@ -17,7 +18,7 @@ export const WELCOME_VARIABLES = [
   { tag: "{serverIcon}", label: "Server Icon URL", desc: "Direct link to guild icon" },
 ];
 
-export default function WelcomeVariableBar({ onInsertVariable }) {
+export default function WelcomeVariableBar({ guildId, onInsertVariable }) {
   const [copiedTag, setCopiedTag] = useState(null);
 
   const handleClick = (tag) => {
@@ -40,9 +41,24 @@ export default function WelcomeVariableBar({ onInsertVariable }) {
             (Click any variable to insert)
           </span>
         </div>
-        <span className="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
-          Template Engine
-        </span>
+        <div className="flex items-center gap-2">
+          {guildId && (
+            <EmojiSelector
+              guildId={guildId}
+              mode="insert"
+              multiple={false}
+              onChange={(val) => {
+                const emojiStr = Array.isArray(val) ? val[0] : val;
+                if (emojiStr && onInsertVariable) {
+                  onInsertVariable(emojiStr);
+                }
+              }}
+            />
+          )}
+          <span className="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
+            Template Engine
+          </span>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5">

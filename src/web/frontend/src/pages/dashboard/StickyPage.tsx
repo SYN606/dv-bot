@@ -14,7 +14,7 @@ import {
 
 export default function StickyPage({ showToast }) {
   const { guildId } = useParams();
-  const { botInfo } = useOutletContext() || {};
+  const { botInfo }: any = useOutletContext() || {};
 
   const {
     notices,

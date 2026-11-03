@@ -23,6 +23,12 @@ import {
   ticketConfig,
   ticketPanels,
   tickets,
+  ticketNotes,
+  ticketEvents,
+  ticketAssignments,
+  ticketSla,
+  ticketJobs,
+  ticketFeedback,
 } from "../schema/sqlite.js";
 
 export const AFK = createModel("AFK", afk, "id");
@@ -52,3 +58,9 @@ export const Confession = createModel("Confession", confessions, "id");
 export const TicketConfig = createModel("TicketConfig", ticketConfig, "guild_id");
 export const TicketPanel = createModel("TicketPanel", ticketPanels, "id");
 export const Ticket = createModel("Ticket", tickets, "id");
+export const TicketNote = createModel("TicketNote", ticketNotes, "id");
+export const TicketEvent = createModel("TicketEvent", ticketEvents, "id");
+export const TicketAssignment = createModel("TicketAssignment", ticketAssignments, "id");
+export const TicketSla = createModel("TicketSla", ticketSla, "id");
+export const TicketJob = createModel("TicketJob", ticketJobs, "id");
+export const TicketFeedback = createModel("TicketFeedback", ticketFeedback, "id");

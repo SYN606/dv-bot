@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 
-export default function Footer({ botInfo }) {
+export default function Footer({ botInfo = null, className = "", ...props }: { botInfo?: any; className?: string; [key: string]: any }) {
   const botAvatar = botInfo?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png";
 
   return (

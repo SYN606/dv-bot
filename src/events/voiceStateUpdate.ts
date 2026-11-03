@@ -68,25 +68,27 @@ export default {
     // Supporter Rewards Check (Passive evaluation)
     checkMemberSupporter(member).catch(() => {});
 
-    // 1. VC Role Management
-    try {
-      const vcConfig = await VCRoleConfig.findByPk(guildId);
-      if (vcConfig && vcConfig.role_id) {
-        const roleId = String(vcConfig.role_id);
-        const joinedChannel = !oldState.channelId && newState.channelId;
-        const leftChannel = oldState.channelId && !newState.channelId;
+    // 1. VC Role Management (Only evaluate on actual channel join/leave transitions)
+    if (oldState.channelId !== newState.channelId) {
+      try {
+        const vcConfig = await VCRoleConfig.findByPk(guildId);
+        if (vcConfig && vcConfig.role_id) {
+          const roleId = String(vcConfig.role_id);
+          const joinedChannel = !oldState.channelId && newState.channelId;
+          const leftChannel = oldState.channelId && !newState.channelId;
 
-        if (joinedChannel) {
-          if (!member.roles.cache.has(roleId)) {
-            await member.roles.add(roleId).catch(() => {});
-          }
-        } else if (leftChannel) {
-          if (member.roles.cache.has(roleId)) {
-            await member.roles.remove(roleId).catch(() => {});
+          if (joinedChannel) {
+            if (!member.roles.cache.has(roleId)) {
+              await member.roles.add(roleId).catch(() => {});
+            }
+          } else if (leftChannel) {
+            if (member.roles.cache.has(roleId)) {
+              await member.roles.remove(roleId).catch(() => {});
+            }
           }
         }
-      }
-    } catch {}
+      } catch {}
+    }
 
     // 2. Voice Analytics Tracking with Anti-Exploit Deafen & AFK Guard
     const wasEligible = isEligibleForVoiceAnalytics(oldState);

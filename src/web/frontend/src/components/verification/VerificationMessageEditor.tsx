@@ -83,29 +83,16 @@ export default function VerificationMessageEditor({ guildId, config, updateConfi
             <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
               Button Emoji
             </label>
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-slate-900 border border-white/10 flex items-center justify-center text-xl shrink-0">
-                {config.buttonEmoji.match(/<(a)?:([a-zA-Z0-9_]+):([0-9]+)>/) ? (
-                  <img
-                    src={`https://cdn.discordapp.com/emojis/${config.buttonEmoji.match(/<(a)?:([a-zA-Z0-9_]+):([0-9]+)>/)[3]}.${config.buttonEmoji.startsWith("<a:") ? "gif" : "png"}`}
-                    alt="emoji"
-                    className="w-6 h-6 object-contain"
-                  />
-                ) : (
-                  config.buttonEmoji
-                )}
-              </div>
-              <div className="scale-90 origin-left">
-                <EmojiSelector 
-                  guildId={guildId}
-                  value={[]}
-                  onChange={(val) => {
-                    if (val.length > 0) updateConfig("buttonEmoji", val[0]);
-                  }}
-                  multiple={false}
-                />
-              </div>
-            </div>
+            <EmojiSelector
+              guildId={guildId}
+              value={config.buttonEmoji || "✅"}
+              onChange={(val) => {
+                const emojiStr = Array.isArray(val) ? val[0] : val;
+                if (emojiStr) updateConfig("buttonEmoji", emojiStr);
+              }}
+              multiple={false}
+            />
+
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Eye, Hash, MessageSquare, Mail, UserMinus, ExternalLink, Send, Sparkles } from "lucide-react";
+import { EmojiBadge } from "../discord";
 
 export default function WelcomeSimulator({
   config,
@@ -59,7 +60,7 @@ export default function WelcomeSimulator({
 
   const renderInline = (text, keyPrefix = "") => {
     if (!text) return null;
-    const parts = text.split(/(\*\*.*?\*\*|`.*?`|<@[!&]?\d+>|@\w+)/g);
+    const parts = text.split(/(\*\*.*?\*\*|`.*?`|<a?:[a-zA-Z0-9_]+:\d+>|<@[!&]?\d+>|@\w+)/g);
     return parts.map((part, i) => {
       const k = `${keyPrefix}-${i}`;
       if (part.startsWith("**") && part.endsWith("**")) {
@@ -70,6 +71,18 @@ export default function WelcomeSimulator({
           <code key={k} className="bg-[#1e1f22] text-[#e0e1e5] px-1 py-0.5 rounded font-mono text-[11px] border border-white/5">
             {part.slice(1, -1)}
           </code>
+        );
+      }
+      if (/^<(a)?:([a-zA-Z0-9_]+):(\d+)>$/.test(part)) {
+        return (
+          <EmojiBadge
+            key={k}
+            emoji={part}
+            size="sm"
+            showName={false}
+            bare={true}
+            className="inline-block mx-0.5 align-middle"
+          />
         );
       }
       if (part.startsWith("@") || part.startsWith("<@")) {

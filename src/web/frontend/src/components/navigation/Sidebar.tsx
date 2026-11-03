@@ -7,6 +7,250 @@ import {
 import SuperuserBadge from "../ui/SuperuserBadge";
 import { getDiscordAvatarUrl } from "../../utils/discord";
 
+
+const ICON_THEMES: Record<string, {
+  iconColor: string;
+  hoverIconColor: string;
+  bg: string;
+  border: string;
+  hoverBg: string;
+  hoverBorder: string;
+  glow: string;
+  activeBg: string;
+  activeGlow: string;
+  dotColor: string;
+}> = {
+  overview: {
+    iconColor: "text-sky-400",
+    hoverIconColor: "group-hover:text-sky-200",
+    bg: "bg-sky-500/[0.08]",
+    border: "border-sky-500/20",
+    hoverBg: "group-hover:bg-sky-500/20",
+    hoverBorder: "group-hover:border-sky-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(56,189,248,0.35)]",
+    activeBg: "bg-gradient-to-br from-sky-500 to-blue-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(56,189,248,0.5)] border-sky-400/40",
+    dotColor: "bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]",
+  },
+  analytics: {
+    iconColor: "text-violet-400",
+    hoverIconColor: "group-hover:text-violet-200",
+    bg: "bg-violet-500/[0.08]",
+    border: "border-violet-500/20",
+    hoverBg: "group-hover:bg-violet-500/20",
+    hoverBorder: "group-hover:border-violet-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(139,92,246,0.35)]",
+    activeBg: "bg-gradient-to-br from-violet-500 to-purple-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(139,92,246,0.5)] border-violet-400/40",
+    dotColor: "bg-violet-400 shadow-[0_0_8px_rgba(139,92,246,0.8)]",
+  },
+  permissions: {
+    iconColor: "text-rose-400",
+    hoverIconColor: "group-hover:text-rose-200",
+    bg: "bg-rose-500/[0.08]",
+    border: "border-rose-500/20",
+    hoverBg: "group-hover:bg-rose-500/20",
+    hoverBorder: "group-hover:border-rose-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(244,63,94,0.35)]",
+    activeBg: "bg-gradient-to-br from-rose-500 to-red-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(244,63,94,0.5)] border-rose-400/40",
+    dotColor: "bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]",
+  },
+  audit_logs: {
+    iconColor: "text-indigo-400",
+    hoverIconColor: "group-hover:text-indigo-200",
+    bg: "bg-indigo-500/[0.08]",
+    border: "border-indigo-500/20",
+    hoverBg: "group-hover:bg-indigo-500/20",
+    hoverBorder: "group-hover:border-indigo-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(99,102,241,0.35)]",
+    activeBg: "bg-gradient-to-br from-indigo-500 to-blue-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(99,102,241,0.5)] border-indigo-400/40",
+    dotColor: "bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)]",
+  },
+  warning_punishments: {
+    iconColor: "text-amber-400",
+    hoverIconColor: "group-hover:text-amber-200",
+    bg: "bg-amber-500/[0.08]",
+    border: "border-amber-500/20",
+    hoverBg: "group-hover:bg-amber-500/20",
+    hoverBorder: "group-hover:border-amber-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(245,158,11,0.35)]",
+    activeBg: "bg-gradient-to-br from-amber-500 to-orange-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(245,158,11,0.5)] border-amber-400/40",
+    dotColor: "bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]",
+  },
+  admin_roles: {
+    iconColor: "text-purple-400",
+    hoverIconColor: "group-hover:text-purple-200",
+    bg: "bg-purple-500/[0.08]",
+    border: "border-purple-500/20",
+    hoverBg: "group-hover:bg-purple-500/20",
+    hoverBorder: "group-hover:border-purple-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(168,85,247,0.35)]",
+    activeBg: "bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(168,85,247,0.5)] border-purple-400/40",
+    dotColor: "bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]",
+  },
+  verification: {
+    iconColor: "text-emerald-400",
+    hoverIconColor: "group-hover:text-emerald-200",
+    bg: "bg-emerald-500/[0.08]",
+    border: "border-emerald-500/20",
+    hoverBg: "group-hover:bg-emerald-500/20",
+    hoverBorder: "group-hover:border-emerald-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(16,185,129,0.35)]",
+    activeBg: "bg-gradient-to-br from-emerald-500 to-teal-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(16,185,129,0.5)] border-emerald-400/40",
+    dotColor: "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]",
+  },
+  tickets: {
+    iconColor: "text-cyan-400",
+    hoverIconColor: "group-hover:text-cyan-200",
+    bg: "bg-cyan-500/[0.08]",
+    border: "border-cyan-500/20",
+    hoverBg: "group-hover:bg-cyan-500/20",
+    hoverBorder: "group-hover:border-cyan-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(6,182,212,0.35)]",
+    activeBg: "bg-gradient-to-br from-cyan-500 to-blue-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(6,182,212,0.5)] border-cyan-400/40",
+    dotColor: "bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]",
+  },
+  welcome: {
+    iconColor: "text-pink-400",
+    hoverIconColor: "group-hover:text-pink-200",
+    bg: "bg-pink-500/[0.08]",
+    border: "border-pink-500/20",
+    hoverBg: "group-hover:bg-pink-500/20",
+    hoverBorder: "group-hover:border-pink-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(236,72,153,0.35)]",
+    activeBg: "bg-gradient-to-br from-pink-500 to-rose-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(236,72,153,0.5)] border-pink-400/40",
+    dotColor: "bg-pink-400 shadow-[0_0_8px_rgba(236,72,153,0.8)]",
+  },
+  autorole: {
+    iconColor: "text-yellow-400",
+    hoverIconColor: "group-hover:text-yellow-200",
+    bg: "bg-yellow-500/[0.08]",
+    border: "border-yellow-500/20",
+    hoverBg: "group-hover:bg-yellow-500/20",
+    hoverBorder: "group-hover:border-yellow-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(234,179,8,0.35)]",
+    activeBg: "bg-gradient-to-br from-yellow-500 to-amber-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(234,179,8,0.5)] border-yellow-400/40",
+    dotColor: "bg-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.8)]",
+  },
+  supporter: {
+    iconColor: "text-amber-300",
+    hoverIconColor: "group-hover:text-amber-100",
+    bg: "bg-amber-400/[0.08]",
+    border: "border-amber-400/20",
+    hoverBg: "group-hover:bg-amber-400/20",
+    hoverBorder: "group-hover:border-amber-300/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(251,191,36,0.35)]",
+    activeBg: "bg-gradient-to-br from-amber-400 to-orange-500 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(251,191,36,0.5)] border-amber-300/40",
+    dotColor: "bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.8)]",
+  },
+  message_studio: {
+    iconColor: "text-blue-400",
+    hoverIconColor: "group-hover:text-blue-200",
+    bg: "bg-blue-500/[0.08]",
+    border: "border-blue-500/20",
+    hoverBg: "group-hover:bg-blue-500/20",
+    hoverBorder: "group-hover:border-blue-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(59,130,246,0.35)]",
+    activeBg: "bg-gradient-to-br from-blue-500 to-indigo-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(59,130,246,0.5)] border-blue-400/40",
+    dotColor: "bg-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.8)]",
+  },
+  confessions: {
+    iconColor: "text-fuchsia-400",
+    hoverIconColor: "group-hover:text-fuchsia-200",
+    bg: "bg-fuchsia-500/[0.08]",
+    border: "border-fuchsia-500/20",
+    hoverBg: "group-hover:bg-fuchsia-500/20",
+    hoverBorder: "group-hover:border-fuchsia-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(217,70,239,0.35)]",
+    activeBg: "bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(217,70,239,0.5)] border-fuchsia-400/40",
+    dotColor: "bg-fuchsia-400 shadow-[0_0_8px_rgba(217,70,239,0.8)]",
+  },
+  autoresponder: {
+    iconColor: "text-teal-400",
+    hoverIconColor: "group-hover:text-teal-200",
+    bg: "bg-teal-500/[0.08]",
+    border: "border-teal-500/20",
+    hoverBg: "group-hover:bg-teal-500/20",
+    hoverBorder: "group-hover:border-teal-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(20,184,166,0.35)]",
+    activeBg: "bg-gradient-to-br from-teal-500 to-cyan-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(20,184,166,0.5)] border-teal-400/40",
+    dotColor: "bg-teal-400 shadow-[0_0_8px_rgba(20,184,166,0.8)]",
+  },
+  sticky: {
+    iconColor: "text-orange-400",
+    hoverIconColor: "group-hover:text-orange-200",
+    bg: "bg-orange-500/[0.08]",
+    border: "border-orange-500/20",
+    hoverBg: "group-hover:bg-orange-500/20",
+    hoverBorder: "group-hover:border-orange-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(249,115,22,0.35)]",
+    activeBg: "bg-gradient-to-br from-orange-500 to-red-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(249,115,22,0.5)] border-orange-400/40",
+    dotColor: "bg-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.8)]",
+  },
+  media_only: {
+    iconColor: "text-emerald-400",
+    hoverIconColor: "group-hover:text-emerald-200",
+    bg: "bg-emerald-500/[0.08]",
+    border: "border-emerald-500/20",
+    hoverBg: "group-hover:bg-emerald-500/20",
+    hoverBorder: "group-hover:border-emerald-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(16,185,129,0.35)]",
+    activeBg: "bg-gradient-to-br from-emerald-500 to-cyan-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(16,185,129,0.5)] border-emerald-400/40",
+    dotColor: "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]",
+  },
+  commands: {
+    iconColor: "text-blue-400",
+    hoverIconColor: "group-hover:text-blue-200",
+    bg: "bg-blue-500/[0.08]",
+    border: "border-blue-500/20",
+    hoverBg: "group-hover:bg-blue-500/20",
+    hoverBorder: "group-hover:border-blue-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(59,130,246,0.35)]",
+    activeBg: "bg-gradient-to-br from-blue-600 to-indigo-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(59,130,246,0.5)] border-blue-400/40",
+    dotColor: "bg-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.8)]",
+  },
+  config: {
+    iconColor: "text-purple-400",
+    hoverIconColor: "group-hover:text-purple-200",
+    bg: "bg-purple-500/[0.08]",
+    border: "border-purple-500/20",
+    hoverBg: "group-hover:bg-purple-500/20",
+    hoverBorder: "group-hover:border-purple-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(168,85,247,0.35)]",
+    activeBg: "bg-gradient-to-br from-purple-500 to-indigo-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(168,85,247,0.5)] border-purple-400/40",
+    dotColor: "bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]",
+  },
+};
+
+const DEFAULT_THEME = {
+  iconColor: "text-indigo-400",
+  hoverIconColor: "group-hover:text-indigo-200",
+  bg: "bg-indigo-500/[0.08]",
+  border: "border-indigo-500/20",
+  hoverBg: "group-hover:bg-indigo-500/20",
+  hoverBorder: "group-hover:border-indigo-400/40",
+  glow: "group-hover:shadow-[0_0_15px_rgba(99,102,241,0.35)]",
+  activeBg: "bg-gradient-to-br from-indigo-500 to-blue-600 text-white",
+  activeGlow: "shadow-[0_0_18px_rgba(99,102,241,0.5)] border-indigo-400/40",
+  dotColor: "bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)]",
+};
+
 export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMobileOpen }) {
   const location = useLocation();
   const botAvatar = botInfo?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png";
@@ -113,27 +357,30 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path);
+                  const theme = ICON_THEMES[item.id] || DEFAULT_THEME;
                   
                   return (
                     <Link
                       key={item.id}
                       to={item.path}
                       onClick={() => setMobileOpen(false)}
-                      className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[15px] font-semibold transition-all ${
+                      className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-[14.5px] font-semibold transition-all duration-200 ${
                         isActive
-                          ? "bg-indigo-600/15 text-white border border-indigo-500/30 shadow-sm shadow-indigo-500/10"
-                          : "text-slate-300 hover:text-white hover:bg-white/[0.04] border border-transparent"
+                          ? "bg-white/[0.07] text-white border border-white/10 shadow-sm backdrop-blur-sm"
+                          : "text-slate-300 hover:text-white hover:bg-white/[0.035] border border-transparent"
                       }`}
                     >
-                      <div className={`w-8.5 h-8.5 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ${
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border transition-all duration-300 ${
                         isActive
-                          ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
-                          : "bg-white/[0.05] text-slate-400 group-hover:bg-white/[0.1] group-hover:text-white group-hover:scale-110 border border-white/[0.06]"
+                          ? `${theme.activeBg} ${theme.activeGlow}`
+                          : `${theme.bg} ${theme.border} ${theme.iconColor} ${theme.hoverBg} ${theme.hoverBorder} ${theme.hoverIconColor} ${theme.glow} group-hover:scale-105`
                       }`}>
-                        <Icon className="w-4.5 h-4.5 transition-transform duration-200 group-hover:scale-105 fill-current" />
+                        <Icon className="w-4.5 h-4.5 transition-transform duration-300 ease-out group-hover:scale-110 group-hover:-rotate-3" />
                       </div>
                       <span className="truncate">{item.label}</span>
-                      {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400" />}
+                      {isActive && (
+                        <div className={`ml-auto w-2 h-2 rounded-full ${theme.dotColor} animate-pulse`} />
+                      )}
                     </Link>
                   );
                 })}

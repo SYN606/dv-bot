@@ -6,6 +6,10 @@
 
 set -Eeuo pipefail
 
+# Tune libuv threadpool for high SQLite and crypto concurrency
+export UV_THREADPOOL_SIZE="${UV_THREADPOOL_SIZE:-16}"
+export NODE_ENV="${NODE_ENV:-production}"
+
 # 1. Resolve Project Root Directory & Logs Directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -61,7 +65,9 @@ GIT_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 GIT_MSG="$(git log -1 --pretty=format:"%h - %an: %s (%cd)" 2>/dev/null || echo 'N/A')"
 ULIMIT_FD="$(ulimit -n 2>/dev/null || echo 'unlimited')"
 
-log_deploy "👤 User: $CURRENT_USER | Host OS: $HOST_INFO | Max FDs: $ULIMIT_FD"
+MEM_INFO="$(free -h 2>/dev/null | awk '/Mem:/ {print $3 "/" $2}' || echo 'N/A')"
+log_deploy "👤 User: $CURRENT_USER | Host OS: $HOST_INFO | Max FDs: $ULIMIT_FD | Memory: $MEM_INFO"
+log_deploy "🧵 Concurrency: UV_THREADPOOL_SIZE=$UV_THREADPOOL_SIZE | Environment: $NODE_ENV"
 log_deploy "🔖 Git Revision: $GIT_COMMIT (branch: $GIT_BRANCH)"
 log_deploy "📝 Latest Commit: $GIT_MSG"
 
@@ -117,7 +123,7 @@ fi
 # 6. Build Web Dashboard Frontend (dist/ is gitignored — always rebuild on deploy)
 log_deploy "🌐 Building web dashboard frontend assets..."
 BUILD_START="$(date +%s)"
-if ! (cd src/web/frontend && bun install --frozen-lockfile 2>/dev/null || bun install && bun run build); then
+if ! (cd src/web/frontend && ((bun install --frozen-lockfile 2>/dev/null || bun install) && bun run build)); then
   log_deploy "❌ Frontend build FAILED. Aborting deployment."
   exit 1
 fi

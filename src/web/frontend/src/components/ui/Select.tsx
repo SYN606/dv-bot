@@ -1,7 +1,18 @@
 import React, { forwardRef } from "react";
 import { ChevronDown } from "lucide-react";
 
-const Select = forwardRef(function Select(
+export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  label?: React.ReactNode;
+  description?: React.ReactNode;
+  error?: React.ReactNode;
+  options?: any[];
+  children?: React.ReactNode;
+  className?: string;
+  id?: string;
+  disabled?: boolean;
+}
+
+const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
   {
     label,
     description,

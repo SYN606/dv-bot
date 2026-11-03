@@ -65,7 +65,7 @@ export default function DiscordPreview({ botInfo, user, trigger, isEmbed, embedT
                     {formatText(reply) || <span className="opacity-50 italic">Empty embed description...</span>}
                   </div>
                   {imageUrl && (
-                    <img src={imageUrl} alt="Embed" className="rounded-lg max-w-full max-h-75 object-cover mt-2" onError={(e) => e.target.style.display = 'none'} />
+                    <img src={imageUrl} alt="Embed" className="rounded-lg max-w-full max-h-75 object-cover mt-2" onError={(e: any) => e.currentTarget.style.display = 'none'} />
                   )}
                 </div>
               </div>

@@ -343,6 +343,7 @@ export async function handleAfk(message, { skipAuthorReturn = false } = {}) {
     const backgroundTasks = [];
 
     for (const [userId, user] of message.mentions.users) {
+      if (afkMentions.length >= 5) break;
       if (user.bot || userId === authorId) continue;
 
       // Fast check: skip non-AFK users instantly without hitting DB

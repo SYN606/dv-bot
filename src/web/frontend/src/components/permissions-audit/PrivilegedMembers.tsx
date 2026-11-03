@@ -217,8 +217,8 @@ export default function PrivilegedMembers({ members = [], onInspect }) {
                       src={avatarUrl}
                       alt={m.username}
                       className="w-10 h-10 rounded-full border border-white/10 object-cover"
-                      onError={(e) => {
-                        e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png";
+                      onError={(e: any) => {
+                        e.currentTarget.src = "https://cdn.discordapp.com/embed/avatars/0.png";
                       }}
                     />
                     {m.isOwner && (

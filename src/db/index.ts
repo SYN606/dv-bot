@@ -220,7 +220,7 @@ function ensureSqliteSchema(sqlite) {
       mode TEXT DEFAULT 'button',
       min_account_age_hours INTEGER DEFAULT 0,
       embed_title TEXT DEFAULT 'Server Verification',
-      embed_description TEXT DEFAULT 'ðŸ›¡ï¸ Click the button below to verify and get access to the server.',
+      embed_description TEXT DEFAULT '🛡️ Click the button below to verify and get access to the server.',
       button_label TEXT DEFAULT 'Verify Access',
       button_emoji TEXT DEFAULT '✅',
       verify_channel_id TEXT,
@@ -557,11 +557,13 @@ function ensureSqliteSchema(sqlite) {
       guild_id TEXT PRIMARY KEY,
       enabled INTEGER DEFAULT 0,
       transcript_channel_id TEXT,
+      logging_channel_id TEXT,
       category_id TEXT,
       support_role_ids TEXT DEFAULT '[]',
       max_tickets_per_user INTEGER DEFAULT 3,
       ticket_counter INTEGER DEFAULT 0,
       auto_close_hours INTEGER DEFAULT 0,
+      save_transcripts INTEGER DEFAULT 1,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -602,6 +604,14 @@ function ensureSqliteSchema(sqlite) {
       closed_by_tag TEXT,
       close_reason TEXT,
       transcript_url TEXT,
+      voice_channel_id TEXT,
+      priority TEXT DEFAULT 'normal',
+      assigned_to TEXT,
+      assigned_to_tag TEXT,
+      first_response_at TEXT,
+      resolved_at TEXT,
+      feedback_rating INTEGER,
+      feedback_comment TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       closed_at TEXT,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -619,6 +629,131 @@ function ensureSqliteSchema(sqlite) {
   } catch (_) {}
   try {
     sqlite.exec("CREATE INDEX IF NOT EXISTS idx_tickets_channel ON tickets (channel_id);");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE ticket_config ADD COLUMN logging_channel_id TEXT;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE ticket_config ADD COLUMN save_transcripts INTEGER DEFAULT 1;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE tickets ADD COLUMN priority TEXT DEFAULT 'normal';");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE tickets ADD COLUMN assigned_to TEXT;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE tickets ADD COLUMN assigned_to_tag TEXT;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE tickets ADD COLUMN first_response_at TEXT;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE tickets ADD COLUMN resolved_at TEXT;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE tickets ADD COLUMN feedback_rating INTEGER;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE tickets ADD COLUMN feedback_comment TEXT;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE tickets ADD COLUMN voice_channel_id TEXT;");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE ticket_config ADD COLUMN channel_name_pattern TEXT DEFAULT 'ticket-{number}';");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE ticket_panels ADD COLUMN channel_name_pattern TEXT;");
+  } catch (_) {}
+
+  try {
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS ticket_notes (
+        id TEXT PRIMARY KEY,
+        ticket_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        author_id TEXT NOT NULL,
+        author_tag TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_ticket_notes_ticket ON ticket_notes (ticket_id);
+      CREATE INDEX IF NOT EXISTS idx_ticket_notes_guild ON ticket_notes (guild_id);
+
+      CREATE TABLE IF NOT EXISTS ticket_events (
+        id TEXT PRIMARY KEY,
+        ticket_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        actor_id TEXT NOT NULL,
+        actor_tag TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        event_data TEXT DEFAULT '{}',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_ticket_events_ticket ON ticket_events (ticket_id);
+      CREATE INDEX IF NOT EXISTS idx_ticket_events_guild ON ticket_events (guild_id);
+
+      CREATE TABLE IF NOT EXISTS ticket_assignments (
+        id TEXT PRIMARY KEY,
+        ticket_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        staff_id TEXT NOT NULL,
+        staff_tag TEXT NOT NULL,
+        assigned_by TEXT NOT NULL,
+        assigned_by_tag TEXT NOT NULL,
+        assigned_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        unassigned_at TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_ticket_assignments_ticket ON ticket_assignments (ticket_id);
+      CREATE INDEX IF NOT EXISTS idx_ticket_assignments_staff ON ticket_assignments (staff_id);
+
+      CREATE TABLE IF NOT EXISTS ticket_sla (
+        id TEXT PRIMARY KEY,
+        ticket_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        priority TEXT DEFAULT 'normal',
+        first_response_deadline TEXT,
+        resolution_deadline TEXT,
+        first_response_at TEXT,
+        resolved_at TEXT,
+        is_breached INTEGER DEFAULT 0,
+        breached_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_ticket_sla_ticket ON ticket_sla (ticket_id);
+      CREATE INDEX IF NOT EXISTS idx_ticket_sla_guild ON ticket_sla (guild_id);
+
+      CREATE TABLE IF NOT EXISTS ticket_jobs (
+        id TEXT PRIMARY KEY,
+        guild_id TEXT NOT NULL,
+        ticket_id TEXT,
+        job_type TEXT NOT NULL,
+        payload TEXT DEFAULT '{}',
+        run_at TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        attempts INTEGER DEFAULT 0,
+        last_error TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_ticket_jobs_status_run ON ticket_jobs (status, run_at);
+      CREATE INDEX IF NOT EXISTS idx_ticket_jobs_guild ON ticket_jobs (guild_id);
+
+      CREATE TABLE IF NOT EXISTS ticket_feedback (
+        id TEXT PRIMARY KEY,
+        ticket_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        user_tag TEXT NOT NULL,
+        rating INTEGER NOT NULL,
+        comment TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_ticket_feedback_ticket ON ticket_feedback (ticket_id);
+      CREATE INDEX IF NOT EXISTS idx_ticket_feedback_guild ON ticket_feedback (guild_id);
+    `);
   } catch (_) {}
 
   try {

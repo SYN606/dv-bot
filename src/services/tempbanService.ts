@@ -9,38 +9,9 @@ import { sendModLog } from "../utils/modLog.js";
 import { makeEmbed, COLORS } from "../core/embeds.js";
 import { logger } from "../utils/logger.js";
 
-export function parseDuration(str) {
-  if (!str) return null;
-  const match = String(str).trim().match(/^(\d+)\s*([smhdw])$/i);
-  if (!match) return null;
-  const num = parseInt(match[1], 10);
-  const unit = match[2].toLowerCase();
-  if (isNaN(num) || num <= 0) return null;
-  switch (unit) {
-    case "s": return num;
-    case "m": return num * 60;
-    case "h": return num * 3600;
-    case "d": return num * 86400;
-    case "w": return num * 604800;
-    default: return null;
-  }
-}
+import { parseDuration, formatDuration } from "../utils/duration.js";
 
-export function formatDuration(seconds) {
-  if (seconds >= 86400) {
-    const days = Math.floor(seconds / 86400);
-    return `${days} day${days > 1 ? "s" : ""}`;
-  }
-  if (seconds >= 3600) {
-    const hours = Math.floor(seconds / 3600);
-    return `${hours} hour${hours > 1 ? "s" : ""}`;
-  }
-  if (seconds >= 60) {
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes} minute${minutes > 1 ? "s" : ""}`;
-  }
-  return `${seconds} second${seconds > 1 ? "s" : ""}`;
-}
+export { parseDuration, formatDuration };
 
 /**
  * Execute a temporary ban or role isolation
@@ -198,7 +169,10 @@ export async function processExpiredTempbans(client) {
 
   let count = 0;
   for (const record of expired) {
-    const guild = client.guilds.cache.get(String(record.guild_id));
+    let guild = client.guilds.cache.get(String(record.guild_id));
+    if (!guild && client.guilds?.fetch) {
+      guild = await client.guilds.fetch(String(record.guild_id)).catch(() => null);
+    }
     if (!guild) {
       await deactivateTempban(record.guild_id, record.user_id);
       continue;

@@ -15,7 +15,7 @@ import {
   Leaderboard
 } from "../../components/analytics";
 
-export default function AnalyticsPage() {
+export default function AnalyticsPage({ showToast }: any = {}) {
   const { guildId } = useParams();
   const [timeframe, setTimeframe] = useState(7);
   

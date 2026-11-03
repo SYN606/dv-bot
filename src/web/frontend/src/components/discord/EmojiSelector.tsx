@@ -17,11 +17,21 @@ import {
   FloatingFocusManager
 } from '@floating-ui/react';
 
-export default function EmojiSelector({ guildId, value = [], onChange, multiple = true, max = 10 }) {
+export default function EmojiSelector({
+  guildId,
+  value = [],
+  onChange,
+  multiple = true,
+  max = 10,
+  mode = "select",
+  trigger = null,
+  buttonClassName = "",
+}) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   
   const { emojis: serverEmojis, loading, refresh } = useGuildEmojis(guildId);
+  const normalizedList = Array.isArray(value) ? value : (value ? [value] : []);
 
   const { refs, floatingStyles, context, placement } = useFloating({
     open,
@@ -46,22 +56,30 @@ export default function EmojiSelector({ guildId, value = [], onChange, multiple 
   ]);
 
   const handleSelect = (emojiRaw) => {
-    if (!multiple) {
-      onChange([emojiRaw]);
+    if (mode === "insert" || !multiple) {
+      if (typeof onChange === "function") {
+        onChange(emojiRaw);
+      }
       setOpen(false);
       return;
     }
-    if (value.includes(emojiRaw)) {
-      onChange(value.filter(e => e !== emojiRaw));
+    if (normalizedList.includes(emojiRaw)) {
+      onChange(normalizedList.filter(e => e !== emojiRaw));
     } else {
-      if (value.length < max) {
-        onChange([...value, emojiRaw]);
+      if (normalizedList.length < max) {
+        onChange([...normalizedList, emojiRaw]);
       }
     }
   };
 
   const handleRemove = (emojiRaw) => {
-    onChange(value.filter(e => e !== emojiRaw));
+    if (!multiple) {
+      if (typeof onChange === "function") {
+        onChange("");
+      }
+      return;
+    }
+    onChange(normalizedList.filter(e => e !== emojiRaw));
   };
 
   const filteredEmojis = search
@@ -73,16 +91,55 @@ export default function EmojiSelector({ guildId, value = [], onChange, multiple 
   return (
     <div className="relative">
       {/* Selected Items & Trigger */}
-      <div className="flex flex-wrap items-center gap-2">
-        {value.map((emojiStr, idx) => (
-          <EmojiBadge key={`${emojiStr}-${idx}`} emoji={emojiStr} onRemove={handleRemove} />
-        ))}
-        {(!multiple && value.length > 0) ? null : (
+      {trigger ? (
+        <div ref={refs.setReference} {...getReferenceProps()} className="inline-block cursor-pointer">
+          {trigger}
+        </div>
+      ) : mode === "insert" ? (
+        <button
+          ref={refs.setReference}
+          {...getReferenceProps()}
+          type="button"
+          className={
+            buttonClassName ||
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-indigo-600/20 text-slate-300 hover:text-indigo-300 border border-white/[0.06] hover:border-indigo-500/30 text-xs font-mono transition-all group cursor-pointer"
+          }
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          title="Insert Discord Emoji"
+        >
+          <Smile className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Emoji</span>
+        </button>
+      ) : !multiple ? (
+        <button
+          ref={refs.setReference}
+          {...getReferenceProps()}
+          type="button"
+          className={
+            buttonClassName ||
+            "flex items-center justify-center w-11 h-9 rounded-xl bg-slate-900 border border-white/10 hover:border-indigo-500/60 hover:bg-slate-800 text-white transition-all shadow-sm group shrink-0"
+          }
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          title="Click to select Discord emoji"
+        >
+          {normalizedList.length > 0 ? (
+            <EmojiBadge emoji={normalizedList[0]} size="md" showName={false} bare={true} />
+          ) : (
+            <Smile className="w-4 h-4 text-slate-400 group-hover:text-indigo-400" />
+          )}
+        </button>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          {normalizedList.map((emojiStr, idx) => (
+            <EmojiBadge key={`${emojiStr}-${idx}`} emoji={emojiStr} onRemove={handleRemove} />
+          ))}
           <button
             ref={refs.setReference}
             {...getReferenceProps()}
             type="button"
-            disabled={value.length >= max && multiple}
+            disabled={normalizedList.length >= max}
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-white/10 hover:bg-slate-800 text-xs font-semibold text-slate-300 transition-colors disabled:opacity-50"
             aria-haspopup="dialog"
             aria-expanded={open}
@@ -90,12 +147,12 @@ export default function EmojiSelector({ guildId, value = [], onChange, multiple 
             <Smile className="w-4 h-4" />
             <span>Add Reaction</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
-      {multiple && value.length > 0 && (
+      {mode !== "insert" && multiple && normalizedList.length > 0 && (
         <div className="mt-2 text-[10px] text-slate-500 font-mono">
-          {value.length} / {max} selected
+          {normalizedList.length} / {max} selected
         </div>
       )}
 
@@ -125,6 +182,19 @@ export default function EmojiSelector({ guildId, value = [], onChange, multiple 
               </div>
 
               <div className="p-3 overflow-y-auto max-h-64 scrollbar-thin">
+                {/* Custom Search Input Fallback */}
+                {search.trim() && (
+                  <div className="mb-3">
+                    <button
+                      type="button"
+                      onClick={() => handleSelect(search.trim())}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-300 text-xs font-medium transition-colors"
+                    >
+                      <EmojiBadge emoji={search.trim()} size="sm" showName={false} bare={true} />
+                      <span className="truncate">Use input: "{search.trim()}"</span>
+                    </button>
+                  </div>
+                )}
                 {/* Standard Emojis */}
                 {!search && (
                   <div className="mb-4">
@@ -138,7 +208,7 @@ export default function EmojiSelector({ guildId, value = [], onChange, multiple 
                           type="button"
                           onClick={() => handleSelect(e)}
                           className={`w-8 h-8 flex items-center justify-center rounded-lg text-lg hover:bg-white/10 transition-colors ${
-                            value.includes(e) ? "bg-white/10 border border-white/20" : ""
+                            normalizedList.includes(e) ? "bg-white/10 border border-white/20" : ""
                           }`}
                         >
                           {e}
@@ -171,7 +241,7 @@ export default function EmojiSelector({ guildId, value = [], onChange, multiple 
                     <div className="flex flex-wrap gap-1.5">
                       {filteredEmojis.map((e) => {
                         const format = e.animated ? `<a:${e.name}:${e.id}>` : `<:${e.name}:${e.id}>`;
-                        const isSelected = value.includes(format);
+                        const isSelected = normalizedList.includes(format);
                         return (
                           <button
                             key={e.id}

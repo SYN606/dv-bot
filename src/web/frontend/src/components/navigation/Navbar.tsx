@@ -4,7 +4,7 @@ import { Disc, Menu, LogOut } from "lucide-react";
 import SuperuserBadge from "../ui/SuperuserBadge";
 import { getDiscordAvatarUrl } from "../../utils/discord";
 
-export default function Navbar({ user, botInfo }) {
+export default function Navbar({ user, botInfo, currentGuild, breadcrumbs, ...props }: any) {
   const botAvatar = botInfo?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png";
 
   return (

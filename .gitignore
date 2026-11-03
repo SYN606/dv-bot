@@ -205,3 +205,7 @@ coverage/
 .DS_Store
 *.txt
 audit_output/
+
+# AI guidelines & learning files
+GEMINI.md
+gemini.md

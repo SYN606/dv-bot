@@ -7,6 +7,7 @@ export class AnalyticsBatcher {
   public messageBuffer: Map<string, number>;
   public voiceBuffer: Map<string, number>;
   public timer: any;
+  private isFlushing: boolean = false;
   constructor(flushIntervalMs = 15000, maxBufferSize = 50) {
     this.flushIntervalMs = flushIntervalMs;
     this.maxBufferSize = maxBufferSize;
@@ -55,45 +56,58 @@ export class AnalyticsBatcher {
   }
 
   async flush() {
+    if (this.isFlushing) return;
     if (this.messageBuffer.size === 0 && this.voiceBuffer.size === 0) return;
 
+    this.isFlushing = true;
     const msgEntries = Array.from(this.messageBuffer.entries());
     const vcEntries = Array.from(this.voiceBuffer.entries());
 
     this.messageBuffer.clear();
     this.voiceBuffer.clear();
 
-    // Consolidate into unified batch map: `${guildId}:${userId}:${channelId}` -> { messages, vcSeconds }
-    const batchMap = new Map<string, { messages: number; vcSeconds: number }>();
-
-    for (const [key, count] of msgEntries) {
-      const item = batchMap.get(key) || { messages: 0, vcSeconds: 0 };
-      item.messages += count;
-      batchMap.set(key, item);
-    }
-
-    for (const [key, seconds] of vcEntries) {
-      const item = batchMap.get(key) || { messages: 0, vcSeconds: 0 };
-      item.vcSeconds += seconds;
-      batchMap.set(key, item);
-    }
-
-    const payload = [];
-    for (const [key, metrics] of batchMap.entries()) {
-      const [guildId, userId, channelId] = key.split(":");
-      payload.push({
-        guildId,
-        userId,
-        channelId: channelId === "default" ? null : channelId,
-        messages: metrics.messages,
-        vcSeconds: metrics.vcSeconds,
-      });
-    }
-
     try {
+      // Consolidate into unified batch map: `${guildId}:${userId}:${channelId}` -> { messages, vcSeconds }
+      const batchMap = new Map<string, { messages: number; vcSeconds: number }>();
+
+      for (const [key, count] of msgEntries) {
+        const item = batchMap.get(key) || { messages: 0, vcSeconds: 0 };
+        item.messages += count;
+        batchMap.set(key, item);
+      }
+
+      for (const [key, seconds] of vcEntries) {
+        const item = batchMap.get(key) || { messages: 0, vcSeconds: 0 };
+        item.vcSeconds += seconds;
+        batchMap.set(key, item);
+      }
+
+      const payload = [];
+      for (const [key, metrics] of batchMap.entries()) {
+        const [guildId, userId, channelId] = key.split(":");
+        payload.push({
+          guildId,
+          userId,
+          channelId: channelId === "default" ? null : channelId,
+          messages: metrics.messages,
+          vcSeconds: metrics.vcSeconds,
+        });
+      }
+
       await recordBatchActivity(payload);
     } catch (err) {
-      logger.error("[ANALYTICS] Failed to flush batch activity:", err);
+      logger.error("[ANALYTICS] Failed to flush batch activity, restoring buffer:", err);
+      // Restore buffer items on failure to prevent silent data loss
+      for (const [key, count] of msgEntries) {
+        const cur = this.messageBuffer.get(key) || 0;
+        this.messageBuffer.set(key, cur + count);
+      }
+      for (const [key, seconds] of vcEntries) {
+        const cur = this.voiceBuffer.get(key) || 0;
+        this.voiceBuffer.set(key, cur + seconds);
+      }
+    } finally {
+      this.isFlushing = false;
     }
   }
 }

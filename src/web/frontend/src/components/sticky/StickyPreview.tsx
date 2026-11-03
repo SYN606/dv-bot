@@ -36,9 +36,9 @@ export default function StickyPreview({ channelName, content, botInfo }) {
             <img 
               src={botAvatar} 
               alt="Bot Avatar" 
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png";
+              onError={(e: any) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = "https://cdn.discordapp.com/embed/avatars/0.png";
               }}
               className="w-10 h-10 rounded-full bg-slate-800 shrink-0 object-cover mt-0.5" 
             />
@@ -67,8 +67,8 @@ export default function StickyPreview({ channelName, content, botInfo }) {
                       src={imageUrl} 
                       alt="Sticky attachment preview" 
                       className="w-full h-auto object-cover max-h-64"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
+                      onError={(e: any) => {
+                        e.currentTarget.style.display = 'none';
                       }}
                     />
                   </div>

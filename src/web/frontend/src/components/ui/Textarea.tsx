@@ -1,6 +1,16 @@
 import React, { forwardRef } from "react";
 
-const Textarea = forwardRef(function Textarea(
+export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label?: React.ReactNode;
+  description?: React.ReactNode;
+  error?: React.ReactNode;
+  rows?: number;
+  className?: string;
+  id?: string;
+  disabled?: boolean;
+}
+
+const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
   {
     label,
     description,

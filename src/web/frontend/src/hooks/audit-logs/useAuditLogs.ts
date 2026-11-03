@@ -215,10 +215,10 @@ export function useAuditLogs(guildId, showToast) {
   // Parse Omnisearch Tokens (by:username, target:name, reason:text, action:kick)
   const parsedSearch = useMemo(() => {
     const raw = searchQuery.trim();
-    if (!raw) return { terms: [], tokens: {} };
+    if (!raw) return { terms: [] as string[], tokens: {} as Record<string, string> };
 
-    const tokens = {};
-    const terms = [];
+    const tokens: Record<string, string> = {};
+    const terms: string[] = [];
 
     // Match prefixes like by:name, target:general, reason:spam, action:kick, type:danger
     const tokenRegex = /(\b(?:by|mod|target|for|reason|action|act|type|level):[^\s]+)/gi;

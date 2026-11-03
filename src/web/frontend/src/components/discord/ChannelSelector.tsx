@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Hash, Volume2, Megaphone, X, Check } from "lucide-react";
+import { Search, Hash, Volume2, Megaphone, Folder, X, Check } from "lucide-react";
 import {
   useFloating,
   autoUpdate,
@@ -13,6 +13,20 @@ import {
   size
 } from '@floating-ui/react';
 
+export interface ChannelSelectorProps {
+  channels?: any[];
+  value?: any;
+  onChange?: (val: any) => void;
+  multiple?: boolean;
+  allowedTypes?: any[];
+  specialOptions?: any[];
+  placeholder?: string;
+  guildId?: string;
+  className?: string;
+  disabled?: boolean;
+  [key: string]: any;
+}
+
 export default function ChannelSelector({
   channels = [],
   value,
@@ -20,19 +34,26 @@ export default function ChannelSelector({
   multiple = false,
   allowedTypes = [],
   specialOptions = [],
-  placeholder = "Select or search channel..."
-}) {
+  placeholder = "Select or search channel...",
+  guildId,
+  className,
+  disabled,
+  ...rest
+}: ChannelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef(null);
 
-  const selectedOption = !multiple && value ? specialOptions.find((o) => o.value === value) : null;
+  const isCategoryMode = allowedTypes.includes("category") || allowedTypes.includes(4);
+  const selectedOption = !multiple && (value !== undefined && value !== null) ? specialOptions.find((o) => o.value === value) : null;
   const selectedChannel = !multiple && value ? channels.find((c) => c.id === value) : null;
   const selectedLabel = selectedOption
     ? selectedOption.label
     : selectedChannel
-    ? (selectedChannel.name.startsWith("#") ? selectedChannel.name : `#${selectedChannel.name}`)
-    : "";
+    ? (isCategoryMode || selectedChannel.type === 4
+        ? selectedChannel.name
+        : selectedChannel.name.startsWith("#") ? selectedChannel.name : `#${selectedChannel.name}`)
+    : (!multiple && value ? (isCategoryMode ? `📁 Category (${value})` : `#channel (${value})`) : "");
 
   // Synchronize displayed query with value in single select
   useEffect(() => {
@@ -78,6 +99,7 @@ export default function ChannelSelector({
   const getIcon = (type) => {
     if (type === 2) return <Volume2 className="w-4 h-4 text-emerald-400" />;
     if (type === 5) return <Megaphone className="w-4 h-4 text-amber-400" />;
+    if (type === 4 || type === "category") return <Folder className="w-4 h-4 text-indigo-400" />;
     return <Hash className="w-4 h-4 text-slate-400" />;
   };
 
@@ -90,7 +112,13 @@ export default function ChannelSelector({
         setQuery(special.label);
       } else {
         const found = channels.find((c) => c.id === id);
-        if (found) setQuery(found.name.startsWith("#") ? found.name : `#${found.name}`);
+        if (found) {
+          setQuery(isCategoryMode || found.type === 4 ? found.name : found.name.startsWith("#") ? found.name : `#${found.name}`);
+        } else if (id) {
+          setQuery(isCategoryMode ? `📁 Category (${id})` : `#channel (${id})`);
+        } else {
+          setQuery("");
+        }
       }
       return;
     }
@@ -118,7 +146,7 @@ export default function ChannelSelector({
     // Type restriction check
     if (allowedTypes.length > 0) {
       const allowedNumeric = allowedTypes
-        .map((t) => (t === 'text' ? [0, 5] : t === 'voice' ? [2] : [t]))
+        .map((t) => (t === 'text' ? [0, 5] : t === 'voice' ? [2] : t === 'category' ? [4] : [t]))
         .flat();
       const channelType = c.type === undefined ? 0 : c.type;
       if (!allowedNumeric.includes(channelType)) return false;
@@ -170,6 +198,8 @@ export default function ChannelSelector({
         <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
           {selectedChannel ? (
             getIcon(selectedChannel.type)
+          ) : isCategoryMode ? (
+            <Folder className="w-4 h-4 text-indigo-400" />
           ) : (
             <Hash className="w-4 h-4 text-slate-500" />
           )}
@@ -267,9 +297,25 @@ export default function ChannelSelector({
                 </div>
               )}
 
+              {/^\d{17,20}$/.test(query.trim()) && !channels.some((c) => c.id === query.trim()) && !specialOptions.some((o) => o.value === query.trim()) && (
+                <div className="mb-1.5 pb-1.5 border-b border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(query.trim())}
+                    className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-left text-sm bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {isCategoryMode ? <Folder className="w-4 h-4 text-indigo-400 shrink-0" /> : <Hash className="w-4 h-4 text-indigo-400 shrink-0" />}
+                      <span className="truncate font-mono text-xs">Use ID: {query.trim()}</span>
+                    </div>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-200 uppercase font-bold shrink-0">Custom</span>
+                  </button>
+                </div>
+              )}
+
               {filteredChannels.length === 0 && filteredSpecial.length === 0 ? (
                 <div className="text-center py-6 text-sm text-slate-500 font-medium">
-                  {query ? `No channels matching "${query}"` : "No channels found"}
+                  {query ? `No ${isCategoryMode ? "categories" : "channels"} matching "${query}"` : `No ${isCategoryMode ? "categories" : "channels"} found`}
                 </div>
               ) : (
                 <div className="space-y-0.5">
@@ -292,7 +338,7 @@ export default function ChannelSelector({
                         <div className="flex items-center gap-2.5 min-w-0">
                           <span className="shrink-0">{getIcon(c.type)}</span>
                           <span className="truncate font-medium">
-                            {c.name.startsWith("#") ? c.name : `#${c.name}`}
+                            {isCategoryMode || c.type === 4 ? c.name : c.name.startsWith("#") ? c.name : `#${c.name}`}
                           </span>
                           {c.parentName && (
                             <span className="text-[10px] text-slate-500 font-normal truncate">

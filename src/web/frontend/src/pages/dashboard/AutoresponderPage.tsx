@@ -8,7 +8,7 @@ import { PageError } from "../../components/ui";
 import { AutoresponderHeader, AutoresponderEditor, AutoresponderList } from "../../components/autoresponder";
 
 export default function AutoresponderPage({ showToast }) {
-  const { user, botInfo } = useOutletContext() || {};
+  const { user, botInfo }: any = useOutletContext() || {};
   const { guildId } = useParams();
   
   const { rules, loading, error, refresh, saveRule, toggleRule, deleteRule } = useAutoresponders(guildId, showToast);

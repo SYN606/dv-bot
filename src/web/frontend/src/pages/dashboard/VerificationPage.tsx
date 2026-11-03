@@ -14,7 +14,7 @@ import {
 
 export default function VerificationPage({ showToast }) {
   const { guildId } = useParams();
-  const { botInfo } = useOutletContext() || {};
+  const { botInfo }: any = useOutletContext() || {};
 
   const {
     config,

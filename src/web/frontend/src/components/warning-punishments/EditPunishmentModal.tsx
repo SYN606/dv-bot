@@ -32,7 +32,7 @@ export default function EditPunishmentModal({
 
   if (!isOpen || !rule) return null;
 
-  const parsedCount = parseInt(warnCount, 10);
+  const parsedCount = parseInt(String(warnCount), 10);
   const otherExistingCounts = new Set(
     existingRules.filter((r) => r.warn_count !== rule.warn_count).map((r) => r.warn_count)
   );
@@ -70,7 +70,7 @@ export default function EditPunishmentModal({
       const payload = {
         warnCount: parsedCount,
         actionType,
-        duration: selectedType?.requiresDuration ? parseInt(duration, 10) : null,
+        duration: selectedType?.requiresDuration ? parseInt(String(duration), 10) : null,
       };
       const success = await onConfirmEdit(rule.warn_count, payload);
       if (success) {

@@ -80,20 +80,20 @@ export async function getExpiredTempbans() {
 }
 
 export async function deactivateTempban(guildId, userId) {
-  const record = await TempbanRecord.findOne({
-    where: {
-      guild_id: String(guildId),
-      user_id: String(userId),
-    },
-  });
-
-  if (record) {
-    record.active = false;
-    await record.save();
-    return true;
-  }
-  return false;
+  const [affectedRows] = await TempbanRecord.update(
+    { active: false },
+    {
+      where: {
+        guild_id: String(guildId),
+        user_id: String(userId),
+        active: true,
+      },
+    }
+  );
+  return affectedRows > 0;
 }
+
+
 
 
 export async function isTempbanned(guildId, userId) {

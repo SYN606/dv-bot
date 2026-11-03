@@ -1,6 +1,18 @@
 import React, { useEffect } from "react";
 import { X } from "lucide-react";
 
+export interface ModalProps {
+  open?: boolean;
+  onClose?: () => void;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  children?: React.ReactNode;
+  maxWidth?: string;
+  showClose?: boolean;
+  className?: string;
+  [key: string]: any;
+}
+
 export default function Modal({
   open = false,
   onClose,
@@ -10,7 +22,7 @@ export default function Modal({
   maxWidth = "max-w-md",
   showClose = true,
   className = "",
-}) {
+}: ModalProps) {
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e) => {

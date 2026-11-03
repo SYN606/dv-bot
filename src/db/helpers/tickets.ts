@@ -2,10 +2,88 @@ import crypto from "node:crypto";
 import { TicketConfig, TicketPanel, Ticket, Op } from "../models/index.js";
 import { ensureGuild } from "./common.js";
 
-// In-memory cache
-const configCache = new Map<string, any>();
-const panelsCache = new Map<string, any[]>();
+// In-memory bounded cache with 60s TTL to prevent memory leaks and stale reads
+const CACHE_TTL_MS = 60000;
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+const configCache = new Map<string, CacheEntry<any>>();
+const panelsCache = new Map<string, CacheEntry<any[]>>();
 const ticketCounterMutex = new Map<string, Promise<any>>();
+const activeTicketChannels = new Set<string>();
+
+export function registerActiveTicketChannel(channelId: string) {
+  if (channelId) activeTicketChannels.add(channelId);
+}
+
+export function unregisterActiveTicketChannel(channelId: string) {
+  if (channelId) activeTicketChannels.delete(channelId);
+}
+
+export function isTicketChannelActive(channelId: string): boolean {
+  return activeTicketChannels.has(channelId);
+}
+
+export function formatTicketChannelName(options: {
+  pattern?: string | null;
+  ticketNumber: number;
+  username: string;
+  displayName?: string | null;
+  categoryName?: string | null;
+}): string {
+  let pattern = options.pattern !== undefined && options.pattern !== null ? String(options.pattern).trim() : "";
+  if (!pattern) pattern = "ticket-{number}";
+
+  const numPadded = String(options.ticketNumber).padStart(4, "0");
+  const numRaw = String(options.ticketNumber);
+
+  // Clean username: lowercase, replace spaces/special chars
+  const cleanUsername = (options.username || "user")
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}_-]/gu, "")
+    .slice(0, 20) || "user";
+
+  const cleanDisplayName = (options.displayName || options.username || "user")
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}_-]/gu, "")
+    .slice(0, 20) || cleanUsername;
+
+  const cleanCategory = (options.categoryName || "general")
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}_-]/gu, "")
+    .slice(0, 20) || "general";
+
+  let name = pattern
+    .replace(/\{number\}|\{num\}/gi, numPadded)
+    .replace(/\{raw_number\}|\{count\}/gi, numRaw)
+    .replace(/\{username\}|\{user\}/gi, cleanUsername)
+    .replace(/\{display_name\}|\{name\}/gi, cleanDisplayName)
+    .replace(/\{category\}|\{dept\}/gi, cleanCategory);
+
+  // Convert spaces to hyphens
+  name = name.toLowerCase().replace(/\s+/g, "-");
+
+  // Allow Unicode letters (\p{L}), numbers (\p{N}), emojis (\p{Extended_Pictographic}),
+  // hyphens, underscores, dots, and Discord decorative separators (・, │, etc.)
+  name = name.replace(/[^\p{L}\p{N}\p{Extended_Pictographic}_・│|~-]/gu, "");
+
+  // Collapse consecutive hyphens
+  name = name.replace(/-+/g, "-");
+
+  // Remove leading/trailing hyphens (preserve leading emojis/symbols)
+  name = name.replace(/^-+|-+$/g, "");
+
+  // Discord channel names max limit is 100 characters (cap at 40 for clean UI)
+  name = name.slice(0, 40);
+
+  return name || `ticket-${numPadded}`;
+
+  return name || `ticket-${numPadded}`;
+}
 
 export interface ReasonCategoryItem {
   id: string;
@@ -46,11 +124,14 @@ export function normalizeConfig(record: any) {
     guild_id: raw.guild_id,
     enabled: Boolean(raw.enabled),
     transcript_channel_id: raw.transcript_channel_id || null,
+    logging_channel_id: raw.logging_channel_id || null,
     category_id: raw.category_id || null,
     support_role_ids: normalizeSupportRoles(raw.support_role_ids),
     max_tickets_per_user: Number(raw.max_tickets_per_user ?? 3),
     ticket_counter: Number(raw.ticket_counter ?? 0),
+    channel_name_pattern: raw.channel_name_pattern || "ticket-{number}",
     auto_close_hours: Number(raw.auto_close_hours ?? 0),
+    save_transcripts: raw.save_transcripts === undefined ? true : Boolean(raw.save_transcripts),
     created_at: raw.created_at,
     updated_at: raw.updated_at,
   };
@@ -74,6 +155,7 @@ export function normalizePanel(record: any) {
     select_placeholder: raw.select_placeholder || "Select a ticket reason / category...",
     enable_reason_categories: Boolean(raw.enable_reason_categories),
     reason_categories: normalizeReasonCategories(raw.reason_categories),
+    channel_name_pattern: raw.channel_name_pattern || null,
     created_at: raw.created_at,
     updated_at: raw.updated_at,
   };
@@ -81,8 +163,9 @@ export function normalizePanel(record: any) {
 
 export async function getTicketConfig(guildId: string) {
   const gId = String(guildId);
-  if (configCache.has(gId)) {
-    return configCache.get(gId);
+  const cached = configCache.get(gId);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.data;
   }
 
   await ensureGuild(gId);
@@ -91,16 +174,19 @@ export async function getTicketConfig(guildId: string) {
     guild_id: gId,
     enabled: false,
     transcript_channel_id: null,
+    logging_channel_id: null,
     category_id: null,
     support_role_ids: "[]",
     max_tickets_per_user: 3,
     ticket_counter: 0,
+    channel_name_pattern: "ticket-{number}",
     auto_close_hours: 0,
+    save_transcripts: 1,
   };
 
   const [record, created]: any = await TicketConfig.findOrCreate({ where, defaults });
   const parsed = normalizeConfig(record);
-  configCache.set(gId, parsed);
+  configCache.set(gId, { data: parsed, expiresAt: Date.now() + CACHE_TTL_MS });
   return parsed;
 }
 
@@ -112,9 +198,20 @@ export async function saveTicketConfig(guildId: string, updates: Record<string, 
 
   if (updates.enabled !== undefined) payload.enabled = Boolean(updates.enabled);
   if (updates.transcript_channel_id !== undefined) payload.transcript_channel_id = updates.transcript_channel_id;
+  if (updates.logging_channel_id !== undefined) payload.logging_channel_id = updates.logging_channel_id;
   if (updates.category_id !== undefined) payload.category_id = updates.category_id;
   if (updates.max_tickets_per_user !== undefined) payload.max_tickets_per_user = Math.max(1, Number(updates.max_tickets_per_user) || 3);
   if (updates.auto_close_hours !== undefined) payload.auto_close_hours = Math.max(0, Number(updates.auto_close_hours) || 0);
+  if (updates.save_transcripts !== undefined) payload.save_transcripts = Boolean(updates.save_transcripts);
+  if (updates.channel_name_pattern !== undefined) {
+    payload.channel_name_pattern = String(updates.channel_name_pattern).trim().slice(0, 64) || "ticket-{number}";
+  }
+  if (updates.next_ticket_number !== undefined) {
+    const nextVal = Math.max(1, Number(updates.next_ticket_number) || 1);
+    payload.ticket_counter = nextVal - 1;
+  } else if (updates.ticket_counter !== undefined) {
+    payload.ticket_counter = Math.max(0, Number(updates.ticket_counter) || 0);
+  }
   if (updates.support_role_ids !== undefined) {
     payload.support_role_ids = Array.isArray(updates.support_role_ids)
       ? JSON.stringify(updates.support_role_ids)
@@ -127,20 +224,23 @@ export async function saveTicketConfig(guildId: string, updates: Record<string, 
   return await getTicketConfig(gId);
 }
 
+export const updateTicketConfig = saveTicketConfig;
+
 export async function getTicketPanels(guildId: string) {
   const gId = String(guildId);
-  if (panelsCache.has(gId)) {
-    return panelsCache.get(gId);
+  const cached = panelsCache.get(gId);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.data;
   }
 
   const where: Record<string, any> = { guild_id: gId };
   const records = await TicketPanel.findAll({ where });
   const parsed = records.map(normalizePanel);
-  panelsCache.set(gId, parsed);
+  panelsCache.set(gId, { data: parsed, expiresAt: Date.now() + CACHE_TTL_MS });
   return parsed;
 }
 
-export async function getTicketPanel(guildId: string, panelId: string) {
+export async function getTicketPanel(guildId: string, panelId: string): Promise<any> {
   const gId = String(guildId);
   const where: Record<string, any> = { guild_id: gId, id: panelId };
   const record = await TicketPanel.findOne({ where });
@@ -167,6 +267,9 @@ export async function saveTicketPanel(guildId: string, panelData: Record<string,
     reason_categories: Array.isArray(panelData.reason_categories)
       ? JSON.stringify(panelData.reason_categories)
       : (panelData.reason_categories || "[]"),
+    channel_name_pattern: panelData.channel_name_pattern !== undefined
+      ? (panelData.channel_name_pattern ? String(panelData.channel_name_pattern).trim().slice(0, 64) : null)
+      : undefined,
     channel_id: panelData.channel_id || null,
     message_id: panelData.message_id || null,
     updated_at: new Date().toISOString(),
@@ -190,35 +293,42 @@ export async function deleteTicketPanel(guildId: string, panelId: string) {
   const gId = String(guildId);
   const where: Record<string, any> = { guild_id: gId, id: panelId };
   const count = await TicketPanel.destroy({ where });
+  try {
+    const ticketWhere: Record<string, any> = { guild_id: gId, panel_id: panelId };
+    const updates: Record<string, any> = { panel_id: null };
+    await Ticket.update(updates, { where: ticketWhere });
+  } catch (_) {}
   panelsCache.delete(gId);
   return count > 0;
 }
 
 export async function getNextTicketNumber(guildId: string): Promise<number> {
   const gId = String(guildId);
-  while (ticketCounterMutex.has(gId)) {
-    await ticketCounterMutex.get(gId);
-  }
+  const currentMutex = ticketCounterMutex.get(gId) || Promise.resolve();
 
-  let resolveMutex: () => void;
-  const promise = new Promise<void>((res) => {
-    resolveMutex = res;
+  let releaseMutex: () => void;
+  const nextMutex = new Promise<void>((res) => {
+    releaseMutex = res;
   });
-  ticketCounterMutex.set(gId, promise);
+  ticketCounterMutex.set(gId, nextMutex);
 
+  await currentMutex;
   try {
     const config = await getTicketConfig(gId);
-    const nextNum = (config.ticket_counter || 0) + 1;
-
-    const payload: Record<string, any> = { ticket_counter: nextNum, updated_at: new Date().toISOString() };
+    const nextNum = (Number(config?.ticket_counter) || 0) + 1;
     const where: Record<string, any> = { guild_id: gId };
-    await TicketConfig.update(payload, { where });
+    await TicketConfig.update(
+      { ticket_counter: nextNum, updated_at: new Date().toISOString() },
+      { where }
+    );
     configCache.delete(gId);
 
     return nextNum;
   } finally {
-    ticketCounterMutex.delete(gId);
-    resolveMutex!();
+    if (ticketCounterMutex.get(gId) === nextMutex) {
+      ticketCounterMutex.delete(gId);
+    }
+    releaseMutex!();
   }
 }
 
@@ -230,7 +340,7 @@ export async function createTicket(ticketData: {
   panel_id?: string | null;
   category_name?: string;
   reason?: string | null;
-}) {
+}): Promise<any> {
   const gId = String(ticketData.guild_id);
   const ticketNumber = await getNextTicketNumber(gId);
   const ticketId = `tkt_${crypto.randomBytes(6).toString("hex")}`;
@@ -252,6 +362,7 @@ export async function createTicket(ticketData: {
     closed_by_tag: null,
     close_reason: null,
     transcript_url: null,
+    voice_channel_id: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -260,28 +371,41 @@ export async function createTicket(ticketData: {
   return typeof record.toJSON === "function" ? record.toJSON() : record;
 }
 
-export async function getTicketById(ticketId: string) {
+export async function getTicketById(ticketId: string): Promise<any> {
   const where: Record<string, any> = { id: ticketId };
   const record = await Ticket.findOne({ where });
   return record ? (typeof record.toJSON === "function" ? record.toJSON() : record) : null;
 }
 
-export async function getTicketByChannel(channelId: string) {
+export async function getTicketByChannel(channelId: string): Promise<any> {
   const where: Record<string, any> = { channel_id: channelId };
   const record = await Ticket.findOne({ where });
   return record ? (typeof record.toJSON === "function" ? record.toJSON() : record) : null;
+}
+
+export async function getTicketByVoiceChannel(voiceChannelId: string): Promise<any> {
+  const where: Record<string, any> = { voice_channel_id: voiceChannelId };
+  const record = await Ticket.findOne({ where });
+  return record ? (typeof record.toJSON === "function" ? record.toJSON() : record) : null;
+}
+
+export async function setTicketVoiceChannel(ticketId: string, voiceChannelId: string | null): Promise<any> {
+  const payload: Record<string, any> = { voice_channel_id: voiceChannelId, updated_at: new Date().toISOString() };
+  const where: Record<string, any> = { id: ticketId };
+  await Ticket.update(payload, { where });
+  return await getTicketById(ticketId);
 }
 
 export async function getUserOpenTicketsCount(guildId: string, userId: string): Promise<number> {
   const where: Record<string, any> = {
     guild_id: String(guildId),
     user_id: String(userId),
-    status: { [Op.or]: ["open", "claimed"] },
+    status: { [Op.notIn]: ["closed"] },
   };
   return await Ticket.count({ where });
 }
 
-export async function updateTicket(ticketId: string, updates: Record<string, any>) {
+export async function updateTicket(ticketId: string, updates: Record<string, any>): Promise<any> {
   const payload: Record<string, any> = { ...updates, updated_at: new Date().toISOString() };
   const where: Record<string, any> = { id: ticketId };
   await Ticket.update(payload, { where });
@@ -313,3 +437,5 @@ export async function listTickets(guildId: string, options: { status?: string; l
     offset,
   };
 }
+
+export * from "./ticketAdvanced.js";

@@ -15,11 +15,13 @@ export default function WelcomeDmEditor({
   updateConfig,
   insertVariable,
   onOpenTestModal,
+  guildId,
 }: {
   config: any;
   updateConfig: (key: string, val: any) => void;
   insertVariable: (field: string, tag: string) => void;
   onOpenTestModal?: (type?: "channel" | "leave" | "dm") => void;
+  guildId?: string;
 }) {
   return (
     <div className="space-y-6">
@@ -103,6 +105,7 @@ export default function WelcomeDmEditor({
 
         {/* Variables */}
         <WelcomeVariableBar
+          guildId={guildId}
           onInsertVariable={(tag) => insertVariable("dm_message", tag)}
         />
 

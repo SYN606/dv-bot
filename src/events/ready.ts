@@ -5,12 +5,14 @@ import { hydrateVoiceSessions } from "./voiceStateUpdate.js";
 import { TempbanWorker } from "../handlers/tempbanWorker.js";
 import { AutoRoleWorker } from "../handlers/autoroleWorker.js";
 import { SupporterWorker } from "../handlers/supporterHandler.js";
+import { TicketJobRunner } from "../services/ticketJobRunner.js";
 import { initAfkCache } from "../db/helpers/afk.js";
 import { initStickyCache } from "../db/helpers/sticky.js";
 import { initAutoresponderCache } from "../db/helpers/autoresponder.js";
 import { restoreActiveChannelLocks } from "../services/channelLockService.js";
 import { logger } from "../utils/logger.js";
 import { startPresence } from "../core/presence.js";
+import { pruneOldAnalyticsData } from "../db/helpers/analytics.js";
 
 export default {
   name: Events.ClientReady,
@@ -44,12 +46,38 @@ export default {
     const supporterWorker = new SupporterWorker(client);
     supporterWorker.start();
 
+    const ticketJobRunner = new TicketJobRunner(client);
+    ticketJobRunner.start();
+
+    // Hydrate active ticket channels for real-time listener fast-path
+    import("../db/models/index.js").then(async ({ Ticket, Op }) => {
+      try {
+        const openTickets = await Ticket.findAll({
+          where: {
+            status: { [Op.ne]: "closed" },
+          },
+        });
+        const { registerActiveTicketChannel } = await import("../db/helpers/tickets.js");
+        for (const t of openTickets) {
+          if (t.channel_id) registerActiveTicketChannel(t.channel_id);
+        }
+      } catch (_) {}
+    }).catch(() => null);
+
     // Attach worker references for clean graceful shutdown
     client.workers = {
       tempbanWorker,
       autoroleWorker,
       supporterWorker,
+      ticketJobRunner,
     };
+
+    // 5. Automated 90-day Data Pruning (Runs on startup & daily)
+    pruneOldAnalyticsData(90).catch((err) => logger.error("[PRUNING ERROR]:", err));
+    const retentionTimer = setInterval(() => {
+      pruneOldAnalyticsData(90).catch((err) => logger.error("[PRUNING ERROR]:", err));
+    }, 24 * 60 * 60 * 1000);
+    if (typeof retentionTimer.unref === "function") retentionTimer.unref();
 
     // 5. Safely Stagger Member & Presence Pre-warming in the background without flooding Gateway
     (async () => {

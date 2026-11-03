@@ -7,22 +7,9 @@ const unlockTimers = new Map(); // channelId -> Timeout
 /**
  * Parses user duration string (e.g. 10m, 1h, 1d) to seconds
  */
-export function parseDuration(str) {
-  if (!str) return null;
-  const match = String(str).trim().match(/^(\d+)\s*([smhdw])$/i);
-  if (!match) return null;
-  const num = parseInt(match[1], 10);
-  const unit = match[2].toLowerCase();
-  if (isNaN(num) || num <= 0) return null;
-  switch (unit) {
-    case "s": return num;
-    case "m": return num * 60;
-    case "h": return num * 3600;
-    case "d": return num * 86400;
-    case "w": return num * 604800;
-    default: return null;
-  }
-}
+import { parseDuration } from "../utils/duration.js";
+
+export { parseDuration };
 
 /**
  * Adds prefix (e.g. "locked-", "hidden-") to a channel name without duplicating

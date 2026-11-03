@@ -11,10 +11,31 @@ import {
   clearCommandChannelRule,
 } from "../../api/client";
 
+export interface CommandRestrictionsState {
+  commands: any[];
+  disabled: any[];
+  guildDisabled: any[];
+  channelDisabled: any[];
+  channelRules?: Record<string, any>;
+  modules: any[];
+  scope: string;
+  channelId?: string | null;
+  stats: {
+    total: number;
+    active: number;
+    disabled: number;
+    protected: number;
+    guildDisabledCount: number;
+    channelDisabledCount: number;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
 export function useCommandRestrictions(guildId, showToast) {
   const [selectedChannel, setSelectedChannel] = useState("global");
   const [channels, setChannels] = useState([]);
-  const [data, setData] = useState({
+  const [data, setData] = useState<CommandRestrictionsState>({
     commands: [],
     disabled: [],
     guildDisabled: [],
@@ -22,6 +43,7 @@ export function useCommandRestrictions(guildId, showToast) {
     channelRules: {},
     modules: [],
     scope: "guild",
+    channelId: null,
     stats: { total: 0, active: 0, disabled: 0, protected: 0, guildDisabledCount: 0, channelDisabledCount: 0 },
   });
   const [loading, setLoading] = useState(true);

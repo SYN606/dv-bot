@@ -11,6 +11,10 @@ const supporterAnnouncementCache = new Map<string, any>();
 
 export async function saveSupporterAnnouncement(guildId, userId, type, channelId, messageId) {
   const cacheKey = `${type}:${guildId}:${userId}`;
+  if (supporterAnnouncementCache.size >= 5000) {
+    const oldestKey = supporterAnnouncementCache.keys().next().value;
+    if (oldestKey) supporterAnnouncementCache.delete(oldestKey);
+  }
   supporterAnnouncementCache.set(cacheKey, { channelId, messageId });
 
   try {

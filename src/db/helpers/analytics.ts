@@ -514,3 +514,51 @@ export async function getLeaderboard(guildId, type = "messages", timeframe = "to
     limit,
   });
 }
+
+
+/**
+ * Automatically prune analytics and transient event records older than 90 days (3 months).
+ * Reclaims database storage and optimizes SQLite B-tree index traversal.
+ */
+export async function pruneOldAnalyticsData(retentionDays = 90): Promise<{
+  deletedDailySnapshots: number;
+  deletedChannelActivities: number;
+  deletedTicketEvents: number;
+  deletedCompletedJobs: number;
+}> {
+  const cutoffMs = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+  const cutoffDate = new Date(cutoffMs).toISOString().split("T")[0];
+  const rawSqlite = getRawSqlite();
+
+  let deletedDailySnapshots = 0;
+  let deletedChannelActivities = 0;
+  let deletedTicketEvents = 0;
+  let deletedCompletedJobs = 0;
+
+  if (rawSqlite) {
+    try {
+      const resDaily = rawSqlite.prepare("DELETE FROM daily_activity_snapshots WHERE date < ?").run(cutoffDate);
+      deletedDailySnapshots = resDaily.changes || 0;
+
+      const resChannel = rawSqlite.prepare("DELETE FROM channel_activities WHERE date < ?").run(cutoffDate);
+      deletedChannelActivities = resChannel.changes || 0;
+
+      const resEvents = rawSqlite.prepare("DELETE FROM ticket_events WHERE created_at < ?").run(cutoffMs);
+      deletedTicketEvents = resEvents.changes || 0;
+
+      const resJobs = rawSqlite.prepare("DELETE FROM ticket_jobs WHERE status IN ('completed', 'failed') AND updated_at < ?").run(cutoffMs);
+      deletedCompletedJobs = resJobs.changes || 0;
+
+      rawSqlite.exec("PRAGMA incremental_vacuum;");
+    } catch (err) {
+      console.error("[DATA PRUNING ERROR]:", err);
+    }
+  }
+
+  return {
+    deletedDailySnapshots,
+    deletedChannelActivities,
+    deletedTicketEvents,
+    deletedCompletedJobs,
+  };
+}

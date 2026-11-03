@@ -1,5 +1,5 @@
 // ============================================================================
-// API Transport Layer â€” Digital Vigital
+// API Transport Layer — Digital Vigital
 // ============================================================================
 // Responsibilities:
 //   - fetch with credentials + JSON
@@ -64,10 +64,10 @@ export function clearCache() {
  * Core transport. All API calls go through here.
  *
  * Body normalization:
- *   - Pass plain JS objects as `options.body` â€” this function serializes them.
+ *   - Pass plain JS objects as `options.body` — this function serializes them.
  *   - Do NOT pre-stringify bodies before passing to fetchApi.
  */
-export async function fetchApi(endpoint, options = {}) {
+export async function fetchApi(endpoint: string, options: any = {}) {
   const url = endpoint.startsWith("/") ? endpoint : "/api/" + endpoint;
   const isGet = !options.method || options.method === "GET";
 
@@ -90,15 +90,15 @@ export async function fetchApi(endpoint, options = {}) {
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
-    credentials: "include",
+    credentials: "include" as RequestCredentials,
   };
 
-  // Serialize object bodies consistently â€” callers should pass plain objects
+  // Serialize object bodies consistently — callers should pass plain objects
   if (options.body !== undefined && options.body !== null) {
     if (typeof options.body === "object") {
       config.body = JSON.stringify(options.body);
     } else {
-      // Already a string or primitive â€” pass through (handles edge cases)
+      // Already a string or primitive — pass through (handles edge cases)
       config.body = options.body;
     }
   }
@@ -155,8 +155,8 @@ export async function getSystemStatus() {
 
 // Guild Metadata
 
-export async function getGuildMeta(guildId) {
-  return fetchApi(`/api/guilds/${guildId}/meta`);
+export async function getGuildMeta(guildId, force = false) {
+  return fetchApi(`/api/guilds/${guildId}/meta${force ? "?force=true" : ""}`);
 }
 
 export async function getGuildMembers(guildId, query = "") {
@@ -375,9 +375,10 @@ export async function saveAutoresponder(guildId, payload) {
   return result;
 }
 
-export async function toggleAutoresponder(guildId, ruleId) {
+export async function toggleAutoresponder(guildId, ruleId, enabled?: boolean) {
   const result = await fetchApi(`/api/guilds/${guildId}/autoresponder/${ruleId}/toggle`, {
     method: "POST",
+    ...(enabled !== undefined ? { body: { enabled } } : {}),
   });
   invalidatePath(`/api/guilds/${guildId}/autoresponder`);
   return result;
@@ -447,7 +448,7 @@ export async function getSupporterConfig(guildId) {
 }
 
 export async function setSupporterConfig(guildId, data) {
-  // Pass plain object â€” fetchApi handles serialization
+  // Pass plain object — fetchApi handles serialization
   const result = await fetchApi(`/api/guilds/${guildId}/supporter`, {
     method: "PUT",
     body: data,
@@ -463,7 +464,7 @@ export async function getAutoRoleConfig(guildId) {
 }
 
 export async function setAutoRoleConfig(guildId, payload) {
-  // Pass plain object â€” fetchApi handles serialization
+  // Pass plain object — fetchApi handles serialization
   const result = await fetchApi(`/api/guilds/${guildId}/autorole`, {
     method: "PUT",
     body: payload,
@@ -551,7 +552,7 @@ export async function deleteMessageStudioDraft(guildId, draftId) {
   return result;
 }
 
-export async function getMessageStudioTemplates(guildId, { category, search } = {}) {
+export async function getMessageStudioTemplates(guildId, { category, search }: any = {}) {
   const params = new URLSearchParams();
   if (category && category !== "All") params.append("category", category);
   if (search) params.append("search", search);
@@ -681,9 +682,9 @@ export async function clearMessageStudioHistory(guildId, status = null) {
 // Audit Logs & Security Stream API
 // ============================================================================
 
-export async function getAuditLogs(guildId, { limit = 50, action = null, executorId = null, before = null } = {}) {
+export async function getAuditLogs(guildId, { limit = 50, action = null, executorId = null, before = null }: any = {}) {
   const params = new URLSearchParams();
-  if (limit) params.append("limit", limit);
+  if (limit) params.append("limit", String(limit));
   if (action) params.append("action", action);
   if (executorId) params.append("executorId", executorId);
   if (before) params.append("before", before);
@@ -827,4 +828,36 @@ export async function getTicketsList(guildId, { status = "all", limit = 25, offs
 
 export async function getTicketDetails(guildId, ticketId) {
   return fetchApi(`/api/guilds/${guildId}/tickets/${ticketId}`);
+}
+
+export async function getTicketAnalytics(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/tickets/analytics`);
+}
+
+export async function getTicketNotes(guildId, ticketId) {
+  return fetchApi(`/api/guilds/${guildId}/tickets/${ticketId}/notes`);
+}
+
+export async function addTicketNote(guildId, ticketId, content) {
+  return fetchApi(`/api/guilds/${guildId}/tickets/${ticketId}/notes`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function deleteTicketNote(guildId, ticketId, noteId) {
+  return fetchApi(`/api/guilds/${guildId}/tickets/${ticketId}/notes/${noteId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getTicketEvents(guildId, ticketId) {
+  return fetchApi(`/api/guilds/${guildId}/tickets/${ticketId}/events`);
+}
+
+export async function transitionTicketState(guildId, ticketId, status, reason) {
+  return fetchApi(`/api/guilds/${guildId}/tickets/${ticketId}/transition`, {
+    method: "POST",
+    body: JSON.stringify({ status, reason }),
+  });
 }

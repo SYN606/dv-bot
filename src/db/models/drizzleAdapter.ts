@@ -569,6 +569,50 @@ export function createModel(name, table, primaryKey = "id", options = {}) {
       return Number(res?.count || 0);
     }
 
+    static async increment(field: string, options: any = {}) {
+      const by = options.by !== undefined ? Number(options.by) : 1;
+      const where = options.where || {};
+      const db = getDb();
+      const whereClause = buildWhereClause(table, where);
+      const col = table[field];
+      if (!col) {
+        throw new Error(`Field '${field}' not found on table '${name}'`);
+      }
+
+      let query = db
+        .update(table)
+        .set({
+          [field]: sql`${col} + ${by}`,
+          ...("updated_at" in table ? { updated_at: new Date().toISOString() } : {}),
+        });
+      if (whereClause) {
+        query = query.where(whereClause);
+      }
+      return await execRun(query);
+    }
+
+    static async decrement(field: string, options: any = {}) {
+      const by = options.by !== undefined ? Number(options.by) : 1;
+      const where = options.where || {};
+      const db = getDb();
+      const whereClause = buildWhereClause(table, where);
+      const col = table[field];
+      if (!col) {
+        throw new Error(`Field '${field}' not found on table '${name}'`);
+      }
+
+      let query = db
+        .update(table)
+        .set({
+          [field]: sql`${col} - ${by}`,
+          ...("updated_at" in table ? { updated_at: new Date().toISOString() } : {}),
+        });
+      if (whereClause) {
+        query = query.where(whereClause);
+      }
+      return await execRun(query);
+    }
+
     static async _populateIncludes(instances, includes) {
       for (const inc of includes) {
         const targetModel = inc.model;

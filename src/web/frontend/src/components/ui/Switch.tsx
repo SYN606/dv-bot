@@ -21,6 +21,19 @@ const COLORS = {
   rose: "bg-rose-500 shadow-rose-500/30",
 };
 
+export interface SwitchProps {
+  checked?: boolean;
+  onChange?: (checked: boolean) => void;
+  disabled?: boolean;
+  size?: "sm" | "md" | string;
+  color?: "indigo" | "emerald" | "rose" | string;
+  label?: React.ReactNode;
+  description?: React.ReactNode;
+  className?: string;
+  id?: string;
+  [key: string]: any;
+}
+
 export default function Switch({
   checked = false,
   onChange,
@@ -31,7 +44,7 @@ export default function Switch({
   description,
   className = "",
   id,
-}) {
+}: SwitchProps) {
   const s = SIZES[size] || SIZES.md;
   const activeColor = COLORS[color] || COLORS.indigo;
 
@@ -67,7 +80,7 @@ export default function Switch({
         disabled ? "opacity-50 cursor-not-allowed" : ""
       } ${className}`}
       onClick={(e) => {
-        if (!disabled && e.target.tagName !== "BUTTON") {
+        if (!disabled && (e.target as HTMLElement)?.tagName !== "BUTTON") {
           e.preventDefault();
           onChange?.(!checked);
         }

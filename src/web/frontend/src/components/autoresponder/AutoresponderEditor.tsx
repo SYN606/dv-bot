@@ -19,8 +19,8 @@ const INITIAL_RULE = {
 const VARIABLES = ["{user}", "{username}", "{server}", "{channel}", "{memberCount}"];
 
 export default function AutoresponderEditor({ editRule, onSave, onCancel, guildId, botInfo, user }) {
-  const [form, setForm] = useState(INITIAL_RULE);
-  const [errors, setErrors] = useState({});
+  const [form, setForm] = useState<Record<string, any>>(INITIAL_RULE);
+  const [errors, setErrors] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -272,6 +272,17 @@ export default function AutoresponderEditor({ editRule, onSave, onCancel, guildI
                     {v}
                   </button>
                 ))}
+                <div className="ml-auto">
+                  <EmojiSelector
+                    guildId={guildId}
+                    onChange={(val) => {
+                      const emojiStr = Array.isArray(val) ? val[0] : val;
+                      if (emojiStr) insertVariable(emojiStr);
+                    }}
+                    mode="insert"
+                    multiple={false}
+                  />
+                </div>
               </div>
             </div>
           </section>

@@ -23,6 +23,11 @@ const CATEGORY_META = {
     emoji: "🛡️",
     description: "Auditing, permissions, roles, and administrative controls.",
   },
+  tickets: {
+    name: "Tickets & Support",
+    emoji: "🎫",
+    description: "Enterprise ticket lifecycle, claims, notes, priorities, and HTML transcripts.",
+  },
   channels: {
     name: "Channels",
     emoji: "📁",
@@ -89,14 +94,14 @@ function buildCommandHelpEmbed(cmd, currentPrefix, user) {
     if (subcommands.length > 0) {
       for (const sub of subcommands) {
         const subArgs = (sub.options || []).map((o) => (o.required ? `<${o.name}>` : `[${o.name}]`)).join(" ");
-        slashUsageList.push(`• \`/${cmd.name} ${sub.name}${subArgs ? " " + subArgs : ""}\``);
+        slashUsageList.push(`\u2022 \`/${cmd.name} ${sub.name}${subArgs ? " " + subArgs : ""}\``);
       }
     } else {
       const args = regularOptions.map((o) => (o.required ? `<${o.name}>` : `[${o.name}]`)).join(" ");
-      slashUsageList.push(`• \`/${cmd.name}${args ? " " + args : ""}\``);
+      slashUsageList.push(`\u2022 \`/${cmd.name}${args ? " " + args : ""}\``);
     }
   } else {
-    slashUsageList.push(`• *Not available (Prefix command only)*`);
+    slashUsageList.push(`\u2022 *Not available (Prefix command only)*`);
   }
 
   // 2. Determine Prefix Usage
@@ -104,18 +109,18 @@ function buildCommandHelpEmbed(cmd, currentPrefix, user) {
   if (isPrefix) {
     if (cmd.usage) {
       const formatted = cmd.usage.startsWith(cmd.name) ? cmd.usage : `${cmd.name} ${cmd.usage}`;
-      prefixUsageList.push(`• \`${currentPrefix}${formatted}\``);
+      prefixUsageList.push(`\u2022 \`${currentPrefix}${formatted}\``);
     } else if (subcommands.length > 0) {
       for (const sub of subcommands) {
         const subArgs = (sub.options || []).map((o) => (o.required ? `<${o.name}>` : `[${o.name}]`)).join(" ");
-        prefixUsageList.push(`• \`${currentPrefix}${cmd.name} ${sub.name}${subArgs ? " " + subArgs : ""}\``);
+        prefixUsageList.push(`\u2022 \`${currentPrefix}${cmd.name} ${sub.name}${subArgs ? " " + subArgs : ""}\``);
       }
     } else {
       const args = regularOptions.map((o) => (o.required ? `<${o.name}>` : `[${o.name}]`)).join(" ");
-      prefixUsageList.push(`• \`${currentPrefix}${cmd.name}${args ? " " + args : ""}\``);
+      prefixUsageList.push(`\u2022 \`${currentPrefix}${cmd.name}${args ? " " + args : ""}\``);
     }
   } else {
-    prefixUsageList.push(`• *Not available (Slash command only)*`);
+    prefixUsageList.push(`\u2022 *Not available (Slash command only)*`);
   }
 
   // 3. Subcommands & Options breakdown
@@ -123,7 +128,7 @@ function buildCommandHelpEmbed(cmd, currentPrefix, user) {
   if (subcommands.length > 0) {
     optionsDetails.push(`**Subcommands:**`);
     for (const sub of subcommands) {
-      optionsDetails.push(`• **\`${sub.name}\`**: ${sub.description}`);
+      optionsDetails.push(`\u2022 **\`${sub.name}\`**: ${sub.description}`);
       if (sub.options && sub.options.length > 0) {
         for (const o of sub.options) {
           const req = o.required ? "*required*" : "*optional*";
@@ -135,28 +140,28 @@ function buildCommandHelpEmbed(cmd, currentPrefix, user) {
     optionsDetails.push(`**Options:**`);
     for (const o of regularOptions) {
       const req = o.required ? "*required*" : "*optional*";
-      optionsDetails.push(`• \`${o.name}\` (${req}): ${o.description}`);
+      optionsDetails.push(`\u2022 \`${o.name}\` (${req}): ${o.description}`);
     }
   }
 
   // 4. Examples
   let examplesList = [];
   if (cmd.examples && cmd.examples.length > 0) {
-    examplesList = cmd.examples.map((ex) => `• \`${ex}\``);
+    examplesList = cmd.examples.map((ex) => `\u2022 \`${ex}\``);
   } else {
     // Generate clean smart examples from usage
     if (isSlash) {
       if (subcommands.length > 0) {
         for (const sub of subcommands.slice(0, 3)) {
           const sampleArgs = (sub.options || []).map((o) => (o.required ? `<${o.name}>` : "")).filter(Boolean).join(" ");
-          examplesList.push(`• \`/${cmd.name} ${sub.name}${sampleArgs ? " " + sampleArgs : ""}\``);
+          examplesList.push(`\u2022 \`/${cmd.name} ${sub.name}${sampleArgs ? " " + sampleArgs : ""}\``);
         }
       } else {
         const sampleArgs = regularOptions.map((o) => (o.required ? `<${o.name}>` : "")).filter(Boolean).join(" ");
-        examplesList.push(`• \`/${cmd.name}${sampleArgs ? " " + sampleArgs : ""}\``);
+        examplesList.push(`\u2022 \`/${cmd.name}${sampleArgs ? " " + sampleArgs : ""}\``);
       }
     } else {
-      examplesList.push(`• \`${currentPrefix}${cmd.name}\``);
+      examplesList.push(`\u2022 \`${currentPrefix}${cmd.name}\``);
     }
   }
 
@@ -184,7 +189,7 @@ function buildCommandHelpEmbed(cmd, currentPrefix, user) {
   desc += `**Examples:**\n${examplesList.join("\n")}`;
 
   return makeEmbed({
-    title: "Help Center • Command Overview",
+    title: "Help Center \u2022 Command Overview",
     description: desc,
     level: "INFO",
     footer: `Requested by ${user.tag || user.username}`,
@@ -288,7 +293,7 @@ export default createCommand({
       categoriesMap.get(catName).push(cmd);
     }
 
-    const PREFERRED_ORDER = ["moderation", "admin", "channels", "voice", "analytics", "utility", "fun"];
+    const PREFERRED_ORDER = ["moderation", "admin", "tickets", "channels", "voice", "analytics", "utility", "fun"];
     const categoriesList = Array.from(categoriesMap.entries()).sort((a, b) => {
       const keyA = a[1][0]?.category?.toLowerCase() || a[0].toLowerCase();
       const keyB = b[1][0]?.category?.toLowerCase() || b[0].toLowerCase();
@@ -345,8 +350,14 @@ export default createCommand({
       .setStyle(ButtonStyle.Danger)
       .setEmoji("🗑️");
 
+    const dashboardButton = new ButtonBuilder()
+      .setLabel("Dashboard")
+      .setStyle(ButtonStyle.Link)
+      .setURL(CONFIG.DASHBOARD_URL)
+      .setEmoji("🌐");
+
     const actionRow1 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
-    const actionRow2 = new ActionRowBuilder<ButtonBuilder>().addComponents(homeButton, closeButton);
+    const actionRow2 = new ActionRowBuilder<ButtonBuilder>().addComponents(homeButton, dashboardButton, closeButton);
 
     const totalCmds = Array.from(client.commands.values()).length;
     const slashOnlyCount = Array.from(client.commands.values()).filter((c: any) => c.slashOnly).length;
@@ -356,13 +367,13 @@ export default createCommand({
       `### ${EMOJIS.get("animated_ping") || "✨"} Welcome to the Command Directory\n` +
       `Select a module from the dropdown menu below to view available commands.\n\n` +
       `**Directory Overview:**\n` +
-      `• Total Commands: **${totalCmds}**\n` +
-      `• Slash Only: **${slashOnlyCount}** (Strict permission & audit lock)\n` +
-      `• Slash & Prefix: **${hybridCount}** (Configured prefix: \`${currentPrefix}\`)\n\n` +
+      `\u2022 Total Commands: **${totalCmds}**\n` +
+      `\u2022 Slash Only: **${slashOnlyCount}** (Strict permission & audit lock)\n` +
+      `\u2022 Slash & Prefix: **${hybridCount}** (Configured prefix: \`${currentPrefix}\`)\n\n` +
       `💡 **Quick Tip:** Use \`/help <command>\` or \`${currentPrefix}help <command>\` for detailed syntax, subcommands, and examples.`;
 
     const mainEmbed = makeEmbed({
-      title: "Digital Vigital • Command Directory",
+      title: "Digital Vigital \u2022 Command Directory",
       description: desc,
       level: "INFO",
       footer: `Requested by ${user.tag || user.username}`,
@@ -430,7 +441,7 @@ export default createCommand({
         catDesc += `\n*Tip: Run \`/help <command>\` or \`${currentPrefix}help <command>\` to view subcommands, argument requirements, and usage examples.*`;
 
         const catEmbed = makeEmbed({
-          title: `Digital Vigital • ${catName} Commands`,
+          title: `Digital Vigital \u2022 ${catName} Commands`,
           description: catDesc,
           level: "INFO",
           footer: `Requested by ${user.tag || user.username}`,
@@ -464,7 +475,7 @@ export default createCommand({
           .edit({
             components: [
               new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu),
-              new ActionRowBuilder<ButtonBuilder>().addComponents(homeButton, closeButton),
+              new ActionRowBuilder<ButtonBuilder>().addComponents(homeButton, dashboardButton, closeButton),
             ],
           })
           .catch(() => {});
@@ -473,7 +484,7 @@ export default createCommand({
           .editReply({
             components: [
               new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu),
-              new ActionRowBuilder<ButtonBuilder>().addComponents(homeButton, closeButton),
+              new ActionRowBuilder<ButtonBuilder>().addComponents(homeButton, dashboardButton, closeButton),
             ],
           })
           .catch(() => {});

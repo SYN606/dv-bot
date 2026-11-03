@@ -4,19 +4,10 @@ import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import { ModerationService } from "../../services/index.js";
 
-function parseDuration(str) {
-  if (!str) return 60; // 1 min default
-  const match = str.match(/^(\d+)([smhd])$/i);
-  if (!match) return 60;
-  const num = parseInt(match[1], 10);
-  const unit = match[2].toLowerCase();
-  switch (unit) {
-    case "s": return num;
-    case "m": return num * 60;
-    case "h": return num * 3600;
-    case "d": return num * 86400;
-    default: return num;
-  }
+import { parseDuration as parseDurationUtil } from "../../utils/duration.js";
+
+function parseDuration(str: string | null | undefined): number {
+  return parseDurationUtil(str) || 60;
 }
 
 const slashBuilder = new SlashCommandBuilder()

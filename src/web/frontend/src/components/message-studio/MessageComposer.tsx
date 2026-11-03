@@ -155,7 +155,7 @@ export default function MessageComposer({
     return () => clearTimeout(timer);
   }, [saveStatus, currentDraftId, content, embeds, attachments, mode, messageName, channelId, replyConfig]);
 
-  const getCurrentPayload = () => ({
+  const getCurrentPayload = (): Record<string, any> => ({
     name: messageName,
     mode,
     content,

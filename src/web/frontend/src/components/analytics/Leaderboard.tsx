@@ -7,7 +7,7 @@ export default function Leaderboard({ topChatters = [], topVoice = [], leaderboa
   const [scope, setScope] = useState("weekly");
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState<number | "all">(10);
 
   const filteredData = useMemo(() => {
     let rawData = [];
@@ -131,7 +131,7 @@ export default function Leaderboard({ topChatters = [], topVoice = [], leaderboa
             {[10, 25, "all"].map((size) => (
               <button
                 key={size}
-                onClick={() => setPageSize(size)}
+                onClick={() => setPageSize(size as number | "all")}
                 className={`px-2.5 py-1 rounded-md font-mono text-[11px] uppercase transition-colors ${
                   pageSize === size ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"
                 }`}
@@ -202,9 +202,9 @@ export default function Leaderboard({ topChatters = [], topVoice = [], leaderboa
                   <img
                     src={u.avatar || getDiscordAvatarUrl(u)}
                     alt={u.displayName || u.username}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png";
+                    onError={(e: any) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "https://cdn.discordapp.com/embed/avatars/0.png";
                     }}
                     className="w-10 h-10 rounded-full bg-slate-800 object-cover ring-1 ring-white/10 shrink-0"
                     loading="lazy"

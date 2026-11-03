@@ -8,9 +8,15 @@ import {
   deleteTicketPanel,
   listTickets,
   getTicketById,
+  addTicketNote,
+  getTicketNotes,
+  deleteTicketNote,
+  getTicketEvents,
+  getTicketAnalytics,
 } from "../../db/helpers/tickets.js";
 import { setModuleEnabled } from "../../db/helpers/moduleStatus.js";
-import { deployTicketPanel } from "../../services/ticketService.js";
+import { deployTicketPanel, deleteTicketPanelMessages } from "../../services/ticketService.js";
+import { transitionTicketState } from "../../services/ticketLifecycleService.js";
 
 export const ticketRoutes = new Hono();
 
@@ -29,10 +35,15 @@ ticketRoutes.put("/guilds/:guildId/tickets/config", async (c) => {
   const updates: Record<string, any> = {};
   if (body.enabled !== undefined) updates.enabled = Boolean(body.enabled);
   if (body.transcript_channel_id !== undefined) updates.transcript_channel_id = body.transcript_channel_id || null;
+  if (body.logging_channel_id !== undefined) updates.logging_channel_id = body.logging_channel_id || null;
   if (body.category_id !== undefined) updates.category_id = body.category_id || null;
   if (body.support_role_ids !== undefined) updates.support_role_ids = Array.isArray(body.support_role_ids) ? body.support_role_ids : [];
   if (body.max_tickets_per_user !== undefined) updates.max_tickets_per_user = Math.max(1, Number(body.max_tickets_per_user) || 3);
   if (body.auto_close_hours !== undefined) updates.auto_close_hours = Math.max(0, Number(body.auto_close_hours) || 0);
+  if (body.save_transcripts !== undefined) updates.save_transcripts = Boolean(body.save_transcripts);
+  if (body.channel_name_pattern !== undefined) updates.channel_name_pattern = body.channel_name_pattern;
+  if (body.ticket_counter !== undefined) updates.ticket_counter = Number(body.ticket_counter);
+  if (body.next_ticket_number !== undefined) updates.next_ticket_number = Number(body.next_ticket_number);
 
   const updated = await saveTicketConfig(guildId, updates);
   if (updates.enabled !== undefined) {
@@ -67,6 +78,20 @@ ticketRoutes.delete("/guilds/:guildId/tickets/panels/:panelId", async (c) => {
   const guildId = c.req.param("guildId");
   const panelId = c.req.param("panelId");
 
+  const panel = await getTicketPanel(guildId, panelId);
+  const discordClient = (c as any).get("discordClient") as any;
+
+  if (discordClient && panel) {
+    try {
+      const botGuild = discordClient.guilds?.cache?.get(guildId) || (await discordClient.guilds?.fetch(guildId).catch(() => null));
+      if (botGuild) {
+        await deleteTicketPanelMessages(discordClient, botGuild, panel);
+      }
+    } catch (err) {
+      console.warn("[TICKET PANEL DELETE] Failed to clean up Discord message:", err);
+    }
+  }
+
   const success = await deleteTicketPanel(guildId, panelId);
   return c.json({ success });
 });
@@ -76,7 +101,7 @@ ticketRoutes.post("/guilds/:guildId/tickets/panels/:panelId/deploy", async (c) =
   const guildId = c.req.param("guildId");
   const panelId = c.req.param("panelId");
 
-  const discordClient = c.get("discordClient");
+  const discordClient = (c as any).get("discordClient") as any;
   if (!discordClient) {
     return c.json({ error: "Discord client is unavailable." }, 500);
   }
@@ -117,10 +142,128 @@ ticketRoutes.get("/guilds/:guildId/tickets/list", async (c) => {
 
 // 8. Get Ticket Details
 ticketRoutes.get("/guilds/:guildId/tickets/:ticketId", async (c) => {
+  const guildId = c.req.param("guildId");
   const ticketId = c.req.param("ticketId");
   const ticket = await getTicketById(ticketId);
-  if (!ticket) {
-    return c.json({ error: "Ticket not found." }, 404);
+  if (!ticket || ticket.guild_id !== guildId) {
+    return c.json({ error: "Ticket not found in this server." }, 404);
   }
   return c.json(ticket);
+});
+
+// 9. Get Ticket Performance Analytics
+ticketRoutes.get("/guilds/:guildId/tickets/analytics", async (c) => {
+  const guildId = c.req.param("guildId");
+  const stats = await getTicketAnalytics(guildId);
+  return c.json(stats);
+});
+
+// 10. Get Ticket Private Staff Notes
+ticketRoutes.get("/guilds/:guildId/tickets/:ticketId/notes", async (c) => {
+  const guildId = c.req.param("guildId");
+  const ticketId = c.req.param("ticketId");
+  const ticket = await getTicketById(ticketId);
+  if (!ticket || ticket.guild_id !== guildId) {
+    return c.json({ error: "Ticket not found in this server." }, 404);
+  }
+  const notes = await getTicketNotes(ticketId);
+  return c.json(notes);
+});
+
+// 11. Add Ticket Staff Note
+ticketRoutes.post("/guilds/:guildId/tickets/:ticketId/notes", async (c) => {
+  const guildId = c.req.param("guildId");
+  const ticketId = c.req.param("ticketId");
+  const ticket = await getTicketById(ticketId);
+  if (!ticket || ticket.guild_id !== guildId) {
+    return c.json({ error: "Ticket not found in this server." }, 404);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  if (!body.content || !body.content.trim()) {
+    return c.json({ error: "Content is required." }, 400);
+  }
+
+  const user = (c as any).get("user") || { id: "dashboard_staff", tag: "Staff Member" };
+  const note = await addTicketNote({
+    ticket_id: ticketId,
+    guild_id: guildId,
+    author_id: user.id,
+    author_tag: user.tag || user.username || "Staff",
+    content: body.content,
+  });
+
+  return c.json(note);
+});
+
+// 12. Delete Ticket Staff Note
+ticketRoutes.delete("/guilds/:guildId/tickets/:ticketId/notes/:noteId", async (c) => {
+  const guildId = c.req.param("guildId");
+  const ticketId = c.req.param("ticketId");
+  const ticket = await getTicketById(ticketId);
+  if (!ticket || ticket.guild_id !== guildId) {
+    return c.json({ error: "Ticket not found in this server." }, 404);
+  }
+
+  const noteId = c.req.param("noteId");
+  const user = (c as any).get("user") || { id: "dashboard_staff", tag: "Staff Member" };
+
+  await deleteTicketNote(noteId, ticketId, user.id, user.tag || "Staff", guildId);
+  return c.json({ success: true });
+});
+
+// 13. Get Ticket Activity Audit Events
+ticketRoutes.get("/guilds/:guildId/tickets/:ticketId/events", async (c) => {
+  const guildId = c.req.param("guildId");
+  const ticketId = c.req.param("ticketId");
+  const ticket = await getTicketById(ticketId);
+  if (!ticket || ticket.guild_id !== guildId) {
+    return c.json({ error: "Ticket not found in this server." }, 404);
+  }
+
+  const events = await getTicketEvents(ticketId);
+  return c.json(events);
+});
+
+// 14. Transition Ticket State (claim, escalate, resolve, reopen, etc.)
+ticketRoutes.post("/guilds/:guildId/tickets/:ticketId/transition", async (c) => {
+  const guildId = c.req.param("guildId");
+  const ticketId = c.req.param("ticketId");
+  const ticket = await getTicketById(ticketId);
+  if (!ticket || ticket.guild_id !== guildId) {
+    return c.json({ error: "Ticket not found in this server." }, 404);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const nextStatus = body.status;
+
+  if (!nextStatus) {
+    return c.json({ error: "Target status is required." }, 400);
+  }
+
+  let botGuild = (c as any).get("botGuild");
+  if (!botGuild) {
+    const client = (c as any).get("discordClient");
+    if (client?.guilds) {
+      botGuild = client.guilds.cache.get(guildId) || (await client.guilds.fetch(guildId).catch(() => null));
+    }
+  }
+  if (!botGuild) {
+    return c.json({ error: "Bot is not in this guild." }, 404);
+  }
+
+  const user = (c as any).get("user") || { id: "dashboard_staff", tag: "Staff Member" };
+
+  try {
+    const updated = await transitionTicketState({
+      guild: botGuild,
+      ticketId,
+      nextStatus,
+      actor: { id: user.id, tag: user.tag || user.username || "Staff" },
+      reason: body.reason,
+    });
+    return c.json(updated);
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to transition ticket state." }, 400);
+  }
 });

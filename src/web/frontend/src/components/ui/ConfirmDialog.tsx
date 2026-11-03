@@ -3,8 +3,24 @@ import { AlertTriangle } from "lucide-react";
 import Modal from "./Modal";
 import Button from "./Button";
 
+export interface ConfirmDialogProps {
+  open?: boolean;
+  isOpen?: boolean;
+  onClose?: () => any;
+  onConfirm?: () => any;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  confirmText?: string;
+  cancelText?: string;
+  isDestructive?: boolean;
+  danger?: boolean;
+  isPending?: boolean;
+  [key: string]: any;
+}
+
 export default function ConfirmDialog({
   open,
+  isOpen,
   onClose,
   onConfirm,
   title,
@@ -12,15 +28,19 @@ export default function ConfirmDialog({
   confirmText = "Confirm",
   cancelText = "Cancel",
   isDestructive = false,
+  danger = false,
   isPending = false,
-}) {
+}: ConfirmDialogProps) {
+  const actualOpen = open ?? isOpen ?? false;
+  const actualDestructive = isDestructive || danger;
+
   return (
-    <Modal open={open} onClose={() => !isPending && onClose?.()} showClose={!isPending}>
+    <Modal open={actualOpen} onClose={() => !isPending && onClose?.()} showClose={!isPending}>
       <div className="flex flex-col gap-4">
         <div className="flex items-start gap-4">
           <div
             className={`p-3 rounded-2xl shrink-0 ${
-              isDestructive
+              actualDestructive
                 ? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
                 : "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
             }`}
@@ -43,7 +63,7 @@ export default function ConfirmDialog({
             {cancelText}
           </Button>
           <Button
-            variant={isDestructive ? "danger" : "primary"}
+            variant={actualDestructive ? "danger" : "primary"}
             onClick={onConfirm}
             isLoading={isPending}
             loadingText="Processing..."

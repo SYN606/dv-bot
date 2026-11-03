@@ -2,13 +2,22 @@ import React, { useState, useEffect } from "react";
 import { CornerUpLeft, Search, Check, AlertCircle, X, Bell, BellOff, ArrowRight } from "lucide-react";
 import { validateMessageStudioReply } from "../../api/client";
 
+export interface ReplyMessageSelectorProps {
+  guildId?: string;
+  replyConfig?: Record<string, any>;
+  onChangeReplyConfig?: (config: Record<string, any>) => void;
+  currentChannelId?: string;
+  onSelectChannel?: (channelId: string) => void;
+  [key: string]: any;
+}
+
 export default function ReplyMessageSelector({
   guildId,
   replyConfig = {},
-  onChangeReplyConfig,
+  onChangeReplyConfig = () => {},
   currentChannelId,
   onSelectChannel,
-}) {
+}: ReplyMessageSelectorProps) {
   const [urlInput, setUrlInput] = useState(replyConfig.message_url || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

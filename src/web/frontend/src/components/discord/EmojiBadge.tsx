@@ -2,13 +2,27 @@ import React from "react";
 import { X } from "lucide-react";
 import { parseDiscordEmoji } from "../../utils/discord";
 
-export default function EmojiBadge({ emoji, onRemove = null, size = "md" }) {
+export default function EmojiBadge({ emoji, onRemove = null, size = "md", showName = true, bare = false, className = "" }) {
   const parsed = parseDiscordEmoji(emoji);
-  const imgSize = size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4";
-  const fontSize = size === "sm" ? "text-xs" : "text-sm";
+  const imgSize = size === "sm" ? "w-3.5 h-3.5" : size === "lg" ? "w-6 h-6" : "w-4 h-4";
+  const fontSize = size === "sm" ? "text-xs" : size === "lg" ? "text-lg" : "text-sm";
+
+  if (bare) {
+    if (parsed?.isCustom) {
+      return (
+        <img
+          src={parsed.url}
+          alt={parsed.name}
+          className={`${imgSize} object-contain rounded shrink-0 ${className}`}
+          loading="lazy"
+        />
+      );
+    }
+    return <span className={`${fontSize} ${className}`}>{emoji}</span>;
+  }
 
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/80 border border-white/10 text-slate-300 shadow-sm text-xs font-medium">
+    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xl bg-slate-900/80 border border-white/10 text-slate-300 shadow-sm text-xs font-medium">
       {parsed?.isCustom ? (
         <img
           src={parsed.url}
@@ -19,7 +33,7 @@ export default function EmojiBadge({ emoji, onRemove = null, size = "md" }) {
       ) : (
         <span className={fontSize}>{emoji}</span>
       )}
-      {parsed?.isCustom && (
+      {showName && parsed?.isCustom && (
         <span className="text-[10px] text-slate-500 font-mono">:{parsed.name}:</span>
       )}
       {onRemove && (
