@@ -111,7 +111,8 @@ export default createCommand({
 
     let targetUser = ctx.interaction.options?.getUser?.("user") || null;
     if (!targetUser && ctx.options?.user) {
-      const targetId = typeof ctx.options.user === "string" ? ctx.options.user : ctx.options.user?.id;
+      const raw = typeof ctx.options.user === "string" ? ctx.options.user : ctx.options.user?.id;
+      const targetId = raw?.match(/\d{17,20}/)?.[0];
       if (targetId) {
         targetUser = await client.users.fetch(targetId).catch(() => null);
       }

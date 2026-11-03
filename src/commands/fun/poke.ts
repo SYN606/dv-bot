@@ -1,11 +1,17 @@
 import { SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
-import { getAnimeActionGif, getAndIncrementInteraction, formatInteractionFooter } from "./_animeGifs.js";
+import {
+  getAnimeActionGif,
+  getAndIncrementInteraction,
+  formatInteractionFooter,
+  resolveTargetUser,
+} from "./_animeGifs.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("poke")
   .setDescription("Poke or boop someone to grab their attention")
+  .setDMPermission(false)
   .addUserOption((opt) =>
     opt.setName("user").setDescription("The person you want to poke").setRequired(true)
   );
@@ -20,19 +26,9 @@ export default createCommand({
   slashBuilder,
 
   async execute(ctx) {
-    const { client, message, user, guild } = ctx;
+    const { user, guild } = ctx;
 
-    let target = null;
-    if (ctx.options.user) {
-      target = await client.users.fetch(ctx.options.user).catch(() => null);
-    } else if (message?.mentions?.users?.size > 0) {
-      target = message.mentions.users.first();
-    } else if (ctx.options._args?.length > 0) {
-      const match = ctx.options.raw?.match(/\d{17,20}/);
-      if (match) {
-        target = await client.users.fetch(match[0]).catch(() => null);
-      }
-    }
+    const target = await resolveTargetUser(ctx);
 
     if (!target) {
       return await ctx.reply({
@@ -47,16 +43,18 @@ export default createCommand({
       });
     }
 
+    await ctx.defer({ ephemeral: false });
+
     const gifUrl = await getAnimeActionGif("poke");
 
     if (target.id === user.id) {
       const embed = makeEmbed({
         title: "👉 Self-Boop!",
-        description: `<@${user.id}> poked their own cheek in the mirror! *Boop!* 🪞✨`,
+        description: `<@${user.id}> poked their own cheek in front of the mirror! *Boop!* 🤭💖`,
         level: "PREMIUM",
-        color: 0x54a0ff,
+        color: 0x3498db,
         image: gifUrl,
-        footer: "Hey, wake up!",
+        footer: "10/10 cute cheeks!",
       });
       return await ctx.reply({ embeds: [embed] });
     }
@@ -64,11 +62,10 @@ export default createCommand({
     const { count } = getAndIncrementInteraction(guild?.id, user.id, target.id, "poke");
 
     const captions = [
-      `*Poke poke poke!* <@${user.id}> is poking <@${target.id}> for attention! 👉✨`,
-      `<@${user.id}> gently poked <@${target.id}>'s cheek! *Boop!* 🌸`,
-      `*Hey! Listen!* <@${user.id}> keeps poking <@${target.id}> repeatedly! 🫵😆`,
-      `<@${user.id}> gave <@${target.id}> a sly little boop on the nose! 👃✨`,
-      `<@${user.id}> pokes <@${target.id}>... *Notice me senpai!* 🥺👉👈`,
+      `*Poke poke!* <@${user.id}> is repeatedly poking <@${target.id}>'s cheek! 👉✨`,
+      `*Boop!* <@${user.id}> poked <@${target.id}> right on the nose! 👃💖`,
+      `<@${user.id}> is poking <@${target.id}> to get their attention! *Hey, look over here!* 👀💫`,
+      `*Pokey pokey!* <@${user.id}> sneaks up and prods <@${target.id}> playfully! 🤭🐾`,
     ];
     const caption = captions[Math.floor(Math.random() * captions.length)];
 
@@ -76,7 +73,7 @@ export default createCommand({
       title: "👉 Playful Poke / Boop!",
       description: `### ${caption}`,
       level: "PREMIUM",
-      color: 0x54a0ff,
+      color: 0x3498db,
       image: gifUrl,
       footer: formatInteractionFooter(count, "poke"),
     });

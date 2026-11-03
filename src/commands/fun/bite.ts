@@ -1,11 +1,17 @@
 import { SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
-import { getAnimeActionGif, getAndIncrementInteraction, formatInteractionFooter } from "./_animeGifs.js";
+import {
+  getAnimeActionGif,
+  getAndIncrementInteraction,
+  formatInteractionFooter,
+  resolveTargetUser,
+} from "./_animeGifs.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("bite")
   .setDescription("Playfully nibble or bite someone (anime tease)")
+  .setDMPermission(false)
   .addUserOption((opt) =>
     opt.setName("user").setDescription("The person you want to bite").setRequired(true)
   );
@@ -20,19 +26,9 @@ export default createCommand({
   slashBuilder,
 
   async execute(ctx) {
-    const { client, message, user, guild } = ctx;
+    const { user, guild } = ctx;
 
-    let target = null;
-    if (ctx.options.user) {
-      target = await client.users.fetch(ctx.options.user).catch(() => null);
-    } else if (message?.mentions?.users?.size > 0) {
-      target = message.mentions.users.first();
-    } else if (ctx.options._args?.length > 0) {
-      const match = ctx.options.raw?.match(/\d{17,20}/);
-      if (match) {
-        target = await client.users.fetch(match[0]).catch(() => null);
-      }
-    }
+    const target = await resolveTargetUser(ctx);
 
     if (!target) {
       return await ctx.reply({
@@ -46,6 +42,8 @@ export default createCommand({
         ephemeral: true,
       });
     }
+
+    await ctx.defer({ ephemeral: false });
 
     const gifUrl = await getAnimeActionGif("bite");
 

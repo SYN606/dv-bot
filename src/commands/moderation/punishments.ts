@@ -8,6 +8,7 @@ const slashBuilder = new SlashCommandBuilder()
   .setName("punishments")
   .setDescription("View all punishments and warnings for a user")
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+  .setDMPermission(false)
   .addUserOption((opt) =>
     opt.setName("user").setDescription("The user to lookup").setRequired(true)
   );
@@ -19,6 +20,7 @@ export default createCommand({
   examples: [
     "/punishments user:@User",
     "dvpunishments @User",
+    "dvpunishments 123456789012345678",
   ],
   category: "Moderation",
   modOnly: true,
@@ -27,32 +29,35 @@ export default createCommand({
   slashBuilder,
 
   async execute(ctx) {
-    const { interaction, message, guild, client } = ctx;
+    const { guild, client } = ctx;
     if (!guild) return;
 
-    let targetUser = ctx.options.user;
+    const rawTarget = ctx.options.user || ctx.options._args?.[0];
+    const targetUserId = rawTarget ? String(rawTarget).match(/\d{17,20}/)?.[0] : null;
 
-    if (!targetUser && !ctx.isInteraction) {
-      targetUser = message?.mentions?.users?.first();
-      if (!targetUser && ctx.options._args?.[0]) {
-        const rawId = ctx.options._args[0].replace(/[<@!>]/g, "");
-        targetUser = await client.users.fetch(rawId).catch(() => null);
-      }
-    }
-
-    if (!targetUser) {
+    if (!targetUserId) {
       return await ctx.reply({
-        content: "Please provide a valid user to lookup.",
+        embeds: [
+          makeEmbed({
+            title: "Invalid User",
+            description: `${EMOJIS.get("fail") || "❌"} Please provide a valid user mention or 17-20 digit user ID to lookup.`,
+            level: "ERROR",
+          }),
+        ],
         ephemeral: true,
       });
     }
 
     await ctx.defer({ ephemeral: false });
 
+    const targetUser = await client.users.fetch(targetUserId).catch(() => null);
+    const targetTag = targetUser?.tag || targetUser?.username || `User <@${targetUserId}>`;
+    const avatarUrl = targetUser?.displayAvatarURL?.() || undefined;
+
     const [punishments, warnings, tempbans] = await Promise.all([
-      PunishmentRecord.findAll({ where: { guild_id: String(guild.id), user_id: String(targetUser.id) } }).catch(() => []),
-      WarningRecord.findAll({ where: { guild_id: String(guild.id), user_id: String(targetUser.id) } }).catch(() => []),
-      TempbanRecord.findAll({ where: { guild_id: String(guild.id), user_id: String(targetUser.id) } }).catch(() => []),
+      PunishmentRecord.findAll({ where: { guild_id: String(guild.id), user_id: String(targetUserId) } }).catch(() => []),
+      WarningRecord.findAll({ where: { guild_id: String(guild.id), user_id: String(targetUserId) } }).catch(() => []),
+      TempbanRecord.findAll({ where: { guild_id: String(guild.id), user_id: String(targetUserId) } }).catch(() => []),
     ]);
 
     const allRecords = [
@@ -61,7 +66,7 @@ export default createCommand({
         reason: p.reason,
         moderator_id: p.moderator_id,
         date: new Date(p.created_at),
-        emoji: p.action_type === "ban" ? "🔨" : p.action_type === "kick" ? "👢" : "⏳",
+        emoji: p.action_type === "ban" ? "🔨" : p.action_type === "kick" ? "👢" : p.action_type === "timeout" ? "⏳" : "📝",
       })),
       ...warnings.map((w) => ({
         type: "WARNING",
@@ -77,14 +82,14 @@ export default createCommand({
         date: new Date(t.created_at),
         emoji: "⏲️",
       })),
-    ].sort((a, b) => b.date - a.date);
+    ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
     if (allRecords.length === 0) {
       const emptyEmbed = makeEmbed({
-        title: `Punishment History: ${targetUser.username}`,
+        title: `Punishment History: ${targetTag}`,
         description: `${EMOJIS.get("success") || "✅"} This user has a clean record. No punishments found.`,
         color: COLORS.SUCCESS,
-        thumbnail: targetUser.displayAvatarURL(),
+        thumbnail: avatarUrl,
       });
       return await ctx.reply({ embeds: [emptyEmbed] });
     }
@@ -100,10 +105,10 @@ export default createCommand({
     }
 
     const embed = makeEmbed({
-      title: `Punishment History: ${targetUser.username}`,
+      title: `Punishment History: ${targetTag}`,
       description: `Total Infractions: **${allRecords.length}**\n${allRecords.length > 25 ? "*Showing latest 25 records*" : ""}`,
       color: COLORS.WARNING,
-      thumbnail: targetUser.displayAvatarURL(),
+      thumbnail: avatarUrl,
       fields,
     });
 

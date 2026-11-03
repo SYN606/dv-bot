@@ -12,7 +12,7 @@ import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import { getRestrictedCommands } from "../../db/helpers/channelCommandRestrict.js";
 
-const CATEGORY_META = {
+const CATEGORY_META: Record<string, { name: string; emoji: string; description: string }> = {
   moderation: {
     name: "Moderation",
     emoji: "🔨",
@@ -57,13 +57,13 @@ const CATEGORY_META = {
 
 const BANNER_GIF = process.env.HELP_BANNER_GIF || null;
 
-function getCommandTypeBadge(command) {
+function getCommandTypeBadge(command: any) {
   if (command.slashOnly) return "`[Slash Only]`";
   if (command.prefixOnly) return "`[Prefix Only]`";
   return "`[Slash & Prefix]`";
 }
 
-function getFriendlyPermission(cmd) {
+function getFriendlyPermission(cmd: any) {
   if (cmd.requiredPermission) {
     for (const [permName, permBit] of Object.entries(PermissionFlagsBits)) {
       if (cmd.requiredPermission === permBit) {
@@ -77,7 +77,53 @@ function getFriendlyPermission(cmd) {
   return "Everyone";
 }
 
-function buildCommandHelpEmbed(cmd, currentPrefix, user) {
+function buildCategoryHelpEmbed(catName: string, categoryCmds: any[], currentPrefix: string, user: any) {
+  const catKey = catName.toLowerCase();
+  const meta = CATEGORY_META[catKey] || { name: catName, emoji: "🔹", description: "" };
+  const arrow = EMOJIS.get("arrow_point") || "➡️";
+
+  let catDesc = `### ${meta.emoji} ${catName} Module\n`;
+  if (meta.description) catDesc += `${meta.description}\n\n`;
+
+  for (const cmd of categoryCmds) {
+    const typeBadge = getCommandTypeBadge(cmd);
+    const isSlash = !cmd.prefixOnly;
+    const isPrefix = !cmd.slashOnly;
+    const name = cmd.name;
+
+    let cmdString = "";
+    if (isSlash && !isPrefix) {
+      cmdString = `/${name}`;
+    } else if (isSlash && isPrefix) {
+      cmdString = `/${name}  or  ${currentPrefix}${name}`;
+    } else {
+      cmdString = `${currentPrefix}${name}`;
+    }
+
+    const aliases = cmd.aliases?.length > 0 ? ` *(Aliases: ${cmd.aliases.join(", ")})*` : "";
+
+    catDesc +=
+      `${arrow} **\`${cmdString}\`** ${typeBadge}${aliases}\n` +
+      `> ${cmd.description}\n\n`;
+  }
+
+  catDesc += `\n*Tip: Run \`/help <command>\` or \`${currentPrefix}help <command>\` to view subcommands, argument requirements, and usage examples.*`;
+
+  const catEmbed = makeEmbed({
+    title: `Digital Vigital \u2022 ${catName} Commands`,
+    description: catDesc,
+    level: "INFO",
+    footer: `Requested by ${user.tag || user.username}`,
+  });
+
+  if (BANNER_GIF) {
+    catEmbed.setImage(BANNER_GIF);
+  }
+
+  return catEmbed;
+}
+
+function buildCommandHelpEmbed(cmd: any, currentPrefix: string, user: any) {
   const isSlash = !cmd.prefixOnly;
   const isPrefix = !cmd.slashOnly;
   const typeBadge = getCommandTypeBadge(cmd);
@@ -85,19 +131,19 @@ function buildCommandHelpEmbed(cmd, currentPrefix, user) {
   const json = cmd.slashBuilder?.toJSON ? cmd.slashBuilder.toJSON() : null;
   const rawOptions = json?.options || [];
 
-  const subcommands = rawOptions.filter((opt) => opt.type === 1);
-  const regularOptions = rawOptions.filter((opt) => opt.type !== 1);
+  const subcommands = rawOptions.filter((opt: any) => opt.type === 1);
+  const regularOptions = rawOptions.filter((opt: any) => opt.type !== 1);
 
   // 1. Determine Slash Usage
-  let slashUsageList = [];
+  let slashUsageList: string[] = [];
   if (isSlash) {
     if (subcommands.length > 0) {
       for (const sub of subcommands) {
-        const subArgs = (sub.options || []).map((o) => (o.required ? `<${o.name}>` : `[${o.name}]`)).join(" ");
+        const subArgs = (sub.options || []).map((o: any) => (o.required ? `<${o.name}>` : `[${o.name}]`)).join(" ");
         slashUsageList.push(`\u2022 \`/${cmd.name} ${sub.name}${subArgs ? " " + subArgs : ""}\``);
       }
     } else {
-      const args = regularOptions.map((o) => (o.required ? `<${o.name}>` : `[${o.name}]`)).join(" ");
+      const args = regularOptions.map((o: any) => (o.required ? `<${o.name}>` : `[${o.name}]`)).join(" ");
       slashUsageList.push(`\u2022 \`/${cmd.name}${args ? " " + args : ""}\``);
     }
   } else {
@@ -105,18 +151,18 @@ function buildCommandHelpEmbed(cmd, currentPrefix, user) {
   }
 
   // 2. Determine Prefix Usage
-  let prefixUsageList = [];
+  let prefixUsageList: string[] = [];
   if (isPrefix) {
     if (cmd.usage) {
       const formatted = cmd.usage.startsWith(cmd.name) ? cmd.usage : `${cmd.name} ${cmd.usage}`;
       prefixUsageList.push(`\u2022 \`${currentPrefix}${formatted}\``);
     } else if (subcommands.length > 0) {
       for (const sub of subcommands) {
-        const subArgs = (sub.options || []).map((o) => (o.required ? `<${o.name}>` : `[${o.name}]`)).join(" ");
+        const subArgs = (sub.options || []).map((o: any) => (o.required ? `<${o.name}>` : `[${o.name}]`)).join(" ");
         prefixUsageList.push(`\u2022 \`${currentPrefix}${cmd.name} ${sub.name}${subArgs ? " " + subArgs : ""}\``);
       }
     } else {
-      const args = regularOptions.map((o) => (o.required ? `<${o.name}>` : `[${o.name}]`)).join(" ");
+      const args = regularOptions.map((o: any) => (o.required ? `<${o.name}>` : `[${o.name}]`)).join(" ");
       prefixUsageList.push(`\u2022 \`${currentPrefix}${cmd.name}${args ? " " + args : ""}\``);
     }
   } else {
@@ -124,7 +170,7 @@ function buildCommandHelpEmbed(cmd, currentPrefix, user) {
   }
 
   // 3. Subcommands & Options breakdown
-  let optionsDetails = [];
+  let optionsDetails: string[] = [];
   if (subcommands.length > 0) {
     optionsDetails.push(`**Subcommands:**`);
     for (const sub of subcommands) {
@@ -145,19 +191,18 @@ function buildCommandHelpEmbed(cmd, currentPrefix, user) {
   }
 
   // 4. Examples
-  let examplesList = [];
+  let examplesList: string[] = [];
   if (cmd.examples && cmd.examples.length > 0) {
-    examplesList = cmd.examples.map((ex) => `\u2022 \`${ex}\``);
+    examplesList = cmd.examples.map((ex: string) => `\u2022 \`${ex}\``);
   } else {
-    // Generate clean smart examples from usage
     if (isSlash) {
       if (subcommands.length > 0) {
         for (const sub of subcommands.slice(0, 3)) {
-          const sampleArgs = (sub.options || []).map((o) => (o.required ? `<${o.name}>` : "")).filter(Boolean).join(" ");
+          const sampleArgs = (sub.options || []).map((o: any) => (o.required ? `<${o.name}>` : "")).filter(Boolean).join(" ");
           examplesList.push(`\u2022 \`/${cmd.name} ${sub.name}${sampleArgs ? " " + sampleArgs : ""}\``);
         }
       } else {
-        const sampleArgs = regularOptions.map((o) => (o.required ? `<${o.name}>` : "")).filter(Boolean).join(" ");
+        const sampleArgs = regularOptions.map((o: any) => (o.required ? `<${o.name}>` : "")).filter(Boolean).join(" ");
         examplesList.push(`\u2022 \`/${cmd.name}${sampleArgs ? " " + sampleArgs : ""}\``);
       }
     } else {
@@ -165,10 +210,7 @@ function buildCommandHelpEmbed(cmd, currentPrefix, user) {
     }
   }
 
-  // Aliases
-  const aliasesStr = cmd.aliases?.length > 0 ? cmd.aliases.map((a) => `\`${a}\``).join(", ") : "None";
-
-  // Category & Authority
+  const aliasesStr = cmd.aliases?.length > 0 ? cmd.aliases.map((a: string) => `\`${a}\``).join(", ") : "None";
   const catKey = (cmd.category || "General").toLowerCase();
   const catInfo = CATEGORY_META[catKey] || { name: cmd.category || "General", emoji: "🔹" };
   const authority = getFriendlyPermission(cmd);
@@ -202,7 +244,7 @@ const slashBuilder = new SlashCommandBuilder()
   .addStringOption((opt) =>
     opt
       .setName("command")
-      .setDescription("Specific command name to inspect syntax, options, and examples")
+      .setDescription("Specific command or category name (e.g. fun, moderation, ban)")
       .setRequired(false)
       .setAutocomplete(true)
   );
@@ -212,25 +254,34 @@ export default createCommand({
   description: "Show bot command directory, usage rules, and detailed syntax.",
   category: "Utility",
   aliases: ["h", "commands"],
-  usage: "[command]",
-  examples: ["/help", "/help command:lock", "dvhelp ban"],
+  usage: "[command|category]",
+  examples: ["/help", "/help command:fun", "/help command:moderation", "/help command:lock", "dvhelp ban", "dvhelp fun"],
   slashBuilder,
 
   async autocomplete(interaction) {
     const focusedValue = interaction.options.getFocused().toLowerCase();
     const client = interaction.client;
 
-    let choices = [];
-    for (const cmd of client.commands.values()) {
-      if (
-        cmd.name.toLowerCase().includes(focusedValue) ||
-        (cmd.aliases && cmd.aliases.some((a) => a.toLowerCase().includes(focusedValue)))
-      ) {
-        choices.push({ name: cmd.name, value: cmd.name });
+    const choices: { name: string; value: string }[] = [];
+
+    // 1. Add categories
+    for (const [key, meta] of Object.entries(CATEGORY_META)) {
+      if (key.includes(focusedValue) || meta.name.toLowerCase().includes(focusedValue)) {
+        choices.push({ name: `📁 ${meta.name} Module`, value: key });
       }
     }
 
-    choices = choices.sort((a, b) => a.name.localeCompare(b.name)).slice(0, 25);
+    // 2. Add commands
+    for (const cmd of client.commands.values()) {
+      if (
+        cmd.name.toLowerCase().includes(focusedValue) ||
+        (cmd.aliases && cmd.aliases.some((a: string) => a.toLowerCase().includes(focusedValue)))
+      ) {
+        choices.push({ name: `/${cmd.name} (${cmd.category || "General"})`, value: cmd.name });
+      }
+    }
+
+    choices.sort((a, b) => a.name.localeCompare(b.name)).splice(25);
     await interaction.respond(choices).catch(() => {});
   },
 
@@ -241,29 +292,49 @@ export default createCommand({
     const rawPrefix = CONFIG.PREFIX || "dv";
     const currentPrefix = rawPrefix.trim();
 
-    // 1. Specific Command Details
+    // 1. Specific Command or Category Details
     if (query) {
-      const searchName = query.toLowerCase().replace(/^\//, "");
+      const searchName = query.toLowerCase().replace(/^\//, "").trim();
+
+      // Check if it's a command
       const resolvedName = client.aliases.get(searchName) || searchName;
       const cmd = client.commands.get(resolvedName);
 
-      if (!cmd) {
+      if (cmd) {
+        const embed = buildCommandHelpEmbed(cmd, currentPrefix, user);
         return await ctx.reply({
-          embeds: [
-            makeEmbed({
-              title: "Command Not Found",
-              description: `${EMOJIS.get("fail") || "❌"} Command \`${query}\` not found in system directory.`,
-              level: "ERROR",
-            }),
-          ],
-          ephemeral: true,
+          embeds: [embed],
+          ephemeral: ctx.isInteraction ? true : false,
         });
       }
 
-      const embed = buildCommandHelpEmbed(cmd, currentPrefix, user);
+      // Check if it's a category (e.g. 'fun', 'moderation', 'admin', 'voice', etc.)
+      const matchedCat = Object.entries(CATEGORY_META).find(
+        ([key, meta]) => key === searchName || meta.name.toLowerCase() === searchName || meta.name.toLowerCase().includes(searchName)
+      );
+
+      if (matchedCat) {
+        const [catKey, meta] = matchedCat;
+        const matchingCmds = Array.from(client.commands.values())
+          .filter((c: any) => (c.category || "Utility").toLowerCase() === catKey)
+          .sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+        const catEmbed = buildCategoryHelpEmbed(meta.name, matchingCmds, currentPrefix, user);
+        return await ctx.reply({
+          embeds: [catEmbed],
+          ephemeral: ctx.isInteraction ? true : false,
+        });
+      }
+
       return await ctx.reply({
-        embeds: [embed],
-        ephemeral: ctx.isInteraction ? true : false,
+        embeds: [
+          makeEmbed({
+            title: "Command or Module Not Found",
+            description: `${EMOJIS.get("fail") || "❌"} Command or module \`${query}\` not found in system directory.\n\nUse \`/help\` to browse all available categories.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
       });
     }
 
@@ -279,7 +350,7 @@ export default createCommand({
     }
 
     // Build Categories Map dynamically
-    const categoriesMap = new Map<string, any>();
+    const categoriesMap = new Map<string, any[]>();
     for (const cmd of client.commands.values()) {
       if (restrictedSet.has(cmd.name.toLowerCase()) && !isAdminUser) continue;
 
@@ -290,7 +361,7 @@ export default createCommand({
       if (!categoriesMap.has(catName)) {
         categoriesMap.set(catName, []);
       }
-      categoriesMap.get(catName).push(cmd);
+      categoriesMap.get(catName)!.push(cmd);
     }
 
     const PREFERRED_ORDER = ["moderation", "admin", "tickets", "channels", "voice", "analytics", "utility", "fun"];
@@ -321,7 +392,7 @@ export default createCommand({
     // Build the Dropdown Options
     const options = categoriesList.map(([catName, cmds]) => {
       const catKey = catName.toLowerCase();
-      const meta = CATEGORY_META[catKey] || { emoji: "🔹", description: `Explore ${catName} commands.` };
+      const meta = CATEGORY_META[catKey] || { name: catName, emoji: "🔹", description: `Explore ${catName} commands.` };
 
       return {
         label: catName,
@@ -370,7 +441,7 @@ export default createCommand({
       `\u2022 Total Commands: **${totalCmds}**\n` +
       `\u2022 Slash Only: **${slashOnlyCount}** (Strict permission & audit lock)\n` +
       `\u2022 Slash & Prefix: **${hybridCount}** (Configured prefix: \`${currentPrefix}\`)\n\n` +
-      `💡 **Quick Tip:** Use \`/help <command>\` or \`${currentPrefix}help <command>\` for detailed syntax, subcommands, and examples.`;
+      `💡 **Quick Tip:** Use \`/help <command>\` or \`${currentPrefix}help <command|category>\` to view commands in any category.`;
 
     const mainEmbed = makeEmbed({
       title: "Digital Vigital \u2022 Command Directory",
@@ -390,11 +461,11 @@ export default createCommand({
 
     // Component Collector
     const collector = responseMsg.createMessageComponentCollector({
-      filter: (i) => i.user.id === user.id,
+      filter: (i: any) => i.user.id === user.id,
       time: 120000,
     });
 
-    collector.on("collect", async (i) => {
+    collector.on("collect", async (i: any) => {
       if (i.customId === "help_close") {
         await i.deferUpdate().catch(() => {});
         return collector.stop("closed");
@@ -408,54 +479,13 @@ export default createCommand({
       if (i.customId === "help_category_select") {
         const catName = i.values[0];
         const categoryCmds = (categoriesMap.get(catName) || []).sort((a, b) => a.name.localeCompare(b.name));
-
-        const catKey = catName.toLowerCase();
-        const meta = CATEGORY_META[catKey] || { emoji: "🔹", description: "" };
-        const arrow = EMOJIS.get("arrow_point") || "➡️";
-
-        let catDesc = `### ${meta.emoji} ${catName} Module\n`;
-        if (meta.description) catDesc += `${meta.description}\n\n`;
-
-        for (const cmd of categoryCmds) {
-          const typeBadge = getCommandTypeBadge(cmd);
-          const isSlash = !cmd.prefixOnly;
-          const isPrefix = !cmd.slashOnly;
-          const name = cmd.name;
-
-          let cmdString = "";
-          if (isSlash && !isPrefix) {
-            cmdString = `/${name}`;
-          } else if (isSlash && isPrefix) {
-            cmdString = `/${name}  or  ${currentPrefix}${name}`;
-          } else {
-            cmdString = `${currentPrefix}${name}`;
-          }
-
-          const aliases = cmd.aliases?.length > 0 ? ` *(Aliases: ${cmd.aliases.join(", ")})*` : "";
-
-          catDesc +=
-            `${arrow} **\`${cmdString}\`** ${typeBadge}${aliases}\n` +
-            `> ${cmd.description}\n\n`;
-        }
-
-        catDesc += `\n*Tip: Run \`/help <command>\` or \`${currentPrefix}help <command>\` to view subcommands, argument requirements, and usage examples.*`;
-
-        const catEmbed = makeEmbed({
-          title: `Digital Vigital \u2022 ${catName} Commands`,
-          description: catDesc,
-          level: "INFO",
-          footer: `Requested by ${user.tag || user.username}`,
-        });
-
-        if (BANNER_GIF) {
-          catEmbed.setImage(BANNER_GIF);
-        }
+        const catEmbed = buildCategoryHelpEmbed(catName, categoryCmds, currentPrefix, user);
 
         await i.update({ embeds: [catEmbed], components: [actionRow1, actionRow2] }).catch(() => {});
       }
     });
 
-    collector.on("end", async (collected, reason) => {
+    collector.on("end", async (_collected: any, reason: string) => {
       if (reason === "closed") {
         if (ctx.isInteraction) {
           await interaction.deleteReply().catch(() => {});
@@ -470,24 +500,13 @@ export default createCommand({
       homeButton.setDisabled(true);
       closeButton.setDisabled(true);
 
-      if (responseMsg && responseMsg.edit) {
-        await responseMsg
-          .edit({
-            components: [
-              new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu),
-              new ActionRowBuilder<ButtonBuilder>().addComponents(homeButton, dashboardButton, closeButton),
-            ],
-          })
-          .catch(() => {});
-      } else if (ctx.isInteraction) {
-        await interaction
-          .editReply({
-            components: [
-              new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu),
-              new ActionRowBuilder<ButtonBuilder>().addComponents(homeButton, dashboardButton, closeButton),
-            ],
-          })
-          .catch(() => {});
+      const disabledRow1 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
+      const disabledRow2 = new ActionRowBuilder<ButtonBuilder>().addComponents(homeButton, dashboardButton, closeButton);
+
+      if (ctx.isInteraction) {
+        await interaction.editReply({ components: [disabledRow1, disabledRow2] }).catch(() => {});
+      } else if (responseMsg && responseMsg.edit) {
+        await responseMsg.edit({ components: [disabledRow1, disabledRow2] }).catch(() => {});
       }
     });
   },

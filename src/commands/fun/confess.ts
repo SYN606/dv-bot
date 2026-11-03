@@ -20,7 +20,8 @@ import {
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("confess")
-  .setDescription("Submit an anonymous confession to the server.");
+  .setDescription("Submit an anonymous confession to the server.")
+  .setDMPermission(false);
 
 export default createCommand({
   name: "confess",

@@ -1,11 +1,17 @@
 import { SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
-import { getAnimeActionGif, getAndIncrementInteraction, formatInteractionFooter } from "./_animeGifs.js";
+import {
+  getAnimeActionGif,
+  getAndIncrementInteraction,
+  formatInteractionFooter,
+  resolveTargetUser,
+} from "./_animeGifs.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("pat")
   .setDescription("Gently pat someone on the head (wholesome anime headpat)")
+  .setDMPermission(false)
   .addUserOption((opt) =>
     opt.setName("user").setDescription("The person you want to headpat").setRequired(true)
   );
@@ -20,19 +26,9 @@ export default createCommand({
   slashBuilder,
 
   async execute(ctx) {
-    const { client, message, user, guild } = ctx;
+    const { user, guild } = ctx;
 
-    let target = null;
-    if (ctx.options.user) {
-      target = await client.users.fetch(ctx.options.user).catch(() => null);
-    } else if (message?.mentions?.users?.size > 0) {
-      target = message.mentions.users.first();
-    } else if (ctx.options._args?.length > 0) {
-      const match = ctx.options.raw?.match(/\d{17,20}/);
-      if (match) {
-        target = await client.users.fetch(match[0]).catch(() => null);
-      }
-    }
+    const target = await resolveTargetUser(ctx);
 
     if (!target) {
       return await ctx.reply({
@@ -47,28 +43,29 @@ export default createCommand({
       });
     }
 
+    await ctx.defer({ ephemeral: false });
+
     const gifUrl = await getAnimeActionGif("pat");
 
     if (target.id === user.id) {
       const embed = makeEmbed({
-        title: "✨ Gentle Self-Care Headpat!",
-        description: `<@${user.id}> patted their own head... *There there, you're doing your best!* 🥺💖`,
+        title: "🌸 Self-Care Headpats!",
+        description: `<@${user.id}> gently patted their own head... *You did great today, be proud of yourself!* 🌸✨`,
         level: "PREMIUM",
-        color: 0x54a0ff,
+        color: 0x9b59b6,
         image: gifUrl,
-        footer: "Good job today!",
+        footer: "Sending you extra pats! 💖",
       });
       return await ctx.reply({ embeds: [embed] });
     }
 
-    const { count } = getAndIncrementInteraction(guild?.id, user.id, target.id, "headpat");
+    const { count } = getAndIncrementInteraction(guild?.id, user.id, target.id, "pat");
 
     const captions = [
-      `<@${user.id}> gently patted <@${target.id}> on the head! *Pat pat~* 🌸`,
-      `<@${user.id}> ruffled <@${target.id}>'s hair with sweet affection! ✨🥺`,
-      `<@${user.id}> showered <@${target.id}> with warm, wholesome headpats! 💖`,
-      `<@${user.id}> placed a soft hand on <@${target.id}>'s head: *“Good job, you did great!”* 🌟`,
-      `*Pat pat pat!* <@${user.id}> treats <@${target.id}> to the ultimate comfort headpat! 🧸`,
+      `<@${user.id}> gently patted <@${target.id}> on the head! *There there, good job!* 🌸✨`,
+      `*Pat pat pat!* <@${user.id}> gives <@${target.id}> the most comforting headpats! 💖`,
+      `<@${user.id}> affectionately rustled <@${target.id}>'s hair with gentle pats! ☁️💕`,
+      `*Soft pats!* <@${user.id}> comforts <@${target.id}> with warm headpats! 🥺💫`,
     ];
     const caption = captions[Math.floor(Math.random() * captions.length)];
 
@@ -76,7 +73,7 @@ export default createCommand({
       title: "🌸 Gentle Headpat!",
       description: `### ${caption}`,
       level: "PREMIUM",
-      color: 0x54a0ff,
+      color: 0x9b59b6,
       image: gifUrl,
       footer: formatInteractionFooter(count, "headpat"),
     });

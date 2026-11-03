@@ -1,4 +1,4 @@
-import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { ChannelType, GuildMember, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
@@ -7,6 +7,8 @@ import { sendModLog } from "../../utils/modLog.js";
 const slashBuilder = new SlashCommandBuilder()
   .setName("moveall")
   .setDescription("Move all members from one voice channel to another")
+  .setDefaultMemberPermissions(PermissionFlagsBits.MoveMembers)
+  .setDMPermission(false)
   .addChannelOption((opt) =>
     opt
       .setName("source")
@@ -22,7 +24,7 @@ const slashBuilder = new SlashCommandBuilder()
       .setRequired(false)
   );
 
-async function resolveVoiceChannel(guild, query) {
+async function resolveVoiceChannel(guild: any, query: any) {
   if (!query) return null;
   const cleaned = String(query).replace(/[<#>]/g, "").trim();
   let ch = guild.channels.cache.get(cleaned);
@@ -31,7 +33,7 @@ async function resolveVoiceChannel(guild, query) {
   }
   if (!ch) {
     ch = guild.channels.cache.find(
-      (c) => c.isVoiceBased?.() && c.name.toLowerCase() === cleaned.toLowerCase()
+      (c: any) => c.isVoiceBased?.() && c.name.toLowerCase() === cleaned.toLowerCase()
     );
   }
   return ch && ch.isVoiceBased?.() ? ch : null;
@@ -55,8 +57,17 @@ export default createCommand({
     const { guild, member } = ctx;
     if (!guild) return;
 
-    const currentVc = member?.voice?.channelId
-      ? member.voice.channel || await guild.channels.fetch(member.voice.channelId).catch(() => null)
+    // Defer early to avoid 3-second interaction expiration
+    await ctx.defer({ ephemeral: false });
+
+    let invokerMember = member instanceof GuildMember ? member : null;
+    if (!invokerMember && guild.members.fetch) {
+      invokerMember = await guild.members.fetch(ctx.user.id).catch(() => null);
+    }
+    const currentVcId = invokerMember?.voice?.channelId || member?.voice?.channelId;
+
+    const currentVc = currentVcId
+      ? guild.channels.cache.get(currentVcId) || (await guild.channels.fetch(currentVcId).catch(() => null))
       : null;
 
     let rawSource = ctx.options.source;
@@ -146,7 +157,7 @@ export default createCommand({
     }
 
     // Bot permission checks
-    const botMember = guild.members.me || await guild.members.fetchMe().catch(() => null);
+    const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
     if (!botMember || !botMember.permissions.has(PermissionFlagsBits.MoveMembers)) {
       return await ctx.reply({
         embeds: [
@@ -174,7 +185,8 @@ export default createCommand({
     }
 
     // Invoker permission check
-    if (member && !target.permissionsFor(member)?.has(PermissionFlagsBits.Connect)) {
+    const checkMember = invokerMember || member;
+    if (checkMember && !target.permissionsFor(checkMember)?.has(PermissionFlagsBits.Connect)) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
@@ -188,7 +200,7 @@ export default createCommand({
     }
 
     const activeMembers = [...source.members.values()].filter(
-      (m) => m && m.voice?.channelId === source.id
+      (m: any) => m && m.voice?.channelId === source.id
     );
 
     if (activeMembers.length === 0) {
@@ -204,14 +216,13 @@ export default createCommand({
       });
     }
 
-    await ctx.defer();
-
     const startTime = Date.now();
     let movedCount = 0;
     let failedCount = 0;
     const queue = [...activeMembers];
     const CONCURRENCY = 10;
     const workerCount = Math.min(CONCURRENCY, activeMembers.length);
+    const auditReason = `Bulk moved by ${ctx.user.tag || ctx.user.username} (${ctx.user.id})`.slice(0, 512);
 
     async function moveWorker() {
       while (queue.length > 0) {
@@ -220,7 +231,7 @@ export default createCommand({
           continue;
         }
         try {
-          await m.voice.setChannel(target);
+          await m.voice.setChannel(target, auditReason);
           movedCount++;
         } catch {
           failedCount++;
@@ -239,7 +250,7 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "Move Failed",
-            description: `${EMOJIS.get("fail") || "❌"} Could not move any members to **${target.name}**. Please verify bot permissions and role hierarchy.`,
+            description: `${EMOJIS.get("fail") || "❌"} Could not move any members to **${target.name}**. Please verify bot permissions and voice limits.`,
             level: "ERROR",
           }),
         ],

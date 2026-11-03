@@ -1,4 +1,4 @@
-import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { PermissionFlagsBits, PermissionsBitField, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
@@ -10,6 +10,8 @@ const permscanFetchThrottle = new Map<string, number>(); // guildId -> timestamp
 const slashBuilder = new SlashCommandBuilder()
   .setName("permscan")
   .setDescription("Run a security audit on a member or the entire server.")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  .setDMPermission(false)
   .addSubcommand((sub) =>
     sub
       .setName("member")
@@ -41,10 +43,15 @@ export default createCommand({
     const { guild, member, interaction, message } = ctx;
     if (!guild) return;
 
-    const hasPerms = 
-        member.id === guild.ownerId || 
-        member.permissions.has(PermissionFlagsBits.Administrator) ||
-        member.permissions.has(PermissionFlagsBits.ManageGuild);
+    const modPerms =
+      member?.permissions instanceof PermissionsBitField
+        ? member.permissions
+        : new PermissionsBitField(BigInt(member?.permissions || 0));
+
+    const hasPerms =
+      member?.id === guild.ownerId ||
+      modPerms.has(PermissionFlagsBits.Administrator) ||
+      modPerms.has(PermissionFlagsBits.ManageGuild);
 
     if (!hasPerms && !(await isBotAdmin(ctx))) {
       return await ctx.reply({
@@ -72,9 +79,14 @@ export default createCommand({
       }
     }
 
+    await ctx.defer({ ephemeral: false });
+
     if (subcommand === "member") {
-      let targetUserId = ctx.options.user || ctx.options._args?.[subcommand === "member" && ctx.options._args[0] !== "member" ? 0 : 1]?.replace(/[<@!>]/g, "");
-      
+      const rawUser =
+        ctx.options.user ||
+        ctx.options._args?.[subcommand === "member" && ctx.options._args[0] !== "member" ? 0 : 1];
+      let targetUserId = rawUser?.match(/\d{17,20}/)?.[0];
+
       if (!targetUserId && message?.reference?.messageId) {
         const referenced = await ctx.channel.messages.fetch(message.reference.messageId).catch(() => null);
         if (referenced?.author) {
@@ -83,7 +95,7 @@ export default createCommand({
       }
 
       if (!targetUserId) {
-         return await ctx.reply({
+        return await ctx.reply({
           embeds: [
             makeEmbed({
               title: "User Not Found",
@@ -113,9 +125,9 @@ export default createCommand({
       const redCount = data.filter((d) => d.level === "red").length;
       const yellowCount = data.filter((d) => d.level === "yellow").length;
       const greenCount = data.filter((d) => d.level === "green").length;
-      
-      const threatScore = (redCount * 10) + (yellowCount * 5) + (greenCount * 1);
-      
+
+      const threatScore = redCount * 10 + yellowCount * 5 + greenCount * 1;
+
       let threatLevel = "Low";
       let levelColor = "SUCCESS";
       let emojiStr = "🟢";
@@ -135,18 +147,24 @@ export default createCommand({
       }
 
       let description = `**Threat Score:** \`${threatScore}\`\n**Risk Level:** ${emojiStr} **${threatLevel}**\n\n`;
-      
+
       if (data.length === 0) {
         description += "✅ This member has no dangerous permissions.";
       } else {
         const redPerms = data.filter((d) => d.level === "red");
         const yellowPerms = data.filter((d) => d.level === "yellow");
-        
+
         if (redPerms.length > 0) {
-          description += `**🔴 Critical Permissions:**\n` + redPerms.map(p => `• ${p.permission} \`[${p.roles.length} roles]\``).join("\n") + "\n\n";
+          description +=
+            `**🔴 Critical Permissions:**\n` +
+            redPerms.map((p) => `• ${p.permission} \`[${p.roles.length} roles]\``).join("\n") +
+            "\n\n";
         }
         if (yellowPerms.length > 0) {
-          description += `**🟡 Elevated Permissions:**\n` + yellowPerms.map(p => `• ${p.permission} \`[${p.roles.length} roles]\``).join("\n") + "\n\n";
+          description +=
+            `**🟡 Elevated Permissions:**\n` +
+            yellowPerms.map((p) => `• ${p.permission} \`[${p.roles.length} roles]\``).join("\n") +
+            "\n\n";
         }
       }
 
@@ -163,7 +181,6 @@ export default createCommand({
     }
 
     if (subcommand === "server") {
-      await ctx.defer().catch(() => {});
       const now = Date.now();
       const lastFetch = permscanFetchThrottle.get(guild.id) || 0;
       if (
@@ -193,7 +210,7 @@ export default createCommand({
         const data = analyzeMemberPermissions(m);
         const redCount = data.filter((d) => d.level === "red").length;
         const yellowCount = data.filter((d) => d.level === "yellow").length;
-        const score = (redCount * 10) + (yellowCount * 5);
+        const score = redCount * 10 + yellowCount * 5;
 
         if (score >= 20 || redCount > 0) criticalUsers++;
         else if (score >= 10 || yellowCount >= 2) highUsers++;
@@ -203,7 +220,7 @@ export default createCommand({
         }
       }
 
-      topThreats.sort((a, b) => b.score - a.score);
+      topThreats.sort((a, b) => b.score - a.score || b.redCount - a.redCount);
       const topList = topThreats.slice(0, 5);
 
       let description = `**Server Health:** ${criticalUsers === 0 ? "🟢 Safe" : "🔴 At Risk"}\n\n`;
@@ -213,7 +230,7 @@ export default createCommand({
 
       if (topList.length > 0) {
         description += `**Top Threats:**\n`;
-        description += topList.map((t, i) => `${i+1}. **${t.user}** - Score: \`${t.score}\``).join("\n");
+        description += topList.map((t, i) => `${i + 1}. **${t.user}** - Score: \`${t.score}\``).join("\n");
       } else {
         description += `*No highly elevated members found.*`;
       }

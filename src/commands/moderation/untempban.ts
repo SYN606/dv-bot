@@ -8,6 +8,8 @@ import { liftTempban } from "../../services/tempbanService.js";
 const slashBuilder = new SlashCommandBuilder()
   .setName("untempban")
   .setDescription("Lifts an active tempban/jail isolation role from a user.")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
+  .setDMPermission(false)
   .addUserOption((opt) => opt.setName("user").setDescription("The target member").setRequired(true))
   .addStringOption((opt) => opt.setName("reason").setDescription("Reason for the early lift").setRequired(false));
 
@@ -29,23 +31,32 @@ export default createCommand({
     const { guild, user: moderator } = ctx;
     if (!guild) return;
 
-    let targetUserId = ctx.options.user;
-    let reason = ctx.options.reason;
-
-    if (!ctx.isInteraction) {
-      const rawUser = ctx.options._args?.[0];
-      if (rawUser) targetUserId = rawUser.replace(/[<@!>]/g, "");
-      reason = ctx.options._args?.slice(1).join(" ");
-    }
+    const rawUser = ctx.options.user || ctx.options._args?.[0];
+    const targetUserId = rawUser?.match(/\d{17,20}/)?.[0];
+    const reason = ctx.options.reason || ctx.options._args?.slice(1).join(" ") || "No reason provided";
 
     if (!targetUserId) {
       return await ctx.reply({
-        embeds: [makeEmbed({ title: "Missing Argument", description: "Please specify a valid user.\nUsage: `/untempban <user> [reason]`", level: "ERROR" })],
+        embeds: [makeEmbed({ title: "Missing Argument", description: `${EMOJIS.get("fail") || "❌"} Please specify a valid user.\nUsage: \`/untempban <user> [reason]\``, level: "ERROR" })],
         ephemeral: true,
       });
     }
 
-    const reasonStr = reason || "No reason provided";
+    const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Missing Permissions",
+            description: `${EMOJIS.get("fail") || "❌"} I lack the \`Manage Roles\` permission to remove isolation roles.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    await ctx.defer({ ephemeral: false });
 
     const config = await getTempbanConfig(guild.id);
     if (!config?.role_id) {
@@ -78,13 +89,11 @@ export default createCommand({
       });
     }
 
-    await ctx.defer({ ephemeral: false });
-
     const result = await liftTempban({
       guild,
       targetUserId,
       moderator,
-      reason: reasonStr,
+      reason: reason.slice(0, 512),
     });
 
     if (result.success) {
@@ -92,14 +101,15 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "Tempban Removed",
-            description: `${EMOJIS.get("success") || "✅"} Active tempban lifted cleanly from <@${targetUserId}>.`,
+            description: `${EMOJIS.get("success") || "✅"} Active tempban lifted cleanly from <@${targetUserId}>.\n\n📌 **Reason:** ${reason}`,
             level: "SUCCESS",
           })
         ]
       });
     } else {
       return await ctx.reply({
-        embeds: [makeEmbed({ title: "Execution Error", description: "Failed to lift tempban isolation.", level: "ERROR" })]
+        embeds: [makeEmbed({ title: "Execution Error", description: (result as any)?.error || "Failed to lift tempban isolation.", level: "ERROR" })],
+        ephemeral: true,
       });
     }
   },

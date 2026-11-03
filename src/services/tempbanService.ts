@@ -13,6 +13,8 @@ import { parseDuration, formatDuration } from "../utils/duration.js";
 
 export { parseDuration, formatDuration };
 
+const inFlightLifts = new Set<string>();
+
 /**
  * Execute a temporary ban or role isolation
  */
@@ -51,7 +53,7 @@ export async function executeTempban({
   }
 
   // 1. Assign isolation role
-  await targetMember.roles.add(isolationRole, `Tempban by ${moderator.tag || moderator.id}: ${reason}`).catch(() => {});
+  await targetMember.roles.add(isolationRole, `Tempban by ${moderator.tag || moderator.username || moderator.id}: ${reason}`.slice(0, 512)).catch(() => {});
 
   // 2. Temporarily strip verified role if server has verification enabled
   try {
@@ -111,53 +113,67 @@ export async function liftTempban({
   moderator = null,
   reason = "Early lift by staff",
 }) {
-  const config = await getTempbanConfig(guild.id);
-  const isolationRoleId = config?.role_id ? String(config.role_id) : null;
-  const isRoleIsolation = Boolean(isolationRoleId);
+  const lockKey = `${guild.id}:${targetUserId}`;
+  if (inFlightLifts.has(lockKey)) return { success: true };
+  inFlightLifts.add(lockKey);
 
-  if (isRoleIsolation) {
-    const member = await guild.members.fetch(String(targetUserId)).catch(() => null);
-    if (member) {
-      await member.roles.remove(isolationRoleId, `Tempban lifted: ${reason}`).catch(() => {});
+  try {
+    const config = await getTempbanConfig(guild.id);
+    const isolationRoleId = config?.role_id ? String(config.role_id) : null;
+    const isRoleIsolation = Boolean(isolationRoleId);
 
-      // Restore verified role if verification is configured
-      try {
-        const verifConfig = await VerificationConfig.findByPk(guild.id);
-        if (verifConfig && verifConfig.enabled && verifConfig.verified_role_id) {
-          const verifiedRole = guild.roles.cache.get(String(verifConfig.verified_role_id));
-          const botMember = guild.members.me;
-          if (
-            verifiedRole &&
-            botMember &&
-            verifiedRole.position < botMember.roles.highest.position &&
-            !member.roles.cache.has(verifiedRole.id)
-          ) {
-            await member.roles.add(verifiedRole, "Restoring verified status (Tempban lifted)").catch(() => {});
+    const safeReason = String(reason || "Early lift by staff").slice(0, 512);
+
+    if (isRoleIsolation) {
+      const member = await guild.members.fetch(String(targetUserId)).catch(() => null);
+      if (member) {
+        await member.roles.remove(isolationRoleId, `Tempban lifted: ${safeReason}`.slice(0, 512)).catch(() => {});
+
+        // Restore verified role if verification is configured
+        try {
+          const verifConfig = await VerificationConfig.findByPk(guild.id);
+          if (verifConfig && verifConfig.enabled && verifConfig.verified_role_id) {
+            const verifiedRole = guild.roles.cache.get(String(verifConfig.verified_role_id));
+            const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+            if (
+              verifiedRole &&
+              botMember &&
+              verifiedRole.position < botMember.roles.highest.position &&
+              !member.roles.cache.has(verifiedRole.id)
+            ) {
+              await member.roles.add(verifiedRole, "Restoring verified status (Tempban lifted)").catch(() => {});
+            }
           }
+        } catch (err: any) {
+          logger.warn("[TEMPBAN SERVICE] Failed to restore verified role:", err?.message);
         }
-      } catch (err) {
-        logger.warn("[TEMPBAN SERVICE] Failed to restore verified role:", err?.message);
       }
+    } else {
+      await guild.bans.remove(String(targetUserId), `Tempban lifted: ${safeReason}`.slice(0, 512)).catch(() => {});
     }
-  } else {
-    await guild.bans.remove(String(targetUserId), `Tempban lifted: ${reason}`).catch(() => {});
+
+    // Deactivate record in DB
+    await deactivateTempban(guild.id, targetUserId);
+
+    const resolvedTarget = (await guild.client?.users?.fetch(String(targetUserId)).catch(() => null)) || targetUserId;
+
+    await sendModLog({
+      guild,
+      category: "UNBAN",
+      title: "Tempban Lifted",
+      description: moderator
+        ? `Temporary ban lifted early for <@${targetUserId}> by ${moderator?.tag || moderator?.username || "Staff"}.`
+        : `Temporary ban expired automatically for <@${targetUserId}>.`,
+      level: "SUCCESS",
+      actor: moderator,
+      target: resolvedTarget,
+      extraFields: { Reason: reason },
+    });
+
+    return { success: true };
+  } finally {
+    inFlightLifts.delete(lockKey);
   }
-
-  // Deactivate record in DB
-  await deactivateTempban(guild.id, targetUserId);
-
-  await sendModLog({
-    guild,
-    category: "UNBAN",
-    title: "Tempban Lifted",
-    description: `Temporary ban lifted early for <@${targetUserId}> by ${moderator?.tag || moderator?.username || "Staff"}.`,
-    level: "SUCCESS",
-    actor: moderator,
-    target: targetUserId,
-    extraFields: { Reason: reason },
-  });
-
-  return { success: true };
 }
 
 /**

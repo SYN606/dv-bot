@@ -7,6 +7,8 @@ import { ModerationService } from "../../services/index.js";
 const slashBuilder = new SlashCommandBuilder()
   .setName("kick")
   .setDescription("Kick a member from the server")
+  .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
+  .setDMPermission(false)
   .addUserOption((opt) => opt.setName("user").setDescription("The target member to kick").setRequired(true))
   .addStringOption((opt) => opt.setName("reason").setDescription("Reason for kicking").setRequired(false));
 
@@ -28,11 +30,21 @@ export default createCommand({
     const { guild, user } = ctx;
     if (!guild) return;
 
-    const targetUserId = ctx.options.user || ctx.options._args?.[0]?.replace(/[<@!>]/g, "");
-    const reason = ctx.options.reason || ctx.options._args?.slice(1).join(" ") || "No reason provided";
+    const rawTarget = ctx.options.user || ctx.options._args?.[0];
+    const targetUserId = rawTarget ? String(rawTarget).match(/\d{17,20}/)?.[0] : null;
+    const reason = ctx.options.reason || (ctx.options._args && ctx.options._args.length > 1 ? ctx.options._args.slice(1).join(" ") : null) || "No reason provided";
 
     if (!targetUserId) {
-      return await ctx.reply({ content: "Please specify a valid member to kick.", ephemeral: true });
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Invalid Target",
+            description: `${EMOJIS.get("fail") || "❌"} Please specify a valid member mention or 17-20 digit user ID to kick.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
     }
 
     if (targetUserId === user.id) {
@@ -41,6 +53,19 @@ export default createCommand({
           makeEmbed({
             title: "Kick Failed",
             description: `${EMOJIS.get("fail") || "❌"} You cannot kick yourself.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    if (targetUserId === ctx.client.user.id) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Kick Failed",
+            description: `${EMOJIS.get("fail") || "❌"} You cannot kick me.`,
             level: "ERROR",
           }),
         ],
@@ -61,17 +86,14 @@ export default createCommand({
       });
     }
 
-    const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
-    if (!targetMember) {
-      return await ctx.reply({ content: "Member not found in this server.", ephemeral: true });
-    }
-
-    if (!targetMember.kickable) {
+    // Check bot permissions
+    const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+    if (!botMember?.permissions.has(PermissionFlagsBits.KickMembers)) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
-            title: "Kick Failed",
-            description: `${EMOJIS.get("fail") || "❌"} I cannot kick this member. Their role is higher than mine.`,
+            title: "Missing Bot Permissions",
+            description: `${EMOJIS.get("fail") || "❌"} I lack the required **Kick Members** permission in this server.`,
             level: "ERROR",
           }),
         ],
@@ -79,7 +101,39 @@ export default createCommand({
       });
     }
 
-    if (ctx.member && targetMember.roles.highest.position >= ctx.member.roles.highest.position && guild.ownerId !== user.id) {
+    await ctx.defer({ ephemeral: false });
+
+    const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
+    if (!targetMember) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Member Not Found",
+            description: `${EMOJIS.get("fail") || "❌"} Member <@${targetUserId}> was not found in this server.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    if (!targetMember.kickable) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Kick Failed",
+            description: `${EMOJIS.get("fail") || "❌"} I cannot kick this member. Their role is equal to or higher than my highest role.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    const modMember = ctx.member?.roles?.highest ? ctx.member : (await guild.members.fetch(user.id).catch(() => null));
+    const modHighest = modMember?.roles?.highest?.position ?? 0;
+
+    if (guild.ownerId !== user.id && targetMember.roles.highest.position >= modHighest) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
@@ -99,7 +153,7 @@ export default createCommand({
         targetMember,
         reason,
       });
-    } catch (err) {
+    } catch (err: any) {
       return await ctx.reply({
         embeds: [
           makeEmbed({

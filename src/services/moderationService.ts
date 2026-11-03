@@ -16,7 +16,8 @@ export async function executeKick({ guild, moderator, targetMember, reason = "No
   await targetMember.send({ embeds: [dmEmbed] }).catch(() => {});
 
   // Execute kick
-  await targetMember.kick(reason);
+  const auditReason = String(reason || "No reason provided").slice(0, 512);
+  await targetMember.kick(auditReason);
 
   await PunishmentRecord.create({
     guild_id: String(guild.id),
@@ -66,7 +67,7 @@ export async function executeBan({
 
   // Execute ban
   await guild.bans.create(String(targetId), {
-    reason: `${reason} | By ${moderator.tag || moderator.id}`,
+    reason: `${reason} | By ${moderator.tag || moderator.username || moderator.id}`.slice(0, 512),
     deleteMessageSeconds,
   });
 
@@ -86,7 +87,7 @@ export async function executeBan({
     description: `User <@${targetId}> was banned by ${moderator.tag || moderator.username || "Staff"}.\n\n• **Reason:** ${reason}`,
     level: "ERROR",
     actor: moderator,
-    target: targetUser,
+    target: typeof targetUser === "string" ? ((await guild.client?.users?.fetch(targetId).catch(() => null)) || targetUser) : targetUser,
     extraFields: { Reason: reason },
   });
 
@@ -97,7 +98,16 @@ export async function executeBan({
  * Execute an unban action
  */
 export async function executeUnban({ guild, moderator, targetUserId, reason = "Unbanned by staff" }) {
-  await guild.bans.remove(String(targetUserId), reason);
+  const auditReason = String(reason || "Unbanned by staff").slice(0, 512);
+  await guild.bans.remove(String(targetUserId), auditReason);
+
+  await PunishmentRecord.create({
+    guild_id: String(guild.id),
+    user_id: String(targetUserId),
+    moderator_id: String(moderator.id),
+    action_type: "unban",
+    reason,
+  }).catch(() => {});
 
   await sendModLog({
     guild,
@@ -106,7 +116,7 @@ export async function executeUnban({ guild, moderator, targetUserId, reason = "U
     description: `User <@${targetUserId}> was unbanned by ${moderator?.tag || moderator?.username || "Staff"}.`,
     level: "SUCCESS",
     actor: moderator,
-    target: targetUserId,
+    target: (await guild.client?.users?.fetch(String(targetUserId)).catch(() => null)) || targetUserId,
     extraFields: { Reason: reason },
   });
 
@@ -139,7 +149,8 @@ export async function executeTimeout({
   await targetMember.send({ embeds: [dmEmbed] }).catch(() => {});
 
   // Apply timeout
-  await targetMember.timeout(durationMs, reason);
+  const auditReason = String(reason || "No reason provided").slice(0, 512);
+  await targetMember.timeout(durationMs, auditReason);
 
   await PunishmentRecord.create({
     guild_id: String(guild.id),

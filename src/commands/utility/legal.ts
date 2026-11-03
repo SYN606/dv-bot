@@ -33,7 +33,7 @@ export default createCommand({
     const avatar = client.user?.displayAvatarURL({ dynamic: true, size: 256 }) || null;
 
     // Detect which document was requested via slash option or prefix alias / argument
-    const rawArg = (ctx.options.document || ctx.options._args?.[0] || ctx.commandName || "").toLowerCase();
+    const rawArg = (ctx.options.document || ctx.options._args?.[0] || ctx.command?.name || "").toLowerCase();
     const isTerms = rawArg.includes("term") || rawArg === "tos";
     const isPrivacy = rawArg.includes("priv") || rawArg.includes("policy");
 

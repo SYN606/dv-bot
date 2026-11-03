@@ -1,44 +1,47 @@
-import { SlashCommandBuilder } from "discord.js";
+import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 
 // Helper for formatting timestamp
-function formatTimestamp(timestamp) {
+function formatTimestamp(timestamp: number | null | undefined) {
   if (!timestamp) return "Unknown";
   const unix = Math.floor(timestamp / 1000);
   return `<t:${unix}:F>\n<t:${unix}:R>`;
 }
 
 // Helper for permissions
-function getPermissions(member) {
+function getPermissions(member: any) {
   if (member.guild && member.id === member.guild.ownerId) {
     return "Server Owner, Administrator";
   }
 
   const perms = member.permissions;
-  if (perms.has("Administrator")) {
+  if (!perms) return "None";
+
+  if (perms.has(PermissionFlagsBits.Administrator)) {
     return "Administrator";
   }
 
-  const important = [];
-  if (perms.has("ManageGuild")) important.push("Manage Server");
-  if (perms.has("ManageRoles")) important.push("Manage Roles");
-  if (perms.has("ManageChannels")) important.push("Manage Channels");
-  if (perms.has("BanMembers")) important.push("Ban Members");
-  if (perms.has("KickMembers")) important.push("Kick Members");
+  const important: string[] = [];
+  if (perms.has(PermissionFlagsBits.ManageGuild)) important.push("Manage Server");
+  if (perms.has(PermissionFlagsBits.ManageRoles)) important.push("Manage Roles");
+  if (perms.has(PermissionFlagsBits.ManageChannels)) important.push("Manage Channels");
+  if (perms.has(PermissionFlagsBits.BanMembers)) important.push("Ban Members");
+  if (perms.has(PermissionFlagsBits.KickMembers)) important.push("Kick Members");
+  if (perms.has(PermissionFlagsBits.ModerateMembers)) important.push("Timeout Members");
 
   return important.length ? important.slice(0, 5).join(", ") : "None";
 }
 
 // Helper for activities
-function getActivities(member) {
+function getActivities(member: any) {
   if (!member.presence || !member.presence.activities.length) {
     return "None";
   }
-  const activities = [];
+  const activities: string[] = [];
   for (const activity of member.presence.activities) {
-    if (activity.type === 4) { // Custom status
+    if (activity.type === 4) {
       if (activity.emoji && activity.state) {
         activities.push(`${activity.emoji.toString()} ${activity.state}`);
       } else if (activity.state) {
@@ -56,6 +59,8 @@ function getActivities(member) {
 const slashBuilder = new SlashCommandBuilder()
   .setName("whois")
   .setDescription("View comprehensive user and member lookup information.")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  .setDMPermission(false)
   .addUserOption((opt) => opt.setName("user").setDescription("Target member").setRequired(false));
 
 export default createCommand({
@@ -73,25 +78,31 @@ export default createCommand({
   slashBuilder,
 
   async execute(ctx) {
-    if (ctx.isInteraction) await ctx.defer();
     const { guild, client } = ctx;
     if (!guild) return;
 
+    await ctx.defer({ ephemeral: false });
+
     let targetUser = ctx.user;
     if (ctx.options?.user) {
-      const targetId = typeof ctx.options.user === "string" ? ctx.options.user : ctx.options.user.id;
-      targetUser = await client.users.fetch(targetId).catch(() => ctx.user);
+      const raw = typeof ctx.options.user === "string" ? ctx.options.user : ctx.options.user?.id;
+      const targetId = raw?.match(/\d{17,20}/)?.[0];
+      if (targetId) {
+        targetUser = await client.users.fetch(targetId).catch(() => ctx.user);
+      }
     } else if (ctx.message && ctx.message.mentions.users.size > 0) {
-      targetUser = ctx.message.mentions.users.first();
+      targetUser = ctx.message.mentions.users.first() || ctx.user;
     } else if (ctx.options?._args && ctx.options._args.length > 0) {
-      const match = ctx.options._args[0].match(/^<@!?(\d+)>$/) || [null, ctx.options._args[0]];
-      targetUser = await client.users.fetch(match[1]).catch(() => ctx.user);
+      const targetId = ctx.options._args[0].match(/\d{17,20}/)?.[0];
+      if (targetId) {
+        targetUser = await client.users.fetch(targetId).catch(() => ctx.user);
+      }
     }
 
-    let fetchedUser;
+    let fetchedUser: any;
     try {
       fetchedUser = await client.users.fetch(targetUser.id, { force: true });
-    } catch (error) {
+    } catch {
       fetchedUser = targetUser;
     }
 
@@ -111,13 +122,13 @@ export default createCommand({
 
     // Roles (if member)
     let roleText = "None";
-    let roles = [];
+    let roles: string[] = [];
     if (targetMember) {
       roles = (Array.from(targetMember.roles.cache.values()) as any[])
         .filter((r) => r.id !== guild.id)
         .sort((a, b) => b.position - a.position)
         .map((r) => `<@&${r.id}>`);
-      
+
       if (roles.length > 0) {
         roleText = roles.slice(0, 12).join(", ");
         if (roles.length > 12) {
@@ -129,18 +140,18 @@ export default createCommand({
     // Voice (if member)
     let voiceText = "Not connected";
     if (targetMember && targetMember.voice && targetMember.voice.channel) {
-      voiceText = `<#${targetMember.voice.channel.id}> (${targetMember.voice.channel.members.size})`;
+      voiceText = `<#${targetMember.voice.channel.id}> (${targetMember.voice.channel.members?.size || 1})`;
     }
 
     // Boosting (if member)
-    const boostText = targetMember && targetMember.premiumSinceTimestamp 
-      ? formatTimestamp(targetMember.premiumSinceTimestamp) 
+    const boostText = targetMember && targetMember.premiumSinceTimestamp
+      ? formatTimestamp(targetMember.premiumSinceTimestamp)
       : "Not boosting";
 
     // Mutuals
-    const mutuals = client.guilds.cache.filter((g) => g.members.cache.has(targetUser.id)).size;
+    const mutuals = client.guilds.cache.filter((g: any) => g.members?.cache?.has(targetUser.id)).size;
 
-    const developerEmoji = EMOJIS.get("developer") || "👨💻";
+    const developerEmoji = EMOJIS.get("developer") || "👨‍💻";
     const arrowEmoji = EMOJIS.get("arrow_point") || "▶";
     const messageEmoji = EMOJIS.get("message") || "💬";
     const folderEmoji = EMOJIS.get("folder") || "📁";
@@ -150,23 +161,23 @@ export default createCommand({
     const warningEmoji = EMOJIS.get("warning") || "⚠️";
     const curvedArrow = EMOJIS.get("curved_arrow") || "↪";
 
-    const embedOptions: any = {
+    const embedOptions: Record<string, any> = {
       title: `${targetUser.username}`,
       description: `${developerEmoji} <@${targetUser.id}>\n${arrowEmoji} \`${targetUser.id}\``,
       level: "INFO",
-      thumbnail: targetUser.displayAvatarURL({ size: 1024 }),
+      thumbnail: typeof targetUser.displayAvatarURL === "function" ? targetUser.displayAvatarURL({ size: 1024 }) : null,
       footer: `Action by : ${ctx.user.username}`,
-      footerIcon: ctx.user.displayAvatarURL(),
-      fields: []
+      footerIcon: typeof ctx.user.displayAvatarURL === "function" ? ctx.user.displayAvatarURL() : null,
+      fields: [],
     };
 
-    if (fetchedUser.hexAccentColor) {
+    if (fetchedUser?.hexAccentColor) {
       embedOptions.color = parseInt(fetchedUser.hexAccentColor.replace("#", ""), 16);
     } else if (targetMember && targetMember.displayColor) {
       embedOptions.color = targetMember.displayColor;
     }
-    
-    if (fetchedUser.bannerURL()) {
+
+    if (typeof fetchedUser?.bannerURL === "function" && fetchedUser.bannerURL()) {
       embedOptions.image = fetchedUser.bannerURL({ size: 1024, dynamic: true });
     }
 
@@ -174,29 +185,29 @@ export default createCommand({
     const displayName = targetMember ? targetMember.displayName : (targetUser.globalName || targetUser.username);
     embedOptions.fields.push({
       name: `${messageEmoji} User`,
-      value: `**Display:** ${displayName}\n**Global:** ${targetUser.globalName || 'None'}\n**Nickname:** ${targetMember?.nickname || 'None'}\n**Bot:** ${targetUser.bot ? "True" : "False"}`,
-      inline: false
+      value: `**Display:** ${displayName}\n**Global:** ${targetUser.globalName || "None"}\n**Nickname:** ${targetMember?.nickname || "None"}\n**Bot:** ${targetUser.bot ? "True" : "False"}`,
+      inline: false,
     });
 
     // Field 2: Created
     embedOptions.fields.push({
       name: `${folderEmoji} Created`,
       value: formatTimestamp(targetUser.createdTimestamp),
-      inline: true
+      inline: true,
     });
 
     // Field 3: Joined (if member)
     embedOptions.fields.push({
       name: `${supportEmoji} Joined`,
       value: targetMember ? formatTimestamp(targetMember.joinedTimestamp) : "Unknown",
-      inline: true
+      inline: true,
     });
 
     // Field 4: Boosting
     embedOptions.fields.push({
       name: `${boostEmoji} Boosting`,
       value: boostText,
-      inline: true
+      inline: true,
     });
 
     // Field 5: Server (if member)
@@ -204,28 +215,28 @@ export default createCommand({
       const topRole = targetMember.roles.highest.id !== guild.id ? `<@&${targetMember.roles.highest.id}>` : "None";
       embedOptions.fields.push({
         name: `${modEmoji} Server`,
-        value: `**Join Position:** #${joinPosition}\n**Top Role:** ${topRole}\n**Roles:** ${roles.length}\n**Voice:** ${voiceText}\n**Mutuals:** ${mutuals}`,
-        inline: false
+        value: `**Join Position:** ${joinPosition}\n**Top Role:** ${topRole}\n**Roles:** ${roles.length}\n**Voice:** ${voiceText}\n**Mutuals:** ${mutuals}`,
+        inline: false,
       });
-      
+
       // Field 6: Permissions
       embedOptions.fields.push({
         name: `${warningEmoji} Permissions`,
         value: getPermissions(targetMember),
-        inline: false
+        inline: false,
       });
-      
+
       // Field 7: Activities
       embedOptions.fields.push({
         name: `${curvedArrow} Activities`,
         value: getActivities(targetMember),
-        inline: false
+        inline: false,
       });
     } else {
       embedOptions.fields.push({
         name: `${modEmoji} Server`,
         value: `**Mutuals:** ${mutuals}\nNot a member of this server.`,
-        inline: false
+        inline: false,
       });
     }
 
@@ -233,15 +244,11 @@ export default createCommand({
     embedOptions.fields.push({
       name: `${folderEmoji} Roles (${roles.length})`,
       value: roleText,
-      inline: false
+      inline: false,
     });
 
     const embed = makeEmbed(embedOptions);
 
-    await ctx.reply({ embeds: [embed] });
-
-    if (ctx.message) {
-      ctx.message.delete().catch(() => null);
-    }
+    return await ctx.reply({ embeds: [embed] });
   },
 });

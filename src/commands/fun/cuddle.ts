@@ -1,11 +1,17 @@
 import { SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
-import { getAnimeActionGif, getAndIncrementInteraction, formatInteractionFooter } from "./_animeGifs.js";
+import {
+  getAnimeActionGif,
+  getAndIncrementInteraction,
+  formatInteractionFooter,
+  resolveTargetUser,
+} from "./_animeGifs.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("cuddle")
   .setDescription("Snuggle and cuddle up with someone in a cozy embrace")
+  .setDMPermission(false)
   .addUserOption((opt) =>
     opt.setName("user").setDescription("The person you want to cuddle").setRequired(true)
   );
@@ -20,19 +26,9 @@ export default createCommand({
   slashBuilder,
 
   async execute(ctx) {
-    const { client, message, user, guild } = ctx;
+    const { user, guild } = ctx;
 
-    let target = null;
-    if (ctx.options.user) {
-      target = await client.users.fetch(ctx.options.user).catch(() => null);
-    } else if (message?.mentions?.users?.size > 0) {
-      target = message.mentions.users.first();
-    } else if (ctx.options._args?.length > 0) {
-      const match = ctx.options.raw?.match(/\d{17,20}/);
-      if (match) {
-        target = await client.users.fetch(match[0]).catch(() => null);
-      }
-    }
+    const target = await resolveTargetUser(ctx);
 
     if (!target) {
       return await ctx.reply({
@@ -46,6 +42,8 @@ export default createCommand({
         ephemeral: true,
       });
     }
+
+    await ctx.defer({ ephemeral: false });
 
     const gifUrl = await getAnimeActionGif("cuddle");
 
@@ -64,15 +62,15 @@ export default createCommand({
     const { count } = getAndIncrementInteraction(guild?.id, user.id, target.id, "cuddle");
 
     const captions = [
-      `<@${user.id}> pulled <@${target.id}> into a warm, cozy snuggle! 🧸✨`,
-      `<@${user.id}> curled up next to <@${target.id}> for a sweet cuddle session! 🌸💕`,
-      `<@${user.id}> and <@${target.id}> are snuggled together under a fluffy blanket! 💤💖`,
-      `<@${user.id}> cuddled <@${target.id}> closely, keeping them safe and warm! 🥺💫`,
+      `<@${user.id}> curled up and snuggled closely with <@${target.id}>! 🧸💖`,
+      `<@${user.id}> pulled <@${target.id}> into a super cozy, warm cuddle! 🌸✨`,
+      `<@${user.id}> and <@${target.id}> are sharing the softest cuddle session! ☁️💤`,
+      `*Aww!* <@${user.id}> is sweetly wrapping a blanket around <@${target.id}>! 💕`,
     ];
     const caption = captions[Math.floor(Math.random() * captions.length)];
 
     const embed = makeEmbed({
-      title: "🧸 Cozy Anime Cuddle!",
+      title: "🧸 Sweet Anime Cuddle!",
       description: `### ${caption}`,
       level: "PREMIUM",
       color: 0xff9ff3,

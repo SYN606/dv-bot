@@ -12,10 +12,13 @@ import { getWarningPunishmentConfig } from "../../db/helpers/warningPunishments.
 import { isModuleEnabled } from "../../db/helpers/moduleStatus.js";
 import { executeTempban } from "../../services/tempbanService.js";
 import { sendModLog } from "../../utils/modLog.js";
+import { formatDuration } from "../../utils/duration.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("warnings")
   .setDescription("Manage and view member warnings")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+  .setDMPermission(false)
   .addSubcommand((sub) =>
     sub
       .setName("add")
@@ -59,7 +62,7 @@ export default createCommand({
   slashBuilder,
 
   async execute(ctx) {
-    const { guild, user } = ctx;
+    const { guild, user, member: modMember } = ctx;
     if (!guild) return;
 
     let sub = ctx.subcommand || "list";
@@ -79,25 +82,73 @@ export default createCommand({
 
     // --- SUBCOMMAND: ADD ---
     if (sub === "add") {
-      const targetUserId = ctx.options.user || ctx.options._args?.[0]?.replace(/[<@!>]/g, "");
+      const rawUser = ctx.options.user || ctx.options._args?.[0];
+      const targetUserId = rawUser?.match(/\d{17,20}/)?.[0];
       const reason = ctx.options.reason || ctx.options._args?.slice(1).join(" ") || "No reason provided";
 
-      if (!targetUserId) return await ctx.reply("Please specify a user to warn.");
+      if (!targetUserId) {
+        return await ctx.reply({
+          embeds: [makeEmbed({ title: "Missing Argument", description: `${EMOJIS.get("fail") || "❌"} Please specify a valid user ID or mention.`, level: "ERROR" })],
+          ephemeral: true,
+        });
+      }
+
+      if (targetUserId === ctx.client.user.id) {
+        return await ctx.reply({
+          embeds: [makeEmbed({ title: "Self Action Blocked", description: `${EMOJIS.get("fail") || "❌"} You cannot warn the bot.`, level: "ERROR" })],
+          ephemeral: true,
+        });
+      }
+
+      if (targetUserId === user.id) {
+        return await ctx.reply({
+          embeds: [makeEmbed({ title: "Error", description: "You cannot warn yourself.", level: "ERROR" })],
+          ephemeral: true,
+        });
+      }
 
       const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
-      if (!targetMember) return await ctx.reply({ embeds: [makeEmbed({ title: "Error", description: "Target member not found in server.", level: "ERROR" })] });
-
-      if (targetMember.id === user.id) {
-        return await ctx.reply({ embeds: [makeEmbed({ title: "Error", description: "You cannot warn yourself.", level: "ERROR" })], ephemeral: true });
+      if (!targetMember) {
+        return await ctx.reply({
+          embeds: [makeEmbed({ title: "Error", description: `${EMOJIS.get("fail") || "❌"} Target member not found in this server.`, level: "ERROR" })],
+          ephemeral: true,
+        });
       }
+
+      if (targetMember.user.bot) {
+        return await ctx.reply({
+          embeds: [makeEmbed({ title: "Error", description: "You cannot warn bot accounts.", level: "ERROR" })],
+          ephemeral: true,
+        });
+      }
+
       if (targetMember.id === guild.ownerId) {
-        return await ctx.reply({ embeds: [makeEmbed({ title: "Permission Denied", description: "You cannot warn the server owner.", level: "ERROR" })], ephemeral: true });
-      }
-      if (guild.ownerId !== user.id && targetMember.roles.highest.position >= ctx.member.roles.highest.position) {
-        return await ctx.reply({ embeds: [makeEmbed({ title: "Permission Denied", description: "You cannot warn a member with an equal or higher role.", level: "ERROR" })], ephemeral: true });
+        return await ctx.reply({
+          embeds: [makeEmbed({ title: "Permission Denied", description: "You cannot warn the server owner.", level: "ERROR" })],
+          ephemeral: true,
+        });
       }
 
-      if (ctx.isInteraction) await ctx.defer();
+      let modHighest = 0;
+      if (modMember && "roles" in modMember) {
+        if (modMember.roles?.highest) {
+          modHighest = modMember.roles.highest.position;
+        } else if (Array.isArray(modMember.roles)) {
+          for (const rId of modMember.roles) {
+            const r = guild.roles.cache.get(rId);
+            if (r && r.position > modHighest) modHighest = r.position;
+          }
+        }
+      }
+
+      if (guild.ownerId !== user.id && targetMember.roles.highest.position >= modHighest) {
+        return await ctx.reply({
+          embeds: [makeEmbed({ title: "Permission Denied", description: "You cannot warn a member with an equal or higher role.", level: "ERROR" })],
+          ephemeral: true,
+        });
+      }
+
+      await ctx.defer({ ephemeral: false });
 
       const record = await addWarning(guild.id, targetUserId, user.id, reason);
       const warnings = await getWarnings(guild.id, targetUserId);
@@ -108,34 +159,36 @@ export default createCommand({
       const isPunishEnabled = await isModuleEnabled(guild.id, "warning_punishments");
       const config = isPunishEnabled ? await getWarningPunishmentConfig(guild.id, warnCount) : null;
       if (config) {
-        const botMember = guild.members.me;
-        const canPunish = targetMember.roles.highest.position < botMember.roles.highest.position;
+        const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
+        const canPunish = botMember && targetMember.roles.highest.position < botMember.roles.highest.position;
 
         if (canPunish) {
           const action = config.action_type.toLowerCase();
           const duration = config.duration || null;
-          const punishReason = `Auto-Punishment: Reached ${warnCount} warnings. Latest: ${reason}`;
+          const punishReason = `Auto-Punishment: Reached ${warnCount} warnings. Latest: ${reason}`.slice(0, 512);
 
           try {
-            if (action === "kick") {
+            if (action === "kick" && botMember.permissions.has(PermissionFlagsBits.KickMembers)) {
               await targetMember.kick(punishReason);
               punishmentApplied = "\n\n🛡️ **Auto-Punishment Applied:** `Kick`";
-            } else if (action === "ban") {
+            } else if (action === "ban" && botMember.permissions.has(PermissionFlagsBits.BanMembers)) {
               await guild.bans.create(targetMember.id, { reason: punishReason });
               punishmentApplied = "\n\n🛡️ **Auto-Punishment Applied:** `Ban`";
-            } else if (action === "timeout") {
+            } else if (action === "timeout" && botMember.permissions.has(PermissionFlagsBits.ModerateMembers)) {
               if (duration) {
                 await targetMember.timeout(duration * 1000, punishReason);
-                punishmentApplied = `\n\n🛡️ **Auto-Punishment Applied:** \`Timeout (${duration}s)\``;
+                punishmentApplied = `\n\n🛡️ **Auto-Punishment Applied:** \`Timeout (${formatDuration(duration)})\``;
               }
-            } else if (action === "tempban") {
+            } else if (action === "tempban" && botMember.permissions.has(PermissionFlagsBits.ManageRoles)) {
               if (duration) {
                 await executeTempban({ guild, moderator: user, targetMember, durationSeconds: duration, reason: punishReason });
-                punishmentApplied = `\n\n🛡️ **Auto-Punishment Applied:** \`Tempban (${duration}s)\``;
+                punishmentApplied = `\n\n🛡️ **Auto-Punishment Applied:** \`Tempban (${formatDuration(duration)})\``;
               }
+            } else {
+              punishmentApplied = `\n\n❌ **Auto-Punishment Skipped:** Bot lacks permissions for \`${action}\`.`;
             }
-          } catch (e) {
-            punishmentApplied = "\n\n❌ **Auto-Punishment Failed:** Missing permissions.";
+          } catch {
+            punishmentApplied = "\n\n❌ **Auto-Punishment Failed:** Missing permissions or execution failure.";
           }
         } else {
           punishmentApplied = "\n\n❌ **Auto-Punishment Failed:** Target member has a higher role than me.";
@@ -149,7 +202,7 @@ export default createCommand({
         description: `User <@${targetUserId}> was warned by <@${user.id}>.\n\n📌 **Reason:** ${reason}${punishmentApplied}`,
         level: "WARNING",
         actor: user,
-        target: targetUserId,
+        target: targetMember.user || targetMember,
         extraFields: {
           "Warning ID": `#${record.warn_id}`,
           "Total Warnings": warnCount.toString(),
@@ -171,8 +224,16 @@ export default createCommand({
 
     // --- SUBCOMMAND: LIST ---
     if (sub === "list") {
-      const targetUserId = ctx.options.user || ctx.options._args?.[0]?.replace(/[<@!>]/g, "");
-      if (!targetUserId) return await ctx.reply("Please specify a user to check.");
+      const rawUser = ctx.options.user || ctx.options._args?.[0];
+      const targetUserId = rawUser?.match(/\d{17,20}/)?.[0];
+      if (!targetUserId) {
+        return await ctx.reply({
+          embeds: [makeEmbed({ title: "Missing Argument", description: `${EMOJIS.get("fail") || "❌"} Please specify a user to check.`, level: "ERROR" })],
+          ephemeral: true,
+        });
+      }
+
+      await ctx.defer({ ephemeral: false });
 
       const warnings = await getWarnings(guild.id, targetUserId);
 
@@ -211,9 +272,16 @@ export default createCommand({
     // --- SUBCOMMAND: DELETE ---
     if (sub === "delete") {
       const warnId = ctx.options.id || ctx.options._args?.[0];
-      if (!warnId) return await ctx.reply("Please specify a warning ID to delete.");
+      if (!warnId || isNaN(Number(warnId))) {
+        return await ctx.reply({
+          embeds: [makeEmbed({ title: "Missing Argument", description: `${EMOJIS.get("fail") || "❌"} Please specify a valid numerical warning ID to delete.`, level: "ERROR" })],
+          ephemeral: true,
+        });
+      }
 
-      const deleted = await deleteWarning(guild.id, warnId);
+      await ctx.defer({ ephemeral: false });
+
+      const deleted = await deleteWarning(guild.id, Number(warnId));
       return await ctx.reply({
         embeds: [
           makeEmbed({
@@ -229,8 +297,16 @@ export default createCommand({
 
     // --- SUBCOMMAND: CLEAR ---
     if (sub === "clear") {
-      const targetUserId = ctx.options.user || ctx.options._args?.[0]?.replace(/[<@!>]/g, "");
-      if (!targetUserId) return await ctx.reply("Please specify a user to clear.");
+      const rawUser = ctx.options.user || ctx.options._args?.[0];
+      const targetUserId = rawUser?.match(/\d{17,20}/)?.[0];
+      if (!targetUserId) {
+        return await ctx.reply({
+          embeds: [makeEmbed({ title: "Missing Argument", description: `${EMOJIS.get("fail") || "❌"} Please specify a user whose warnings you wish to clear.`, level: "ERROR" })],
+          ephemeral: true,
+        });
+      }
+
+      await ctx.defer({ ephemeral: false });
 
       const count = await clearWarnings(guild.id, targetUserId);
       return await ctx.reply({

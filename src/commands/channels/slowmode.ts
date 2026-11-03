@@ -65,6 +65,8 @@ export default createCommand({
     const { guild, channel, user } = ctx;
     if (!guild) return;
 
+    await ctx.defer({ ephemeral: false });
+
     let targetChannel = ctx.interaction?.options?.getChannel?.("channel");
     if (!targetChannel && ctx.options?.channel) {
       const channelId =
@@ -126,7 +128,7 @@ export default createCommand({
     const seconds = Math.max(0, Math.min(MAX_SLOWMODE, parseInt(rawSeconds, 10) || 0));
     const reason = ctx.interaction?.options?.getString?.("reason") || ctx.options?.reason;
 
-    const auditReason = `Slowmode set to ${seconds}s by ${user.tag || user.username} (${user.id})${reason ? `: ${reason}` : ""}`;
+    const auditReason = `Slowmode set to ${seconds}s by ${user.tag || user.username} (${user.id})${reason ? `: ${reason}` : ""}`.slice(0, 512);
 
     try {
       await targetChannel.setRateLimitPerUser(seconds, auditReason);

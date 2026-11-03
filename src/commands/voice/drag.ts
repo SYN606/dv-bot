@@ -1,20 +1,24 @@
-import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { ChannelType, GuildMember, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
+import { sendModLog } from "../../utils/modLog.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("drag")
   .setDescription("Move a member to a specified voice channel or your current channel")
+  .setDefaultMemberPermissions(PermissionFlagsBits.MoveMembers)
+  .setDMPermission(false)
   .addUserOption((opt) => opt.setName("user").setDescription("The member to move").setRequired(true))
-  .addChannelOption((opt) => 
-    opt.setName("channel")
-       .setDescription("The voice channel to move them to (defaults to your channel)")
-       .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
-       .setRequired(false)
+  .addChannelOption((opt) =>
+    opt
+      .setName("channel")
+      .setDescription("The voice channel to move them to (defaults to your channel)")
+      .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
+      .setRequired(false)
   );
 
-async function resolveVoiceChannel(guild, query) {
+async function resolveVoiceChannel(guild: any, query: any) {
   if (!query) return null;
   const cleaned = String(query).replace(/[<#>]/g, "").trim();
   let ch = guild.channels.cache.get(cleaned);
@@ -23,7 +27,7 @@ async function resolveVoiceChannel(guild, query) {
   }
   if (!ch) {
     ch = guild.channels.cache.find(
-      (c) => c.isVoiceBased?.() && c.name.toLowerCase() === cleaned.toLowerCase()
+      (c: any) => c.isVoiceBased?.() && c.name.toLowerCase() === cleaned.toLowerCase()
     );
   }
   return ch && ch.isVoiceBased?.() ? ch : null;
@@ -47,10 +51,9 @@ export default createCommand({
     const { guild, member } = ctx;
     if (!guild || !member) return;
 
-    // Resolve target user from slash option, primary argument, or mention
     const rawUser = ctx.options.user || ctx.options.primary || ctx.options._args?.[0];
     const targetUserId = typeof rawUser === "string"
-      ? rawUser.replace(/[<@!>]/g, "").trim()
+      ? rawUser.match(/\d{17,20}/)?.[0]
       : rawUser?.id;
 
     if (!targetUserId) {
@@ -66,7 +69,12 @@ export default createCommand({
       });
     }
 
-    const targetMember = guild.members.cache.get(targetUserId) || await guild.members.fetch(targetUserId).catch(() => null);
+    await ctx.defer({ ephemeral: false });
+
+    const targetMember =
+      guild.members.cache.get(targetUserId) ||
+      (await guild.members.fetch(targetUserId).catch(() => null));
+
     if (!targetMember) {
       return await ctx.reply({
         embeds: [
@@ -93,14 +101,26 @@ export default createCommand({
       });
     }
 
+    // Resolve invoker member properly if uncached
+    let invokerMember = member instanceof GuildMember ? member : null;
+    if (!invokerMember && guild.members.fetch) {
+      invokerMember = await guild.members.fetch(ctx.user.id).catch(() => null);
+    }
+    const invokerVcId = invokerMember?.voice?.channelId || member?.voice?.channelId;
+
     // Resolve target voice channel
     const rawChannel = ctx.options.channel || ctx.options._args?.[1];
-    let targetChannel = null;
+    let targetChannel: any = null;
 
     if (rawChannel) {
-      targetChannel = await resolveVoiceChannel(guild, typeof rawChannel === "string" ? rawChannel : rawChannel.id);
-    } else if (member.voice?.channelId) {
-      targetChannel = member.voice.channel || await guild.channels.fetch(member.voice.channelId).catch(() => null);
+      targetChannel = await resolveVoiceChannel(
+        guild,
+        typeof rawChannel === "string" ? rawChannel : rawChannel.id
+      );
+    } else if (invokerVcId) {
+      targetChannel =
+        guild.channels.cache.get(invokerVcId) ||
+        (await guild.channels.fetch(invokerVcId).catch(() => null));
     }
 
     if (!targetChannel || !targetChannel.isVoiceBased?.()) {
@@ -130,7 +150,7 @@ export default createCommand({
     }
 
     // Bot permission checks
-    const botMember = guild.members.me || await guild.members.fetchMe().catch(() => null);
+    const botMember = guild.members.me || (await guild.members.fetchMe().catch(() => null));
     if (!botMember || !botMember.permissions.has(PermissionFlagsBits.MoveMembers)) {
       return await ctx.reply({
         embeds: [
@@ -158,7 +178,8 @@ export default createCommand({
     }
 
     // Invoker permission check
-    if (!targetChannel.permissionsFor(member)?.has(PermissionFlagsBits.Connect)) {
+    const checkMember = invokerMember || member;
+    if (checkMember && !targetChannel.permissionsFor(checkMember)?.has(PermissionFlagsBits.Connect)) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
@@ -171,8 +192,26 @@ export default createCommand({
       });
     }
 
+    const auditReason = `Moved by ${ctx.user.tag || ctx.user.username} (${ctx.user.id})`.slice(0, 512);
+
     try {
-      await targetMember.voice.setChannel(targetChannel);
+      await targetMember.voice.setChannel(targetChannel, auditReason);
+
+      try {
+        await sendModLog({
+          guild,
+          category: "VOICE",
+          title: "Member Voice Move",
+          description: `<@${ctx.user.id}> moved <@${targetUserId}> to **${targetChannel.name}**.`,
+          level: "INFO",
+          actor: ctx.user,
+          target: targetMember.user || targetMember,
+          extraFields: {
+            "Target Channel": `${targetChannel.name} (\`${targetChannel.id}\`)`,
+          },
+        });
+      } catch (_) {}
+
       return await ctx.reply({
         embeds: [
           makeEmbed({
@@ -182,12 +221,12 @@ export default createCommand({
           }),
         ],
       });
-    } catch (err) {
+    } catch (err: any) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Move Failed",
-            description: `${EMOJIS.get("fail") || "❌"} Failed to move <@${targetUserId}>: ${err.message || "Unknown error"}.`,
+            description: `${EMOJIS.get("fail") || "❌"} Failed to move <@${targetUserId}>: ${err?.message || "Unknown error"}.`,
             level: "ERROR",
           }),
         ],

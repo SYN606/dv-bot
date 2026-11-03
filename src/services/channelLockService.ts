@@ -47,7 +47,7 @@ export async function applyChannelNamePrefix(channel, prefix, auditReason) {
     const newName = addChannelPrefix(currentName, prefix, isVoice);
 
     if (newName && newName !== currentName) {
-      await channel.setName(newName, auditReason);
+      await channel.setName(newName, String(auditReason || "").slice(0, 512));
       return newName;
     }
     return currentName;
@@ -69,7 +69,7 @@ export async function removeChannelNamePrefix(channel, prefixPattern, auditReaso
     const restoredName = stripChannelPrefix(currentName, prefixPattern);
 
     if (restoredName && restoredName !== currentName) {
-      await channel.setName(restoredName, auditReason);
+      await channel.setName(restoredName, String(auditReason || "").slice(0, 512));
       return restoredName;
     }
     return currentName;
@@ -121,7 +121,7 @@ export async function lockChannel({ channel, guild, moderator = null, durationSt
       return { alreadyLocked: true, isThread: true, channel };
     }
 
-    const auditReason = `Thread locked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
+    const auditReason = `Thread locked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`.slice(0, 512);
     try {
       await channel.setLocked(true, auditReason);
       await applyChannelNamePrefix(channel, "locked", auditReason);
@@ -214,7 +214,7 @@ export async function lockChannel({ channel, guild, moderator = null, durationSt
     await existingSnapshot.save();
   }
 
-  const auditReason = `Channel locked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
+  const auditReason = `Channel locked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`.slice(0, 512);
 
   try {
     await channel.permissionOverwrites.edit(
@@ -298,7 +298,7 @@ export async function unlockChannel({ channel, guild, moderator = null, reason =
       return { notLocked: true, isThread: true, channel };
     }
 
-    const auditReason = `Thread unlocked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
+    const auditReason = `Thread unlocked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`.slice(0, 512);
     try {
       await channel.setLocked(false, auditReason);
       await removeChannelNamePrefix(channel, "locked", auditReason);
@@ -359,7 +359,7 @@ export async function unlockChannel({ channel, guild, moderator = null, reason =
     return { notLocked: true, channel, targetRole, usingVerifiedRole, verifiedRoleName };
   }
 
-  const auditReason = `Channel unlocked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
+  const auditReason = `Channel unlocked by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`.slice(0, 512);
 
   // When restoring:
   // If snapshot was explicitly true, restore true.
@@ -462,7 +462,7 @@ export async function hideChannel({ channel, guild, moderator = null, reason = n
     });
   }
 
-  const auditReason = `Channel hidden by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
+  const auditReason = `Channel hidden by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`.slice(0, 512);
 
   try {
     await channel.permissionOverwrites.edit(
@@ -536,7 +536,7 @@ export async function unhideChannel({ channel, guild, moderator = null, reason =
     return { notHidden: true, channel, targetRole, usingVerifiedRole, verifiedRoleName };
   }
 
-  const auditReason = `Channel unhidden by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`;
+  const auditReason = `Channel unhidden by ${moderator?.tag || moderator?.username || "Staff"}${reason ? `: ${reason}` : ""}`.slice(0, 512);
 
   // When restoring:
   // If snapshot was explicitly true, restore true.

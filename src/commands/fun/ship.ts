@@ -238,6 +238,7 @@ const LOVE_HOROSCOPES = [
 const slashBuilder = new SlashCommandBuilder()
   .setName("ship")
   .setDescription("Calculate advanced love compatibility & couple ship stats between two users")
+  .setDMPermission(false)
   .addUserOption((opt) =>
     opt.setName("user1").setDescription("First user to ship").setRequired(true)
   )
@@ -267,15 +268,20 @@ export default createCommand({
   async execute(ctx) {
     const { client, message, user } = ctx;
 
+    await ctx.defer({ ephemeral: false });
+
     let target1 = null;
     let target2 = null;
     let isRandom = Boolean(ctx.options.random);
 
     // 1. Resolve from Slash Options
     if (ctx.options.user1) {
-      target1 = await client.users.fetch(ctx.options.user1).catch(() => null);
+      const id1 = typeof ctx.options.user1 === "string" ? ctx.options.user1.match(/\d{17,20}/)?.[0] : ctx.options.user1?.id;
+      if (id1) target1 = await client.users.fetch(id1).catch(() => null);
+
       if (ctx.options.user2) {
-        target2 = await client.users.fetch(ctx.options.user2).catch(() => null);
+        const id2 = typeof ctx.options.user2 === "string" ? ctx.options.user2.match(/\d{17,20}/)?.[0] : ctx.options.user2?.id;
+        if (id2) target2 = await client.users.fetch(id2).catch(() => null);
       } else {
         target2 = user;
       }
@@ -286,7 +292,10 @@ export default createCommand({
         isRandom = true;
       }
 
-      const mentions = Array.from(message.mentions.users.values());
+      const mentions = Array.from(message.mentions.users.values()).filter(
+        (u: any) => u.id !== client.user?.id
+      );
+
       if (mentions.length >= 2) {
         target1 = mentions[0];
         target2 = mentions[1];
@@ -294,7 +303,8 @@ export default createCommand({
         target1 = mentions[0];
         target2 = user;
       } else if (ctx.options._args?.length > 0) {
-        const idMatches = ctx.options.raw?.match(/\d{17,20}/g) || [];
+        const fullArgs = ctx.options._args.join(" ");
+        const idMatches = fullArgs.match(/\d{17,20}/g) || [];
         if (idMatches.length >= 2) {
           target1 = await client.users.fetch(idMatches[0]).catch(() => null);
           target2 = await client.users.fetch(idMatches[1]).catch(() => null);

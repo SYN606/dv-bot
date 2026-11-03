@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
@@ -7,7 +7,9 @@ import { analyzeMemberPermissions } from "../../utils/permissionsData.js";
 const slashBuilder = new SlashCommandBuilder()
   .setName("checkperms")
   .setDescription("Audit a member's assigned permissions")
-  .addUserOption(opt => opt.setName("user").setDescription("The member to audit").setRequired(true));
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  .setDMPermission(false)
+  .addUserOption((opt) => opt.setName("user").setDescription("The member to audit").setRequired(true));
 
 export default createCommand({
   name: "checkperms",
@@ -25,14 +27,36 @@ export default createCommand({
     const { guild } = ctx;
     if (!guild) return;
 
-    const targetUserId = ctx.options.user?.id || ctx.options.user;
+    const rawUser = ctx.options.user?.id || ctx.options.user;
+    const targetUserId = typeof rawUser === "string" ? rawUser.match(/\d{17,20}/)?.[0] : null;
+
     if (!targetUserId) {
-      return await ctx.reply("Please specify a user to audit.");
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Missing Argument",
+            description: `${EMOJIS.get("fail") || "❌"} Please specify a valid user to audit.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
     }
+
+    await ctx.defer({ ephemeral: true });
 
     const member = await guild.members.fetch(targetUserId).catch(() => null);
     if (!member) {
-      return await ctx.reply({ content: "Could not find that member in the server.", ephemeral: true });
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "User Not Found",
+            description: `${EMOJIS.get("fail") || "❌"} Could not find that member in the server.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
     }
 
     const data = analyzeMemberPermissions(member);
@@ -47,47 +71,47 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "Clean Audit",
-            description: `${successEmoji} **${member.user.tag}** has no flagged permissions.`,
-            level: "SUCCESS"
-          })
+            description: `${successEmoji} **${member.user.tag || member.user.username}** has no flagged permissions.`,
+            level: "SUCCESS",
+          }),
         ],
-        ephemeral: true
+        ephemeral: true,
       });
     }
 
     const embed = makeEmbed({
       title: `${warnEmoji} Audit: ${member.displayName}`,
       description: `Flagged **${data.length}** elevated permissions.`,
-      level: "WARNING"
+      level: "WARNING",
     });
-    
+
     embed.setThumbnail(member.user.displayAvatarURL());
     embed.setFooter({ text: `User ID: ${member.id}` });
 
-    const groups = { red: [], yellow: [], green: [] };
-    
+    const groups: Record<string, string[]> = { red: [], yellow: [], green: [] };
+
     for (const p of data) {
-      const emoji = p.level === "red" ? redDot : (p.level === "yellow" ? yellowDot : greenDot);
+      const emoji = p.level === "red" ? redDot : p.level === "yellow" ? yellowDot : greenDot;
       let rolesStr = p.roles.slice(0, 2).join(" • ");
       if (p.roles.length > 2) rolesStr += "...";
-      
+
       groups[p.level].push(`${emoji} **${p.permission}**\n└ Sources: \`${rolesStr}\``);
     }
 
     for (const [level, lines] of Object.entries(groups)) {
       if (lines.length > 0) {
-        const lvlEmoji = level === "red" ? redDot : (level === "yellow" ? yellowDot : greenDot);
+        const lvlEmoji = level === "red" ? redDot : level === "yellow" ? yellowDot : greenDot;
         let val = lines.join("\n");
         if (val.length > 1024) val = val.substring(0, 1020) + "...";
-        
+
         embed.addFields({
           name: `${lvlEmoji} ${level.toUpperCase()} RISK`,
           value: val,
-          inline: false
+          inline: false,
         });
       }
     }
 
     return await ctx.reply({ embeds: [embed], ephemeral: true });
-  }
+  },
 });

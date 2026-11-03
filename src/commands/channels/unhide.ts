@@ -43,6 +43,8 @@ export default createCommand({
     const { guild, channel, user } = ctx;
     if (!guild) return;
 
+    await ctx.defer({ ephemeral: false });
+
     let targetChannel = ctx.interaction?.options?.getChannel?.("channel");
     if (!targetChannel && ctx.options?.channel) {
       const channelId = typeof ctx.options.channel === "string" ? ctx.options.channel : ctx.options.channel.id;

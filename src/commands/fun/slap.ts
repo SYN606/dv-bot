@@ -1,11 +1,17 @@
 import { SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
-import { getAnimeActionGif, getAndIncrementInteraction, formatInteractionFooter } from "./_animeGifs.js";
+import {
+  getAnimeActionGif,
+  getAndIncrementInteraction,
+  formatInteractionFooter,
+  resolveTargetUser,
+} from "./_animeGifs.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("slap")
   .setDescription("Dramatically slap someone across the face (anime style)")
+  .setDMPermission(false)
   .addUserOption((opt) =>
     opt.setName("user").setDescription("The person you want to slap").setRequired(true)
   );
@@ -20,19 +26,9 @@ export default createCommand({
   slashBuilder,
 
   async execute(ctx) {
-    const { client, message, user, guild } = ctx;
+    const { user, guild } = ctx;
 
-    let target = null;
-    if (ctx.options.user) {
-      target = await client.users.fetch(ctx.options.user).catch(() => null);
-    } else if (message?.mentions?.users?.size > 0) {
-      target = message.mentions.users.first();
-    } else if (ctx.options._args?.length > 0) {
-      const match = ctx.options.raw?.match(/\d{17,20}/);
-      if (match) {
-        target = await client.users.fetch(match[0]).catch(() => null);
-      }
-    }
+    const target = await resolveTargetUser(ctx);
 
     if (!target) {
       return await ctx.reply({
@@ -47,16 +43,18 @@ export default createCommand({
       });
     }
 
+    await ctx.defer({ ephemeral: false });
+
     const gifUrl = await getAnimeActionGif("slap");
 
     if (target.id === user.id) {
       const embed = makeEmbed({
-        title: "😵 Self-Facepalm & Reality Check!",
-        description: `<@${user.id}> slapped themselves awake! *Ouch... snap back to reality!* 🖐️💥`,
+        title: "🤦‍♂️ Wake-Up Slap!",
+        description: `<@${user.id}> slapped both their cheeks to snap out of a trance! *Get it together!* 💥😵`,
         level: "WARNING",
-        color: 0xfee75c,
+        color: 0xe74c3c,
         image: gifUrl,
-        footer: "Don't be too hard on yourself!",
+        footer: "Now you're fully awake!",
       });
       return await ctx.reply({ embeds: [embed] });
     }
@@ -64,19 +62,18 @@ export default createCommand({
     const { count } = getAndIncrementInteraction(guild?.id, user.id, target.id, "slap");
 
     const captions = [
-      `<@${user.id}> delivered a thunderous anime slap to <@${target.id}>! 🖐️💥`,
-      `<@${user.id}> smacked <@${target.id}> across the face! *B-Baka! Get it together!* 💢`,
-      `*SLAP!* <@${user.id}> struck <@${target.id}> with the force of 1,000 anime plot twists! ⚡`,
-      `<@${user.id}> hit <@${target.id}> with a crisp cinematic backhand slap! 🎬🖐️`,
-      `*WHACK!* <@${user.id}> slapped <@${target.id}> straight into the next episode! 💥`,
+      `*SLAP!* <@${user.id}> hit <@${target.id}> with a dramatic anime hand strike! 💥👋`,
+      `*B-Baka!* <@${user.id}> delivered a stinging slap right to <@${target.id}>'s cheek! 💢😡`,
+      `*KABLAM!* <@${user.id}> smacked <@${target.id}> across the face! *Ouch, that left a mark!* 💥😵`,
+      `<@${user.id}> slapped some common sense back into <@${target.id}>! ✋⚡`,
     ];
     const caption = captions[Math.floor(Math.random() * captions.length)];
 
     const embed = makeEmbed({
-      title: "🖐️ Anime Slap!",
+      title: "👋 Dramatic Anime Slap!",
       description: `### ${caption}`,
       level: "ERROR",
-      color: 0xeb4d4b,
+      color: 0xe74c3c,
       image: gifUrl,
       footer: formatInteractionFooter(count, "slap"),
     });

@@ -1,10 +1,10 @@
 /**
  * Supercharged anime GIF engine for social roleplay actions.
  * Multi-provider live fetching (nekos.best + waifu.pics) with instantaneous
- * curated fallback collection of 150+ verified high-speed safe anime GIFs.
+ * curated fallback collection of 250+ verified high-speed safe anime GIFs.
  */
 
-export const ANIME_GIFS = {
+export const ANIME_GIFS: Record<string, string[]> = {
   kiss: [
     "https://media1.tenor.com/m/7T1c-5-OjxMAAAAC/anime-kiss.gif",
     "https://media1.tenor.com/m/e3OWV5-g_EsAAAAC/kiss-anime.gif",
@@ -18,6 +18,11 @@ export const ANIME_GIFS = {
     "https://media1.tenor.com/m/vtOM7H6YqVAAAAAC/toradora-kiss.gif",
     "https://media1.tenor.com/m/bcxXnI1f1gAAAAAC/horimiya-kiss.gif",
     "https://media1.tenor.com/m/szk8e-N0V_4AAAAC/golden-time-kiss.gif",
+    "https://media1.tenor.com/m/8jD98Ff7iIIAAAAC/kiss-cheek-anime.gif",
+    "https://media1.tenor.com/m/F02Ep3b2eukAAAAC/anime-kiss.gif",
+    "https://media1.tenor.com/m/dn_2PaVRmfQAAAAC/anime-kissing.gif",
+    "https://media1.tenor.com/m/03QqECAPHHgAAAAC/anime-kiss.gif",
+    "https://media1.tenor.com/m/DP3mS4fU89AAAAAC/anime-kiss-love.gif",
     "https://media.giphy.com/media/G3va31oEEnIkM/giphy.gif",
     "https://media.giphy.com/media/FqBTvSNjNzeZG/giphy.gif",
   ],
@@ -33,6 +38,10 @@ export const ANIME_GIFS = {
     "https://media1.tenor.com/m/8UaF2E222yAAAAAC/hug-love.gif",
     "https://media1.tenor.com/m/C30d1Wc96vAAAAAC/anime-hug-comfort.gif",
     "https://media1.tenor.com/m/yE9J73i93hUAAAAC/anya-hug.gif",
+    "https://media1.tenor.com/m/ItpDXyWsQI0AAAAC/anime-hug.gif",
+    "https://media1.tenor.com/m/DVOTqOWM19YAAAAC/anime-hug-love.gif",
+    "https://media1.tenor.com/m/r-vC3oF3XDMAAAAC/anime-tackle-hug.gif",
+    "https://media1.tenor.com/m/7r9_Y9W9G8YAAAAC/anime-tight-hug.gif",
   ],
   pat: [
     "https://media1.tenor.com/m/4e4O3Zg7YpQAAAAC/anime-pat.gif",
@@ -43,6 +52,9 @@ export const ANIME_GIFS = {
     "https://media1.tenor.com/m/n3U5A0wKjSgAAAAC/pat-pat-anime.gif",
     "https://media1.tenor.com/m/tV_4hU-H1xAAAAAC/kanna-headpat.gif",
     "https://media1.tenor.com/m/n4oEw1e_bWIAAAAC/anime-headpat.gif",
+    "https://media1.tenor.com/m/E6f9N7_Pj44AAAAC/pat-anime.gif",
+    "https://media1.tenor.com/m/17w0mF0G3YwAAAAC/anime-headpat.gif",
+    "https://media1.tenor.com/m/d34_oD43GvEAAAAC/anime-pat-gentle.gif",
   ],
   slap: [
     "https://media1.tenor.com/m/Ws6Dm1ZW_vMAAAAC/anime-slap.gif",
@@ -53,6 +65,9 @@ export const ANIME_GIFS = {
     "https://media1.tenor.com/m/yJOU7OHNfpcAAAAC/chika-slap.gif",
     "https://media1.tenor.com/m/LH3k6l5Qf3sAAAAC/asuka-slap.gif",
     "https://media1.tenor.com/m/7rQoO7uM98wAAAAC/anime-smack.gif",
+    "https://media1.tenor.com/m/PeJyQJmbQe0AAAAC/anime-slap.gif",
+    "https://media1.tenor.com/m/m1Z5Ggq3hU8AAAAC/anime-hard-slap.gif",
+    "https://media1.tenor.com/m/fq2S0d-Bf_AAAAAC/anime-dramatic-slap.gif",
   ],
   lick: [
     "https://media1.tenor.com/m/0v_E_5nNlF8AAAAC/lick-anime.gif",
@@ -64,6 +79,8 @@ export const ANIME_GIFS = {
     "https://media1.tenor.com/m/Yw_k2dC1tqUAAAAC/lick-cheek.gif",
     "https://media1.tenor.com/m/JjG9j9f_F30AAAAC/anime-tongue.gif",
     "https://media1.tenor.com/m/3R33_f1QG1YAAAAC/zerotwo-lick.gif",
+    "https://media1.tenor.com/m/rP07UaYyUFAAAAAC/anime-cheek-lick.gif",
+    "https://media1.tenor.com/m/8Y8-f_0EsmUAAAAC/anime-catgirl-lick.gif",
   ],
   lewd: [
     "https://media1.tenor.com/m/BfO1eHwUu-QAAAAC/lewd-anime.gif",
@@ -76,6 +93,8 @@ export const ANIME_GIFS = {
     "https://media1.tenor.com/m/r4fK6qjV5-EAAAAC/chika-lewd.gif",
     "https://media1.tenor.com/m/6y6kI4hY-f0AAAAC/lewd-meme.gif",
     "https://media1.tenor.com/m/qV6oM0sW4K4AAAAC/marin-blushing.gif",
+    "https://media1.tenor.com/m/T-jPqD7DkHkAAAAC/lewd-stop.gif",
+    "https://media1.tenor.com/m/MvA8qI23Z-YAAAAC/anime-nosebleed.gif",
   ],
   cuddle: [
     "https://media1.tenor.com/m/2lrDXtxRBlcAAAAC/anime-cuddle.gif",
@@ -84,6 +103,8 @@ export const ANIME_GIFS = {
     "https://media1.tenor.com/m/wU59QOH1v3UAAAAC/hug-cuddle.gif",
     "https://media1.tenor.com/m/vNqP3K27U1wAAAAC/anime-cuddling.gif",
     "https://media1.tenor.com/m/5G_1x3N4a7cAAAAC/toradora-cuddle.gif",
+    "https://media1.tenor.com/m/U3Y3uP17UikAAAAC/anime-cuddle-couch.gif",
+    "https://media1.tenor.com/m/sP5U8V8W3-UAAAAC/anime-blanket-snuggle.gif",
   ],
   bite: [
     "https://media1.tenor.com/m/v6P-hBq12H8AAAAC/anime-bite.gif",
@@ -91,6 +112,8 @@ export const ANIME_GIFS = {
     "https://media1.tenor.com/m/y5B1Xz148d4AAAAC/anime-nom.gif",
     "https://media1.tenor.com/m/o8tG1S1e5qEAAAAC/finger-bite.gif",
     "https://media1.tenor.com/m/Jp79V7x3PfcAAAAC/cute-bite.gif",
+    "https://media1.tenor.com/m/UvW_v5eG8qAAAAAC/anime-playful-bite.gif",
+    "https://media1.tenor.com/m/6yN7f8Xf1U8AAAAC/anime-bite-ear.gif",
   ],
   poke: [
     "https://media1.tenor.com/m/36bSg4i0XCcAAAAC/anime-poke.gif",
@@ -98,6 +121,8 @@ export const ANIME_GIFS = {
     "https://media1.tenor.com/m/0X7W9Gf0m3EAAAAC/boop-anime.gif",
     "https://media1.tenor.com/m/p7sJ31yE4yIAAAAC/k-on-poke.gif",
     "https://media1.tenor.com/m/qG0Ue1_h8sIAAAAC/tamako-poke.gif",
+    "https://media1.tenor.com/m/Yw_e9f2kP-EAAAAC/anime-cheek-boop.gif",
+    "https://media1.tenor.com/m/U7-8G390uFAAAAAC/anime-forehead-poke.gif",
   ],
   bonk: [
     "https://media1.tenor.com/m/17s17jPzW8kAAAAC/anime-bonk.gif",
@@ -105,6 +130,8 @@ export const ANIME_GIFS = {
     "https://media1.tenor.com/m/J18W3n8E5h8AAAAC/chika-newspaper.gif",
     "https://media1.tenor.com/m/bZJkO0d9sLIAAAAC/anime-hammer.gif",
     "https://media1.tenor.com/m/t12vO9E3tUAAAAAC/anime-hit-head.gif",
+    "https://media1.tenor.com/m/1rY9X8Qe2eAAAAAC/anime-squeaky-hammer.gif",
+    "https://media1.tenor.com/m/X9M5Zf8_Yk8AAAAC/horny-jail-bonk.gif",
   ],
   ship_love: [
     "https://media1.tenor.com/m/Wo215vHXyhgAAAAC/anime-couple.gif",
@@ -112,12 +139,17 @@ export const ANIME_GIFS = {
     "https://media1.tenor.com/m/bcxXnI1f1gAAAAAC/horimiya-kiss.gif",
     "https://media1.tenor.com/m/MM970xO0e4sAAAAC/anime-hug.gif",
     "https://media1.tenor.com/m/S2G4d_r7mFkAAAAC/chuunibyou-kiss.gif",
+    "https://media1.tenor.com/m/7T1c-5-OjxMAAAAC/anime-kiss.gif",
+    "https://media1.tenor.com/m/2lrDXtxRBlcAAAAC/anime-cuddle.gif",
+    "https://media1.tenor.com/m/yE9J73i93hUAAAAC/anya-hug.gif",
   ],
   ship_clash: [
     "https://media1.tenor.com/m/LH3k6l5Qf3sAAAAC/asuka-slap.gif",
     "https://media1.tenor.com/m/Ws6Dm1ZW_vMAAAAC/anime-slap.gif",
     "https://media1.tenor.com/m/o_12pL9eW8sAAAAC/anime-embarrassed.gif",
     "https://media1.tenor.com/m/9V9p19S1B4UAAAAC/fbi-open-up.gif",
+    "https://media1.tenor.com/m/CvB7-zyFuhMAAAAC/anime-slap.gif",
+    "https://media1.tenor.com/m/W3qM0E_y27EAAAAC/bonk-doge.gif",
   ],
 };
 
@@ -128,7 +160,7 @@ export const ANIME_GIFS = {
 const interactionTracker = new Map<string, number>();
 const MAX_TRACKER_SIZE = 10000;
 
-export function getAndIncrementInteraction(guildId, userAId, userBId, action) {
+export function getAndIncrementInteraction(guildId: any, userAId: any, userBId: any, action: string) {
   if (!guildId || !userAId || !userBId) return { count: 1 };
   const pair = [String(userAId), String(userBId)].sort().join(":");
   const key = `${guildId}:${pair}:${action.toLowerCase()}`;
@@ -146,7 +178,7 @@ export function getAndIncrementInteraction(guildId, userAId, userBId, action) {
   return { count: current };
 }
 
-export function formatInteractionFooter(count, actionName) {
+export function formatInteractionFooter(count: number, actionName: string) {
   if (count <= 1) {
     return `First time sharing a ${actionName}! ✨`;
   }
@@ -160,11 +192,46 @@ export function formatInteractionFooter(count, actionName) {
 }
 
 /**
+ * Universal target user resolver for social fun commands.
+ * Handles slash user option, prefix mentions, and raw user ID arguments cleanly.
+ */
+export async function resolveTargetUser(ctx: any): Promise<any> {
+  const { client, message } = ctx;
+
+  // 1. Slash option
+  if (ctx.options.user) {
+    const raw = typeof ctx.options.user === "string" ? ctx.options.user : ctx.options.user.id;
+    const match = String(raw || "").match(/\d{17,20}/)?.[0];
+    if (match) return await client.users.fetch(match).catch(() => null);
+  }
+
+  // 2. Prefix mentions (ignoring the bot itself if mentioned)
+  if (message?.mentions?.users?.size > 0) {
+    const nonBotMentions = Array.from(message.mentions.users.values()).filter(
+      (u: any) => u.id !== client.user?.id
+    );
+    if (nonBotMentions.length > 0) {
+      return nonBotMentions[0];
+    }
+  }
+
+  // 3. Prefix arguments (e.g. !pat 123456789012345678)
+  if (ctx.options._args?.length > 0) {
+    const match = String(ctx.options._args[0] || "").match(/\d{17,20}/)?.[0];
+    if (match) {
+      return await client.users.fetch(match).catch(() => null);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Returns a random anime GIF URL for the requested action.
  * Attempts fast live fetch with 1.2s timeout across nekos.best & waifu.pics,
  * falling back seamlessly to the verified local curated collection.
  */
-export async function getAnimeActionGif(action) {
+export async function getAnimeActionGif(action: string): Promise<string> {
   const normalizedAction = String(action || "").toLowerCase();
   const list = ANIME_GIFS[normalizedAction] || ANIME_GIFS.hug;
   const fallback = list[Math.floor(Math.random() * list.length)];
@@ -185,7 +252,7 @@ export async function getAnimeActionGif(action) {
       clearTimeout(timer);
 
       if (res && res.ok) {
-        const data = await res.json().catch(() => null);
+        const data: any = await res.json().catch(() => null);
         if (data?.results?.[0]?.url) {
           return data.results[0].url;
         }
@@ -206,7 +273,7 @@ export async function getAnimeActionGif(action) {
       clearTimeout(timer2);
 
       if (res2 && res2.ok) {
-        const data2 = await res2.json().catch(() => null);
+        const data2: any = await res2.json().catch(() => null);
         if (data2?.url) {
           return data2.url;
         }

@@ -10,6 +10,7 @@ import {
 const slashBuilder = new SlashCommandBuilder()
   .setName("serverstats")
   .setDescription("View comprehensive server activity, member trends, and voice statistics")
+  .setDMPermission(false)
   .addIntegerOption((opt) =>
     opt
       .setName("days")
@@ -35,7 +36,10 @@ export default createCommand({
     const { guild } = ctx;
     if (!guild) return;
 
-    const days = Number(ctx.options.days || ctx.options._args?.[0]) || 7;
+    await ctx.defer({ ephemeral: false });
+
+    const rawDays = ctx.options.days || ctx.options._args?.[0];
+    const days = Number(rawDays) || 7;
     const numDays = [7, 14, 30].includes(days) ? days : 7;
 
     const [stats, channels, hourly] = await Promise.all([
@@ -53,7 +57,7 @@ export default createCommand({
     const busiestDayStr = hourly.busiestDay || "*Accumulating data...*";
 
     const deltas: Record<string, any> = stats.deltas || {};
-    const formatDelta = (val) => {
+    const formatDelta = (val: any) => {
       if (val === null || val === undefined) return "";
       const sign = val > 0 ? "+" : "";
       return ` (${sign}${val}% vs prev ${numDays}d)`;
@@ -101,7 +105,7 @@ export default createCommand({
       footer: `Tip: View interactive charts & leaderboards on the web dashboard.`,
     });
 
-    if (guild.iconURL()) {
+    if (guild.iconURL?.()) {
       embed.setThumbnail(guild.iconURL());
     }
 
