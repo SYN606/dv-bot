@@ -65,6 +65,35 @@ export const FILTER_PRESETS: Record<string, IFilterPreset> = {
     description: "Reset all audio filters to normal",
     filters: {},
   },
+  lofi: {
+    name: "Lo-Fi Chill",
+    description: "Vintage cassette warmth, gentle tape flutter, and warm low-pass EQ",
+    filters: {
+      equalizer: [
+        { band: 0, gain: 0.22 },
+        { band: 1, gain: 0.18 },
+        { band: 2, gain: 0.1 },
+        { band: 3, gain: 0.05 },
+        { band: 4, gain: 0.0 },
+        { band: 5, gain: -0.05 },
+        { band: 6, gain: -0.15 },
+        { band: 7, gain: -0.25 },
+        { band: 8, gain: -0.32 },
+      ],
+      timescale: {
+        speed: 0.95,
+        pitch: 0.96,
+        rate: 1.0,
+      },
+      vibrato: {
+        frequency: 2.2,
+        depth: 0.16,
+      },
+      lowPass: {
+        smoothing: 12.0,
+      },
+    },
+  },
   bassboost_low: {
     name: "Bass Boost (Low)",
     description: "Mild bass enhancement",
@@ -230,6 +259,8 @@ export const FILTER_PRESETS: Record<string, IFilterPreset> = {
 // Aliases for seamless naming
 FILTER_PRESETS.bassboost_medium = FILTER_PRESETS.bassboost;
 FILTER_PRESETS["8d"] = FILTER_PRESETS.rotation;
+FILTER_PRESETS["lo-fi"] = FILTER_PRESETS.lofi;
+FILTER_PRESETS.chill = FILTER_PRESETS.lofi;
 
 /**
  * Builds a clean filter payload for Shoukaku Player.setFilters()
