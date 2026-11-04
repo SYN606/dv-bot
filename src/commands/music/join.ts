@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
+import { MusicPermissionService } from "../../music/MusicPermissionService.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("join")
@@ -26,6 +27,20 @@ export default createCommand({
             title: "Voice Channel Required",
             description: `${EMOJIS.get("warning") || "⚠️"} You must be connected to a voice channel.`,
             level: "WARNING",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    const perm = await MusicPermissionService.checkPermission(member, null, "join");
+    if (!perm.allowed) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Permission Denied",
+            description: `${EMOJIS.get("fail") || "❌"} ${perm.reason}`,
+            level: "ERROR",
           }),
         ],
         ephemeral: true,

@@ -1,3 +1,10 @@
+import dns from "node:dns";
+try {
+  if (typeof (dns as any).setDefaultResultOrder === "function") {
+    (dns as any).setDefaultResultOrder("ipv4first");
+  }
+} catch (_) {}
+
 import { CONFIG } from "./config.js";
 import { DVClient } from "./core/client.js";
 import { initDb, closeDb } from "./db/index.js";

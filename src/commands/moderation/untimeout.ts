@@ -77,7 +77,7 @@ export default createCommand({
         embeds: [
           makeEmbed({
             title: "Invalid Target",
-            description: `${EMOJIS.get("fail") || "❌"} Please specify a valid member mention or 17-20 digit user ID to untimeout.\n\n**Usage:** \`${ctx.prefix}untimeout <user> [reason]\``,
+            description: `${EMOJIS.get("fail") || "❌"} Please specify a valid member mention or 17-20 digit user ID to untimeout.\n\n**Usage:** \`${(ctx as any).prefix || "dv"}untimeout <user> [reason]\``,
             level: "ERROR",
           }),
         ],

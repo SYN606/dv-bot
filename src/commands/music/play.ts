@@ -71,21 +71,21 @@ export default createCommand({
     try {
       let player = ctx.client.music.getPlayer(guild.id);
 
-      if (player) {
-        const perm = await MusicPermissionService.checkPermission(member, player, "play");
-        if (!perm.allowed) {
-          return await ctx.reply({
-            embeds: [
-              makeEmbed({
-                title: "Voice Channel Mismatch",
-                description: `${EMOJIS.get("fail") || "❌"} ${perm.reason}`,
-                level: "ERROR",
-              }),
-            ],
-            ephemeral: true,
-          });
-        }
-      } else {
+      const perm = await MusicPermissionService.checkPermission(member, player, "play");
+      if (!perm.allowed) {
+        return await ctx.reply({
+          embeds: [
+            makeEmbed({
+              title: "Permission Denied",
+              description: `${EMOJIS.get("fail") || "❌"} ${perm.reason}`,
+              level: "ERROR",
+            }),
+          ],
+          ephemeral: true,
+        });
+      }
+
+      if (!player) {
         player = await ctx.client.music.join({
           guildId: guild.id,
           voiceChannelId: voiceChannel.id,

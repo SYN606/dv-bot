@@ -209,6 +209,7 @@ export default function MusicPage({ showToast }) {
 
       {activeTab === "settings" && (
         <MusicSettingsCard
+          guildId={guildId}
           settings={settings}
           onSaveSettings={saveSettings}
           actionLoading={actionLoading}

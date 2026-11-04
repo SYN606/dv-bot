@@ -10,6 +10,7 @@ import {
   addTrackToPlaylist,
   removeTrackFromPlaylist,
 } from "../../db/helpers/music.js";
+import { MusicPermissionService } from "../../music/MusicPermissionService.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("playlist")
@@ -200,6 +201,21 @@ export default createCommand({
         }
 
         let player = ctx.client.music.getPlayer(guild.id);
+
+        const perm = await MusicPermissionService.checkPermission(member, player, "play");
+        if (!perm.allowed) {
+          return await ctx.reply({
+            embeds: [
+              makeEmbed({
+                title: "Permission Denied",
+                description: `❌ ${perm.reason}`,
+                level: "ERROR",
+              }),
+            ],
+            ephemeral: true,
+          });
+        }
+
         if (!player) {
           player = await ctx.client.music.join({
             guildId: guild.id,

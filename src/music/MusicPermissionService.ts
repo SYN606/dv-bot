@@ -72,24 +72,24 @@ export class MusicPermissionService {
       return { allowed: true, isDj: true };
     }
 
-    // 6. Check if Member is Alone with the Bot in Voice
+    // 6. If DJ-Only mode is active, strictly require DJ role or Admin
+    if (settings.dj_only) {
+      const roleMention = settings.dj_role_id ? `<@&${settings.dj_role_id}>` : "the DJ";
+      return {
+        allowed: false,
+        reason: `DJ-Only Mode is active. Only members with ${roleMention} role (or Server Administrators) can control music on this server.`,
+      };
+    }
+
+    // 7. Check if Member is Alone with the Bot in Voice (Sole listener gets automatic control in non-DJ-only mode)
     if (player && player.voiceChannelId) {
       const channel = guild.channels?.cache?.get(player.voiceChannelId);
       if (channel && channel.members) {
         const humanListeners = channel.members.filter((m: any) => !m.user?.bot);
         if (humanListeners.size <= 1) {
-          // Sole listener gets automatic control
           return { allowed: true, isDj: false, isSoleListener: true };
         }
       }
-    }
-
-    // 7. If DJ Only mode is active and user is not DJ
-    if (settings.dj_only) {
-      return {
-        allowed: false,
-        reason: "Only members with the configured DJ role can control music on this server.",
-      };
     }
 
     // 8. Play action is generally open to all listeners unless DJ-only

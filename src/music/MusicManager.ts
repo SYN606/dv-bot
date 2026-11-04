@@ -1,5 +1,7 @@
 import { Shoukaku, Connectors, Constants } from "shoukaku";
 import { type VoiceState, type User } from "discord.js";
+import dns from "node:dns/promises";
+import net from "node:net";
 import { GuildPlayer } from "./GuildPlayer.js";
 import { MusicInteractionHandler } from "./MusicInteractionHandler.js";
 import { formatTrack, type IFormattedTrack } from "./TrackQueue.js";
@@ -29,6 +31,8 @@ export class MusicManager {
   public isReady: boolean;
   public nodes: any[];
   public options: any;
+  public rawHost: string;
+  public port: number;
 
   constructor(client: any) {
     this.client = client;
@@ -48,6 +52,9 @@ export class MusicManager {
       port = parseInt(parts[1], 10) || port;
     }
 
+    this.rawHost = cleanHost;
+    this.port = port;
+
     this.nodes = [
       {
         name: "main",
@@ -61,20 +68,43 @@ export class MusicManager {
       moveOnDisconnect: false,
       resume: true,
       resumeTimeout: 30,
-      reconnectTries: 30,
-      reconnectInterval: 5000,
-      restTimeout: 10000,
+      reconnectTries: 20,
+      reconnectInterval: 5,
+      restTimeout: 15,
     };
   }
 
   /**
    * Initialize Shoukaku Lavalink client
    */
-  init(): void {
+  async init(): Promise<void> {
     if (!CONFIG.MUSIC_ENABLED) {
       logger.info("[MUSIC] Music subsystem is disabled in configuration.");
       return;
     }
+
+    let resolvedHost = this.rawHost;
+    // Resolve hostname to IPv4 literal to bypass broken IPv6/NAT64 routes in WSL/Linux environments
+    if (net.isIP(resolvedHost) === 0) {
+      try {
+        const res = await dns.lookup(resolvedHost, { family: 4 });
+        if (res?.address) {
+          logger.info(`[MUSIC] Resolved Lavalink host '${resolvedHost}' to IPv4 '${res.address}'.`);
+          resolvedHost = res.address;
+        }
+      } catch (dnsErr: any) {
+        logger.warn(`[MUSIC] IPv4 DNS lookup for '${resolvedHost}' failed, using original hostname:`, dnsErr?.message);
+      }
+    }
+
+    this.nodes = [
+      {
+        name: "main",
+        url: `${resolvedHost}:${this.port}`,
+        auth: CONFIG.LAVALINK_PASSWORD,
+        secure: Boolean(CONFIG.LAVALINK_SECURE),
+      },
+    ];
 
     try {
       this.shoukaku = new Shoukaku(
@@ -91,7 +121,7 @@ export class MusicManager {
         (this.shoukaku.connector as any).ready(this.nodes);
       }
 
-      logger.info("[MUSIC] Shoukaku connector initialized. Waiting for Lavalink node...");
+      logger.info(`[MUSIC] Shoukaku connector initialized (${resolvedHost}:${this.port}). Waiting for Lavalink node...`);
     } catch (err) {
       logger.error("[MUSIC] Failed to initialize Shoukaku client:", err);
     }
@@ -100,12 +130,8 @@ export class MusicManager {
   setupShoukakuEvents(): void {
     if (!this.shoukaku) return;
 
-    let lastWarnTime = 0;
-    const THROTTLE_MS = 30000;
-
     this.shoukaku.on("ready", (name) => {
       this.isReady = true;
-      lastWarnTime = 0;
       logger.info(`[MUSIC LAVALINK] Node '${name}' is connected and ready.`);
       this.restore247Players().catch((err: any) =>
         logger.warn("[MUSIC] Failed restoring 24/7 players:", err.message)
@@ -113,33 +139,27 @@ export class MusicManager {
     });
 
     this.shoukaku.on("error", (name, error) => {
-      const now = Date.now();
-      if (now - lastWarnTime > THROTTLE_MS) {
-        lastWarnTime = now;
-        logger.warn(`[MUSIC LAVALINK] Node '${name}' connection notice: ${error?.message || error}`);
-      }
+      logger.warn(`[MUSIC LAVALINK] Node '${name}' error:`, (error as any)?.message || error);
     });
 
-    this.shoukaku.on("close", (name, code) => {
+    this.shoukaku.on("close", (name, code, reason) => {
       this.isReady = false;
-      const now = Date.now();
-      if (now - lastWarnTime > THROTTLE_MS) {
-        lastWarnTime = now;
-        logger.warn(
-          `[MUSIC LAVALINK] Node '${name}' is currently unreachable (Code ${code}). Reconnecting in background...`
-        );
-      }
+      logger.warn(
+        `[MUSIC LAVALINK] Node '${name}' closed connection (Code ${code}, Reason: ${reason || "none"}). Reconnecting in background...`
+      );
     });
 
     this.shoukaku.on("disconnect", () => {
       this.isReady = false;
     });
 
-    this.shoukaku.on("reconnecting", (name, left) => {
-      const now = Date.now();
-      if (now - lastWarnTime > THROTTLE_MS) {
-        lastWarnTime = now;
-        logger.info(`[MUSIC LAVALINK] Node '${name}' reconnecting (attempts left: ${left})...`);
+    this.shoukaku.on("reconnecting", (name, left, interval) => {
+      logger.info(`[MUSIC LAVALINK] Node '${name}' reconnecting in ${interval ?? 5}s (${left} attempts left)...`);
+    });
+
+    this.shoukaku.on("debug", (name, info) => {
+      if (process.env.DEBUG_LAVALINK === "true") {
+        logger.debug(`[MUSIC LAVALINK DEBUG] [${name}] ${info}`);
       }
     });
   }

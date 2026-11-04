@@ -51,7 +51,7 @@ export default {
 
     // 5. Initialize Lavalink Music Subsystem
     if (client.music) {
-      client.music.init();
+      await client.music.init();
     }
 
     // Hydrate active ticket channels for real-time listener fast-path
