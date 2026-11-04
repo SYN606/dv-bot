@@ -757,7 +757,66 @@ function ensureSqliteSchema(sqlite) {
   } catch (_) {}
 
   try {
-    sqlite.exec("CREATE INDEX IF NOT EXISTS idx_confessions_guild_number ON confessions (guild_id, confession_number);");
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS music_settings (
+        guild_id TEXT PRIMARY KEY,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        dj_role_id TEXT,
+        dj_only INTEGER NOT NULL DEFAULT 0,
+        default_volume INTEGER NOT NULL DEFAULT 80,
+        max_volume INTEGER NOT NULL DEFAULT 150,
+        mode_247 INTEGER NOT NULL DEFAULT 0,
+        voice_channel_id TEXT,
+        text_channel_id TEXT,
+        autoplay INTEGER NOT NULL DEFAULT 0,
+        default_loop TEXT NOT NULL DEFAULT 'off',
+        vote_skip INTEGER NOT NULL DEFAULT 0,
+        vote_skip_threshold INTEGER NOT NULL DEFAULT 50,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS music_playlists (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        guild_id TEXT,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        is_private INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_music_playlists_user ON music_playlists (user_id);
+      CREATE INDEX IF NOT EXISTS idx_music_playlists_guild ON music_playlists (guild_id);
+
+      CREATE TABLE IF NOT EXISTS music_playlist_tracks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        playlist_id TEXT NOT NULL,
+        position INTEGER NOT NULL DEFAULT 0,
+        title TEXT NOT NULL,
+        author TEXT NOT NULL,
+        uri TEXT NOT NULL,
+        identifier TEXT NOT NULL,
+        source_name TEXT NOT NULL DEFAULT 'unknown',
+        duration INTEGER NOT NULL DEFAULT 0,
+        thumbnail TEXT,
+        track_data TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_music_playlist_tracks_playlist ON music_playlist_tracks (playlist_id, position);
+
+      CREATE TABLE IF NOT EXISTS music_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        author TEXT NOT NULL,
+        uri TEXT NOT NULL,
+        duration INTEGER NOT NULL DEFAULT 0,
+        played_by TEXT NOT NULL,
+        played_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_music_history_guild ON music_history (guild_id, played_at);
+    `);
   } catch (_) {}
   try {
     sqlite.exec("CREATE INDEX IF NOT EXISTS idx_confessions_guild_status ON confessions (guild_id, status);");
@@ -897,84 +956,4 @@ function ensureSqliteSchema(sqlite) {
     sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_channel_activities_unique ON channel_activities (guild_id, channel_id, date);");
   } catch (_) {}
   try {
-    sqlite.exec("DELETE FROM hourly_activities WHERE id NOT IN (SELECT MAX(id) FROM hourly_activities GROUP BY guild_id, day_of_week, hour_of_day);");
-    sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_hourly_activities_unique ON hourly_activities (guild_id, day_of_week, hour_of_day);");
-  } catch (_) {}
-}
-
-export async function initDb(options = {}) {
-  const conf = getDatabaseConfig();
-
-  if (conf.dialect === "sqlite") {
-    initDbSync();
-    logger.info(`[DB] Drizzle ORM connected to SQLite (${conf.storage}) | Schema initialized.`);
-    return activeDb;
-  }
-
-  if (conf.dialect === "postgres") {
-    const { Pool } = await import("pg");
-    const { drizzle } = await import("drizzle-orm/node-postgres");
-    pgPool = new Pool({
-      connectionString: conf.url,
-      ssl: CONFIG.DB_SSL ? { rejectUnauthorized: false } : undefined,
-    });
-    activeDb = drizzle(pgPool, { schema });
-    logger.info("[DB] Drizzle ORM connected to PostgreSQL.");
-    return activeDb;
-  }
-
-  if (conf.dialect === "mysql") {
-    const mysql = await import("mysql2/promise");
-    const { drizzle } = await import("drizzle-orm/mysql2");
-    mysqlPool = mysql.createPool(conf.url);
-    activeDb = drizzle(mysqlPool, { schema, mode: "default" });
-    logger.info("[DB] Drizzle ORM connected to MySQL.");
-    return activeDb;
-  }
-
-  throw new Error(`Unsupported dialect: ${conf.dialect}`);
-}
-
-export async function closeDb() {
-  try {
-    if (rawSqliteDb) {
-      rawSqliteDb.close();
-      rawSqliteDb = null;
-    }
-    if (pgPool) {
-      await pgPool.end();
-      pgPool = null;
-    }
-    if (mysqlPool) {
-      await mysqlPool.end();
-      mysqlPool = null;
-    }
-    activeDb = null;
-    logger.info("[DB] Database connection closed cleanly.");
-  } catch (error) {
-    logger.error("[DB ERROR] Error closing database connection:", error);
-  }
-}
-
-// Compatibility wrapper for legacy Sequelize callers
-export const sequelize = {
-  authenticate: async () => true,
-  sync: async () => true,
-  close: closeDb,
-  query: async (q) => {
-    if (rawSqliteDb) {
-      return rawSqliteDb.query(q).all();
-    }
-    return [];
-  },
-  getDialect: () => CONFIG.DB_TYPE || "sqlite",
-  QueryTypes: { SELECT: "SELECT" },
-};
-export const db = new Proxy(
-  {},
-  {
-    get(_, prop) {
-      return getDb()[prop];
-    },
-  }
-);
+    sqlite.exec("DELETE FROM hourly_activities WHERE id NOT IN                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             

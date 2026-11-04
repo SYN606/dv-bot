@@ -177,3 +177,58 @@ export async function executeTimeout({
 
   return { success: true, expiresAt };
 }
+
+/**
+ * Execute an untimeout action (remove timeout)
+ */
+export async function executeUntimeout({
+  guild,
+  moderator,
+  targetMember,
+  reason = "Timeout removed by staff",
+}: {
+  guild: any;
+  moderator: any;
+  targetMember: any;
+  reason?: string;
+}) {
+  const auditReason = String(reason || "Timeout removed by staff").slice(0, 512);
+
+  // DM member
+  const dmEmbed = makeEmbed({
+    title: "🔊 Your Timeout Was Removed",
+    description:
+      `Your timeout in **${guild.name}** has been removed.\n\n` +
+      `• **Reason:** ${reason}\n` +
+      `• **Moderator:** ${moderator.tag || moderator.username || "Staff"}`,
+    level: "SUCCESS",
+    color: COLORS.DARK,
+  });
+  await targetMember.send({ embeds: [dmEmbed] }).catch(() => {});
+
+  // Remove timeout in Discord
+  await targetMember.timeout(null, auditReason);
+
+  await PunishmentRecord.create({
+    guild_id: String(guild.id),
+    user_id: String(targetMember.id),
+    moderator_id: String(moderator.id),
+    action_type: "untimeout",
+    reason,
+  }).catch(() => {});
+
+  await sendModLog({
+    guild,
+    category: "TIMEOUT",
+    title: "Member Timeout Removed",
+    description: `<@${targetMember.id}> was untimed out by ${moderator.tag || moderator.username || "Staff"}.`,
+    level: "SUCCESS",
+    actor: moderator,
+    target: targetMember.user || targetMember,
+    extraFields: {
+      Reason: reason,
+    },
+  });
+
+  return { success: true };
+}

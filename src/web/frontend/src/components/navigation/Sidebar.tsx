@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, TrendingUp, ShieldCheck, Pin, Image as ImageIcon,
-  Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award, PenTool, LogOut, ScrollText, UserPlus, MessageSquareHeart, Ticket
+  Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award, PenTool, LogOut, ScrollText, UserPlus, MessageSquareHeart, Ticket, Music
 } from "lucide-react";
 import SuperuserBadge from "../ui/SuperuserBadge";
 import { getDiscordAvatarUrl } from "../../utils/discord";
@@ -176,6 +176,18 @@ const ICON_THEMES: Record<string, {
     activeGlow: "shadow-[0_0_18px_rgba(217,70,239,0.5)] border-fuchsia-400/40",
     dotColor: "bg-fuchsia-400 shadow-[0_0_8px_rgba(217,70,239,0.8)]",
   },
+  music: {
+    iconColor: "text-emerald-400",
+    hoverIconColor: "group-hover:text-emerald-200",
+    bg: "bg-emerald-500/[0.08]",
+    border: "border-emerald-500/20",
+    hoverBg: "group-hover:bg-emerald-500/20",
+    hoverBorder: "group-hover:border-emerald-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(16,185,129,0.35)]",
+    activeBg: "bg-gradient-to-br from-emerald-500 to-teal-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(16,185,129,0.5)] border-emerald-400/40",
+    dotColor: "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]",
+  },
   autoresponder: {
     iconColor: "text-teal-400",
     hoverIconColor: "group-hover:text-teal-200",
@@ -289,7 +301,8 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
         { id: "confessions", label: "Anonymous Confessions", icon: MessageSquareHeart, path: `/dashboard/${currentGuild.id}/confessions` },
         { id: "autoresponder", label: "Autoresponder", icon: Bot, path: `/dashboard/${currentGuild.id}/autoresponder` },
         { id: "sticky", label: "Sticky Messages", icon: Pin, path: `/dashboard/${currentGuild.id}/sticky` },
-        { id: "media_only", label: "Media-Only Channels", icon: ImageIcon, path: `/dashboard/${currentGuild.id}/media-only` }
+        { id: "media_only", label: "Media-Only Channels", icon: ImageIcon, path: `/dashboard/${currentGuild.id}/media-only` },
+        { id: "music", label: "Music & Live Player", icon: Music, path: `/dashboard/${currentGuild.id}/music` }
       ]
     },
     {

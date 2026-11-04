@@ -29,6 +29,10 @@ import {
   ticketSla,
   ticketJobs,
   ticketFeedback,
+  musicSettings,
+  musicPlaylists,
+  musicPlaylistTracks,
+  musicHistory,
 } from "../schema/sqlite.js";
 
 export const AFK = createModel("AFK", afk, "id");
@@ -64,3 +68,7 @@ export const TicketAssignment = createModel("TicketAssignment", ticketAssignment
 export const TicketSla = createModel("TicketSla", ticketSla, "id");
 export const TicketJob = createModel("TicketJob", ticketJobs, "id");
 export const TicketFeedback = createModel("TicketFeedback", ticketFeedback, "id");
+export const MusicSettings = createModel("MusicSettings", musicSettings, "guild_id");
+export const MusicPlaylist = createModel("MusicPlaylist", musicPlaylists, "id");
+export const MusicPlaylistTrack = createModel("MusicPlaylistTrack", musicPlaylistTracks, "id");
+export const MusicHistory = createModel("MusicHistory", musicHistory, "id");

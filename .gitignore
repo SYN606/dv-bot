@@ -209,3 +209,5 @@ audit_output/
 # AI guidelines & learning files
 GEMINI.md
 gemini.md
+tests/
+lavalink/

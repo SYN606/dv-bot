@@ -1,0 +1,479 @@
+import { EventEmitter } from "node:events";
+import { type Message, type Guild } from "discord.js";
+import { TrackQueue, formatDuration, type IFormattedTrack } from "./TrackQueue.js";
+import { buildFilterPayload } from "./AudioFilters.js";
+import { recordMusicHistory } from "../db/helpers/music.js";
+import { makeEmbed, COLORS } from "../core/embeds.js";
+import { logger } from "../utils/logger.js";
+import { CONFIG } from "../config.js";
+
+export const PlayerState = {
+  IDLE: "idle",
+  BUFFERING: "buffering",
+  PLAYING: "playing",
+  PAUSED: "paused",
+  DESTROYED: "destroyed",
+} as const;
+
+export type PlayerStateType = (typeof PlayerState)[keyof typeof PlayerState];
+
+export interface ISkipResult {
+  skipped: boolean;
+  votes: number;
+  required: number;
+}
+
+export class GuildPlayer extends EventEmitter {
+  public musicManager: any;
+  public guildId: string;
+  public player: any; // Shoukaku player instance
+  public voiceChannelId: string;
+  public textChannelId: string | null;
+
+  public queue: TrackQueue;
+  public state: PlayerStateType;
+  public volume: number;
+  public currentFilter: string;
+  public customFilters: Record<string, any>;
+
+  public skipVotes: Set<string>;
+  public idleTimer: NodeJS.Timeout | null;
+  public mode247: boolean;
+  public nowPlayingMessage: Message | null;
+
+  public position: number;
+  public lastPositionUpdate: number;
+
+  constructor(
+    musicManager: any,
+    guildId: string,
+    player: any,
+    voiceChannelId: string,
+    textChannelId: string | null = null
+  ) {
+    super();
+    this.musicManager = musicManager;
+    this.guildId = String(guildId);
+    this.player = player;
+    this.voiceChannelId = String(voiceChannelId);
+    this.textChannelId = textChannelId ? String(textChannelId) : null;
+
+    this.queue = new TrackQueue(this.guildId);
+    this.state = PlayerState.IDLE;
+    this.volume = CONFIG.MUSIC_DEFAULT_VOLUME;
+    this.currentFilter = "clear";
+    this.customFilters = {};
+
+    this.skipVotes = new Set<string>();
+    this.idleTimer = null;
+    this.mode247 = false;
+    this.nowPlayingMessage = null;
+
+    this.position = 0;
+    this.lastPositionUpdate = Date.now();
+
+    this.setupListeners();
+  }
+
+  get guild(): Guild | null {
+    return this.musicManager.client.guilds.cache.get(this.guildId) || null;
+  }
+
+  get isPlaying(): boolean {
+    return this.state === PlayerState.PLAYING;
+  }
+
+  get isPaused(): boolean {
+    return this.state === PlayerState.PAUSED;
+  }
+
+  get isConnected(): boolean {
+    return Boolean(this.player && this.state !== PlayerState.DESTROYED);
+  }
+
+  get currentTrack(): IFormattedTrack | null {
+    return this.queue.current;
+  }
+
+  /**
+   * Approximate playback position in milliseconds
+   */
+  get currentPosition(): number {
+    if (!this.isPlaying) return this.position;
+    const elapsed = Date.now() - this.lastPositionUpdate;
+    return Math.min(this.position + elapsed, this.currentTrack?.info.length || 0);
+  }
+
+  setupListeners(): void {
+    if (!this.player) return;
+
+    // 1. Track Start
+    this.player.on("start", () => {
+      this.clearIdleTimer();
+      this.state = PlayerState.PLAYING;
+      this.position = 0;
+      this.lastPositionUpdate = Date.now();
+      this.skipVotes.clear();
+
+      if (this.currentTrack) {
+        recordMusicHistory(
+          this.guildId,
+          this.currentTrack.info,
+          this.currentTrack.requester?.username || "Dashboard"
+        ).catch(() => {});
+
+        this.sendNowPlayingMessage().catch(() => {});
+      }
+
+      this.emit("trackStart", this.currentTrack);
+    });
+
+    // 2. Track End
+    this.player.on("end", async () => {
+      this.state = PlayerState.IDLE;
+      this.skipVotes.clear();
+      this.emit("trackEnd", this.currentTrack);
+
+      const nextTrack = this.queue.next();
+      if (nextTrack) {
+        await this.playTrack(nextTrack);
+      } else {
+        if (this.queue.autoplay) {
+          const autoTrack = await this.resolveAutoplayTrack();
+          if (autoTrack) {
+            this.queue.add(autoTrack, { id: "autoplay", username: "Autoplay" });
+            const queuedAuto = this.queue.next();
+            if (queuedAuto) {
+              await this.playTrack(queuedAuto);
+              return;
+            }
+          }
+        }
+
+        this.startIdleTimer();
+        this.emit("queueEnd");
+      }
+    });
+
+    // 3. Track Stuck
+    this.player.on("stuck", async (data: any) => {
+      logger.warn(`[PLAYER] Track stuck in guild ${this.guildId}: ${data.thresholdMs}ms`);
+      this.emit("trackStuck", this.currentTrack);
+      await this.skip();
+    });
+
+    // 4. Track Exception
+    this.player.on("exception", async (data: any) => {
+      logger.error(`[PLAYER] Track exception in guild ${this.guildId}:`, data.exception);
+      this.emit("trackError", data.exception, this.currentTrack);
+      await this.skip();
+    });
+
+    // 5. Update Position
+    this.player.on("update", (data: any) => {
+      if (data.state && typeof data.state.position === "number") {
+        this.position = data.state.position;
+        this.lastPositionUpdate = Date.now();
+      }
+    });
+
+    // 6. Player Closed / Disconnected
+    this.player.on("closed", (data: any) => {
+      logger.info(`[PLAYER] Connection closed in guild ${this.guildId}: code ${data.code}`);
+      if (data.byRemote) {
+        this.destroy(false).catch(() => {});
+      }
+    });
+  }
+
+  /**
+   * Starts playback of a specific track on the Shoukaku player
+   */
+  async playTrack(track: IFormattedTrack): Promise<boolean> {
+    if (!this.player || !track) return false;
+    try {
+      this.state = PlayerState.BUFFERING;
+      await this.player.playTrack({
+        track: { encoded: track.encoded },
+      });
+      return true;
+    } catch (err) {
+      logger.error(`[PLAYER] Failed to play track in guild ${this.guildId}:`, err);
+      this.state = PlayerState.IDLE;
+      const next = this.queue.next();
+      if (next) await this.playTrack(next);
+      return false;
+    }
+  }
+
+  /**
+   * Enqueues and initiates playback if currently idle
+   */
+  async play(trackOrTracks: any, requester: any = null): Promise<number> {
+    const addedCount = this.queue.add(trackOrTracks, requester);
+    if (this.state === PlayerState.IDLE && !this.currentTrack) {
+      const next = this.queue.next();
+      if (next) {
+        await this.playTrack(next);
+      }
+    }
+    return addedCount;
+  }
+
+  async pause(): Promise<boolean> {
+    if (!this.player || this.isPaused) return false;
+    try {
+      await this.player.setPaused(true);
+      this.state = PlayerState.PAUSED;
+      this.emit("pause");
+      return true;
+    } catch (err) {
+      logger.error(`[PLAYER] Failed to pause in guild ${this.guildId}:`, err);
+      return false;
+    }
+  }
+
+  async resume(): Promise<boolean> {
+    if (!this.player || !this.isPaused) return false;
+    try {
+      await this.player.setPaused(false);
+      this.state = PlayerState.PLAYING;
+      this.lastPositionUpdate = Date.now();
+      this.emit("resume");
+      return true;
+    } catch (err) {
+      logger.error(`[PLAYER] Failed to resume in guild ${this.guildId}:`, err);
+      return false;
+    }
+  }
+
+  async skip(amount: number = 1): Promise<boolean> {
+    if (!this.player) return false;
+    try {
+      const skipCount = Math.max(1, Number(amount) || 1);
+      if (skipCount > 1) {
+        for (let i = 0; i < skipCount - 1; i++) {
+          this.queue.tracks.shift();
+        }
+      }
+      this.skipVotes.clear();
+      await this.player.stopTrack();
+      return true;
+    } catch (err) {
+      logger.error(`[PLAYER] Failed to skip in guild ${this.guildId}:`, err);
+      return false;
+    }
+  }
+
+  async previous(): Promise<boolean> {
+    if (!this.player) return false;
+    const prev = this.queue.previous();
+    if (!prev) return false;
+    return this.playTrack(prev);
+  }
+
+  async replay(): Promise<boolean> {
+    if (!this.player || !this.currentTrack) return false;
+    return this.seek(0);
+  }
+
+  async seek(positionMs: number): Promise<boolean> {
+    if (!this.player || !this.currentTrack) return false;
+    if (!this.currentTrack.info.isSeekable) return false;
+
+    const safePos = Math.max(0, Math.min(positionMs, this.currentTrack.info.length));
+    try {
+      await this.player.seekTo(safePos);
+      this.position = safePos;
+      this.lastPositionUpdate = Date.now();
+      return true;
+    } catch (err) {
+      logger.error(`[PLAYER] Failed to seek in guild ${this.guildId}:`, err);
+      return false;
+    }
+  }
+
+  async stop(): Promise<boolean> {
+    this.queue.reset();
+    this.skipVotes.clear();
+    this.clearIdleTimer();
+    if (this.player) {
+      try {
+        await this.player.stopTrack();
+      } catch {}
+    }
+    this.state = PlayerState.IDLE;
+    if (!this.mode247) {
+      await this.destroy();
+    }
+    return true;
+  }
+
+  async setVolume(volume: number): Promise<boolean> {
+    if (!this.player) return false;
+    const safeVolume = Math.min(Math.max(1, Number(volume) || 80), CONFIG.MUSIC_MAX_VOLUME);
+    try {
+      await this.player.setGlobalVolume(safeVolume);
+      this.volume = safeVolume;
+      return true;
+    } catch (err) {
+      logger.error(`[PLAYER] Failed to set volume in guild ${this.guildId}:`, err);
+      return false;
+    }
+  }
+
+  async setFilter(presetName: string): Promise<boolean> {
+    if (!this.player) return false;
+    const filterPayload = buildFilterPayload(presetName);
+    try {
+      await this.player.setFilters(filterPayload);
+      this.currentFilter = presetName;
+      return true;
+    } catch (err) {
+      logger.error(`[PLAYER] Failed to set filter in guild ${this.guildId}:`, err);
+      return false;
+    }
+  }
+
+  async resolveAutoplayTrack(): Promise<any | null> {
+    if (!this.queue.previousTracks.length && !this.currentTrack) return null;
+    const reference = this.currentTrack || this.queue.previousTracks[this.queue.previousTracks.length - 1];
+    if (!reference) return null;
+
+    try {
+      const search = `ytsearch:${reference.info.author} music`;
+      const res = await this.musicManager.search(search);
+      if (res && res.data && Array.isArray(res.data)) {
+        const prevIds = new Set<string>(this.queue.previousTracks.map((t) => t.info.identifier));
+        const candidate = res.data.find((t: any) => !prevIds.has(t.info.identifier));
+        return candidate || res.data[0];
+      }
+    } catch {}
+    return null;
+  }
+
+  startIdleTimer(): void {
+    this.clearIdleTimer();
+    if (this.mode247) return;
+
+    const timeoutMs = CONFIG.MUSIC_IDLE_TIMEOUT * 1000;
+    this.idleTimer = setTimeout(async () => {
+      logger.info(`[PLAYER] Idle timeout expired for guild ${this.guildId}. Leaving voice channel.`);
+      await this.destroy();
+    }, timeoutMs);
+  }
+
+  clearIdleTimer(): void {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+  }
+
+  async sendNowPlayingMessage(): Promise<void> {
+    if (!this.textChannelId || !this.currentTrack) return;
+    const channel = this.guild?.channels?.cache?.get(this.textChannelId) as any;
+    if (!channel || !channel.isTextBased?.()) return;
+
+    try {
+      const { createMusicControlComponents } = await import("./MusicInteractionHandler.js");
+      const track = this.currentTrack;
+      const durationStr = track.info.isStream
+        ? "🔴 Live Stream"
+        : this.formatTime(track.info.length);
+
+      const embed = makeEmbed({
+        title: "🎶 Now Playing",
+        description: `[**${track.info.title}**](${track.info.uri})\nBy: \`${track.info.author}\``,
+        fields: [
+          { name: "Duration", value: durationStr, inline: true },
+          { name: "Volume", value: `${this.volume}%`, inline: true },
+          { name: "Loop Mode", value: `\`${this.queue.loopMode.toUpperCase()}\``, inline: true },
+          {
+            name: "Requested By",
+            value: track.requester ? `<@${track.requester.id}>` : "`Dashboard`",
+            inline: true,
+          },
+          { name: "Queue", value: `${this.queue.size} songs left`, inline: true },
+          { name: "Filter", value: `\`${this.currentFilter.toUpperCase()}\``, inline: true },
+        ],
+        thumbnail: track.info.artworkUrl,
+        level: "PRIMARY",
+        color: COLORS.PRIMARY,
+      });
+
+      const components = createMusicControlComponents(this.guildId, this.isPaused, this.queue.loopMode);
+
+      if (this.nowPlayingMessage) {
+        await this.nowPlayingMessage.delete().catch(() => {});
+        this.nowPlayingMessage = null;
+      }
+
+      this.nowPlayingMessage = await channel.send({
+        embeds: [embed],
+        components,
+      });
+    } catch (err: any) {
+      logger.warn(`[PLAYER] Could not send now playing message:`, err.message);
+    }
+  }
+
+  async updateNowPlayingMessage(): Promise<void> {
+    if (!this.nowPlayingMessage || !this.currentTrack) return;
+    try {
+      const { createMusicControlComponents } = await import("./MusicInteractionHandler.js");
+      const components = createMusicControlComponents(this.guildId, this.isPaused, this.queue.loopMode);
+      await this.nowPlayingMessage.edit({ components }).catch(() => {});
+    } catch {}
+  }
+
+  formatTime(ms?: number | null): string {
+    return formatDuration(ms);
+  }
+
+  async destroy(disconnectVoice: boolean = true): Promise<void> {
+    this.clearIdleTimer();
+    this.state = PlayerState.DESTROYED;
+    this.queue.reset();
+
+    if (this.nowPlayingMessage) {
+      await this.nowPlayingMessage.delete().catch(() => {});
+      this.nowPlayingMessage = null;
+    }
+
+    if (this.player) {
+      try {
+        await this.player.destroy();
+      } catch {}
+    }
+
+    if (disconnectVoice) {
+      try {
+        await this.musicManager.shoukaku.leaveVoiceChannel(this.guildId);
+      } catch {}
+    }
+
+    this.musicManager.players.delete(this.guildId);
+    this.emit("destroy");
+  }
+
+  toJSON(): Record<string, any> {
+    return {
+      guildId: this.guildId,
+      state: this.state,
+      isPlaying: this.isPlaying,
+      isPaused: this.isPaused,
+      currentTrack: this.currentTrack,
+      position: this.currentPosition,
+      volume: this.volume,
+      filter: this.currentFilter,
+      loopMode: this.queue.loopMode,
+      autoplay: this.queue.autoplay,
+      voiceChannelId: this.voiceChannelId,
+      textChannelId: this.textChannelId,
+      mode247: this.mode247,
+      queueSize: this.queue.size,
+      totalDuration: this.queue.totalDuration,
+    };
+  }
+}

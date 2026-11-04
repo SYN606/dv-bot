@@ -57,6 +57,9 @@ function isEligibleForVoiceAnalytics(state) {
 export default {
   name: "voiceStateUpdate",
   async execute(client, oldState, newState) {
+    // Handle Music Manager Voice State (bot disconnect/move, alone in VC)
+    client.music?.handleVoiceStateUpdate(oldState, newState).catch(() => {});
+
     const guild = newState.guild || oldState.guild;
     const member = newState.member || oldState.member;
     if (!guild || !member || member.user.bot) return;

@@ -17,6 +17,7 @@ import { auditLogRoutes } from "./auditLogRoutes.js";
 import { welcomeRoutes } from "./welcomeRoutes.js";
 import { confessionRoutes } from "./confessionRoutes.js";
 import { ticketRoutes } from "./ticketRoutes.js";
+import { musicRoutes } from "./musicRoutes.js";
 import { apiCache } from "./cache.js";
 import { rateLimiter } from "../middleware/rateLimit.js";
 
@@ -52,6 +53,7 @@ apiRouter.route("/", auditLogRoutes);
 apiRouter.route("/", welcomeRoutes);
 apiRouter.route("/", confessionRoutes);
 apiRouter.route("/", ticketRoutes);
+apiRouter.route("/", musicRoutes);
 
 // Re-export cache utility for direct usage if needed
 export { apiCache };

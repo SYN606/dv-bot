@@ -41,6 +41,7 @@ const ACTION_THEMES = {
   KICK: { color: 0xe67e22, emoji: "👢", label: "Member Kicked" },
   TIMEOUT: { color: 0xfee75c, emoji: "⏳", label: "Member Timed Out" },
   UNBAN: { color: 0x57f287, emoji: "🔓", label: "Member Unbanned" },
+  UNTIMEOUT: { color: 0x57f287, emoji: "🔊", label: "Timeout Removed" },
   WARN: { color: 0xf1c40f, emoji: "⚠️", label: "Member Warned" },
 
   LOCK: { color: 0xe74c3c, emoji: "🔒", label: "Channel Locked" },
@@ -86,6 +87,9 @@ function resolveActionTheme(category = "", title = "") {
     return ACTION_THEMES.BAN;
   }
   if (normTitle.includes("kick")) return ACTION_THEMES.KICK;
+  if (normTitle.includes("untimeout") || normTitle.includes("unmute") || normTitle.includes("timeout removed")) {
+    return ACTION_THEMES.UNTIMEOUT;
+  }
   if (normTitle.includes("timed out") || normTitle.includes("timeout") || normTitle.includes("mute")) {
     return ACTION_THEMES.TIMEOUT;
   }
