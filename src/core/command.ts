@@ -66,7 +66,8 @@ export class CommandContext {
       if (this.interaction.replied) {
         return await this.interaction.followUp(payload);
       }
-      return await this.interaction.reply({ ...payload, fetchReply: true });
+      const response = await this.interaction.reply({ ...payload, withResponse: true });
+      return (response as any)?.resource?.message ?? (await this.interaction.fetchReply());
     }
 
     if (this.message) {
