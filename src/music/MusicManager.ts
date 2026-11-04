@@ -84,6 +84,13 @@ export class MusicManager {
       );
 
       this.setupShoukakuEvents();
+
+      // If Discord client is already ready, Shoukaku's "clientReady" event listener
+      // has already passed. Explicitly trigger ready() on connector to register nodes.
+      if (this.client.isReady?.() || this.client.user) {
+        (this.shoukaku.connector as any).ready(this.nodes);
+      }
+
       logger.info("[MUSIC] Shoukaku connector initialized. Waiting for Lavalink node...");
     } catch (err) {
       logger.error("[MUSIC] Failed to initialize Shoukaku client:", err);

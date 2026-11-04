@@ -956,4 +956,84 @@ function ensureSqliteSchema(sqlite) {
     sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_channel_activities_unique ON channel_activities (guild_id, channel_id, date);");
   } catch (_) {}
   try {
-    sqlite.exec("DELETE FROM hourly_activities WHERE id NOT IN                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+    sqlite.exec("DELETE FROM hourly_activities WHERE id NOT IN (SELECT MAX(id) FROM hourly_activities GROUP BY guild_id, day_of_week, hour_of_day);");
+    sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_hourly_activities_unique ON hourly_activities (guild_id, day_of_week, hour_of_day);");
+  } catch (_) {}
+}
+
+export async function initDb(options = {}) {
+  const conf = getDatabaseConfig();
+
+  if (conf.dialect === "sqlite") {
+    initDbSync();
+    logger.info(`[DB] Drizzle ORM connected to SQLite (${conf.storage}) | Schema initialized.`);
+    return activeDb;
+  }
+
+  if (conf.dialect === "postgres") {
+    const { Pool } = await import("pg");
+    const { drizzle } = await import("drizzle-orm/node-postgres");
+    pgPool = new Pool({
+      connectionString: conf.url,
+      ssl: CONFIG.DB_SSL ? { rejectUnauthorized: false } : undefined,
+    });
+    activeDb = drizzle(pgPool, { schema });
+    logger.info("[DB] Drizzle ORM connected to PostgreSQL.");
+    return activeDb;
+  }
+
+  if (conf.dialect === "mysql") {
+    const mysql = await import("mysql2/promise");
+    const { drizzle } = await import("drizzle-orm/mysql2");
+    mysqlPool = mysql.createPool(conf.url);
+    activeDb = drizzle(mysqlPool, { schema, mode: "default" });
+    logger.info("[DB] Drizzle ORM connected to MySQL.");
+    return activeDb;
+  }
+
+  throw new Error(`Unsupported dialect: ${conf.dialect}`);
+}
+
+export async function closeDb() {
+  try {
+    if (rawSqliteDb) {
+      rawSqliteDb.close();
+      rawSqliteDb = null;
+    }
+    if (pgPool) {
+      await pgPool.end();
+      pgPool = null;
+    }
+    if (mysqlPool) {
+      await mysqlPool.end();
+      mysqlPool = null;
+    }
+    activeDb = null;
+    logger.info("[DB] Database connection closed cleanly.");
+  } catch (error) {
+    logger.error("[DB ERROR] Error closing database connection:", error);
+  }
+}
+
+// Compatibility wrapper for legacy Sequelize callers
+export const sequelize = {
+  authenticate: async () => true,
+  sync: async () => true,
+  close: closeDb,
+  query: async (q) => {
+    if (rawSqliteDb) {
+      return rawSqliteDb.query(q).all();
+    }
+    return [];
+  },
+  getDialect: () => CONFIG.DB_TYPE || "sqlite",
+  QueryTypes: { SELECT: "SELECT" },
+};
+export const db = new Proxy(
+  {},
+  {
+    get(_, prop) {
+      return getDb()[prop];
+    },
+  }
+);
