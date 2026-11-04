@@ -12,12 +12,14 @@ import {
 import { CONFIG } from "../config.js";
 import { logger } from "../utils/logger.js";
 import type { Command, ComponentHandler } from "../types/discord.js";
+import { MusicManager } from "../music/MusicManager.js";
 
 export class DVClient extends Client {
   public commands: Collection<string, Command>;
   public aliases: Collection<string, string>;
   public components: Collection<string, ComponentHandler>;
   public cooldowns: Collection<string, Collection<string, number>>;
+  public music: MusicManager;
 
   constructor() {
     super({
@@ -81,6 +83,7 @@ export class DVClient extends Client {
     this.aliases = new Collection();
     this.components = new Collection();
     this.cooldowns = new Collection();
+    this.music = new MusicManager(this);
   }
 
   async loadCommands(dir = path.join(CONFIG.ROOT_DIR, "src", "commands")): Promise<void> {

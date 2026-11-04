@@ -36,6 +36,10 @@ import {
   TicketSla,
   TicketJob,
   TicketFeedback,
+  MusicSettings,
+  MusicPlaylist,
+  MusicPlaylistTrack,
+  MusicHistory,
 } from "./featureModels.js";
 import {
   AutoResponder,
@@ -100,6 +104,10 @@ export {
   TicketSla,
   TicketJob,
   TicketFeedback,
+  MusicSettings,
+  MusicPlaylist,
+  MusicPlaylistTrack,
+  MusicHistory,
   TempbanConfig,
   TempbanRecord,
   WarningRecord,

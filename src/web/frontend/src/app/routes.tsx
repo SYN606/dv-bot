@@ -36,6 +36,7 @@ const MessageStudioPage = lazy(() => import("../pages/dashboard/MessageStudioPag
 const AuditLogsPage = lazy(() => import("../pages/dashboard/AuditLogsPage"));
 const ConfessionsPage = lazy(() => import("../pages/dashboard/ConfessionsPage"));
 const TicketsPage = lazy(() => import("../pages/dashboard/TicketsPage"));
+const MusicPage = lazy(() => import("../pages/dashboard/MusicPage"));
 
 export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
   return (
@@ -92,6 +93,7 @@ export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
           <Route path="warning-punishments" element={<WarningPunishmentsPage showToast={showToast} />} />
           <Route path="confessions" element={<ConfessionsPage showToast={showToast} />} />
           <Route path="tickets" element={<TicketsPage showToast={showToast} />} />
+          <Route path="music" element={<MusicPage showToast={showToast} />} />
         </Route>
 
         {/* Fallback */}

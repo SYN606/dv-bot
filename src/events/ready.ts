@@ -49,6 +49,11 @@ export default {
     const ticketJobRunner = new TicketJobRunner(client);
     ticketJobRunner.start();
 
+    // 5. Initialize Lavalink Music Subsystem
+    if (client.music) {
+      await client.music.init();
+    }
+
     // Hydrate active ticket channels for real-time listener fast-path
     import("../db/models/index.js").then(async ({ Ticket, Op }) => {
       try {
