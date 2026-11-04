@@ -25,7 +25,9 @@ export default createCommand({
   usage: "<user> [reason]",
   examples: [
     "/untimeout user:@User reason:Appeal approved",
+    "dv untimeout @User Appeal accepted",
     "dvuntimeout @User Appeal accepted",
+    "dv unmute @User Apologized in DMs",
     "dvunmute @User Apologized in DMs",
     "dv unto @User",
   ],
