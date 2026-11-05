@@ -53,6 +53,10 @@ export default function AuditLogsPage({ showToast }: { showToast?: any }) {
     refresh,
     exportToJson,
     exportToCsv,
+    guildTimezone,
+    selectedTimezone,
+    setSelectedTimezone,
+    effectiveTimezone,
   } = useAuditLogs(guildId, showToast);
 
   const handleResetFilters = () => {
@@ -109,6 +113,10 @@ export default function AuditLogsPage({ showToast }: { showToast?: any }) {
         onRefresh={refresh}
         onExportJson={exportToJson}
         onExportCsv={exportToCsv}
+        guildTimezone={guildTimezone}
+        selectedTimezone={selectedTimezone}
+        onChangeTimezone={setSelectedTimezone}
+        effectiveTimezone={effectiveTimezone}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
@@ -153,6 +161,7 @@ export default function AuditLogsPage({ showToast }: { showToast?: any }) {
           {/* Audit Log Feed & Timeline with Interactive Token Clicks */}
           <AuditLogsList
             entries={entries}
+            effectiveTimezone={effectiveTimezone}
             missingPermission={missingPermission}
             onResetFilters={handleResetFilters}
             onRefresh={refresh}

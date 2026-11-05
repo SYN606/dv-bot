@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { formatInTimezone } from "../../utils/timezone";
 import {
   getAuditLogs,
   getAuditLogConfig,
@@ -54,6 +55,39 @@ export function useAuditLogs(guildId, showToast) {
   const [hideBots, setHideBots] = useState(false);
   const [limit, setLimit] = useState(50);
 
+  // Timezone State & Preference
+  const [guildTimezone, setGuildTimezone] = useState("UTC");
+  const [selectedTimezone, setSelectedTimezoneState] = useState<string>(() => {
+    try {
+      return localStorage.getItem("audit_log_timezone") || "server";
+    } catch {
+      return "server";
+    }
+  });
+
+  const setSelectedTimezone = useCallback((tz: string) => {
+    setSelectedTimezoneState(tz);
+    try {
+      localStorage.setItem("audit_log_timezone", tz);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const effectiveTimezone = useMemo(() => {
+    if (selectedTimezone === "server") {
+      return guildTimezone || "UTC";
+    }
+    if (selectedTimezone === "local") {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      } catch {
+        return "UTC";
+      }
+    }
+    return selectedTimezone || "UTC";
+  }, [selectedTimezone, guildTimezone]);
+
   // Auto-refresh with Tab Visibility Awareness
   const [autoRefresh, setAutoRefresh] = useState(false);
   const autoRefreshTimerRef = useRef(null);
@@ -86,6 +120,7 @@ export function useAuditLogs(guildId, showToast) {
           setStats(res.stats || {});
           setExecutors(res.executors || []);
           setAvailableActions(res.availableActions || []);
+          if (res.guildTimezone) setGuildTimezone(res.guildTimezone);
           setError(null);
 
           if (res.rateLimited) {
@@ -131,6 +166,7 @@ export function useAuditLogs(guildId, showToast) {
           setStats(logsRes.stats || {});
           setExecutors(logsRes.executors || []);
           setAvailableActions(logsRes.availableActions || []);
+          if (logsRes.guildTimezone) setGuildTimezone(logsRes.guildTimezone);
           setIsRateLimited(Boolean(logsRes.rateLimited));
         }
 
@@ -406,9 +442,14 @@ export function useAuditLogs(guildId, showToast) {
       const exportData = {
         guildId,
         exportedAt: new Date().toISOString(),
+        timezone: effectiveTimezone,
+        selectedTimezonePreference: selectedTimezone,
         totalEntries: filteredEntries.length,
         filters: { category, preset, timeWindow, actionType, executorId, hideBots, searchQuery },
-        entries: filteredEntries,
+        entries: filteredEntries.map((e) => ({
+          ...e,
+          formattedLocalTime: formatInTimezone(e.createdAt, effectiveTimezone),
+        })),
       };
 
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
@@ -431,14 +472,27 @@ export function useAuditLogs(guildId, showToast) {
         type: "error",
       });
     }
-  }, [guildId, filteredEntries, category, preset, timeWindow, actionType, executorId, hideBots, searchQuery, showToast]);
+  }, [guildId, filteredEntries, category, preset, timeWindow, actionType, executorId, hideBots, searchQuery, effectiveTimezone, selectedTimezone, showToast]);
 
   // Export to CSV
   const exportToCsv = useCallback(() => {
     try {
-      const headers = ["Timestamp", "Action", "Category", "Severity", "Executor Tag", "Executor ID", "Target Name", "Target ID", "Reason", "Changes Count"];
+      const headers = [
+        "Timestamp (UTC)",
+        `Timestamp (${effectiveTimezone})`,
+        "Action",
+        "Category",
+        "Severity",
+        "Executor Tag",
+        "Executor ID",
+        "Target Name",
+        "Target ID",
+        "Reason",
+        "Changes Count",
+      ];
       const rows = filteredEntries.map((e) => [
         `"${e.createdAt}"`,
+        `"${formatInTimezone(e.createdAt, effectiveTimezone)}"`,
         `"${e.actionName}"`,
         `"${e.category}"`,
         `"${e.severity}"`,
@@ -471,7 +525,7 @@ export function useAuditLogs(guildId, showToast) {
         type: "error",
       });
     }
-  }, [guildId, filteredEntries, showToast]);
+  }, [guildId, filteredEntries, effectiveTimezone, showToast]);
 
   return {
     // Data
@@ -486,6 +540,11 @@ export function useAuditLogs(guildId, showToast) {
     loading,
     refreshing,
     error,
+    // Timezone
+    guildTimezone,
+    selectedTimezone,
+    setSelectedTimezone,
+    effectiveTimezone,
     // Modern Filter States & Setters
     category,
     setCategory,

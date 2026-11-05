@@ -18,6 +18,7 @@ import {
   Check,
 } from "lucide-react";
 import Badge from "../ui/Badge";
+import { formatInTimezone, formatRelativeTime } from "../../utils/timezone";
 
 function getCategoryIcon(category, severity) {
   switch (category) {
@@ -51,25 +52,9 @@ function getSeverityBadge(severity) {
   }
 }
 
-function formatRelativeTime(dateString) {
-  try {
-    const diff = Date.now() - new Date(dateString).getTime();
-    const seconds = Math.floor(diff / 1000);
-    if (seconds < 60) return "Just now";
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}d ago`;
-    return new Date(dateString).toLocaleDateString();
-  } catch {
-    return dateString;
-  }
-}
-
 export default function AuditLogEntryCard({
   entry,
+  effectiveTimezone = "UTC",
   onFilterByExecutor,
   onFilterByTarget,
   onFilterByAction,
@@ -78,6 +63,17 @@ export default function AuditLogEntryCard({
   const [expanded, setExpanded] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const Icon = getCategoryIcon(entry.category, entry.severity);
+
+  const tzAbbr = effectiveTimezone ? effectiveTimezone.split("/").pop()?.replace(/_/g, " ") : "UTC";
+  const formattedTime = formatInTimezone(entry.createdAt, effectiveTimezone, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
 
   const hasDiffs = (entry.changes && entry.changes.length > 0) || entry.extra;
 
@@ -126,8 +122,8 @@ export default function AuditLogEntryCard({
           </div>
         </div>
 
-        {/* Timestamp & Copy ID */}
-        <div className="flex items-center gap-2.5 text-xs text-slate-400 shrink-0 font-mono">
+        {/* Timestamp, Timezone & Copy ID */}
+        <div className="flex items-center gap-2 text-xs text-slate-400 shrink-0 font-mono flex-wrap sm:justify-end">
           <button
             type="button"
             onClick={handleCopyId}
@@ -137,12 +133,18 @@ export default function AuditLogEntryCard({
             {copiedId ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
           <div
-            className="flex items-center gap-1.5"
-            title={new Date(entry.createdAt).toLocaleString()}
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/5 border border-white/5"
+            title={`UTC: ${new Date(entry.createdAt).toUTCString()}\nDisplay Timezone: ${effectiveTimezone}`}
           >
-            <Clock className="w-3.5 h-3.5 text-slate-500" />
-            <span>{formatRelativeTime(entry.createdAt)}</span>
+            <Clock className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <span className="text-slate-200">{formattedTime}</span>
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+              ({tzAbbr})
+            </span>
           </div>
+          <span className="text-[11px] text-slate-400 px-1.5 py-0.5 rounded bg-slate-800/80">
+            {formatRelativeTime(entry.createdAt)}
+          </span>
         </div>
       </div>
 

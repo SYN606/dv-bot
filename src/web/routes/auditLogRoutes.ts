@@ -4,6 +4,7 @@ import { ModerationLogConfig, VCRoleConfig } from "../../db/models/index.js";
 import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { apiCache } from "./cache.js";
 import { invalidateLogConfigCache } from "../../utils/modLog.js";
+import { getGuildTimezone } from "../../db/helpers/timezone.js";
 
 export const auditLogRoutes = new Hono();
 
@@ -182,7 +183,10 @@ auditLogRoutes.get("/guilds/:guildId/audit-logs", async (c) => {
 
     requestPromise = (async () => {
       try {
-        const rawLogs = await guild.fetchAuditLogs(auditOptions);
+        const [rawLogs, guildTimezone] = await Promise.all([
+          guild.fetchAuditLogs(auditOptions),
+          getGuildTimezone(guild.id).catch(() => "UTC"),
+        ]);
         const entries = [];
         const stats = {
           total: 0,
@@ -273,6 +277,7 @@ auditLogRoutes.get("/guilds/:guildId/audit-logs", async (c) => {
 
         const result = {
           missingPermission: false,
+          guildTimezone: guildTimezone || "UTC",
           entries,
           stats,
           executors: Array.from(uniqueExecutors.values()),

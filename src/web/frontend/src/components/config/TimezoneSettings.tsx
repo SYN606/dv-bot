@@ -1,37 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Globe, Clock, Sparkles } from "lucide-react";
+import { POPULAR_TIMEZONES } from "../../utils/timezone";
 
-export const POPULAR_TIMEZONES = [
-  { value: "UTC", label: "UTC (Coordinated Universal Time)", region: "Global" },
-  { value: "America/New_York", label: "US Eastern (New York, Miami, Atlanta)", region: "North America" },
-  { value: "America/Chicago", label: "US Central (Chicago, Dallas, Houston)", region: "North America" },
-  { value: "America/Denver", label: "US Mountain (Denver, Phoenix, Salt Lake)", region: "North America" },
-  { value: "America/Los_Angeles", label: "US Pacific (Los Angeles, SF, Seattle)", region: "North America" },
-  { value: "America/Toronto", label: "Canada Eastern (Toronto, Montreal)", region: "North America" },
-  { value: "America/Vancouver", label: "Canada Pacific (Vancouver)", region: "North America" },
-  { value: "America/Sao_Paulo", label: "Brazil Time (São Paulo, Rio)", region: "South America" },
-  { value: "Europe/London", label: "UK / GMT (London, Dublin, Lisbon)", region: "Europe" },
-  { value: "Europe/Paris", label: "Central Europe (Paris, Madrid, Rome)", region: "Europe" },
-  { value: "Europe/Berlin", label: "Central Europe (Berlin, Frankfurt, Munich)", region: "Europe" },
-  { value: "Europe/Amsterdam", label: "Central Europe (Amsterdam, Brussels)", region: "Europe" },
-  { value: "Europe/Istanbul", label: "Turkey (Istanbul)", region: "Europe" },
-  { value: "Europe/Moscow", label: "Moscow Standard Time (Moscow)", region: "Europe" },
-  { value: "Africa/Cairo", label: "Egypt Time (Cairo)", region: "Africa" },
-  { value: "Africa/Johannesburg", label: "South Africa (Johannesburg, Cape Town)", region: "Africa" },
-  { value: "Asia/Dubai", label: "Gulf Time (Dubai, Abu Dhabi)", region: "Middle East" },
-  { value: "Asia/Riyadh", label: "Arabia Standard (Riyadh, Kuwait)", region: "Middle East" },
-  { value: "Asia/Kolkata", label: "India Standard Time (IST - New Delhi, Mumbai)", region: "Asia" },
-  { value: "Asia/Karachi", label: "Pakistan Standard Time (Karachi)", region: "Asia" },
-  { value: "Asia/Dhaka", label: "Bangladesh Time (Dhaka)", region: "Asia" },
-  { value: "Asia/Bangkok", label: "Indochina Time (Bangkok, Jakarta)", region: "Asia" },
-  { value: "Asia/Singapore", label: "Singapore Time (Singapore)", region: "Asia" },
-  { value: "Asia/Hong_Kong", label: "Hong Kong Time (Hong Kong)", region: "Asia" },
-  { value: "Asia/Tokyo", label: "Japan Standard Time (JST - Tokyo)", region: "Asia" },
-  { value: "Asia/Seoul", label: "Korea Standard Time (KST - Seoul)", region: "Asia" },
-  { value: "Australia/Perth", label: "Western Australia (Perth)", region: "Australia" },
-  { value: "Australia/Sydney", label: "Eastern Australia (Sydney, Melbourne)", region: "Australia" },
-  { value: "Pacific/Auckland", label: "New Zealand (Auckland, Wellington)", region: "Pacific" },
-];
+export { POPULAR_TIMEZONES };
 
 export default function TimezoneSettings({ config, updateConfig }) {
   const selectedTz = config?.timezone || "UTC";

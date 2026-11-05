@@ -6,6 +6,7 @@ import Button from "../ui/Button";
 
 export default function AuditLogsList({
   entries = [],
+  effectiveTimezone = "UTC",
   missingPermission = false,
   onResetFilters,
   onRefresh,
@@ -78,6 +79,7 @@ export default function AuditLogsList({
         <AuditLogEntryCard
           key={entry.id}
           entry={entry}
+          effectiveTimezone={effectiveTimezone}
           onFilterByExecutor={onFilterByExecutor}
           onFilterByTarget={onFilterByTarget}
           onFilterByAction={onFilterByAction}
