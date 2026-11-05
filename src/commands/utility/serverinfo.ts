@@ -2,6 +2,7 @@ import { ChannelType, SlashCommandBuilder } from "discord.js";
 import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
+import { getGuildTimezone, getTimezoneOffsetString } from "../../db/helpers/timezone.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("serverinfo")
@@ -58,11 +59,15 @@ export default createCommand({
     const verificationLevels = ["None", "Low", "Medium", "High", "Highest"];
     const verification = verificationLevels[guild.verificationLevel] || "Unknown";
 
+    const serverTz = await getGuildTimezone(guild.id);
+    const tzOffset = getTimezoneOffsetString(serverTz);
+
     // 5. Construct Data Fields for Embedded Presentation
     const general_info = 
       `${owner_icon} **Owner:** ${owner_display}\n` +
       `${arrow_icon} **Created:** <t:${Math.floor(guild.createdTimestamp / 1000)}:R>\n` +
       `${arrow_icon} **Server ID:** \`${guild.id}\`\n` +
+      `${arrow_icon} **Timezone:** \`${serverTz}\` (${tzOffset})\n` +
       `${arrow_icon} **Verification:** \`${verification}\``;
 
     const member_stats = 

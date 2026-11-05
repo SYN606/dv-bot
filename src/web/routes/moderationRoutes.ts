@@ -22,10 +22,11 @@ import {
 } from "../../db/helpers/tempban.js";
 import { getAllWarningPunishmentConfigs, setWarningPunishmentConfig, removeWarningPunishmentConfig } from "../../db/helpers/warningPunishments.js";
 import { ModerationLogConfig, VCRoleConfig, AutoRoleConfig } from "../../db/models/index.js";
+import { getGuildTimezone, setGuildTimezone, isValidTimezone } from "../../db/helpers/timezone.js";
 import { apiCache } from "./cache.js";
 import { isModuleEnabled, setModuleEnabled } from "../../db/helpers/moduleStatus.js";
 
-export const moderationRoutes = new Hono();
+export const moderationRoutes = new Hono<any>();
 
 // Media-Only Module Status
 moderationRoutes.get("/guilds/:guildId/media_only/status", async (c) => {
@@ -256,11 +257,12 @@ moderationRoutes.get("/guilds/:guildId/config", async (c) => {
     return c.json(cached);
   }
 
-  const [modlog, vcrole, autorole, tempbanCfg] = await Promise.all([
+  const [modlog, vcrole, autorole, tempbanCfg, tz] = await Promise.all([
     ModerationLogConfig.findByPk(guildId),
     VCRoleConfig.findByPk(guildId),
     AutoRoleConfig.findByPk(guildId),
     getTempbanConfig(guildId),
+    getGuildTimezone(guildId),
   ]);
 
   const payload = {
@@ -268,6 +270,7 @@ moderationRoutes.get("/guilds/:guildId/config", async (c) => {
     vcrole,
     autorole,
     tempban: tempbanCfg,
+    timezone: tz,
     modLogChannelId: modlog?.channel_id ? String(modlog.channel_id) : "",
     log_channel_id: modlog?.channel_id ? String(modlog.channel_id) : "",
     vcRoleId: vcrole?.role_id ? String(vcrole.role_id) : "",
@@ -327,6 +330,11 @@ moderationRoutes.post("/guilds/:guildId/config", async (c) => {
     } else {
       await removeTempbanConfig(guildId);
     }
+  }
+
+  const timezone = body.timezone !== undefined ? body.timezone : body.timeZone;
+  if (timezone !== undefined && isValidTimezone(timezone)) {
+    await setGuildTimezone(guildId, timezone);
   }
 
   apiCache.delete(`guild:${guildId}:config`);

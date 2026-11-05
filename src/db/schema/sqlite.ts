@@ -4,12 +4,14 @@ import { sql } from "drizzle-orm";
 // 1. Core Models
 export const guilds = sqliteTable("guilds", {
   guild_id: text("guild_id").primaryKey(),
+  timezone: text("timezone").default("UTC"),
   created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
   updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
 });
 
 export const users = sqliteTable("users", {
   user_id: text("user_id").primaryKey(),
+  timezone: text("timezone"),
   created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
   updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
 });

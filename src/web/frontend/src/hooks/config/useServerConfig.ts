@@ -6,6 +6,7 @@ const DEFAULT_CONFIG = {
   vcRoleId: "",
   autoRoleId: "",
   tempbanRoleId: "",
+  timezone: "UTC",
 };
 
 export function useServerConfig(guildId, showToast) {
@@ -36,6 +37,7 @@ export function useServerConfig(guildId, showToast) {
           vcRoleId: serverConfig.vcRoleId || "",
           autoRoleId: serverConfig.autoRoleId || "",
           tempbanRoleId: serverConfig.tempbanRoleId || "",
+          timezone: serverConfig.timezone || "UTC",
         };
         setConfig(loadedConfig);
         setOriginalConfig(loadedConfig);

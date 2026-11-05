@@ -38,7 +38,7 @@ export default function HourlyActivityChart({ hourlyDistribution, loading }) {
           </div>
           <div>
             <h3 className="font-semibold text-slate-200">Hourly Activity</h3>
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest">When is the community most active? (UTC)</p>
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest">When is the community most active?</p>
           </div>
         </div>
       </div>

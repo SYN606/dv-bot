@@ -107,12 +107,14 @@ function ensureSqliteSchema(sqlite) {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS guilds (
       guild_id TEXT PRIMARY KEY,
+      timezone TEXT DEFAULT 'UTC',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS users (
       user_id TEXT PRIMARY KEY,
+      timezone TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -940,6 +942,12 @@ function ensureSqliteSchema(sqlite) {
   } catch (_) {}
   try {
     sqlite.exec("ALTER TABLE moderation_log_config ADD COLUMN events_config TEXT DEFAULT '{}';");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE guilds ADD COLUMN timezone TEXT DEFAULT 'UTC';");
+  } catch (_) {}
+  try {
+    sqlite.exec("ALTER TABLE users ADD COLUMN timezone TEXT;");
   } catch (_) {}
 
   // Deduplicate and ensure unique indexes for existing SQLite databases to prevent analytics duplication & ON CONFLICT errors

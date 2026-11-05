@@ -8,7 +8,8 @@ import { ArrowRight, Shield } from "lucide-react";
 import {
   ConfigHeader,
   VoiceRoleSettings,
-  TempbanSettings
+  TempbanSettings,
+  TimezoneSettings
 } from "../../components/config";
 
 export default function ConfigPage({ showToast }) {
@@ -78,6 +79,11 @@ export default function ConfigPage({ showToast }) {
         
         <TempbanSettings 
           roles={roles}
+          config={config}
+          updateConfig={updateConfig}
+        />
+
+        <TimezoneSettings 
           config={config}
           updateConfig={updateConfig}
         />

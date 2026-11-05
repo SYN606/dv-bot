@@ -7,6 +7,7 @@ import {
 } from "../models/index.js";
 import { ensureGuildAndUser } from "./common.js";
 import { getRawSqlite } from "../index.js";
+import { getGuildTimezone, getTimezoneOffsetString } from "./timezone.js";
 
 export async function getMemberAnalytics(guildId, userId) {
   const [record]: any = await MemberAnalytics.findOrCreate({
@@ -469,10 +470,11 @@ export async function getHourlyDistribution(guildId) {
   const hasActivity = sortedByMessages.some((h) => h.messages > 0 || h.vcSeconds > 0);
 
   // Prime window: 3-hour block around peak (only if activity exists)
+  const tz = await getGuildTimezone(gId);
   const startWindow = (peakHour - 1 + 24) % 24;
   const endWindow = (peakHour + 2) % 24;
   const primeWindow = hasActivity
-    ? `${String(startWindow).padStart(2, "0")}:00 – ${String(endWindow).padStart(2, "0")}:00 UTC`
+    ? `${String(startWindow).padStart(2, "0")}:00 – ${String(endWindow).padStart(2, "0")}:00 (${tz})`
     : null;
 
   // Busiest day
