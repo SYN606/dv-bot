@@ -34,6 +34,7 @@ export default function MusicPage({ showToast }) {
     actionLoading,
     error,
     play,
+    togglePlayPause,
     pause,
     resume,
     skip,
@@ -240,7 +241,7 @@ export default function MusicPage({ showToast }) {
           {/* Live Player Deck */}
           <LivePlayer
             player={player}
-            onPlayPause={() => (player?.isPlaying ? pause() : resume())}
+            onPlayPause={togglePlayPause}
             onSkip={skip}
             onPrevious={previous}
             onStop={stop}

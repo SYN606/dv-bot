@@ -88,7 +88,8 @@ export class GuildPlayer extends EventEmitter {
   }
 
   get isConnected(): boolean {
-    return Boolean(this.player && this.state !== PlayerState.DESTROYED);
+    const meVoiceChannel = this.guild?.members?.me?.voice?.channelId;
+    return Boolean(this.player && this.state !== PlayerState.DESTROYED && meVoiceChannel);
   }
 
   get currentTrack(): IFormattedTrack | null {
@@ -250,19 +251,47 @@ export class GuildPlayer extends EventEmitter {
   async skip(amount: number = 1): Promise<boolean> {
     if (!this.player) return false;
     try {
-      const skipCount = Math.max(1, Number(amount) || 1);
+      const skipCount = Math.max(1, typeof amount === "number" && !isNaN(amount) ? amount : 1);
       if (skipCount > 1) {
         for (let i = 0; i < skipCount - 1; i++) {
           this.queue.tracks.shift();
         }
       }
       this.skipVotes.clear();
+
+      // Bypasses single-track loop if active during manual skip
+      const wasTrackLoop = this.queue.loopMode === "track";
+      if (wasTrackLoop) {
+        this.queue.loopMode = "off";
+      }
+
       await this.player.stopTrack();
+
+      if (wasTrackLoop) {
+        this.queue.loopMode = "track";
+      }
+
       return true;
     } catch (err) {
       logger.error(`[PLAYER] Failed to skip in guild ${this.guildId}:`, err);
       return false;
     }
+  }
+
+  async voteSkip(userId: string): Promise<ISkipResult> {
+    const channel = this.guild?.channels.cache.get(this.voiceChannelId) as any;
+    const humanCount = channel?.members?.filter((m: any) => !m.user?.bot)?.size || 1;
+    const required = Math.max(1, Math.ceil(humanCount * 0.5));
+
+    this.skipVotes.add(String(userId));
+    const votes = this.skipVotes.size;
+
+    if (votes >= required) {
+      await this.skip();
+      return { skipped: true, votes, required };
+    }
+
+    return { skipped: false, votes, required };
   }
 
   async previous(): Promise<boolean> {
@@ -311,7 +340,11 @@ export class GuildPlayer extends EventEmitter {
 
   async setVolume(volume: number): Promise<boolean> {
     if (!this.player) return false;
-    const safeVolume = Math.min(Math.max(1, Number(volume) || 80), CONFIG.MUSIC_MAX_VOLUME);
+    const num = Number(volume);
+    const safeVolume = Math.min(
+      Math.max(0, isNaN(num) ? 80 : num),
+      CONFIG.MUSIC_MAX_VOLUME
+    );
     try {
       await this.player.setGlobalVolume(safeVolume);
       this.volume = safeVolume;

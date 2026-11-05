@@ -29,7 +29,16 @@ musicRoutes.get("/guilds/:guildId/music/player", async (c) => {
   const { client, guildId, player } = getClientAndPlayer(c);
   const isLavalinkConnected = Boolean(client?.music?.hasAvailableNode);
 
-  if (!player) {
+  const guild = client.guilds.cache.get(guildId);
+  const meVoice = guild?.members?.me?.voice;
+
+  // If player exists in memory but bot was disconnected from VC in Discord, clean it up
+  if (player && !meVoice?.channelId) {
+    logger.info(`[MUSIC API] Cleaning up phantom player for guild ${guildId} (bot not in VC)`);
+    player.destroy(true).catch(() => {});
+  }
+
+  if (!player || !meVoice?.channelId) {
     const settings = await getMusicSettings(guildId);
     return c.json({
       connected: false,
@@ -169,31 +178,63 @@ musicRoutes.post("/guilds/:guildId/music/player/play", async (c) => {
   }
 });
 
+musicRoutes.post("/guilds/:guildId/music/player/playpause", async (c) => {
+  const { player } = getClientAndPlayer(c);
+  if (!player) return c.json({ error: "No active music player in this server." }, 400);
+
+  if (player.isPaused) {
+    await player.resume();
+    return c.json({ success: true, isPaused: false, isPlaying: true });
+  } else if (player.isPlaying || player.state === "buffering") {
+    await player.pause();
+    return c.json({ success: true, isPaused: true, isPlaying: false });
+  } else if (player.state === "idle" && (player.queue.current || player.queue.size > 0)) {
+    const track = player.queue.current || player.queue.next();
+    if (track) await player.playTrack(track);
+    return c.json({ success: true, isPaused: false, isPlaying: true });
+  }
+  return c.json({ error: "Player has no active tracks to play or pause." }, 400);
+});
+
 musicRoutes.post("/guilds/:guildId/music/player/pause", async (c) => {
   const { player } = getClientAndPlayer(c);
-  if (!player || !player.isPlaying) {
-    return c.json({ error: "Player is not playing." }, 400);
-  }
+  if (!player) return c.json({ error: "No active music player in this server." }, 400);
+  if (player.isPaused) return c.json({ success: true, isPaused: true, isPlaying: false });
   await player.pause();
-  return c.json({ success: true, isPaused: true });
+  return c.json({ success: true, isPaused: true, isPlaying: false });
 });
 
 musicRoutes.post("/guilds/:guildId/music/player/resume", async (c) => {
   const { player } = getClientAndPlayer(c);
-  if (!player || !player.isPaused) {
-    return c.json({ error: "Player is not paused." }, 400);
+  if (!player) return c.json({ error: "No active music player in this server." }, 400);
+  if (player.isPlaying) return c.json({ success: true, isPaused: false, isPlaying: true });
+  if (player.isPaused) {
+    await player.resume();
+    return c.json({ success: true, isPaused: false, isPlaying: true });
   }
-  await player.resume();
-  return c.json({ success: true, isPaused: false });
+  if (player.state === "idle") {
+    const track = player.queue.current || player.queue.next();
+    if (track) {
+      await player.playTrack(track);
+      return c.json({ success: true, isPaused: false, isPlaying: true });
+    }
+  }
+  return c.json({ error: "No track to resume." }, 400);
 });
 
 musicRoutes.post("/guilds/:guildId/music/player/skip", async (c) => {
   const { player } = getClientAndPlayer(c);
-  if (!player || (!player.isPlaying && !player.isPaused)) {
+  if (!player) return c.json({ error: "No active music player in this server." }, 400);
+  if (!player.currentTrack && player.queue.size === 0) {
     return c.json({ error: "No active track to skip." }, 400);
   }
   const skipped = await player.skip();
-  return c.json({ success: true, skipped });
+  return c.json({
+    success: true,
+    skipped,
+    currentTrack: player.currentTrack,
+    queueSize: player.queue.size,
+  });
 });
 
 musicRoutes.post("/guilds/:guildId/music/player/previous", async (c) => {

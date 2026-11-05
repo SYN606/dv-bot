@@ -33,6 +33,7 @@ export class MusicManager {
   public options: any;
   public rawHost: string;
   public port: number;
+  public heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor(client: any) {
     this.client = client;
@@ -66,7 +67,7 @@ export class MusicManager {
 
     this.options = {
       moveOnDisconnect: false,
-      resume: true,
+      resume: false,
       resumeTimeout: 30,
       reconnectTries: 20,
       reconnectInterval: 5,
@@ -162,6 +163,23 @@ export class MusicManager {
         logger.debug(`[MUSIC LAVALINK DEBUG] [${name}] ${info}`);
       }
     });
+
+    if (!this.heartbeatInterval) {
+      this.heartbeatInterval = setInterval(async () => {
+        if (!this.shoukaku || !CONFIG.MUSIC_ENABLED) return;
+        for (const [, node] of this.shoukaku.nodes) {
+          if (node.state === Constants.State.CONNECTED) {
+            try {
+              await node.rest.getLavalinkInfo();
+            } catch (err: any) {
+              logger.warn(`[MUSIC LAVALINK] Node '${node.name}' heartbeat failed. Reconnecting...`, err?.message);
+              this.reconnectStaleNode().catch(() => {});
+            }
+          }
+        }
+      }, 60 * 1000);
+      if (this.heartbeatInterval.unref) this.heartbeatInterval.unref();
+    }
   }
 
   get hasAvailableNode(): boolean {
@@ -179,6 +197,36 @@ export class MusicManager {
       : this.shoukaku.nodes.values().next().value || null;
   }
 
+  /**
+   * Recovers from an expired or rejected Lavalink session by resetting the node connection
+   */
+  async reconnectStaleNode(): Promise<boolean> {
+    if (!this.shoukaku) return false;
+    for (const [, node] of this.shoukaku.nodes) {
+      try {
+        logger.info(`[MUSIC LAVALINK] Forcing reconnect on node '${node.name}' to obtain fresh session.`);
+        node.sessionId = null;
+        if (node.ws) {
+          node.ws.close(4000, "Resetting stale session");
+        } else {
+          node.disconnect(4000, "Resetting stale session");
+        }
+      } catch (err: any) {
+        logger.warn(`[MUSIC LAVALINK] Error disconnecting node '${node.name}':`, err?.message);
+      }
+    }
+
+    const start = Date.now();
+    while (Date.now() - start < 6000) {
+      await new Promise((r) => setTimeout(r, 500));
+      if (this.hasAvailableNode) {
+        logger.info("[MUSIC LAVALINK] Node reconnected successfully with fresh session.");
+        return true;
+      }
+    }
+    return false;
+  }
+
   getPlayer(guildId: string): GuildPlayer | null {
     return this.players.get(String(guildId)) || null;
   }
@@ -188,10 +236,21 @@ export class MusicManager {
       throw new Error("Music subsystem is not enabled or initialized.");
     }
 
+    const guild = this.client.guilds.cache.get(guildId);
+    const meVoiceChannel = guild?.members?.me?.voice?.channelId;
+
     const existing = this.getPlayer(guildId);
-    if (existing && existing.isConnected) {
+    if (existing && existing.isConnected && meVoiceChannel === voiceChannelId) {
       if (textChannelId) existing.textChannelId = String(textChannelId);
       return existing;
+    }
+
+    // Clean up phantom player or leftover Shoukaku connection if bot is not actually in the channel
+    if (existing) {
+      await existing.destroy(false).catch(() => {});
+    }
+    if (this.shoukaku.connections.has(String(guildId))) {
+      await this.shoukaku.leaveVoiceChannel(String(guildId)).catch(() => {});
     }
 
     const node = this.getIdealNode();
@@ -225,7 +284,36 @@ export class MusicManager {
       this.players.set(String(guildId), player);
       logger.info(`[MUSIC] Player created for guild ${guildId} in VC ${voiceChannelId}`);
       return player;
-    } catch (err) {
+    } catch (err: any) {
+      const isSessionError =
+        err?.message?.includes("Session not found") ||
+        err?.message?.includes("404") ||
+        (err?.status === 404 && String(err?.message || "").toLowerCase().includes("session"));
+
+      if (isSessionError && this.shoukaku) {
+        logger.warn(`[MUSIC] Stale Lavalink session detected for guild ${guildId}. Attempting recovery and retry...`);
+        const recovered = await this.reconnectStaleNode();
+        if (recovered) {
+          await this.shoukaku.leaveVoiceChannel(String(guildId)).catch(() => {});
+          const shardId = this.client.guilds.cache.get(guildId)?.shardId ?? 0;
+          const retryShoukakuPlayer = await this.shoukaku.joinVoiceChannel({
+            guildId: String(guildId),
+            channelId: String(voiceChannelId),
+            shardId,
+            deaf: Boolean(deaf),
+          });
+          const retryPlayer = new GuildPlayer(this, guildId, retryShoukakuPlayer, voiceChannelId, textChannelId);
+          const settings = await getMusicSettings(guildId);
+          if (settings) {
+            retryPlayer.mode247 = Boolean(settings.mode_247);
+            if (settings.default_volume) await retryPlayer.setVolume(settings.default_volume);
+          }
+          this.players.set(String(guildId), retryPlayer);
+          logger.info(`[MUSIC] Successfully recovered and joined VC for guild ${guildId}`);
+          return retryPlayer;
+        }
+      }
+
       logger.error(`[MUSIC] Failed joining voice channel in guild ${guildId}:`, err);
       throw err;
     }
@@ -317,7 +405,11 @@ export class MusicManager {
     // 1. Bot disconnected or moved
     if (oldState.id === botId && !newState.channelId) {
       logger.info(`[MUSIC] Bot was disconnected from voice in guild ${guildId}`);
-      await player.destroy(false);
+      if (player) {
+        await player.destroy(true);
+      } else if (this.shoukaku) {
+        await this.shoukaku.leaveVoiceChannel(guildId).catch(() => {});
+      }
       return;
     }
 

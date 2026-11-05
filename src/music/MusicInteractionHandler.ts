@@ -208,15 +208,23 @@ export class MusicInteractionHandler {
         }
 
         case "skip": {
-          const skipResult = await player.skip(interaction.member.id);
-          if (skipResult.skipped) {
+          if (perm.isVoteSkip) {
+            const skipResult = await player.voteSkip(interaction.member.id);
+            if (skipResult.skipped) {
+              await interaction.reply({
+                content: `⏭️ Vote threshold reached (${skipResult.votes}/${skipResult.required})! Track skipped!`,
+                flags: MessageFlags.Ephemeral,
+              });
+            } else {
+              await interaction.reply({
+                content: `🗳️ Vote registered! (${skipResult.votes}/${skipResult.required} votes needed to skip)`,
+                flags: MessageFlags.Ephemeral,
+              });
+            }
+          } else {
+            await player.skip();
             await interaction.reply({
               content: `⏭️ Skipped by <@${interaction.member.id}>!`,
-              flags: MessageFlags.Ephemeral,
-            });
-          } else {
-            await interaction.reply({
-              content: `🗳️ Vote registered! (${skipResult.votes}/${skipResult.required} votes needed to skip)`,
               flags: MessageFlags.Ephemeral,
             });
           }

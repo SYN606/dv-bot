@@ -77,9 +77,9 @@ export function useMusic(guildId, showToast) {
   }, [player?.isPlaying, fetchState]);
 
   // Player controls
-  const handleAction = async (action, payload = {}, successMsg = null) => {
+  const handleAction = async (action, payload = {}, successMsg = null, withLoading = true) => {
     try {
-      setActionLoading(true);
+      if (withLoading) setActionLoading(true);
       const res = await musicPlayerAction(guildId, action, payload);
       if (successMsg && showToast) {
         showToast(successMsg, "success");
@@ -88,9 +88,10 @@ export function useMusic(guildId, showToast) {
       return res;
     } catch (err) {
       if (showToast) showToast(err.message || "Player action failed", "error");
+      await fetchState(false);
       throw err;
     } finally {
-      setActionLoading(false);
+      if (withLoading) setActionLoading(false);
     }
   };
 
@@ -98,13 +99,57 @@ export function useMusic(guildId, showToast) {
     return handleAction("play", { query, source }, "Added to playback queue");
   };
 
-  const pause = async () => handleAction("pause", {}, "Playback paused");
-  const resume = async () => handleAction("resume", {}, "Playback resumed");
-  const skip = async () => handleAction("skip", {}, "Track skipped");
+  const togglePlayPause = async () => {
+    setPlayer((prev) => {
+      if (!prev) return prev;
+      const willPlay = prev.isPaused || !prev.isPlaying;
+      return {
+        ...prev,
+        isPlaying: willPlay,
+        isPaused: !willPlay,
+      };
+    });
+    return handleAction("playpause", {}, null, false);
+  };
+
+  const pause = async () => {
+    setPlayer((prev) => (prev ? { ...prev, isPlaying: false, isPaused: true } : prev));
+    return handleAction("pause", {}, "Playback paused", false);
+  };
+
+  const resume = async () => {
+    setPlayer((prev) => (prev ? { ...prev, isPlaying: true, isPaused: false } : prev));
+    return handleAction("resume", {}, "Playback resumed", false);
+  };
+
+  const skip = async () => {
+    setPlayer((prev) => {
+      if (!prev) return prev;
+      const nextTrack = queue.tracks[0] || null;
+      return {
+        ...prev,
+        currentTrack: nextTrack,
+        position: 0,
+        isPlaying: Boolean(nextTrack),
+        isPaused: false,
+        queueSize: Math.max(0, (prev.queueSize || 1) - 1),
+      };
+    });
+    setQueue((prev) => ({
+      ...prev,
+      tracks: prev.tracks.slice(1),
+      size: Math.max(0, prev.size - 1),
+    }));
+    return handleAction("skip", {}, "Track skipped", false);
+  };
+
   const previous = async () => handleAction("previous", {}, "Playing previous track");
   const stop = async () => handleAction("stop", {}, "Playback stopped");
-  const seek = async (position) => handleAction("seek", { position });
-  const setVolume = async (volume) => handleAction("volume", { volume });
+  const seek = async (position) => handleAction("seek", { position }, null, false);
+  const setVolume = async (volume) => {
+    setPlayer((prev) => (prev ? { ...prev, volume } : prev));
+    return handleAction("volume", { volume }, null, false);
+  };
   const setLoop = async (mode) => handleAction("loop", { mode }, `Loop mode: ${mode.toUpperCase()}`);
   const setFilter = async (filter) => handleAction("filter", { filter }, `Audio filter: ${filter.toUpperCase()}`);
   const shuffle = async () => handleAction("shuffle", {}, "Queue shuffled");
@@ -197,6 +242,7 @@ export function useMusic(guildId, showToast) {
     error,
     refresh: fetchState,
     play,
+    togglePlayPause,
     pause,
     resume,
     skip,

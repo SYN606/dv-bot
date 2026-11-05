@@ -58,7 +58,9 @@ export default {
   name: "voiceStateUpdate",
   async execute(client, oldState, newState) {
     // Handle Music Manager Voice State (bot disconnect/move, alone in VC)
-    client.music?.handleVoiceStateUpdate(oldState, newState).catch(() => {});
+    client.music?.handleVoiceStateUpdate(oldState, newState).catch((err: any) => {
+      logger.error("[VOICE] Error handling music voice state update:", err);
+    });
 
     const guild = newState.guild || oldState.guild;
     const member = newState.member || oldState.member;

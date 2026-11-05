@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Play,
   Pause,
@@ -48,7 +48,9 @@ export default function LivePlayer({
   // Local optimistic progress state
   const [position, setPosition] = useState(player?.position || 0);
   const [isSeeking, setIsSeeking] = useState(false);
-  const [volume, setVolume] = useState(player?.volume || 80);
+  const [volume, setVolume] = useState(player?.volume ?? 80);
+  const [isChangingVolume, setIsChangingVolume] = useState(false);
+  const volumeDebounceRef = useRef(null);
 
   useEffect(() => {
     if (!isSeeking && player?.position !== undefined) {
@@ -57,10 +59,10 @@ export default function LivePlayer({
   }, [player?.position, isSeeking]);
 
   useEffect(() => {
-    if (player?.volume !== undefined) {
+    if (!isChangingVolume && player?.volume !== undefined) {
       setVolume(player.volume);
     }
-  }, [player?.volume]);
+  }, [player?.volume, isChangingVolume]);
 
   // Interpolate progress every second when playing
   useEffect(() => {
@@ -81,6 +83,24 @@ export default function LivePlayer({
   const handleVolumeChange = (e) => {
     const newVol = Number(e.target.value);
     setVolume(newVol);
+    setIsChangingVolume(true);
+
+    if (volumeDebounceRef.current) {
+      clearTimeout(volumeDebounceRef.current);
+    }
+    volumeDebounceRef.current = setTimeout(() => {
+      onVolume(newVol);
+      setIsChangingVolume(false);
+    }, 200);
+  };
+
+  const handleVolumeMuteToggle = () => {
+    const newVol = volume === 0 ? 80 : 0;
+    setVolume(newVol);
+    setIsChangingVolume(false);
+    if (volumeDebounceRef.current) {
+      clearTimeout(volumeDebounceRef.current);
+    }
     onVolume(newVol);
   };
 
@@ -272,7 +292,7 @@ export default function LivePlayer({
 
               <button
                 onClick={onPlayPause}
-                disabled={actionLoading || !currentTrack}
+                disabled={actionLoading || (!currentTrack && (player?.queueSize || 0) === 0)}
                 className={`p-4 rounded-2xl text-white shadow-xl transition-all disabled:opacity-30 active:scale-95 ${
                   isLofiActive
                     ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-amber-500/20 text-slate-950 font-black"
@@ -285,7 +305,7 @@ export default function LivePlayer({
 
               <button
                 onClick={onSkip}
-                disabled={actionLoading || !currentTrack}
+                disabled={actionLoading || (!currentTrack && (player?.queueSize || 0) === 0)}
                 className="p-3 rounded-2xl bg-slate-950/60 hover:bg-slate-800 border border-white/5 text-slate-300 hover:text-white transition-all disabled:opacity-30 active:scale-95"
                 title="Skip Track"
               >
@@ -328,7 +348,7 @@ export default function LivePlayer({
             <div className="flex items-center gap-3 p-2 rounded-2xl bg-slate-950/60 border border-white/5 min-w-[170px]">
               <button
                 type="button"
-                onClick={() => onVolume(volume === 0 ? 80 : 0)}
+                onClick={handleVolumeMuteToggle}
                 className="text-slate-400 hover:text-white transition-colors"
               >
                 {volume === 0 ? <VolumeX className="w-5 h-5 text-rose-400" /> : <Volume2 className="w-5 h-5" />}
