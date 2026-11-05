@@ -80,11 +80,11 @@ export class GuildPlayer extends EventEmitter {
   }
 
   get isPlaying(): boolean {
-    return this.state === PlayerState.PLAYING;
+    return this.state === PlayerState.PLAYING && !this.isPaused;
   }
 
   get isPaused(): boolean {
-    return this.state === PlayerState.PAUSED;
+    return this.state === PlayerState.PAUSED || Boolean(this.player?.paused);
   }
 
   get isConnected(): boolean {
@@ -221,12 +221,15 @@ export class GuildPlayer extends EventEmitter {
     return addedCount;
   }
 
-  async pause(): Promise<boolean> {
-    if (!this.player || this.isPaused) return false;
+  async pause(updateMsg: boolean = true): Promise<boolean> {
+    if (!this.player) return false;
     try {
       await this.player.setPaused(true);
       this.state = PlayerState.PAUSED;
       this.emit("pause");
+      if (updateMsg) {
+        await this.updateNowPlayingMessage();
+      }
       return true;
     } catch (err) {
       logger.error(`[PLAYER] Failed to pause in guild ${this.guildId}:`, err);
@@ -234,13 +237,16 @@ export class GuildPlayer extends EventEmitter {
     }
   }
 
-  async resume(): Promise<boolean> {
-    if (!this.player || !this.isPaused) return false;
+  async resume(updateMsg: boolean = true): Promise<boolean> {
+    if (!this.player) return false;
     try {
       await this.player.setPaused(false);
       this.state = PlayerState.PLAYING;
       this.lastPositionUpdate = Date.now();
       this.emit("resume");
+      if (updateMsg) {
+        await this.updateNowPlayingMessage();
+      }
       return true;
     } catch (err) {
       logger.error(`[PLAYER] Failed to resume in guild ${this.guildId}:`, err);
@@ -455,9 +461,36 @@ export class GuildPlayer extends EventEmitter {
     if (!this.nowPlayingMessage || !this.currentTrack) return;
     try {
       const { createMusicControlComponents } = await import("./MusicInteractionHandler.js");
+      const track = this.currentTrack;
+      const durationStr = track.info.isStream
+        ? "🔴 Live Stream"
+        : this.formatTime(track.info.length);
+
+      const embed = makeEmbed({
+        title: this.isPaused ? "⏸️ Playback Paused" : "🎶 Now Playing",
+        description: `[**${track.info.title}**](${track.info.uri})\nBy: \`${track.info.author}\``,
+        fields: [
+          { name: "Duration", value: durationStr, inline: true },
+          { name: "Volume", value: `${this.volume}%`, inline: true },
+          { name: "Loop Mode", value: `\`${this.queue.loopMode.toUpperCase()}\``, inline: true },
+          {
+            name: "Requested By",
+            value: track.requester ? `<@${track.requester.id}>` : "`Dashboard`",
+            inline: true,
+          },
+          { name: "Queue", value: `${this.queue.size} songs left`, inline: true },
+          { name: "Filter", value: `\`${this.currentFilter.toUpperCase()}\``, inline: true },
+        ],
+        thumbnail: track.info.artworkUrl,
+        level: this.isPaused ? "WARNING" : "PRIMARY",
+        color: this.isPaused ? COLORS.WARNING : COLORS.PRIMARY,
+      });
+
       const components = createMusicControlComponents(this.guildId, this.isPaused, this.queue.loopMode);
-      await this.nowPlayingMessage.edit({ components }).catch(() => {});
-    } catch {}
+      await this.nowPlayingMessage.edit({ embeds: [embed], components }).catch(() => {});
+    } catch (err: any) {
+      logger.warn(`[PLAYER] Could not update now playing message:`, err?.message);
+    }
   }
 
   formatTime(ms?: number | null): string {

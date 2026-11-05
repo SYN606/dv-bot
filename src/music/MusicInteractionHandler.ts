@@ -28,7 +28,7 @@ export function createMusicControlComponents(
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`music:playpause:${guildId}`)
-      .setLabel(isPaused ? "Resume" : "Pause")
+      .setLabel(isPaused ? "Play" : "Pause")
       .setEmoji(isPaused ? "▶️" : "⏸️")
       .setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary),
     new ButtonBuilder()
@@ -198,11 +198,51 @@ export class MusicInteractionHandler {
       switch (action) {
         case "playpause": {
           if (player.isPaused) {
-            await player.resume();
-            await interaction.deferUpdate().catch(() => {});
+            await player.resume(false);
           } else {
-            await player.pause();
+            await player.pause(false);
+          }
+
+          const components = createMusicControlComponents(player.guildId, player.isPaused, player.queue.loopMode);
+          let embeds: any[] | undefined = undefined;
+
+          if (interaction.message.embeds && interaction.message.embeds.length > 0 && player.currentTrack) {
+            const track = player.currentTrack;
+            const durationStr = track.info.isStream
+              ? "🔴 Live Stream"
+              : player.formatTime(track.info.length);
+
+            const updatedEmbed = makeEmbed({
+              title: player.isPaused ? "⏸️ Playback Paused" : "🎶 Now Playing",
+              description: `[**${track.info.title}**](${track.info.uri})\nBy: \`${track.info.author}\``,
+              fields: [
+                { name: "Duration", value: durationStr, inline: true },
+                { name: "Volume", value: `${player.volume}%`, inline: true },
+                { name: "Loop Mode", value: `\`${player.queue.loopMode.toUpperCase()}\``, inline: true },
+                {
+                  name: "Requested By",
+                  value: track.requester ? `<@${track.requester.id}>` : "`Dashboard`",
+                  inline: true,
+                },
+                { name: "Queue", value: `${player.queue.size} songs left`, inline: true },
+                { name: "Filter", value: `\`${player.currentFilter.toUpperCase()}\``, inline: true },
+              ],
+              thumbnail: track.info.artworkUrl,
+              level: player.isPaused ? "WARNING" : "PRIMARY",
+              color: player.isPaused ? COLORS.WARNING : COLORS.PRIMARY,
+            });
+            embeds = [updatedEmbed];
+          }
+
+          try {
+            if (embeds) {
+              await interaction.update({ embeds, components });
+            } else {
+              await interaction.update({ components });
+            }
+          } catch {
             await interaction.deferUpdate().catch(() => {});
+            await player.updateNowPlayingMessage();
           }
           break;
         }
@@ -267,9 +307,47 @@ export class MusicInteractionHandler {
           const nextMode = modes[(currentIdx + 1) % modes.length];
           player.queue.setLoopMode(nextMode);
 
-          // Update now playing controls
-          await player.updateNowPlayingMessage();
-          await interaction.deferUpdate().catch(() => {});
+          const components = createMusicControlComponents(player.guildId, player.isPaused, player.queue.loopMode);
+          let embeds: any[] | undefined = undefined;
+
+          if (interaction.message.embeds && interaction.message.embeds.length > 0 && player.currentTrack) {
+            const track = player.currentTrack;
+            const durationStr = track.info.isStream
+              ? "🔴 Live Stream"
+              : player.formatTime(track.info.length);
+
+            const updatedEmbed = makeEmbed({
+              title: player.isPaused ? "⏸️ Playback Paused" : "🎶 Now Playing",
+              description: `[**${track.info.title}**](${track.info.uri})\nBy: \`${track.info.author}\``,
+              fields: [
+                { name: "Duration", value: durationStr, inline: true },
+                { name: "Volume", value: `${player.volume}%`, inline: true },
+                { name: "Loop Mode", value: `\`${player.queue.loopMode.toUpperCase()}\``, inline: true },
+                {
+                  name: "Requested By",
+                  value: track.requester ? `<@${track.requester.id}>` : "`Dashboard`",
+                  inline: true,
+                },
+                { name: "Queue", value: `${player.queue.size} songs left`, inline: true },
+                { name: "Filter", value: `\`${player.currentFilter.toUpperCase()}\``, inline: true },
+              ],
+              thumbnail: track.info.artworkUrl,
+              level: player.isPaused ? "WARNING" : "PRIMARY",
+              color: player.isPaused ? COLORS.WARNING : COLORS.PRIMARY,
+            });
+            embeds = [updatedEmbed];
+          }
+
+          try {
+            if (embeds) {
+              await interaction.update({ embeds, components });
+            } else {
+              await interaction.update({ components });
+            }
+          } catch {
+            await interaction.deferUpdate().catch(() => {});
+            await player.updateNowPlayingMessage();
+          }
           break;
         }
 

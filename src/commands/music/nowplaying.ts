@@ -52,7 +52,7 @@ export default createCommand({
       : `${player.formatTime(curPos)} ${createProgressBar(curPos, totalPos)} ${player.formatTime(totalPos)}`;
 
     const embed = makeEmbed({
-      title: "🎶 Now Playing",
+      title: player.isPaused ? "⏸️ Playback Paused" : "🎶 Now Playing",
       description: `[**${track.info.title}**](${track.info.uri})\nAuthor: \`${track.info.author}\`\n\n${bar}`,
       fields: [
         { name: "Requested By", value: track.requester ? `<@${track.requester.id}>` : "`Dashboard`", inline: true },
@@ -63,8 +63,8 @@ export default createCommand({
         { name: "24/7 Mode", value: player.mode247 ? "`ENABLED`" : "`DISABLED`", inline: true },
       ],
       thumbnail: track.info.artworkUrl,
-      level: "PRIMARY",
-      color: COLORS.PRIMARY,
+      level: player.isPaused ? "WARNING" : "PRIMARY",
+      color: player.isPaused ? COLORS.WARNING : COLORS.PRIMARY,
     });
 
     const components = createMusicControlComponents(guild.id, player.isPaused, player.queue.loopMode);
