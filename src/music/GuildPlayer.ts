@@ -40,6 +40,10 @@ export class GuildPlayer extends EventEmitter {
   public idleTimer: NodeJS.Timeout | null;
   public mode247: boolean;
   public nowPlayingMessage: Message | null;
+  private isUpdatingMessage: boolean;
+  private pendingUpdateTimeout: NodeJS.Timeout | null;
+  private lastMessageUpdate: number;
+  private rateLimitPauseUntil: number;
 
   public position: number;
   public lastPositionUpdate: number;
@@ -68,6 +72,10 @@ export class GuildPlayer extends EventEmitter {
     this.idleTimer = null;
     this.mode247 = false;
     this.nowPlayingMessage = null;
+    this.isUpdatingMessage = false;
+    this.pendingUpdateTimeout = null;
+    this.lastMessageUpdate = 0;
+    this.rateLimitPauseUntil = 0;
 
     this.position = 0;
     this.lastPositionUpdate = Date.now();
@@ -130,7 +138,14 @@ export class GuildPlayer extends EventEmitter {
     });
 
     // 2. Track End
-    this.player.on("end", async () => {
+    this.player.on("end", async (data: any) => {
+      // Guard against 'replaced' and 'cleanup' events.
+      // Lavalink fires 'replaced' on the preceding track when playTrack starts a new one.
+      // Advancing the queue on 'replaced' would chew through the queue and stall playback.
+      if (data?.reason === "replaced" || data?.reason === "cleanup") {
+        return;
+      }
+
       this.state = PlayerState.IDLE;
       this.skipVotes.clear();
       this.emit("trackEnd", this.currentTrack);
@@ -194,6 +209,7 @@ export class GuildPlayer extends EventEmitter {
     if (!this.player || !track) return false;
     try {
       this.state = PlayerState.BUFFERING;
+      this.queue.current = track;
       await this.player.playTrack({
         track: { encoded: track.encoded },
       });
@@ -446,24 +462,58 @@ export class GuildPlayer extends EventEmitter {
       const components = createMusicControlComponents(this.guildId, this.isPaused, this.queue.loopMode);
 
       if (this.nowPlayingMessage) {
-        await this.nowPlayingMessage.delete().catch(() => {});
-        this.nowPlayingMessage = null;
+        try {
+          await this.nowPlayingMessage.edit({ embeds: [embed], components });
+          this.lastMessageUpdate = Date.now();
+          return;
+        } catch {
+          this.nowPlayingMessage = null;
+        }
       }
 
       this.nowPlayingMessage = await channel.send({
         embeds: [embed],
         components,
       });
+      this.lastMessageUpdate = Date.now();
     } catch (err: any) {
       logger.warn(`[PLAYER] Could not send now playing message:`, err.message);
     }
   }
 
-  async updateNowPlayingMessage(): Promise<void> {
+  async updateNowPlayingMessage(immediate: boolean = false): Promise<void> {
     if (!this.nowPlayingMessage || !this.currentTrack) return;
+
+    const now = Date.now();
+    if (now < this.rateLimitPauseUntil) {
+      this.schedulePendingUpdate(this.rateLimitPauseUntil - now + 100);
+      return;
+    }
+
+    const elapsed = now - this.lastMessageUpdate;
+    const minInterval = 1200;
+
+    if (!immediate && elapsed < minInterval) {
+      this.schedulePendingUpdate(minInterval - elapsed);
+      return;
+    }
+
+    if (this.isUpdatingMessage) {
+      this.schedulePendingUpdate(500);
+      return;
+    }
+
+    this.isUpdatingMessage = true;
+    this.clearPendingUpdate();
+
     try {
       const { createMusicControlComponents } = await import("./MusicInteractionHandler.js");
       const track = this.currentTrack;
+      if (!track || !this.nowPlayingMessage) {
+        this.isUpdatingMessage = false;
+        return;
+      }
+
       const durationStr = track.info.isStream
         ? "🔴 Live Stream"
         : this.formatTime(track.info.length);
@@ -489,9 +539,35 @@ export class GuildPlayer extends EventEmitter {
       });
 
       const components = createMusicControlComponents(this.guildId, this.isPaused, this.queue.loopMode);
-      await this.nowPlayingMessage.edit({ embeds: [embed], components }).catch(() => {});
+      await this.nowPlayingMessage.edit({ embeds: [embed], components });
+      this.lastMessageUpdate = Date.now();
     } catch (err: any) {
-      logger.warn(`[PLAYER] Could not update now playing message:`, err?.message);
+      if (err?.status === 429 || err?.code === 429 || err?.message?.includes("rate limit")) {
+        const retryAfterMs = Number(err?.retry_after) ? Math.ceil(Number(err.retry_after) * 1000) : 2500;
+        logger.warn(`[PLAYER] Rate limit encountered for guild ${this.guildId}. Pausing updates for ${retryAfterMs}ms.`);
+        this.rateLimitPauseUntil = Date.now() + retryAfterMs;
+        this.schedulePendingUpdate(retryAfterMs + 200);
+      } else {
+        logger.debug(`[PLAYER] Could not update now playing message:`, err?.message);
+      }
+    } finally {
+      this.isUpdatingMessage = false;
+    }
+  }
+
+  private schedulePendingUpdate(delayMs: number): void {
+    if (this.pendingUpdateTimeout) return;
+    this.pendingUpdateTimeout = setTimeout(() => {
+      this.pendingUpdateTimeout = null;
+      this.updateNowPlayingMessage(true).catch(() => {});
+    }, Math.max(delayMs, 200));
+    if (this.pendingUpdateTimeout.unref) this.pendingUpdateTimeout.unref();
+  }
+
+  private clearPendingUpdate(): void {
+    if (this.pendingUpdateTimeout) {
+      clearTimeout(this.pendingUpdateTimeout);
+      this.pendingUpdateTimeout = null;
     }
   }
 
@@ -501,6 +577,7 @@ export class GuildPlayer extends EventEmitter {
 
   async destroy(disconnectVoice: boolean = true): Promise<void> {
     this.clearIdleTimer();
+    this.clearPendingUpdate();
     this.state = PlayerState.DESTROYED;
     this.queue.reset();
 

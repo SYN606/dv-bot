@@ -254,12 +254,10 @@ export class MusicManager {
       return existing;
     }
 
-    // Clean up phantom player or leftover Shoukaku connection if bot is not actually in the channel
+    // Clean up previous player state without sending disconnect packet so Discord joins smoothly
     if (existing) {
-      await existing.destroy(false).catch(() => {});
-    }
-    if (this.shoukaku.connections.has(String(guildId))) {
-      await this.shoukaku.leaveVoiceChannel(String(guildId)).catch(() => {});
+      existing.clearIdleTimer();
+      this.players.delete(String(guildId));
     }
 
     const node = this.getIdealNode();

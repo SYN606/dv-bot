@@ -144,17 +144,12 @@ export default createCommand({
       if (!player.isPlaying && !player.isPaused) {
         const next = player.queue.next();
         if (next) await player.playTrack(next);
-        return await ctx.reply({
-          embeds: [
-            makeEmbed({
-              title: "🎶 Now Playing",
-              description: `[**${track.info.title}**](${track.info.uri})\nAuthor: \`${track.info.author}\` | Length: \`${track.formattedDuration}\``,
-              thumbnail: track.info.artworkUrl,
-              level: "PRIMARY",
-              color: COLORS.PRIMARY,
-            }),
-          ],
-        });
+
+        // If executed via slash interaction, silently dismiss the deferral so only the official Now Playing card appears
+        if (ctx.isInteraction && ctx.interaction?.deferred) {
+          await ctx.interaction.deleteReply().catch(() => {});
+        }
+        return;
       }
 
       return await ctx.reply({
