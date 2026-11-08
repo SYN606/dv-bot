@@ -35,9 +35,9 @@ export default {
 
     // 1. Analytics Tracking (with channel/role ACL exclusion check)
     if (!message.author.bot) {
-      isExecutionAllowed(message.guild.id, message.member, message.channel.id, "analytics")
-        .then((allowed) => {
-          if (allowed) {
+      isExecutionAllowed(message.guild.id, message.channel.id, message.member, "analytics")
+        .then((res) => {
+          if (res?.allowed) {
             ANALYTICS_BATCHER.addMessage(message.guild.id, message.author.id, message.channel.id).catch(() => {});
           }
         })

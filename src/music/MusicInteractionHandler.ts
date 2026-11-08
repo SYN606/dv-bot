@@ -35,7 +35,10 @@ export function createMusicControlComponents(
       .setCustomId(`music:skip:${guildId}`)
       .setLabel("Skip")
       .setEmoji("⏭️")
-      .setStyle(ButtonStyle.Secondary),
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`music:stop:${guildId}`)
       .setLabel("Stop")
@@ -52,22 +55,25 @@ export function createMusicControlComponents(
     loopMode === "track" ? "Loop: Track" : loopMode === "queue" ? "Loop: Queue" : "Loop: Off";
   const loopStyle = loopMode === "off" ? ButtonStyle.Secondary : ButtonStyle.Success;
 
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`music:loop:${guildId}`)
       .setLabel(loopLabel)
-      .setEmoji("🔁")
+      .setEmoji("🔄")
       .setStyle(loopStyle),
     new ButtonBuilder()
       .setCustomId(`music:voldown:${guildId}`)
       .setLabel("Vol -10%")
-      .setEmoji("🔉")
+      .setEmoji("🔊")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`music:volup:${guildId}`)
       .setLabel("Vol +10%")
       .setEmoji("🔊")
-      .setStyle(ButtonStyle.Secondary),
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  const row4 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`music:queue:${guildId}`)
       .setLabel("Queue")
@@ -128,7 +134,7 @@ export function createMusicControlComponents(
       )
   );
 
-  return [row1, row2, filterMenu];
+  return [row1, row2, row3, row4, filterMenu];
 }
 
 /**
@@ -244,6 +250,10 @@ export class MusicInteractionHandler {
             await interaction.deferUpdate().catch(() => {});
             await player.updateNowPlayingMessage();
           }
+
+          if (player.nowPlayingMessage && player.nowPlayingMessage.id !== interaction.message.id) {
+            await player.updateNowPlayingMessage().catch(() => {});
+          }
           break;
         }
 
@@ -348,6 +358,10 @@ export class MusicInteractionHandler {
             await interaction.deferUpdate().catch(() => {});
             await player.updateNowPlayingMessage();
           }
+
+          if (player.nowPlayingMessage && player.nowPlayingMessage.id !== interaction.message.id) {
+            await player.updateNowPlayingMessage().catch(() => {});
+          }
           break;
         }
 
@@ -355,7 +369,7 @@ export class MusicInteractionHandler {
           const newVol = Math.max(0, player.volume - 10);
           await player.setVolume(newVol);
           await interaction.reply({
-            content: `🔉 Volume set to **${newVol}%**`,
+            content: `🔊 Volume set to **${newVol}%**`,
             flags: MessageFlags.Ephemeral,
           });
           break;

@@ -301,8 +301,6 @@ export async function handleAfk(message, { skipAuthorReturn = false } = {}) {
   const authorId = message.author.id;
   const now = Date.now();
 
-  pruneOldLocks(now);
-
   // 1. Check if the message author was AFK -> welcome them back with mentions summary & jump buttons
   const returnLockKey = `${guildId}:${authorId}`;
   const lockExpires = returningUserLocks.get(returnLockKey) || 0;

@@ -2,7 +2,7 @@ import { Shoukaku, Connectors, Constants } from "shoukaku";
 import { type VoiceState, type User } from "discord.js";
 import dns from "node:dns/promises";
 import net from "node:net";
-import { GuildPlayer } from "./GuildPlayer.js";
+import { GuildPlayer, PlayerState } from "./GuildPlayer.js";
 import { MusicInteractionHandler } from "./MusicInteractionHandler.js";
 import { formatTrack, type IFormattedTrack } from "./TrackQueue.js";
 import { getMusicSettings } from "../db/helpers/music.js";
@@ -228,7 +228,16 @@ export class MusicManager {
   }
 
   getPlayer(guildId: string): GuildPlayer | null {
-    return this.players.get(String(guildId)) || null;
+    const player = this.players.get(String(guildId)) || null;
+    if (player) {
+      const guild = this.client.guilds.cache.get(String(guildId));
+      const meVoice = guild?.members?.me?.voice?.channelId;
+      if (!meVoice && player.state !== PlayerState.DESTROYED) {
+        player.destroy(false).catch(() => {});
+        return null;
+      }
+    }
+    return player;
   }
 
   async join({ guildId, voiceChannelId, textChannelId = null, deaf = true }: IJoinOptions): Promise<GuildPlayer> {

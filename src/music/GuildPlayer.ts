@@ -354,6 +354,7 @@ export class GuildPlayer extends EventEmitter {
     try {
       await this.player.setGlobalVolume(safeVolume);
       this.volume = safeVolume;
+      this.updateNowPlayingMessage().catch(() => {});
       return true;
     } catch (err) {
       logger.error(`[PLAYER] Failed to set volume in guild ${this.guildId}:`, err);
@@ -367,6 +368,7 @@ export class GuildPlayer extends EventEmitter {
     try {
       await this.player.setFilters(filterPayload);
       this.currentFilter = presetName;
+      this.updateNowPlayingMessage().catch(() => {});
       return true;
     } catch (err) {
       logger.error(`[PLAYER] Failed to set filter in guild ${this.guildId}:`, err);

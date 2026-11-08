@@ -11,10 +11,11 @@ export class GlobalCooldownManager {
   constructor(rate = 5, per = 5) {
     this.rate = rate;
     this.per = per;
-    this.buckets = new Map(); // key -> { tokens, lastUpdate }
+    this.buckets = new Map<string, CooldownBucket>(); // key -> { tokens, lastUpdate }
 
     // Prevent memory leaks by pruning old records in the background
-    setInterval(() => this.prune(), 60000);
+    const pruneTimer = setInterval(() => this.prune(), 60000);
+    if (pruneTimer.unref) pruneTimer.unref();
   }
 
   _getKey(userId: string, guildId: string | null = null): string {
