@@ -10,6 +10,7 @@
 // ============================================================================
 
 const CACHE_TTL = 15000; // 15 seconds
+const MAX_CACHE_SIZE = 250;
 
 // Simple TTL cache: url â†’ { data, expires }
 const CACHE = new Map();
@@ -117,6 +118,16 @@ export async function fetchApi(endpoint: string, options: any = {}) {
     })
     .then((data) => {
       if (isGet) {
+        if (CACHE.size >= MAX_CACHE_SIZE) {
+          const now = Date.now();
+          for (const [k, v] of CACHE.entries()) {
+            if (now > v.expires) CACHE.delete(k);
+          }
+          if (CACHE.size >= MAX_CACHE_SIZE) {
+            const oldest = CACHE.keys().next().value;
+            if (oldest) CACHE.delete(oldest);
+          }
+        }
         CACHE.set(url, { data, expires: Date.now() + CACHE_TTL });
         INFLIGHT.delete(url);
       }
@@ -942,6 +953,57 @@ export async function deleteMusicPlaylist(guildId, playlistId) {
 
 export async function loadMusicPlaylist(guildId, playlistId) {
   return fetchApi(`/api/guilds/${guildId}/music/playlists/${playlistId}/load`, {
+    method: "POST",
+    skipCache: true,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Anti-Nuke Server Protection
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getAntinukeData(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/antinuke`, { skipCache: true });
+}
+
+export async function updateAntinukeSettings(guildId, payload) {
+  invalidate(`/api/guilds/${guildId}/antinuke`);
+  return fetchApi(`/api/guilds/${guildId}/antinuke/settings`, {
+    method: "PATCH",
+    body: payload,
+    skipCache: true,
+  });
+}
+
+export async function addAntinukeTrustee(guildId, payload) {
+  invalidate(`/api/guilds/${guildId}/antinuke`);
+  return fetchApi(`/api/guilds/${guildId}/antinuke/trustees`, {
+    method: "POST",
+    body: payload,
+    skipCache: true,
+  });
+}
+
+export async function deleteAntinukeTrustee(guildId, trusteeId) {
+  invalidate(`/api/guilds/${guildId}/antinuke`);
+  return fetchApi(`/api/guilds/${guildId}/antinuke/trustees/${trusteeId}`, {
+    method: "DELETE",
+    skipCache: true,
+  });
+}
+
+export async function toggleAntinukeLockdown(guildId, action, reason = "") {
+  invalidate(`/api/guilds/${guildId}/antinuke`);
+  return fetchApi(`/api/guilds/${guildId}/antinuke/lockdown`, {
+    method: "POST",
+    body: { action, reason },
+    skipCache: true,
+  });
+}
+
+export async function rollbackAntinukeIncident(guildId, incidentId) {
+  invalidate(`/api/guilds/${guildId}/antinuke`);
+  return fetchApi(`/api/guilds/${guildId}/antinuke/incidents/${incidentId}/rollback`, {
     method: "POST",
     skipCache: true,
   });

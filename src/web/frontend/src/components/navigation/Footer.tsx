@@ -30,6 +30,7 @@ export default function Footer({ botInfo = null, className = "", ...props }: { b
             <h4 className="font-mono text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Product</h4>
             <ul className="space-y-3">
               <li><Link to="/status" className="text-slate-300 hover:text-white transition-colors flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Status</Link></li>
+              <li><Link to="/features" className="text-slate-300 hover:text-white transition-colors">Features</Link></li>
               <li><Link to="/dashboard" className="text-slate-300 hover:text-white transition-colors">Dashboard</Link></li>
               <li><Link to="/docs" className="text-slate-300 hover:text-white transition-colors">Documentation</Link></li>
             </ul>

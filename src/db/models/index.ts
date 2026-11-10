@@ -56,6 +56,11 @@ import {
   HourlyActivity,
   MemberAnalytics,
 } from "./analyticsModels.js";
+import {
+  AntinukeSettings,
+  AntinukeTrustee,
+  AntinukeIncident,
+} from "./antinukeModels.js";
 import { Op } from "./drizzleAdapter.js";
 
 // Setup associations
@@ -119,5 +124,8 @@ export {
   DailyActivitySnapshot,
   ChannelActivity,
   HourlyActivity,
+  AntinukeSettings,
+  AntinukeTrustee,
+  AntinukeIncident,
   Op,
 };

@@ -1,8 +1,20 @@
-import { Events, type GuildMember } from "discord.js";
+import { Events, type GuildMember, AuditLogEvent, PermissionFlagsBits } from "discord.js";
 import { VCRoleConfig } from "../db/models/index.js";
 import { checkGuildTag, clearUserClanCache } from "../handlers/supporterHandler.js";
 import { sendModLog } from "../utils/modLog.js";
 import { dispatchWelcomeOnTrigger } from "../services/welcomeService.js";
+import { ANTINUKE_AUDIT } from "../services/antinukeAuditResolver.js";
+import { ANTINUKE_SERVICE, ThreatType } from "../services/antinukeService.js";
+import { getAntinukeSettings } from "../db/helpers/antinuke.js";
+
+const DANGEROUS_PERMS = [
+  PermissionFlagsBits.Administrator,
+  PermissionFlagsBits.ManageGuild,
+  PermissionFlagsBits.ManageRoles,
+  PermissionFlagsBits.ManageChannels,
+  PermissionFlagsBits.BanMembers,
+  PermissionFlagsBits.KickMembers,
+];
 
 export default {
   name: Events.GuildMemberUpdate,
@@ -51,6 +63,51 @@ export default {
       } catch (_) {}
 
       if (addedRoles.size > 0 || removedRoles.size > 0) {
+        // Anti-Nuke: Zero-tolerance check for unauthorized administrative role grants
+        if (addedRoles.size > 0) {
+          const dangerousAddedRoles = addedRoles.filter((r) =>
+            DANGEROUS_PERMS.some((perm) => r.permissions.has(perm))
+          );
+
+          if (dangerousAddedRoles.size > 0) {
+            try {
+              const settings = await getAntinukeSettings(newMember.guild.id);
+              if (settings.enabled && settings.strict_dangerous_perms) {
+                const executor = await ANTINUKE_AUDIT.resolveExecutor(
+                  newMember.guild,
+                  AuditLogEvent.MemberRoleUpdate,
+                  newMember.id
+                );
+
+                if (executor) {
+                  const immune = await ANTINUKE_SERVICE.isImmune(
+                    newMember.guild,
+                    executor,
+                    ThreatType.DANGEROUS_PERMS
+                  );
+
+                  if (!immune) {
+                    // 1. Instantly strip the dangerous role(s) from the target member
+                    await newMember.roles.remove(
+                      dangerousAddedRoles,
+                      "[DV-BOT ANTI-NUKE] Unauthorized administrative role assignment reverted."
+                    ).catch(() => {});
+
+                    // 2. Mitigate the rogue moderator who granted the role
+                    await ANTINUKE_SERVICE.executeMitigation({
+                      guild: newMember.guild,
+                      executorId: executor.id,
+                      threatType: ThreatType.DANGEROUS_PERMS,
+                      details: `Unauthorized grant of privileged role(s) (${dangerousAddedRoles.map((r) => '@' + r.name).join(', ')}) to @${newMember.user.tag || newMember.user.username}`,
+                    });
+                    return;
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+        }
+
         const extraFields: Record<string, any> = {
           Member: `<@${newMember.id}> (\`${newMember.user.tag || newMember.user.username}\`)`,
         };

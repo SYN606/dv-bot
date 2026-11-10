@@ -1,6 +1,7 @@
 import { AuditLogEvent } from "discord.js";
 import { CONFIG } from "../config.js";
 import { logger } from "../utils/logger.js";
+import { TOPOLOGY_MIRROR } from "../services/topologyMirror.js";
 
 export default {
   name: "guildCreate",
@@ -51,6 +52,7 @@ export default {
         await guild.leave();
       } else {
         logger.info(`[GUILD JOIN] Authorized guild! Added by or owned by a superuser.`);
+        TOPOLOGY_MIRROR.syncGuild(guild);
       }
     } catch (error) {
       logger.error(`[GUILD JOIN] Error checking guild authorization:`, error);

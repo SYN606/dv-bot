@@ -142,7 +142,8 @@ export class GuildPlayer extends EventEmitter {
       // Guard against 'replaced' and 'cleanup' events.
       // Lavalink fires 'replaced' on the preceding track when playTrack starts a new one.
       // Advancing the queue on 'replaced' would chew through the queue and stall playback.
-      if (data?.reason === "replaced" || data?.reason === "cleanup") {
+      const reason = String(data?.reason || "").toLowerCase();
+      if (reason === "replaced" || reason === "cleanup") {
         return;
       }
 
@@ -429,7 +430,10 @@ export class GuildPlayer extends EventEmitter {
 
   async sendNowPlayingMessage(): Promise<void> {
     if (!this.textChannelId || !this.currentTrack) return;
-    const channel = this.guild?.channels?.cache?.get(this.textChannelId) as any;
+    let channel = this.guild?.channels?.cache?.get(this.textChannelId) as any;
+    if (!channel && this.guild) {
+      channel = await this.guild.channels.fetch(this.textChannelId).catch(() => null);
+    }
     if (!channel || !channel.isTextBased?.()) return;
 
     try {
@@ -462,13 +466,8 @@ export class GuildPlayer extends EventEmitter {
       const components = createMusicControlComponents(this.guildId, this.isPaused, this.queue.loopMode);
 
       if (this.nowPlayingMessage) {
-        try {
-          await this.nowPlayingMessage.edit({ embeds: [embed], components });
-          this.lastMessageUpdate = Date.now();
-          return;
-        } catch {
-          this.nowPlayingMessage = null;
-        }
+        await this.nowPlayingMessage.delete().catch(() => {});
+        this.nowPlayingMessage = null;
       }
 
       this.nowPlayingMessage = await channel.send({

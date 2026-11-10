@@ -15,11 +15,24 @@ import {
 } from "./auth.js";
 import { apiRouter } from "./routes/api.js";
 import { logger } from "../utils/logger.js";
+import { securityHeaders } from "./middleware/securityHeaders.js";
+import { csrfProtection } from "./middleware/csrf.js";
+import { tokenSanitizer } from "./middleware/tokenSanitizer.js";
 
 export function createWebApp(client = null) {
   const app = new Hono();
 
   // 0. HTTP Compression (gzip/deflate for responses > 1024 bytes)
+  // 0. Security Headers & Anti-Token-Grabbing Defense
+  app.use("*", securityHeaders());
+
+  // 1. Origin & CSRF Defense
+  app.use("*", csrfProtection());
+
+  // 2. Token Leak Sanitizer (scrubs tokens from all outgoing API JSON payloads)
+  app.use("/api/*", tokenSanitizer());
+
+  // 3. HTTP Compression (gzip/deflate for responses > 1024 bytes)
   app.use("*", compress());
 
   // Attach discordClient to context

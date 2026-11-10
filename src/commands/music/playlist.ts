@@ -235,7 +235,14 @@ export default createCommand({
           } catch {}
         }
 
-        if (queuedCount > 0 && !player.isPlaying && !player.isPaused) {
+        const isAlreadyActive = Boolean(
+          player.currentTrack !== null ||
+          player.state === "playing" ||
+          player.state === "buffering" ||
+          player.state === "paused"
+        );
+
+        if (queuedCount > 0 && !isAlreadyActive) {
           const next = player.queue.next();
           if (next) await player.playTrack(next);
         }

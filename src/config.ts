@@ -10,6 +10,7 @@ export const ROOT_DIR = path.resolve(__dirname, "..");
 
 const env = (process.env.ENV || "production").toLowerCase();
 const isDev = env === "dev" || env === "development" || env === "test";
+const isProd = env === "prod" || env === "production";
 
 const dashboardPort = parseInt(process.env.DASHBOARD_PORT || process.env.PORT || "3000", 10);
 const dashboardUrlDev = process.env.DASHBOARD_URL_DEV || `http://localhost:${dashboardPort}`;
@@ -62,6 +63,8 @@ export interface BotConfig {
   SUPERUSERS: string[];
   AFK_IMAGE_URL: string | null;
   MENTION_GIF_URL: string | null;
+  HELP_BANNER_GIF: string | null;
+  LOG_LEVEL: string;
   // Music & Lavalink v4 Configuration
   MUSIC_ENABLED: boolean;
   LAVALINK_HOST: string;
@@ -110,7 +113,7 @@ export const CONFIG: BotConfig = {
   DASHBOARD_URL: dashboardUrl,
   DASHBOARD_URL_DEV: dashboardUrlDev,
   DASHBOARD_URL_PROD: dashboardUrlProd,
-  SESSION_SECRET: process.env.SESSION_SECRET || (env === "production" ? null : "dv-bot-super-secure-secret-key-2026"),
+  SESSION_SECRET: process.env.SESSION_SECRET || (isProd ? null : "dv-bot-super-secure-secret-key-2026"),
 
   // Superusers
   SUPERUSERS: (process.env.SUPERUSER_IDS || process.env.SUPERUSERS || process.env.SUPERUSER || process.env.OWNER_IDS || "")
@@ -121,6 +124,8 @@ export const CONFIG: BotConfig = {
   // Feature Media URLs
   AFK_IMAGE_URL: process.env.AFK_IMAGE_URL || null,
   MENTION_GIF_URL: process.env.MENTION_GIF_URL || null,
+  HELP_BANNER_GIF: process.env.HELP_BANNER_GIF || null,
+  LOG_LEVEL: process.env.LOG_LEVEL || "info",
 
   // Music & Lavalink v4 Configuration
   MUSIC_ENABLED: (process.env.MUSIC_ENABLED || "true").toLowerCase() === "true",
@@ -137,6 +142,6 @@ export const CONFIG: BotConfig = {
   ROOT_DIR,
 };
 
-if (CONFIG.ENV === "production" && !CONFIG.SESSION_SECRET) {
+if (isProd && !CONFIG.SESSION_SECRET) {
   throw new Error("FATAL SECURITY ERROR: You MUST set a secure SESSION_SECRET in .env for production environments.");
 }

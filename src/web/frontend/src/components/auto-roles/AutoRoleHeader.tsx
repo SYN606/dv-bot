@@ -6,7 +6,7 @@ export default function AutoRoleHeader({ enabled, isEnabled = false, onToggle }:
 
   return (
     <PageHeader
-      category="स्वचालन"
+      category="AUTOMATION"
       breadcrumb="Rewards / Automation"
       title="Leaderboard Auto-Roles"
       description="Automatically reward the most active community members with weekly Discord roles."

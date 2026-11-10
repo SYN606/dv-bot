@@ -23,7 +23,7 @@ function AppInner() {
         isSuperuser: data.isSuperuser || false,
       });
     }
-    getBotInfo().then((b) => b && setBotInfo(b)).catch(() => {});
+    getBotInfo().then((b) => b && setBotInfo(b)).catch(() => { });
   };
 
   useEffect(() => {

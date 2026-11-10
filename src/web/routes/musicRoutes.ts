@@ -144,9 +144,16 @@ musicRoutes.post("/guilds/:guildId/music/player/play", async (c) => {
       return c.json({ error: "No tracks found matching query." }, 404);
     }
 
+    const isAlreadyActive = Boolean(
+      player.currentTrack !== null ||
+      player.state === "playing" ||
+      player.state === "buffering" ||
+      player.state === "paused"
+    );
+
     if (res.loadType === "playlist") {
       const added = player.queue.addMany(res.tracks);
-      if (!player.isPlaying && !player.isPaused) {
+      if (!isAlreadyActive) {
         const next = player.queue.next();
         if (next) await player.playTrack(next);
       }
@@ -161,7 +168,7 @@ musicRoutes.post("/guilds/:guildId/music/player/play", async (c) => {
     const track = res.tracks[0];
     const position = player.queue.add(track);
 
-    if (!player.isPlaying && !player.isPaused) {
+    if (!isAlreadyActive) {
       const next = player.queue.next();
       if (next) await player.playTrack(next);
     }

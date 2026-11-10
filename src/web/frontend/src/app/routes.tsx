@@ -10,6 +10,7 @@ import RouteLoader from "./RouteLoader";
 const HomePage = lazy(() => import("../pages/home/HomePage"));
 const StatusPage = lazy(() => import("../pages/home/StatusPage"));
 const DocumentationPage = lazy(() => import("../pages/home/DocumentationPage"));
+const FeaturesPage = lazy(() => import("../pages/home/FeaturesPage"));
 const ErrorPage = lazy(() => import("../pages/home/ErrorPage"));
 const TermsPage = lazy(() => import("../pages/legal/TermsPage"));
 const PrivacyPage = lazy(() => import("../pages/legal/PrivacyPage"));
@@ -37,6 +38,7 @@ const AuditLogsPage = lazy(() => import("../pages/dashboard/AuditLogsPage"));
 const ConfessionsPage = lazy(() => import("../pages/dashboard/ConfessionsPage"));
 const TicketsPage = lazy(() => import("../pages/dashboard/TicketsPage"));
 const MusicPage = lazy(() => import("../pages/dashboard/MusicPage"));
+const AntinukePage = lazy(() => import("../pages/dashboard/AntinukePage"));
 
 export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
   return (
@@ -47,6 +49,7 @@ export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
         <Route path="/status" element={<StatusPage user={user} botInfo={botInfo} />} />
         <Route path="/docs" element={<DocumentationPage user={user} botInfo={botInfo} />} />
         <Route path="/documentation" element={<DocumentationPage user={user} botInfo={botInfo} />} />
+        <Route path="/features" element={<FeaturesPage user={user} botInfo={botInfo} />} />
 
         {/* Legal Routes */}
         <Route element={<LegalLayout user={user} botInfo={botInfo} />}>
@@ -94,6 +97,7 @@ export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
           <Route path="confessions" element={<ConfessionsPage showToast={showToast} />} />
           <Route path="tickets" element={<TicketsPage showToast={showToast} />} />
           <Route path="music" element={<MusicPage showToast={showToast} />} />
+          <Route path="antinuke" element={<AntinukePage showToast={showToast} />} />
         </Route>
 
         {/* Fallback */}

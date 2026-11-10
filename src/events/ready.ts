@@ -10,6 +10,7 @@ import { initAfkCache } from "../db/helpers/afk.js";
 import { initStickyCache } from "../db/helpers/sticky.js";
 import { initAutoresponderCache } from "../db/helpers/autoresponder.js";
 import { restoreActiveChannelLocks } from "../services/channelLockService.js";
+import { TOPOLOGY_MIRROR } from "../services/topologyMirror.js";
 import { logger } from "../utils/logger.js";
 import { startPresence } from "../core/presence.js";
 import { pruneOldAnalyticsData } from "../db/helpers/analytics.js";
@@ -32,6 +33,7 @@ export default {
     await Promise.all([initAfkCache(), initStickyCache(), initAutoresponderCache()]);
     logger.info("[CACHE] Hot-path AFK, Sticky, and Autoresponder caches pre-warmed.");
     await restoreActiveChannelLocks(client).catch(() => {});
+    TOPOLOGY_MIRROR.hydrate(client);
 
     // 4. Start Background Workers & Hydrate Active Voice Sessions
     ANALYTICS_BATCHER.start();

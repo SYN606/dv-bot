@@ -11,7 +11,7 @@ export default function AutoresponderHeader({
 }) {
   return (
     <PageHeader
-      category="स्वचालन"
+      category="AUTOMATION"
       breadcrumb="Autoresponder / Triggers"
       title="Autoresponder"
       description="Automatically reply, send rich embeds, or add reactions when community messages match configured triggers."

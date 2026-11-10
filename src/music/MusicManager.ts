@@ -228,14 +228,11 @@ export class MusicManager {
   }
 
   getPlayer(guildId: string): GuildPlayer | null {
-    const player = this.players.get(String(guildId)) || null;
-    if (player) {
-      const guild = this.client.guilds.cache.get(String(guildId));
-      const meVoice = guild?.members?.me?.voice?.channelId;
-      if (!meVoice && player.state !== PlayerState.DESTROYED) {
-        player.destroy(false).catch(() => {});
-        return null;
-      }
+    const player = this.players.get(String(guildId));
+    if (!player) return null;
+    if (player.state === PlayerState.DESTROYED) {
+      this.players.delete(String(guildId));
+      return null;
     }
     return player;
   }

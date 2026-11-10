@@ -4,7 +4,7 @@ import { PageHeader } from "../ui";
 export default function WarningPunishmentsHeader({ activeCount = 0, enabled = true, onToggle }) {
   return (
     <PageHeader
-      category="संयम"
+      category="MODERATION ESCALATION"
       breadcrumb="Moderation / Automation"
       title="Auto-Punishments"
       description="Automatically take moderation action when members reach configured warning thresholds."

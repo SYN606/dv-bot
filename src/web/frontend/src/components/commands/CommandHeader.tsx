@@ -4,7 +4,7 @@ import { PageHeader } from "../ui";
 export default function CommandHeader({ totalCommands = 43, activeCommands = 34 }) {
   return (
     <PageHeader
-      category="नियंत्रण"
+      category="COMMANDS & PERMISSIONS"
       breadcrumb="Core / Command Permissions"
       title="Command Control Center"
       description="Manage command availability, enforce channel-specific restrictions, and toggle functional modules across your server in real time."

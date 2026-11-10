@@ -8,7 +8,7 @@ export default function AuditHeader({ guildId, auditData, onRefresh, refreshing 
 
   return (
     <PageHeader
-      category="सुरक्षा ऑडिट"
+      category="SECURITY AUDIT"
       breadcrumb="Security / Permissions Audit"
       title="Permissions Audit"
       description="Deep vulnerability scan detecting members and roles with elevated, administrator, or destructive Discord permissions."

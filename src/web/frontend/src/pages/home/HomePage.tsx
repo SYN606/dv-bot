@@ -57,7 +57,7 @@ export default function HomePage({ user, botInfo }: { user?: any; botInfo?: any 
           {/* Giant Background Typography */}
           <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none select-none -z-10">
             <span className="text-[15vw] leading-none font-display text-brand-crimson opacity-[0.03] whitespace-nowrap" aria-hidden="true">
-              डिजिटल-विजिटल
+              DIGITAL VIGITAL
             </span>
           </div>
 
@@ -66,7 +66,7 @@ export default function HomePage({ user, botInfo }: { user?: any; botInfo?: any 
             <div className="flex flex-wrap items-center justify-center gap-2.5 mb-4">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm text-xs font-mono text-slate-300 uppercase tracking-widest">
                 <span className="w-2 h-2 rounded-full bg-brand-crimson animate-pulse"></span>
-                <span>डिजिटल-विजिटल • Built around the community</span>
+                <span>Digital Vigital • Built around the community</span>
               </div>
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 backdrop-blur-sm text-xs font-mono text-emerald-300">
                 <Users className="w-3.5 h-3.5 text-emerald-400" />
@@ -86,7 +86,7 @@ export default function HomePage({ user, botInfo }: { user?: any; botInfo?: any 
             </h1>
 
             <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto font-body leading-relaxed">
-              One place for the people, tools and automation behind डिजिटल-विजिटल (Digital Vigital).
+              One place for the people, tools, and automation behind Digital Vigital.
             </p>
 
             <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -139,7 +139,7 @@ export default function HomePage({ user, botInfo }: { user?: any; botInfo?: any 
           <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
             <div className="space-y-6">
               <div className="text-sm font-display text-brand-crimson tracking-wider flex items-center gap-3">
-                <span className="font-mono text-xs opacity-50">01 /</span> समुदाय
+                <span className="font-mono text-xs opacity-50">01 /</span> COMMUNITY
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight font-sans">
                 Community First.
@@ -157,7 +157,7 @@ export default function HomePage({ user, botInfo }: { user?: any; botInfo?: any 
               </ul>
             </div>
             <div className="glass-panel p-8 rounded-3xl border border-white/10 relative overflow-hidden bg-slate-900/50">
-               <div className="absolute -bottom-8 -right-8 text-9xl font-display text-brand-crimson opacity-[0.03] select-none">स</div>
+               <div className="absolute -bottom-8 -right-8 text-9xl font-display text-brand-crimson opacity-[0.03] select-none">DV</div>
                <div className="grid grid-cols-2 gap-4 sm:gap-6 relative z-10">
                  <div className="space-y-1.5 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
                    <div className="flex items-center gap-2 text-xs font-mono text-brand-crimson uppercase tracking-wider">
@@ -208,11 +208,11 @@ export default function HomePage({ user, botInfo }: { user?: any; botInfo?: any 
 
         {/* BOT CAPABILITIES */}
         <section className="py-24 sm:py-32 px-6 bg-slate-900/30 border-y border-white/5 relative">
-          <div className="absolute top-0 right-0 p-8 text-[10vw] font-display text-white opacity-[0.02] select-none pointer-events-none leading-none">प्रणाली</div>
+          <div className="absolute top-0 right-0 p-8 text-[10vw] font-display text-white opacity-[0.02] select-none pointer-events-none leading-none">SYSTEMS</div>
           <div className="max-w-6xl mx-auto space-y-16 relative z-10">
             <div className="max-w-2xl">
               <div className="text-sm font-display text-brand-cyan tracking-wider flex items-center gap-3 mb-4">
-                <span className="font-mono text-xs opacity-50">02 /</span> स्वचालन
+                <span className="font-mono text-xs opacity-50">02 /</span> AUTOMATION
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight font-sans">
                 Official Community Bot
@@ -287,7 +287,7 @@ export default function HomePage({ user, botInfo }: { user?: any; botInfo?: any 
           <div className="max-w-6xl mx-auto">
             <div className="text-center max-w-2xl mx-auto space-y-6 mb-16 relative z-10">
               <div className="text-sm font-display text-brand-crimson tracking-wider flex items-center justify-center gap-3">
-                <span className="font-mono text-xs opacity-50">03 /</span> नियंत्रण
+                <span className="font-mono text-xs opacity-50">03 /</span> CONTROL CENTER
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight font-sans">
                 One dashboard. Full control.
@@ -352,7 +352,7 @@ export default function HomePage({ user, botInfo }: { user?: any; botInfo?: any 
         <section className="py-24 sm:py-32 px-6 border-t border-white/5 bg-linear-to-b from-slate-950 to-black">
           <div className="max-w-3xl mx-auto text-center space-y-8">
             <h2 className="text-4xl sm:text-6xl font-display text-white tracking-tight">
-              डिजिटल-विजिटल समुदाय से जुड़िये
+              Join the Digital Vigital Community
             </h2>
             <p className="text-xl text-slate-400 font-sans">
               Be part of Digital Vigital.

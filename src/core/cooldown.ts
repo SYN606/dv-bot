@@ -82,4 +82,10 @@ export class GlobalCooldownManager {
   }
 }
 
-export const GLOBAL_COOLDOWN = new GlobalCooldownManager(5, 5);
+const defaultRate = parseInt(process.env.GLOBAL_COOLDOWN_RATE || "5", 10);
+const defaultPer = parseFloat(process.env.GLOBAL_COOLDOWN_PER || "5.0");
+
+export const GLOBAL_COOLDOWN = new GlobalCooldownManager(
+  Number.isFinite(defaultRate) && defaultRate > 0 ? defaultRate : 5,
+  Number.isFinite(defaultPer) && defaultPer > 0 ? defaultPer : 5
+);

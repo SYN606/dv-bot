@@ -100,6 +100,7 @@ export interface HybridCommandOptions {
   name: string;
   description?: string;
   category?: string;
+  module?: string;
   aliases?: string[];
   slashOnly?: boolean;
   prefixOnly?: boolean;
