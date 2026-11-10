@@ -63,6 +63,7 @@ authRoutes.get("/me", async (c) => {
       ...g,
       botPresent: isBotInGuild,
       canManage: isSuperuser ? true : canManage, // Superusers can manage everything
+      canManageAntinuke: isSuperuser ? true : Boolean(g.owner),
     });
   });
 
@@ -99,6 +100,23 @@ authRoutes.get("/me", async (c) => {
         } catch {
           // Ignore failures gracefully
         }
+
+        if (!g.canManageAntinuke) {
+          try {
+            const { getAntinukeTrustees } = await import("../../db/helpers/antinuke.js");
+            const trustees = await getAntinukeTrustees(g.id);
+            const bg = client?.guilds.cache.get(String(g.id));
+            const member = bg?.members.cache.get(session.user.id);
+            const isTrustee = trustees.some((t: any) => {
+              if ((t.target_type === "user" || t.target_type === "bot") && t.target_id === session.user.id) return true;
+              if (t.target_type === "role" && member?.roles?.cache?.has(t.target_id)) return true;
+              return false;
+            });
+            if (isTrustee) {
+              g.canManageAntinuke = true;
+            }
+          } catch {}
+        }
       })
     );
   }
@@ -115,6 +133,7 @@ authRoutes.get("/me", async (c) => {
           owner: false,
           botPresent: true,
           canManage: true,
+          canManageAntinuke: true,
         });
       }
     }
@@ -193,6 +212,7 @@ authRoutes.post("/me/sync", async (c) => {
       ...g,
       botPresent: isBotInGuild,
       canManage: isSuperuser ? true : canManage, // Superusers can manage everything
+      canManageAntinuke: isSuperuser ? true : Boolean(g.owner),
     });
   });
 
@@ -229,6 +249,23 @@ authRoutes.post("/me/sync", async (c) => {
         } catch {
           // Ignore failures gracefully
         }
+
+        if (!g.canManageAntinuke) {
+          try {
+            const { getAntinukeTrustees } = await import("../../db/helpers/antinuke.js");
+            const trustees = await getAntinukeTrustees(g.id);
+            const bg = client?.guilds.cache.get(String(g.id));
+            const member = bg?.members.cache.get(session.user.id);
+            const isTrustee = trustees.some((t: any) => {
+              if ((t.target_type === "user" || t.target_type === "bot") && t.target_id === session.user.id) return true;
+              if (t.target_type === "role" && member?.roles?.cache?.has(t.target_id)) return true;
+              return false;
+            });
+            if (isTrustee) {
+              g.canManageAntinuke = true;
+            }
+          } catch {}
+        }
       })
     );
   }
@@ -245,6 +282,7 @@ authRoutes.post("/me/sync", async (c) => {
           owner: false,
           botPresent: true,
           canManage: true,
+          canManageAntinuke: true,
         });
       }
     }

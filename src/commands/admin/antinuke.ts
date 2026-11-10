@@ -93,6 +93,24 @@ const slashBuilder = new SlashCommandBuilder()
           )
       )
       .addSubcommand((sub) =>
+        sub
+          .setName("bot")
+          .setDescription("Whitelist or remove a bot (e.g. Join-to-Create, Temp Voice) for channel deletion bypass")
+          .addUserOption((opt) =>
+            opt.setName("target").setDescription("The bot application to whitelist").setRequired(true)
+          )
+          .addStringOption((opt) =>
+            opt
+              .setName("action")
+              .setDescription("Whitelist action")
+              .setRequired(false)
+              .addChoices(
+                { name: "Whitelist Bot (Channel Bypass)", value: "add" },
+                { name: "Remove Bot from Whitelist", value: "remove" }
+              )
+          )
+      )
+      .addSubcommand((sub) =>
         sub.setName("list").setDescription("Display all currently trusted members and roles")
       )
   )
@@ -127,8 +145,30 @@ export default createCommand({
     const { guild, member } = ctx;
     if (!guild || !member) return;
 
-    // Strict Server Owner or Superuser check for critical operations
-    const isOwner = member.id === guild.ownerId || CONFIG.SUPERUSERS.includes(member.id);
+    // Strict Server Owner, Superuser, or Whitelisted Trustee check
+    const isOwner = member.id === guild.ownerId || (Array.isArray(CONFIG.SUPERUSERS) && CONFIG.SUPERUSERS.includes(member.id));
+    const trustees = await getAntinukeTrustees(guild.id);
+    const isTrustee = trustees.some(
+      (t: any) =>
+        ((t.target_type === "user" || t.target_type === "bot") && t.target_id === member.id) ||
+        (t.target_type === "role" && member.roles.cache.has(t.target_id))
+    );
+
+    const canManageAntinuke = isOwner || isTrustee;
+    if (!canManageAntinuke) {
+      await ctx.defer({ ephemeral: true });
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Permission Denied",
+            description: `${EMOJIS.get("fail") || "❌"} Anti-Nuke defense and commands can only be accessed or modified by the **Server Owner**, bot superusers, or whitelisted **Anti-Nuke Trustees**. Standard administrator and dashboard staff roles do not have permission.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
     const subGroup = ctx.options.getSubcommandGroup(false);
     const subCommand = ctx.options.getSubcommand();
 
@@ -247,18 +287,6 @@ export default createCommand({
     // 2. Enable / Disable Command
     // ─────────────────────────────────────────────────────────────────────────
     if (subCommand === "enable" || subCommand === "disable") {
-      if (!isOwner) {
-        return await ctx.reply({
-          embeds: [
-            makeEmbed({
-              title: "Permission Denied",
-              description: `${EMOJIS.get("fail") || "❌"} Only the **Server Owner** or configured bot superusers can toggle master Anti-Nuke defense.`,
-              level: "ERROR",
-            }),
-          ],
-        });
-      }
-
       const enabled = subCommand === "enable";
       await updateAntinukeSettings(guild.id, { enabled: enabled ? 1 : 0 });
       await setModuleEnabled(guild.id, "antinuke", enabled);
@@ -282,18 +310,6 @@ export default createCommand({
     // 3. Emergency Lockdown Command
     // ─────────────────────────────────────────────────────────────────────────
     if (subCommand === "lockdown") {
-      if (!isOwner) {
-        return await ctx.reply({
-          embeds: [
-            makeEmbed({
-              title: "Permission Denied",
-              description: `${EMOJIS.get("fail") || "❌"} Only the **Server Owner** can trigger server-wide Panic Lockdown.`,
-              level: "ERROR",
-            }),
-          ],
-        });
-      }
-
       const action = ctx.options.getString("action");
       if (action === "on") {
         const success = await ANTINUKE_SERVICE.engageEmergencyLockdown(
@@ -340,13 +356,42 @@ export default createCommand({
     // 4. Trust Management
     // ─────────────────────────────────────────────────────────────────────────
     if (subGroup === "trust") {
-      if (!isOwner) {
+      if (subCommand === "bot") {
+        const botUser = ctx.options.getUser("target");
+        const action = ctx.options.getString("action") || "add";
+        if (!botUser) return;
+
+        if (action === "remove") {
+          await removeAntinukeTrustee(guild.id, botUser.id);
+          return await ctx.reply({
+            embeds: [
+              makeEmbed({
+                title: `${EMOJIS.get("okay") || "ℹ️"} Bot Whitelist Removed`,
+                description: `Removed <@${botUser.id}> from the trusted list. Standard channel deletion and safety limits now apply to this bot.`,
+                level: "INFO",
+              }),
+            ],
+          });
+        }
+
+        await addAntinukeTrustee({
+          guild_id: guild.id,
+          target_id: botUser.id,
+          target_type: "bot",
+          trust_tier: 2,
+          bypass_channels: true,
+          bypass_roles: false,
+          bypass_members: false,
+          bypass_bots: false,
+          bypass_webhooks: false,
+        });
+
         return await ctx.reply({
           embeds: [
             makeEmbed({
-              title: "Permission Denied",
-              description: `${EMOJIS.get("fail") || "❌"} Only the **Server Owner** can modify the Anti-Nuke trusted whitelist.`,
-              level: "ERROR",
+              title: `${EMOJIS.get("success") || "🤖"} Bot Whitelisted (Channel Bypass)`,
+              description: `Successfully whitelisted <@${botUser.id}> as a trusted integration.\n\n${EMOJIS.get("arrow_point") || "👉"} **Channel Bypass Granted**: This bot (e.g. Join-to-Create, Temp Voice) can now create and delete temporary voice channels dynamically without triggering Anti-Nuke security limits or punishments.`,
+              level: "SUCCESS",
             }),
           ],
         });
@@ -358,7 +403,8 @@ export default createCommand({
         if (!mentionable) return;
 
         const isRole = Boolean((mentionable as any).color !== undefined);
-        const targetType = isRole ? "role" : "user";
+        const isBot = Boolean((mentionable as any).user?.bot || (mentionable as any).bot);
+        const targetType = isBot ? "bot" : (isRole ? "role" : "user");
 
         await addAntinukeTrustee({
           guild_id: guild.id,
@@ -366,18 +412,18 @@ export default createCommand({
           target_type: targetType,
           trust_tier: tier,
           bypass_channels: true,
-          bypass_roles: true,
-          bypass_members: tier <= 2,
-          bypass_bots: tier === 1,
-          bypass_webhooks: tier === 1,
+          bypass_roles: !isBot,
+          bypass_members: !isBot && tier <= 2,
+          bypass_bots: !isBot && tier === 1,
+          bypass_webhooks: !isBot && tier === 1,
         });
 
         return await ctx.reply({
           embeds: [
             makeEmbed({
               title: `${EMOJIS.get("success") || "✅"} Whitelist Updated`,
-              description: `Successfully added ${isRole ? `<@&${mentionable.id}>` : `<@${mentionable.id}>`} to the trusted list as **Tier ${tier}** (${
-                tier === 1 ? "Full Bypass" : tier === 2 ? "Senior Staff" : "Moderator"
+              description: `Successfully added ${isRole ? `<@&${mentionable.id}>` : `<@${mentionable.id}>`} to the trusted list as **${isBot ? "Trusted Bot" : `Tier ${tier}`}** (${
+                isBot ? "Channel Bypass" : tier === 1 ? "Full Bypass" : tier === 2 ? "Senior Staff" : "Moderator"
               }).\n${EMOJIS.get("arrow_point") || "👉"} They are exempt from standard rate limits when making server changes.`,
               level: "SUCCESS",
             }),
@@ -404,21 +450,29 @@ export default createCommand({
 
       if (subCommand === "list") {
         const trustees = await getAntinukeTrustees(guild.id);
+        const botTrustees = trustees.filter((t: any) => t.target_type === "bot");
+        const staffTrustees = trustees.filter((t: any) => t.target_type !== "bot");
+
+        const staffStr = staffTrustees.length > 0
+          ? staffTrustees.map((t: any) => {
+              const targetStr = t.target_type === "role" ? `<@&${t.target_id}>` : `<@${t.target_id}>`;
+              const tierStr = t.trust_tier === 1 ? "Tier 1 (Full Bypass)" : t.trust_tier === 2 ? "Tier 2 (Senior Staff)" : "Tier 3 (Moderator)";
+              return `• ${targetStr} — **${tierStr}**`;
+            }).join("\n")
+          : "*No staff members or roles registered.*";
+
+        const botStr = botTrustees.length > 0
+          ? botTrustees.map((t: any) => `• <@${t.target_id}> — **Channel Bypass (Join-to-Create / Temp Voice)**`).join("\n")
+          : "*No bots whitelisted yet.*";
 
         return await ctx.reply({
           embeds: [
             makeEmbed({
               title: `${EMOJIS.get("moderation") || "🛡️"} Trusted Whitelist (${trustees.length})`,
-              description:
-                trustees.length > 0
-                  ? trustees
-                      .map((t) => {
-                        const targetStr = t.target_type === "role" ? `<@&${t.target_id}>` : `<@${t.target_id}>`;
-                        const tierStr = t.trust_tier === 1 ? "Tier 1 (Full Bypass)" : t.trust_tier === 2 ? "Tier 2 (Senior Staff)" : "Tier 3 (Moderator)";
-                        return `• ${targetStr} — **${tierStr}**`;
-                      })
-                      .join("\n")
-                  : "*No custom trusted members or roles registered yet. The Server Owner holds default full bypass.*",
+              fields: [
+                { name: "🛡️ Trusted Staff & Roles", value: staffStr, inline: false },
+                { name: "🤖 Whitelisted Bots (Join-to-Create / Temp Channels)", value: botStr, inline: false },
+              ],
               level: "PRIMARY",
             }),
           ],

@@ -25,6 +25,56 @@ function getClientAndGuild(c: any) {
   return { client, guildId, guild };
 }
 
+/**
+ * Access Control Middleware:
+ * Strictly restricts Anti-Nuke routes to:
+ * 1. Server Owner
+ * 2. Superuser from .env (CONFIG.SUPERUSERS)
+ * 3. Whitelisted Anti-Nuke Trustees
+ * Users with general "Dashboard Access" roles are blocked with 403 Forbidden.
+ */
+async function requireAntinukeAccess(c: any, next: any) {
+  const { guildId, guild } = getClientAndGuild(c);
+  const user = c.get("user");
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  const { CONFIG } = await import("../../config.js");
+  const isSuperuser = Array.isArray(CONFIG.SUPERUSERS) && CONFIG.SUPERUSERS.includes(user.id);
+  const isOwner = guild ? guild.ownerId === user.id : false;
+
+  if (isSuperuser || isOwner) {
+    return await next();
+  }
+
+  // Check if user is whitelisted for antinuke
+  const trustees = await getAntinukeTrustees(guildId);
+  let member = guild?.members?.cache?.get(user.id) || null;
+  if (!member && guild) {
+    member = await guild.members.fetch(user.id).catch(() => null);
+  }
+
+  const isWhitelisted = trustees.some((t: any) => {
+    if ((t.target_type === "user" || t.target_type === "bot") && t.target_id === user.id) return true;
+    if (t.target_type === "role" && member?.roles?.cache?.has(t.target_id)) return true;
+    return false;
+  });
+
+  if (!isWhitelisted) {
+    return c.json(
+      {
+        error: "Access denied. Anti-Nuke configuration is restricted to the Server Owner, bot superusers, and whitelisted Anti-Nuke managers.",
+        code: "ANTINUKE_ACCESS_RESTRICTED",
+      },
+      403
+    );
+  }
+
+  return await next();
+}
+
+antinukeRoutes.use("/guilds/:guildId/antinuke", requireAntinukeAccess);
+antinukeRoutes.use("/guilds/:guildId/antinuke/*", requireAntinukeAccess);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. GET /guilds/:guildId/antinuke
 // ─────────────────────────────────────────────────────────────────────────────
@@ -80,6 +130,19 @@ antinukeRoutes.get("/guilds/:guildId/antinuke", async (c) => {
           .slice(0, 100)
       : [];
 
+    // Format Guild Bots for Whitelisting (Join-to-Create, Temp Voice, Utilities)
+    const bots = guild
+      ? guild.members.cache
+          .filter((m: any) => m.user?.bot && m.id !== guild.client?.user?.id)
+          .map((m: any) => ({
+            id: m.id,
+            name: m.user.username,
+            tag: m.user.tag || m.user.username,
+            avatar: typeof m.user.displayAvatarURL === "function" ? m.user.displayAvatarURL({ size: 64 }) : "https://cdn.discordapp.com/embed/avatars/0.png",
+          }))
+          .sort((a: any, b: any) => a.name.localeCompare(b.name))
+      : [];
+
     // In-memory Topology Mirror Status
     let topo = TOPOLOGY_MIRROR.getTopology(guildId);
     if (!topo && guild) {
@@ -100,8 +163,10 @@ antinukeRoutes.get("/guilds/:guildId/antinuke", async (c) => {
       roles,
       channels,
       members,
+      bots,
       topologyStats,
       lockdownActive: Boolean(settings.emergency_lockdown_active),
+      userCanManageAntinuke: true,
     });
   } catch (err: any) {
     logger.error(`[ANTI-NUKE API] Error fetching settings for guild ${guildId}:`, err);
@@ -175,13 +240,13 @@ antinukeRoutes.post("/guilds/:guildId/antinuke/trustees", async (c) => {
   try {
     const body = await c.req.json();
     if (!body.target_id || !body.target_type) {
-      return c.json({ error: "target_id and target_type ('user' | 'role') are required." }, 400);
+      return c.json({ error: "target_id and target_type ('user' | 'role' | 'bot') are required." }, 400);
     }
 
     await addAntinukeTrustee({
       guild_id: guildId,
       target_id: String(body.target_id),
-      target_type: body.target_type === "role" ? "role" : "user",
+      target_type: body.target_type === "role" ? "role" : body.target_type === "bot" ? "bot" : "user",
       trust_tier: Math.max(1, Math.min(3, Number(body.trust_tier) || 2)),
       bypass_channels: Boolean(body.bypass_channels),
       bypass_roles: Boolean(body.bypass_roles),

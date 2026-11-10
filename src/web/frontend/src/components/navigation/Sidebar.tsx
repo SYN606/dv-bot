@@ -279,6 +279,8 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
   const location = useLocation();
   const botAvatar = botInfo?.avatar || "https://cdn.discordapp.com/embed/avatars/0.png";
 
+  const canAccessAntinuke = Boolean(user?.isSuperuser || currentGuild?.owner || currentGuild?.canManageAntinuke);
+
   const navGroups = [
     {
       group: "OVERVIEW",
@@ -290,7 +292,7 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
     {
       group: "SECURITY & DEFENSE",
       items: [
-        { id: "antinuke", label: "Anti-Nuke Protection", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/antinuke` },
+        ...(canAccessAntinuke ? [{ id: "antinuke", label: "Anti-Nuke Protection", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/antinuke` }] : []),
         { id: "permissions", label: "Permissions Audit", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/permissions` },
         { id: "audit_logs", label: "Audit Logs", icon: ScrollText, path: `/dashboard/${currentGuild.id}/audit-logs` },
         { id: "warning_punishments", label: "Warning Punishments", icon: AlertTriangle, path: `/dashboard/${currentGuild.id}/warning-punishments` },

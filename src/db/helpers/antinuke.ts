@@ -33,7 +33,7 @@ export interface IAntinukeTrustee {
   id: string;
   guild_id: string;
   target_id: string;
-  target_type: "user" | "role";
+  target_type: "user" | "role" | "bot";
   trust_tier: number; // 1 = Extra Owner, 2 = Senior Admin, 3 = Mod
   bypass_channels: boolean;
   bypass_roles: boolean;

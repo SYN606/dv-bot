@@ -117,6 +117,38 @@ export default function AntinukePage({ showToast }) {
     pageTitle: "Server Security & Protection",
   });
 
+  const isAccessDenied = error && (
+    String(error).includes("Access denied") ||
+    String(error).includes("ANTINUKE_ACCESS_RESTRICTED") ||
+    String(error).includes("403")
+  );
+
+  if (isAccessDenied) {
+    return (
+      <div className="w-full max-w-2xl mx-auto py-16 px-4 text-center animate-in fade-in duration-300">
+        <div className="glass-panel p-8 sm:p-10 rounded-3xl border border-rose-500/20 bg-slate-900/60 shadow-2xl relative overflow-hidden">
+          <div className="w-16 h-16 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-rose-500/20">
+            <Lock className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold text-white tracking-tight mb-3">
+            Anti-Nuke Access Restricted
+          </h2>
+          <p className="text-slate-300 text-sm leading-relaxed max-w-md mx-auto mb-6">
+            Anti-Nuke protection settings and logs are strictly confidential. Only the <strong className="text-white">Server Owner</strong>, bot <strong className="text-white">Superusers</strong>, or whitelisted <strong className="text-white">Anti-Nuke Trustees</strong> are authorized to view or configure this module.
+          </p>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => window.location.href = `/dashboard/${guildId}`}
+              className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm transition-all border border-white/10"
+            >
+              Return to Server Overview
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <PageError
@@ -141,10 +173,38 @@ export default function AntinukePage({ showToast }) {
     setLockdownConfirmOpen(false);
   };
 
+  const openAddBotModal = () => {
+    setNewTrustee({
+      target_id: "",
+      target_type: "bot",
+      trust_tier: 2,
+      bypass_channels: true,
+      bypass_roles: false,
+      bypass_members: false,
+      bypass_bots: false,
+      bypass_webhooks: false,
+    });
+    setAddTrusteeOpen(true);
+  };
+
+  const openAddStaffModal = () => {
+    setNewTrustee({
+      target_id: "",
+      target_type: "user",
+      trust_tier: 2,
+      bypass_channels: true,
+      bypass_roles: true,
+      bypass_members: true,
+      bypass_bots: false,
+      bypass_webhooks: false,
+    });
+    setAddTrusteeOpen(true);
+  };
+
   const handleCreateTrustee = async (e) => {
     e.preventDefault();
     if (!newTrustee.target_id) {
-      if (showToast) showToast("Please select a member or role to trust", "error");
+      if (showToast) showToast(newTrustee.target_type === "bot" ? "Please select or enter a bot ID" : "Please select a member or role to trust", "error");
       return;
     }
     const success = await addTrustee(newTrustee);
@@ -678,84 +738,167 @@ export default function AntinukePage({ showToast }) {
       {/* ───────────────────────────────────────────────────────────────────────────── */}
       {/* 6. Tab 3: Trusted List (Whitelist) */}
       {/* ───────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "trustees" && (
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-bold text-white">Trusted Roles & Members</h3>
-              <p className="text-sm text-slate-400 mt-0.5">
-                Members or roles added here are exempt from security velocity limits based on their assigned tier.
-              </p>
-            </div>
-            <button
-              onClick={() => setAddTrusteeOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 transition-all shadow-md shadow-indigo-600/30 shrink-0 self-start sm:self-auto"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Trusted Entry</span>
-            </button>
-          </div>
+      {activeTab === "trustees" && (() => {
+        const staffTrustees = data.trustees?.filter((t) => t.target_type !== "bot") || [];
+        const botTrustees = data.trustees?.filter((t) => t.target_type === "bot") || [];
 
-          <div className="glass-panel rounded-2xl border border-white/10 bg-slate-900/40 overflow-hidden">
-            {data.trustees && data.trustees.length > 0 ? (
-              <div className="divide-y divide-white/5">
-                {data.trustees.map((t) => {
-                  const role = t.target_type === "role" ? data.roles?.find((r) => r.id === t.target_id) : null;
-                  const member = t.target_type === "user" ? data.members?.find((m) => m.id === t.target_id) : null;
-
-                  return (
-                    <div key={t.id} className="p-5 flex items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="w-11 h-11 rounded-xl bg-slate-800/80 border border-white/10 flex items-center justify-center font-bold text-sm text-white shrink-0">
-                          {t.target_type === "role" ? "@" : "U"}
-                        </div>
-                        <div>
-                          <div className="text-base font-bold text-white flex items-center gap-2.5">
-                            <span>{role ? `@${role.name}` : member ? member.displayName : t.target_id}</span>
-                            <Badge
-                              variant={t.trust_tier === 1 ? "warning" : t.trust_tier === 2 ? "brand" : "neutral"}
-                              size="sm"
-                            >
-                              Tier {t.trust_tier}: {t.trust_tier === 1 ? "Full Bypass" : t.trust_tier === 2 ? "Senior Admin" : "Moderator"}
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-slate-300 mt-1.5 flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-slate-300">Allowed Actions:</span>
-                            {t.trust_tier === 1 ? (
-                              <span className="text-emerald-400 font-medium">Full Bypass (All Actions Permitted)</span>
-                            ) : (
-                              <>
-                                {t.bypass_channels && <Badge variant="neutral" size="xs">Channels</Badge>}
-                                {t.bypass_roles && <Badge variant="neutral" size="xs">Roles</Badge>}
-                                {t.bypass_members && <Badge variant="neutral" size="xs">Members</Badge>}
-                                {t.bypass_bots && <Badge variant="purple" size="xs">Bots</Badge>}
-                                {t.bypass_webhooks && <Badge variant="cyan" size="xs">Webhooks</Badge>}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => removeTrustee(t.id)}
-                        disabled={actionLoading}
-                        className="p-2.5 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                        title="Remove from Trusted List"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+        return (
+          <div className="space-y-8">
+            {/* 1. Whitelisted Bots (Join-to-Create / Temp Voice Integrations) */}
+            <div className="glass-panel p-6 sm:p-7 rounded-2xl border border-purple-500/20 bg-slate-900/50 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center shrink-0">
+                      <Bot className="w-5 h-5" />
                     </div>
-                  );
-                })}
+                    <h3 className="text-lg font-bold text-white">Whitelisted Bots & Join-to-Create Integrations</h3>
+                  </div>
+                  <p className="text-sm text-slate-300">
+                    Temporary voice channel and Join-to-Create bots (e.g. VoiceMaster, TempVoice, AutoRooms) automatically delete empty channels. Whitelist them here to grant channel deletion immunity so they are never flagged as nukers.
+                  </p>
+                </div>
+                <button
+                  onClick={openAddBotModal}
+                  className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm flex items-center gap-2 transition-all shadow-md shadow-purple-600/30 shrink-0 self-start sm:self-auto"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Whitelist Bot (Join-to-Create)</span>
+                </button>
               </div>
-            ) : (
-              <div className="p-12 text-center text-slate-400 text-sm">
-                No custom trusted members registered yet. The Server Owner holds default full protection immunity.
+
+              <div className="rounded-xl border border-white/10 bg-slate-950/60 overflow-hidden">
+                {botTrustees.length > 0 ? (
+                  <div className="divide-y divide-white/5">
+                    {botTrustees.map((t) => {
+                      const botInfo = data.bots?.find((b) => b.id === t.target_id);
+                      return (
+                        <div key={t.id} className="p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors">
+                          <div className="flex items-center gap-4">
+                            {botInfo?.avatar ? (
+                              <img src={botInfo.avatar} alt={botInfo.name} className="w-11 h-11 rounded-xl border border-white/10 object-cover" />
+                            ) : (
+                              <div className="w-11 h-11 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-400 flex items-center justify-center font-bold text-sm shrink-0">
+                                <Bot className="w-6 h-6" />
+                              </div>
+                            )}
+                            <div>
+                              <div className="text-base font-bold text-white flex items-center gap-2.5 flex-wrap">
+                                <span>{botInfo ? botInfo.displayName || botInfo.name : t.target_id}</span>
+                                <Badge variant="purple" size="sm">Bot Whitelisted</Badge>
+                                <Badge variant="success" size="sm">Channel Deletion Immunity</Badge>
+                              </div>
+                              <div className="text-xs sm:text-sm text-slate-400 font-mono mt-1">
+                                Bot ID: {t.target_id}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => removeTrustee(t.id)}
+                            disabled={actionLoading}
+                            className="p-2.5 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0"
+                            title="Remove Bot Whitelist"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-10 text-center text-slate-400 text-sm">
+                    No utility or Join-to-Create bots whitelisted yet. If you have bots that dynamically delete temporary voice channels, click <strong className="text-purple-400">"Whitelist Bot (Join-to-Create)"</strong> to prevent accidental anti-nuke triggers.
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+
+            {/* 2. Trusted Staff & Security Trustees */}
+            <div className="glass-panel p-6 sm:p-7 rounded-2xl border border-white/10 bg-slate-900/50 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Trusted Staff & Security Trustees</h3>
+                  </div>
+                  <p className="text-sm text-slate-300">
+                    Senior staff members and administrative roles added here are exempt from security velocity limits based on their assigned tier.
+                  </p>
+                </div>
+                <button
+                  onClick={openAddStaffModal}
+                  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 transition-all shadow-md shadow-indigo-600/30 shrink-0 self-start sm:self-auto"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Trusted Staff / Role</span>
+                </button>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-slate-950/60 overflow-hidden">
+                {staffTrustees.length > 0 ? (
+                  <div className="divide-y divide-white/5">
+                    {staffTrustees.map((t) => {
+                      const role = t.target_type === "role" ? data.roles?.find((r) => r.id === t.target_id) : null;
+                      const member = t.target_type === "user" ? data.members?.find((m) => m.id === t.target_id) : null;
+
+                      return (
+                        <div key={t.id} className="p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors">
+                          <div className="flex items-center gap-4">
+                            <div className="w-11 h-11 rounded-xl bg-slate-800/80 border border-white/10 flex items-center justify-center font-bold text-sm text-white shrink-0">
+                              {t.target_type === "role" ? "@" : "U"}
+                            </div>
+                            <div>
+                              <div className="text-base font-bold text-white flex items-center gap-2.5 flex-wrap">
+                                <span>{role ? `@${role.name}` : member ? member.displayName : t.target_id}</span>
+                                <Badge
+                                  variant={t.trust_tier === 1 ? "warning" : t.trust_tier === 2 ? "brand" : "neutral"}
+                                  size="sm"
+                                >
+                                  Tier {t.trust_tier}: {t.trust_tier === 1 ? "Full Bypass" : t.trust_tier === 2 ? "Senior Admin" : "Moderator"}
+                                </Badge>
+                              </div>
+                              <div className="text-sm text-slate-300 mt-1.5 flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-slate-300">Allowed Actions:</span>
+                                {t.trust_tier === 1 ? (
+                                  <span className="text-emerald-400 font-medium">Full Bypass (All Actions Permitted)</span>
+                                ) : (
+                                  <>
+                                    {t.bypass_channels && <Badge variant="neutral" size="xs">Channels</Badge>}
+                                    {t.bypass_roles && <Badge variant="neutral" size="xs">Roles</Badge>}
+                                    {t.bypass_members && <Badge variant="neutral" size="xs">Members</Badge>}
+                                    {t.bypass_bots && <Badge variant="purple" size="xs">Bots</Badge>}
+                                    {t.bypass_webhooks && <Badge variant="cyan" size="xs">Webhooks</Badge>}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => removeTrustee(t.id)}
+                            disabled={actionLoading}
+                            className="p-2.5 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0"
+                            title="Remove from Trusted List"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-10 text-center text-slate-400 text-sm">
+                    No custom trusted staff or roles registered yet. The Server Owner holds default full protection immunity.
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ───────────────────────────────────────────────────────────────────────────── */}
       {/* 7. Tab 4: Protection Logs & 1-Click Restore */}
@@ -884,8 +1027,12 @@ export default function AntinukePage({ showToast }) {
           <div className="w-full max-w-lg glass-panel p-6 sm:p-7 rounded-2xl border border-white/10 bg-slate-900 shadow-2xl space-y-5">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-indigo-400" />
-                <span>Add Trusted Role or Member</span>
+                {newTrustee.target_type === "bot" ? (
+                  <Bot className="w-5 h-5 text-purple-400" />
+                ) : (
+                  <Users className="w-5 h-5 text-indigo-400" />
+                )}
+                <span>{newTrustee.target_type === "bot" ? "Whitelist Bot (Join-to-Create)" : "Add Trusted Role or Member"}</span>
               </h3>
               <button
                 onClick={() => setAddTrusteeOpen(false)}
@@ -897,36 +1044,59 @@ export default function AntinukePage({ showToast }) {
 
             <form onSubmit={handleCreateTrustee} className="space-y-5">
               <div>
-                <label className="text-sm font-semibold text-slate-200 block mb-2">Type</label>
-                <div className="grid grid-cols-2 gap-3">
+                <label className="text-sm font-semibold text-slate-200 block mb-2">Entry Type</label>
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setNewTrustee((p) => ({ ...p, target_type: "user", target_id: "" }))}
-                    className={`py-2.5 rounded-xl text-sm font-semibold transition-all border ${
+                    className={`py-2.5 px-2 text-center rounded-xl text-xs sm:text-sm font-semibold transition-all border ${
                       newTrustee.target_type === "user"
                         ? "bg-indigo-600 border-indigo-400 text-white shadow-md shadow-indigo-600/30"
                         : "bg-slate-950 border-white/10 text-slate-400 hover:text-white"
                     }`}
                   >
-                    Server Member
+                    Staff Member
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewTrustee((p) => ({ ...p, target_type: "role", target_id: "" }))}
-                    className={`py-2.5 rounded-xl text-sm font-semibold transition-all border ${
+                    className={`py-2.5 px-2 text-center rounded-xl text-xs sm:text-sm font-semibold transition-all border ${
                       newTrustee.target_type === "role"
                         ? "bg-indigo-600 border-indigo-400 text-white shadow-md shadow-indigo-600/30"
                         : "bg-slate-950 border-white/10 text-slate-400 hover:text-white"
                     }`}
                   >
-                    Server Role
+                    Staff Role
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNewTrustee((p) => ({
+                        ...p,
+                        target_type: "bot",
+                        target_id: "",
+                        trust_tier: 2,
+                        bypass_channels: true,
+                        bypass_roles: false,
+                        bypass_members: false,
+                        bypass_bots: false,
+                        bypass_webhooks: false,
+                      }))
+                    }
+                    className={`py-2.5 px-2 text-center rounded-xl text-xs sm:text-sm font-semibold transition-all border ${
+                      newTrustee.target_type === "bot"
+                        ? "bg-purple-600 border-purple-400 text-white shadow-md shadow-purple-600/30"
+                        : "bg-slate-950 border-white/10 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Bot (J2C)
                   </button>
                 </div>
               </div>
 
               <div>
                 <label className="text-sm font-semibold text-slate-200 block mb-2">
-                  Select {newTrustee.target_type === "role" ? "Role" : "Member"}
+                  Select {newTrustee.target_type === "role" ? "Role" : newTrustee.target_type === "bot" ? "Bot Integration" : "Member"}
                 </label>
                 {newTrustee.target_type === "role" ? (
                   <RoleSelector
@@ -936,6 +1106,33 @@ export default function AntinukePage({ showToast }) {
                     onChange={(roleId) => setNewTrustee((p) => ({ ...p, target_id: roleId }))}
                     placeholder="Search or select a role..."
                   />
+                ) : newTrustee.target_type === "bot" ? (
+                  <div className="space-y-3">
+                    {data.bots && data.bots.length > 0 && (
+                      <select
+                        value={newTrustee.target_id}
+                        onChange={(e) => setNewTrustee((p) => ({ ...p, target_id: e.target.value }))}
+                        className="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500"
+                      >
+                        <option value="">-- Select a bot in this server --</option>
+                        {data.bots.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            🤖 {b.displayName || b.name} ({b.id})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <input
+                      type="text"
+                      value={newTrustee.target_id}
+                      onChange={(e) => setNewTrustee((p) => ({ ...p, target_id: e.target.value.trim() }))}
+                      placeholder="Or enter bot user ID (e.g. 1033451129364811929)..."
+                      className="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                    <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-300 leading-relaxed">
+                      💡 Whitelisting this bot grants immunity to channel deletion velocity limits. Any temporary voice channels deleted when users leave will not be flagged as a nuke attack.
+                    </div>
+                  </div>
                 ) : (
                   <UserSelector
                     guildId={guildId}
@@ -946,70 +1143,74 @@ export default function AntinukePage({ showToast }) {
                 )}
               </div>
 
-              <div>
-                <label className="text-sm font-semibold text-slate-200 block mb-2">Trust Level</label>
-                <select
-                  value={newTrustee.trust_tier}
-                  onChange={(e) => setNewTrustee((p) => ({ ...p, trust_tier: Number(e.target.value) }))}
-                  className="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
-                >
-                  <option value={1}>Tier 1: Full Bypass (Universal immunity to all limits)</option>
-                  <option value={2}>Tier 2: Senior Admin (Channels, Roles & Members)</option>
-                  <option value={3}>Tier 3: Moderator (Selective bypasses)</option>
-                </select>
-              </div>
-
-              {newTrustee.trust_tier > 1 && (
-                <div className="space-y-3 pt-3 border-t border-white/10">
-                  <div className="text-sm font-semibold text-slate-200">Permitted Bypasses</div>
-                  <div className="grid grid-cols-2 gap-3 text-sm text-slate-300">
-                    <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="rounded border-white/20 text-indigo-600 focus:ring-0"
-                        checked={newTrustee.bypass_channels}
-                        onChange={(e) => setNewTrustee((p) => ({ ...p, bypass_channels: e.target.checked }))}
-                      />
-                      <span>Channels</span>
-                    </label>
-                    <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="rounded border-white/20 text-indigo-600 focus:ring-0"
-                        checked={newTrustee.bypass_roles}
-                        onChange={(e) => setNewTrustee((p) => ({ ...p, bypass_roles: e.target.checked }))}
-                      />
-                      <span>Roles</span>
-                    </label>
-                    <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="rounded border-white/20 text-indigo-600 focus:ring-0"
-                        checked={newTrustee.bypass_members}
-                        onChange={(e) => setNewTrustee((p) => ({ ...p, bypass_members: e.target.checked }))}
-                      />
-                      <span>Member Bans/Kicks</span>
-                    </label>
-                    <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="rounded border-white/20 text-indigo-600 focus:ring-0"
-                        checked={newTrustee.bypass_bots}
-                        onChange={(e) => setNewTrustee((p) => ({ ...p, bypass_bots: e.target.checked }))}
-                      />
-                      <span>Bot Invites</span>
-                    </label>
-                    <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="rounded border-white/20 text-indigo-600 focus:ring-0"
-                        checked={newTrustee.bypass_webhooks}
-                        onChange={(e) => setNewTrustee((p) => ({ ...p, bypass_webhooks: e.target.checked }))}
-                      />
-                      <span>Webhooks</span>
-                    </label>
+              {newTrustee.target_type !== "bot" && (
+                <>
+                  <div>
+                    <label className="text-sm font-semibold text-slate-200 block mb-2">Trust Level</label>
+                    <select
+                      value={newTrustee.trust_tier}
+                      onChange={(e) => setNewTrustee((p) => ({ ...p, trust_tier: Number(e.target.value) }))}
+                      className="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value={1}>Tier 1: Full Bypass (Universal immunity to all limits)</option>
+                      <option value={2}>Tier 2: Senior Admin (Channels, Roles & Members)</option>
+                      <option value={3}>Tier 3: Moderator (Selective bypasses)</option>
+                    </select>
                   </div>
-                </div>
+
+                  {newTrustee.trust_tier > 1 && (
+                    <div className="space-y-3 pt-3 border-t border-white/10">
+                      <div className="text-sm font-semibold text-slate-200">Permitted Bypasses</div>
+                      <div className="grid grid-cols-2 gap-3 text-sm text-slate-300">
+                        <label className="flex items-center gap-2.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="rounded border-white/20 text-indigo-600 focus:ring-0"
+                            checked={newTrustee.bypass_channels}
+                            onChange={(e) => setNewTrustee((p) => ({ ...p, bypass_channels: e.target.checked }))}
+                          />
+                          <span>Channels</span>
+                        </label>
+                        <label className="flex items-center gap-2.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="rounded border-white/20 text-indigo-600 focus:ring-0"
+                            checked={newTrustee.bypass_roles}
+                            onChange={(e) => setNewTrustee((p) => ({ ...p, bypass_roles: e.target.checked }))}
+                          />
+                          <span>Roles</span>
+                        </label>
+                        <label className="flex items-center gap-2.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="rounded border-white/20 text-indigo-600 focus:ring-0"
+                            checked={newTrustee.bypass_members}
+                            onChange={(e) => setNewTrustee((p) => ({ ...p, bypass_members: e.target.checked }))}
+                          />
+                          <span>Member Bans/Kicks</span>
+                        </label>
+                        <label className="flex items-center gap-2.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="rounded border-white/20 text-indigo-600 focus:ring-0"
+                            checked={newTrustee.bypass_bots}
+                            onChange={(e) => setNewTrustee((p) => ({ ...p, bypass_bots: e.target.checked }))}
+                          />
+                          <span>Bot Invites</span>
+                        </label>
+                        <label className="flex items-center gap-2.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="rounded border-white/20 text-indigo-600 focus:ring-0"
+                            checked={newTrustee.bypass_webhooks}
+                            onChange={(e) => setNewTrustee((p) => ({ ...p, bypass_webhooks: e.target.checked }))}
+                          />
+                          <span>Webhooks</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="flex items-center gap-3 pt-3">

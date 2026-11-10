@@ -216,7 +216,7 @@ class AntinukeService {
 
     for (const t of trustees) {
       const matchesTarget =
-        (t.target_type === "user" && t.target_id === executorId) ||
+        ((t.target_type === "user" || t.target_type === "bot") && t.target_id === executorId) ||
         (t.target_type === "role" && member?.roles.cache.has(t.target_id));
 
       if (matchesTarget) {
