@@ -935,3 +935,65 @@ export const musicHistory = sqliteTable(
     guildHistoryIdx: index("idx_music_history_guild").on(table.guild_id, table.played_at),
   })
 );
+
+// 12. Anti-Nuke Core Engine Models
+export const antinukeSettings = sqliteTable("antinuke_settings", {
+  guild_id: text("guild_id").primaryKey(),
+  enabled: integer("enabled").notNull().default(0),
+  punishment_type: text("punishment_type").notNull().default("quarantine"), // "quarantine" | "ban" | "kick" | "strip_roles"
+  channel_delete_threshold: integer("channel_delete_threshold").notNull().default(3),
+  channel_create_threshold: integer("channel_create_threshold").notNull().default(4),
+  role_delete_threshold: integer("role_delete_threshold").notNull().default(3),
+  role_create_threshold: integer("role_create_threshold").notNull().default(4),
+  member_ban_threshold: integer("member_ban_threshold").notNull().default(3),
+  member_kick_threshold: integer("member_kick_threshold").notNull().default(3),
+  webhook_create_threshold: integer("webhook_create_threshold").notNull().default(2),
+  window_seconds: integer("window_seconds").notNull().default(10),
+  strict_anti_bot: integer("strict_anti_bot").notNull().default(1),
+  strict_dangerous_perms: integer("strict_dangerous_perms").notNull().default(1),
+  strict_vanity_protect: integer("strict_vanity_protect").notNull().default(1),
+  auto_recreate_assets: integer("auto_recreate_assets").notNull().default(1),
+  quarantine_role_id: text("quarantine_role_id"),
+  log_channel_id: text("log_channel_id"),
+  emergency_lockdown_active: integer("emergency_lockdown_active").notNull().default(0),
+  created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  updated_at: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
+
+export const antinukeTrustees = sqliteTable(
+  "antinuke_trustees",
+  {
+    id: text("id").primaryKey(), // UUID
+    guild_id: text("guild_id").notNull(),
+    target_id: text("target_id").notNull(), // User ID or Role ID
+    target_type: text("target_type").notNull(), // "user" | "role"
+    trust_tier: integer("trust_tier").notNull().default(2), // 1 = Extra Owner, 2 = Senior Admin, 3 = Mod
+    bypass_channels: integer("bypass_channels").notNull().default(0),
+    bypass_roles: integer("bypass_roles").notNull().default(0),
+    bypass_members: integer("bypass_members").notNull().default(0),
+    bypass_bots: integer("bypass_bots").notNull().default(0),
+    bypass_webhooks: integer("bypass_webhooks").notNull().default(0),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    guildTargetIdx: index("idx_antinuke_trustees_target").on(table.guild_id, table.target_id),
+  })
+);
+
+export const antinukeIncidents = sqliteTable(
+  "antinuke_incidents",
+  {
+    id: text("id").primaryKey(), // UUID
+    guild_id: text("guild_id").notNull(),
+    executor_id: text("executor_id").notNull(),
+    threat_type: text("threat_type").notNull(),
+    actions_count: integer("actions_count").notNull().default(1),
+    punishment_applied: text("punishment_applied").notNull(),
+    snapshot_data: text("snapshot_data"),
+    resolved: integer("resolved").notNull().default(0),
+    created_at: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  },
+  (table) => ({
+    guildCreatedIdx: index("idx_antinuke_incidents_guild").on(table.guild_id, table.created_at),
+  })
+);

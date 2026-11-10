@@ -82,7 +82,7 @@ export class TicketJobRunner {
       case "sla_check": {
         if (!job.ticket_id) return;
         const ticket = await getTicketById(job.ticket_id);
-        if (!ticket || ticket.status === "closed" || ticket.status === "resolved") {
+        if (!ticket || ticket.status === "closed" || ticket.status === "resolved" || ticket.status === "claimed" || ticket.claimed_by) {
           return;
         }
 
@@ -97,6 +97,24 @@ export class TicketJobRunner {
             if (ticket.channel_id) {
               const ch = (await guild.channels.fetch(ticket.channel_id).catch(() => null)) as TextChannel | null;
               if (ch && ch.isTextBased()) {
+                // Verify against channel messages: check if staff replied or conversation occurred
+                const recentMsgs = await ch.messages.fetch({ limit: 15 }).catch(() => null);
+                if (recentMsgs && recentMsgs.size > 0) {
+                  const hasStaffReply = recentMsgs.some(
+                    (m: any) => !m.author.bot && m.author.id !== ticket.user_id
+                  );
+                  const nonBotCount = recentMsgs.filter((m: any) => !m.author.bot).size;
+
+                  // If staff has replied or first 5+ messages have been exchanged, mark as responded
+                  if (hasStaffReply || nonBotCount >= 5) {
+                    await recordSlaFirstResponse(ticket.id).catch(() => null);
+                    await updateTicket(ticket.id, {
+                      first_response_at: new Date().toISOString(),
+                    }).catch(() => null);
+                    break;
+                  }
+                }
+
                 const alertEmbed = makeEmbed({
                   title: "⚠️ SLA First Response Overdue",
                   description: `This ticket has not received an initial staff response within the target timeframe for **${ticket.priority?.toUpperCase()}** priority.`,

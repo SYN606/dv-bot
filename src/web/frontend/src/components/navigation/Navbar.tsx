@@ -28,6 +28,7 @@ export default function Navbar({ user, botInfo, currentGuild, breadcrumbs, ...pr
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>Status</span>
           </Link>
+          <Link to="/features" className="text-sm font-semibold text-slate-400 hover:text-white transition-colors">Features</Link>
           <a href="https://digitalvigital.fun" target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-slate-400 hover:text-white transition-colors">Community</a>
           <Link to="/docs" className="text-sm font-semibold text-slate-400 hover:text-white transition-colors">Docs</Link>
         </nav>

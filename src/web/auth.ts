@@ -71,26 +71,69 @@ export async function fetchDiscordGuilds(accessToken) {
   return await res.json();
 }
 
-// Session Token Helper (HMAC Signed payload)
-export function createSessionToken(data) {
-  // Add 7-day expiration timestamp
-  const payloadData = { ...data, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 };
-  const payload = Buffer.from(JSON.stringify(payloadData)).toString("base64url");
-  const signature = crypto
-    .createHmac("sha256", CONFIG.SESSION_SECRET)
-    .update(payload)
-    .digest("base64url");
-  return `${payload}.${signature}`;
+// Derive 32-byte AES-256 encryption key from SESSION_SECRET
+function getEncryptionKey(): Buffer {
+  return crypto.createHash("sha256").update(CONFIG.SESSION_SECRET || "dv-bot-default-secret-salt").digest();
 }
 
-export function verifySessionToken(token) {
+/**
+ * Creates an AES-256-GCM encrypted session token.
+ * Prevents token grabbing, inspection, or tampering.
+ */
+export function createSessionToken(data: any): string {
+  // Add 7-day expiration timestamp
+  const payloadData = { ...data, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 };
+  const jsonStr = JSON.stringify(payloadData);
+  const key = getEncryptionKey();
+  const iv = crypto.randomBytes(12); // 96-bit IV for GCM
+
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(jsonStr, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+
+  return `gcm.${iv.toString("base64url")}.${tag.toString("base64url")}.${encrypted.toString("base64url")}`;
+}
+
+/**
+ * Decrypts and verifies an AES-256-GCM session token.
+ * Includes legacy HMAC fallback so existing sessions aren't disrupted.
+ */
+export function verifySessionToken(token: string): any {
   if (!token || typeof token !== "string" || !token.includes(".")) return null;
+
+  // 1. AES-256-GCM Encrypted Token Format
+  if (token.startsWith("gcm.")) {
+    const parts = token.split(".");
+    if (parts.length !== 4) return null;
+    const [, ivStr, tagStr, cipherStr] = parts;
+
+    try {
+      const key = getEncryptionKey();
+      const iv = Buffer.from(ivStr, "base64url");
+      const tag = Buffer.from(tagStr, "base64url");
+      const encrypted = Buffer.from(cipherStr, "base64url");
+
+      const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+      decipher.setAuthTag(tag);
+      const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");
+
+      const data = JSON.parse(decrypted);
+      if (data.exp && Date.now() > data.exp) {
+        return null; // Expired
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  // 2. Legacy HMAC Token Format Fallback
   const parts = token.split(".");
   if (parts.length !== 2) return null;
   const [payload, signature] = parts;
 
   const expectedSig = crypto
-    .createHmac("sha256", CONFIG.SESSION_SECRET)
+    .createHmac("sha256", CONFIG.SESSION_SECRET || "")
     .update(payload)
     .digest("base64url");
 
@@ -104,12 +147,9 @@ export function verifySessionToken(token) {
   try {
     const decoded = Buffer.from(payload, "base64url").toString("utf-8");
     const data = JSON.parse(decoded);
-    
-    // Check expiration if it exists
     if (data.exp && Date.now() > data.exp) {
       return null;
     }
-    
     return data;
   } catch {
     return null;

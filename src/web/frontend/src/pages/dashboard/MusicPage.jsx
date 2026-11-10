@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMusic } from "../../hooks/useMusic";
+import { useModuleStatus } from "../../hooks/useModuleStatus";
+import Switch from "../../components/ui/Switch";
 import LivePlayer from "../../components/music/LivePlayer";
 import QuickPlayBar from "../../components/music/QuickPlayBar";
 import QueueManager from "../../components/music/QueueManager";
@@ -22,6 +24,7 @@ import {
 
 export default function MusicPage({ showToast }) {
   const { guildId } = useParams();
+  const { enabled: isMusicEnabled, toggle: toggleMusicModule, loading: moduleStatusLoading } = useModuleStatus(guildId, "music", showToast);
   const [activeTab, setActiveTab] = useState("player"); // "player", "filters", "settings", "playlists"
   const [lofiMode, setLofiMode] = useState(false);
 
@@ -93,8 +96,23 @@ export default function MusicPage({ showToast }) {
           </p>
         </div>
 
-        {/* Status Indicators & Lo-Fi Mode Switch */}
+        {/* Status Indicators, Master Switch & Lo-Fi Mode Switch */}
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Central Module Master Switch */}
+          <div className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-slate-900/80 border border-white/10 shadow-lg">
+            <div>
+              <div className="text-xs font-bold text-white leading-tight">
+                {isMusicEnabled ? "Module Active" : "Module Disabled"}
+              </div>
+              <div className="text-[10px] text-slate-400 font-medium">Master Switch</div>
+            </div>
+            <Switch
+              checked={isMusicEnabled}
+              onChange={toggleMusicModule}
+              disabled={moduleStatusLoading}
+            />
+          </div>
+
           {/* Lo-Fi Quick Switch */}
           <button
             type="button"
@@ -125,6 +143,30 @@ export default function MusicPage({ showToast }) {
           )}
         </div>
       </div>
+
+      {/* Module Disabled Notice Banner */}
+      {!isMusicEnabled && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg shadow-amber-950/20 animate-in fade-in duration-200">
+          <div className="flex items-start sm:items-center gap-3">
+            <AlertCircle className="w-6 h-6 shrink-0 text-amber-400 mt-0.5 sm:mt-0" />
+            <div>
+              <div className="text-sm font-bold text-amber-300">
+                Music Audio Engine & Commands Are Currently Disabled
+              </div>
+              <p className="text-xs text-amber-200/80 mt-0.5 leading-relaxed">
+                Music playback, queue playback, and all music commands (<code>/play</code>, <code>/skip</code>, <code>/seek</code>, <code>/queue</code>, etc.) are deactivated for this server. You can re-enable anytime using the master switch above.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={toggleMusicModule}
+            disabled={moduleStatusLoading}
+            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shrink-0 transition-colors shadow-md"
+          >
+            Enable Module Now
+          </button>
+        </div>
+      )}
 
       {/* Lo-Fi Ambient Banner when active */}
       {lofiMode && (

@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, TrendingUp, ShieldCheck, Pin, Image as ImageIcon,
-  Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award, PenTool, LogOut, ScrollText, UserPlus, MessageSquareHeart, Ticket, Music
+  Bot, Terminal, Shield, ShieldAlert, Sliders, ArrowLeftRight, X, AlertTriangle, Trophy, Award, PenTool, LogOut, ScrollText, UserPlus, MessageSquareHeart, Ticket, Music, Flame
 } from "lucide-react";
 import SuperuserBadge from "../ui/SuperuserBadge";
 import { getDiscordAvatarUrl } from "../../utils/discord";
@@ -248,6 +248,18 @@ const ICON_THEMES: Record<string, {
     activeGlow: "shadow-[0_0_18px_rgba(168,85,247,0.5)] border-purple-400/40",
     dotColor: "bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]",
   },
+  antinuke: {
+    iconColor: "text-rose-400",
+    hoverIconColor: "group-hover:text-rose-200",
+    bg: "bg-rose-500/[0.08]",
+    border: "border-rose-500/20",
+    hoverBg: "group-hover:bg-rose-500/20",
+    hoverBorder: "group-hover:border-rose-400/40",
+    glow: "group-hover:shadow-[0_0_15px_rgba(244,63,94,0.35)]",
+    activeBg: "bg-gradient-to-br from-rose-500 to-red-600 text-white",
+    activeGlow: "shadow-[0_0_18px_rgba(244,63,94,0.5)] border-rose-400/40",
+    dotColor: "bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]",
+  },
 };
 
 const DEFAULT_THEME = {
@@ -271,42 +283,43 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
     {
       group: "OVERVIEW",
       items: [
-        { id: "overview", label: "Dashboard", icon: LayoutDashboard, path: `/dashboard/${currentGuild.id}`, exact: true },
-        { id: "analytics", label: "Analytics & Trends", icon: TrendingUp, path: `/dashboard/${currentGuild.id}/analytics` }
+        { id: "overview", label: "Server Overview", icon: LayoutDashboard, path: `/dashboard/${currentGuild.id}`, exact: true },
+        { id: "analytics", label: "Server Analytics", icon: TrendingUp, path: `/dashboard/${currentGuild.id}/analytics` }
       ]
     },
     {
-      group: "SECURITY & MODERATION",
+      group: "SECURITY & DEFENSE",
       items: [
-        { id: "permissions", label: "Permissions & Risk Audit", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/permissions` },
-        { id: "audit_logs", label: "Logs & Audit Center", icon: ScrollText, path: `/dashboard/${currentGuild.id}/audit-logs` },
-        { id: "warning_punishments", label: "Warning Escalations", icon: AlertTriangle, path: `/dashboard/${currentGuild.id}/warning-punishments` },
-        { id: "admin_roles", label: "Staff Dashboard Access", icon: Shield, path: `/dashboard/${currentGuild.id}/admin-roles` },
+        { id: "antinuke", label: "Anti-Nuke Protection", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/antinuke` },
+        { id: "permissions", label: "Permissions Audit", icon: ShieldAlert, path: `/dashboard/${currentGuild.id}/permissions` },
+        { id: "audit_logs", label: "Audit Logs", icon: ScrollText, path: `/dashboard/${currentGuild.id}/audit-logs` },
+        { id: "warning_punishments", label: "Warning Punishments", icon: AlertTriangle, path: `/dashboard/${currentGuild.id}/warning-punishments` },
+        { id: "admin_roles", label: "Admin Roles", icon: Shield, path: `/dashboard/${currentGuild.id}/admin-roles` },
       ]
     },
     {
-      group: "COMMUNITY & ONBOARDING",
+      group: "MEMBERS & COMMUNITY",
       items: [
-        { id: "verification", label: "Verification Gate", icon: ShieldCheck, path: `/dashboard/${currentGuild.id}/verification` },
-        { id: "tickets", label: "Ticket Tooling", icon: Ticket, path: `/dashboard/${currentGuild.id}/tickets` },
+        { id: "verification", label: "Member Verification", icon: ShieldCheck, path: `/dashboard/${currentGuild.id}/verification` },
+        { id: "tickets", label: "Support Tickets", icon: Ticket, path: `/dashboard/${currentGuild.id}/tickets` },
         { id: "welcome", label: "Welcome & Leave", icon: UserPlus, path: `/dashboard/${currentGuild.id}/welcome` },
-        { id: "autorole", label: "Leaderboard Auto-Roles", icon: Award, path: `/dashboard/${currentGuild.id}/autorole` },
+        { id: "autorole", label: "Auto Roles", icon: Award, path: `/dashboard/${currentGuild.id}/autorole` },
         { id: "supporter", label: "Supporter Rewards", icon: Trophy, path: `/dashboard/${currentGuild.id}/supporter` },
       ]
     },
     {
-      group: "ENGAGEMENT & CONTENT",
+      group: "CHAT & MEDIA TOOLS",
       items: [
         { id: "message_studio", label: "Message Studio", icon: PenTool, path: `/dashboard/${currentGuild.id}/message-studio` },
-        { id: "confessions", label: "Anonymous Confessions", icon: MessageSquareHeart, path: `/dashboard/${currentGuild.id}/confessions` },
+        { id: "confessions", label: "Confessions", icon: MessageSquareHeart, path: `/dashboard/${currentGuild.id}/confessions` },
         { id: "autoresponder", label: "Autoresponder", icon: Bot, path: `/dashboard/${currentGuild.id}/autoresponder` },
         { id: "sticky", label: "Sticky Messages", icon: Pin, path: `/dashboard/${currentGuild.id}/sticky` },
         { id: "media_only", label: "Media-Only Channels", icon: ImageIcon, path: `/dashboard/${currentGuild.id}/media-only` },
-        { id: "music", label: "Music & Live Player", icon: Music, path: `/dashboard/${currentGuild.id}/music` }
+        { id: "music", label: "Music Player", icon: Music, path: `/dashboard/${currentGuild.id}/music` }
       ]
     },
     {
-      group: "SYSTEM & CONTROLS",
+      group: "BOT CONFIGURATION",
       items: [
         { id: "commands", label: "Command Permissions", icon: Terminal, path: `/dashboard/${currentGuild.id}/commands` },
         { id: "config", label: "Bot Settings", icon: Sliders, path: `/dashboard/${currentGuild.id}/config` }

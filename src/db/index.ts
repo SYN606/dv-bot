@@ -820,6 +820,61 @@ function ensureSqliteSchema(sqlite) {
       CREATE INDEX IF NOT EXISTS idx_music_history_guild ON music_history (guild_id, played_at);
     `);
   } catch (_) {}
+
+  try {
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS antinuke_settings (
+        guild_id TEXT PRIMARY KEY,
+        enabled INTEGER NOT NULL DEFAULT 0,
+        punishment_type TEXT NOT NULL DEFAULT 'quarantine',
+        channel_delete_threshold INTEGER NOT NULL DEFAULT 3,
+        channel_create_threshold INTEGER NOT NULL DEFAULT 4,
+        role_delete_threshold INTEGER NOT NULL DEFAULT 3,
+        role_create_threshold INTEGER NOT NULL DEFAULT 4,
+        member_ban_threshold INTEGER NOT NULL DEFAULT 3,
+        member_kick_threshold INTEGER NOT NULL DEFAULT 3,
+        webhook_create_threshold INTEGER NOT NULL DEFAULT 2,
+        window_seconds INTEGER NOT NULL DEFAULT 10,
+        strict_anti_bot INTEGER NOT NULL DEFAULT 1,
+        strict_dangerous_perms INTEGER NOT NULL DEFAULT 1,
+        strict_vanity_protect INTEGER NOT NULL DEFAULT 1,
+        auto_recreate_assets INTEGER NOT NULL DEFAULT 1,
+        quarantine_role_id TEXT,
+        log_channel_id TEXT,
+        emergency_lockdown_active INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS antinuke_trustees (
+        id TEXT PRIMARY KEY,
+        guild_id TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        target_type TEXT NOT NULL,
+        trust_tier INTEGER NOT NULL DEFAULT 2,
+        bypass_channels INTEGER NOT NULL DEFAULT 0,
+        bypass_roles INTEGER NOT NULL DEFAULT 0,
+        bypass_members INTEGER NOT NULL DEFAULT 0,
+        bypass_bots INTEGER NOT NULL DEFAULT 0,
+        bypass_webhooks INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_antinuke_trustees_target ON antinuke_trustees (guild_id, target_id);
+
+      CREATE TABLE IF NOT EXISTS antinuke_incidents (
+        id TEXT PRIMARY KEY,
+        guild_id TEXT NOT NULL,
+        executor_id TEXT NOT NULL,
+        threat_type TEXT NOT NULL,
+        actions_count INTEGER NOT NULL DEFAULT 1,
+        punishment_applied TEXT NOT NULL,
+        snapshot_data TEXT,
+        resolved INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_antinuke_incidents_guild ON antinuke_incidents (guild_id, created_at);
+    `);
+  } catch (_) {}
   try {
     sqlite.exec("CREATE INDEX IF NOT EXISTS idx_confessions_guild_status ON confessions (guild_id, status);");
   } catch (_) {}

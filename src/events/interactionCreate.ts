@@ -11,6 +11,8 @@ import {
 import { isExecutionAllowed } from "../db/helpers/acl.js";
 import { isCommandRestricted } from "../db/helpers/channelCommandRestrict.js";
 import { isCommandGloballyDisabled } from "../db/helpers/guildCommandDisable.js";
+import { isModuleEnabled, getCommandModule } from "../db/helpers/moduleStatus.js";
+import { CONFIG } from "../config.js";
 import { handleInteractionAfkReturn } from "../handlers/afkHandler.js";
 
 export default {
@@ -141,6 +143,33 @@ export default {
           ],
           flags: MessageFlags.Ephemeral,
         });
+      }
+
+      // B3. Master Module Toggle Check (e.g. antinuke, music, tickets)
+      const commandModule = getCommandModule(command);
+      if (commandModule) {
+        const isModuleActive = await isModuleEnabled(interaction.guild.id, commandModule);
+        if (!isModuleActive) {
+          const subCommand = interaction.options?.getSubcommand?.(false);
+          const isOwner =
+            interaction.member?.id === interaction.guild.ownerId ||
+            (Array.isArray(CONFIG.SUPERUSERS) && CONFIG.SUPERUSERS.includes(interaction.user.id));
+          const isEnablingAntinuke =
+            commandName === "antinuke" && (subCommand === "enable" || subCommand === "status") && isOwner;
+
+          if (!isEnablingAntinuke) {
+            return await interaction.reply({
+              embeds: [
+                makeEmbed({
+                  title: "Module Disabled",
+                  description: `${EMOJIS.get("fail") || "❌"} The **${commandModule.toUpperCase()}** module has been **disabled** in this server by an administrator via the dashboard.`,
+                  level: "ERROR",
+                }),
+              ],
+              flags: MessageFlags.Ephemeral,
+            });
+          }
+        }
       }
     }
 

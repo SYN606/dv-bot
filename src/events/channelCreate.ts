@@ -1,5 +1,9 @@
 import { Events, type GuildChannel, AuditLogEvent, PermissionFlagsBits } from "discord.js";
 import { sendModLog } from "../utils/modLog.js";
+import { ANTINUKE_AUDIT } from "../services/antinukeAuditResolver.js";
+import { ANTINUKE_SERVICE, ThreatType } from "../services/antinukeService.js";
+import { TOPOLOGY_MIRROR } from "../services/topologyMirror.js";
+import { getAntinukeSettings } from "../db/helpers/antinuke.js";
 
 export default {
   name: Events.ChannelCreate,
@@ -7,20 +11,48 @@ export default {
     if (!channel || !channel.guild) return;
 
     try {
-      let executor: any = null;
-      if (channel.guild.members.me?.permissions.has(PermissionFlagsBits.ViewAuditLog)) {
-        try {
-          const logs = await channel.guild.fetchAuditLogs({
-            limit: 1,
-            type: AuditLogEvent.ChannelCreate,
-          });
-          const entry = logs.entries.first();
-          if (entry && entry.targetId === channel.id && Date.now() - entry.createdTimestamp < 5000) {
-            executor = entry.executor;
+      // 1. Update in-memory topology mirror
+      TOPOLOGY_MIRROR.updateChannel(channel);
+
+      // 2. Resolve executor safely
+      const executor = await ANTINUKE_AUDIT.resolveExecutor(
+        channel.guild,
+        AuditLogEvent.ChannelCreate,
+        channel.id
+      );
+
+      // 3. Anti-Nuke Threat Interception
+      if (executor) {
+        const settings = await getAntinukeSettings(channel.guild.id);
+        if (settings.enabled) {
+          const immune = await ANTINUKE_SERVICE.isImmune(channel.guild, executor, ThreatType.CHANNEL_CREATE);
+          if (!immune) {
+            const { triggered, count } = ANTINUKE_SERVICE.registerAction(
+              channel.guild.id,
+              executor.id,
+              ThreatType.CHANNEL_CREATE,
+              settings.channel_create_threshold,
+              settings.window_seconds
+            );
+
+            if (triggered) {
+              await ANTINUKE_SERVICE.executeMitigation({
+                guild: channel.guild,
+                executorId: executor.id,
+                threatType: ThreatType.CHANNEL_CREATE,
+                count,
+                details: `Created spam channel #${channel.name} (${channel.id})`,
+              });
+
+              // Clean up newly created spam channel
+              await channel.delete("[DV-BOT ANTI-NUKE] Mass channel creation nuke attempt").catch(() => {});
+              return;
+            }
           }
-        } catch (_) {}
+        }
       }
 
+      // 4. Mod Log
       const channelTypeNames: Record<number, string> = {
         0: "Text Channel",
         2: "Voice Channel",

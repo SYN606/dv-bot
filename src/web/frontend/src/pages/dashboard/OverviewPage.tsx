@@ -3,7 +3,7 @@ import { useParams, Link, useOutletContext } from "react-router-dom";
 import {
   ShieldCheck, Pin, Image as ImageIcon,
   Bot, Terminal, Shield, ShieldAlert, Key, ScrollText, Sliders, AlertTriangle,
-  Users, Hash, Server, ArrowRight, CheckCircle2, XCircle, UserPlus, Award, Trophy, PenTool, MessageSquareHeart, Ticket
+  Users, Hash, Server, ArrowRight, CheckCircle2, XCircle, UserPlus, Award, Trophy, PenTool, MessageSquareHeart, Ticket, Music
 } from "lucide-react";
 import {
   getGuildMeta, getVerification, getMediaOnly,
@@ -208,19 +208,23 @@ export default function OverviewPage({ showToast }) {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <ModuleCard 
+                title="Anti-Nuke Protection" path={`/dashboard/${guildId}/antinuke`} icon={ShieldAlert} accent="var(--color-brand-indigo)"
+                active={true} statusText="Active"
+              />
+              <ModuleCard 
                 title="Permissions Audit" path={`/dashboard/${guildId}/permissions`} icon={ShieldAlert} accent="var(--color-brand-indigo)"
                 active={true} statusText="Protected"
               />
               <ModuleCard 
-                title="Audit Logs Center" path={`/dashboard/${guildId}/audit-logs`} icon={ScrollText} accent="var(--color-brand-indigo)"
+                title="Audit Logs" path={`/dashboard/${guildId}/audit-logs`} icon={ScrollText} accent="var(--color-brand-indigo)"
                 active={true} statusText="Active"
               />
               <ModuleCard 
-                title="Warning Escalations" path={`/dashboard/${guildId}/warning-punishments`} icon={AlertTriangle} accent="var(--color-brand-indigo)"
+                title="Warning Punishments" path={`/dashboard/${guildId}/warning-punishments`} icon={AlertTriangle} accent="var(--color-brand-indigo)"
                 active={true} statusText="Configured"
               />
               <ModuleCard 
-                title="Staff Access Roles" path={`/dashboard/${guildId}/admin-roles`} icon={Shield} accent="var(--color-brand-indigo)"
+                title="Admin Roles" path={`/dashboard/${guildId}/admin-roles`} icon={Shield} accent="var(--color-brand-indigo)"
                 active={modules.adminRoles.length > 0} statusText={modules.adminRoles.length > 0 ? `${modules.adminRoles.length} Roles` : "Disabled"}
               />
             </div>
@@ -232,7 +236,7 @@ export default function OverviewPage({ showToast }) {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <ModuleCard 
-                title="Verification Gate" path={`/dashboard/${guildId}/verification`} icon={ShieldCheck} accent="var(--color-brand-indigo)"
+                title="Member Verification" path={`/dashboard/${guildId}/verification`} icon={ShieldCheck} accent="var(--color-brand-indigo)"
                 active={!!modules.verification} statusText={modules.verification ? "Active" : "Disabled"}
               />
               <ModuleCard 
@@ -240,15 +244,15 @@ export default function OverviewPage({ showToast }) {
                 active={true} statusText="Configured"
               />
               <ModuleCard 
-                title="Auto-Roles" path={`/dashboard/${guildId}/autorole`} icon={Award} accent="var(--color-brand-indigo)"
+                title="Auto Roles" path={`/dashboard/${guildId}/autorole`} icon={Award} accent="var(--color-brand-indigo)"
                 active={true} statusText="Active"
               />
               <ModuleCard 
-                title="Supporter Perks" path={`/dashboard/${guildId}/supporter`} icon={Trophy} accent="var(--color-brand-indigo)"
+                title="Supporter Rewards" path={`/dashboard/${guildId}/supporter`} icon={Trophy} accent="var(--color-brand-indigo)"
                 active={true} statusText="Configured"
               />
               <ModuleCard 
-                title="Ticket Tooling" path={`/dashboard/${guildId}/tickets`} icon={Ticket} accent="var(--color-brand-indigo)"
+                title="Support Tickets" path={`/dashboard/${guildId}/tickets`} icon={Ticket} accent="var(--color-brand-indigo)"
                 active={true} statusText="Active"
               />
             </div>
@@ -276,8 +280,12 @@ export default function OverviewPage({ showToast }) {
                 active={modules.sticky.length > 0} statusText={modules.sticky.length > 0 ? `${modules.sticky.length} Pins` : "Disabled"}
               />
               <ModuleCard 
-                title="Media-Only" path={`/dashboard/${guildId}/media-only`} icon={ImageIcon} accent="var(--color-brand-indigo)"
+                title="Media-Only Channels" path={`/dashboard/${guildId}/media-only`} icon={ImageIcon} accent="var(--color-brand-indigo)"
                 active={modules.media.length > 0} statusText={modules.media.length > 0 ? `${modules.media.length} Channels` : "Disabled"}
+              />
+              <ModuleCard 
+                title="Music Player" path={`/dashboard/${guildId}/music`} icon={Music} accent="var(--color-brand-indigo)"
+                active={true} statusText="Active"
               />
             </div>
           </section>

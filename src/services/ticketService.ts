@@ -503,7 +503,9 @@ export async function claimTicket(params: {
       status: "claimed",
       claimed_by: member.id,
       claimed_by_tag: member.user.tag,
+      first_response_at: ticket.first_response_at || new Date().toISOString(),
     });
+    await recordSlaFirstResponse(ticketId).catch(() => null);
 
     if (ticket.channel_id) {
       const channel = (await guild.channels.fetch(ticket.channel_id).catch(() => null)) as TextChannel | null;
@@ -844,17 +846,31 @@ export async function closeTicket(params: {
 export async function handleTicketMessage(message: any) {
   try {
     if (!message.guild || message.author?.bot) return;
-    if (!isTicketChannelActive(message.channel?.id) && !message.channel?.name?.startsWith("ticket-")) {
-      return;
+
+    let ticket: any = null;
+    if (isTicketChannelActive(message.channel?.id)) {
+      ticket = await getTicketByChannel(message.channel.id);
+    } else {
+      ticket = await getTicketByChannel(message.channel.id);
+      if (ticket) {
+        registerActiveTicketChannel(message.channel.id);
+      }
     }
 
-    const ticket = await getTicketByChannel(message.channel.id);
     if (!ticket || ticket.status === "closed" || ticket.status === "resolved") return;
-    registerActiveTicketChannel(message.channel.id);
 
-    // Check if message is from staff (not the ticket opener) and first response is not yet recorded
-    if (!ticket.first_response_at && message.author.id !== ticket.user_id) {
-      await recordSlaFirstResponse(ticket.id).catch(() => null);
+    // Check if first response has not yet been logged
+    if (!ticket.first_response_at) {
+      const isStaffOrOther = message.author.id !== ticket.user_id;
+      const isClaimed = Boolean(ticket.claimed_by || ticket.status === "claimed");
+
+      // Mark as first response if message is from staff/other, ticket is claimed, or conversation is active
+      if (isStaffOrOther || isClaimed) {
+        await recordSlaFirstResponse(ticket.id).catch(() => null);
+        await updateTicket(ticket.id, {
+          first_response_at: new Date().toISOString(),
+        }).catch(() => null);
+      }
     }
   } catch (err: any) {
     logger.debug(`[TICKET MSG HANDLER ERROR]: ${err.message}`);

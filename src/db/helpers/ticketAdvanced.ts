@@ -160,9 +160,11 @@ export async function assignTicketStaff(params: {
     status: "claimed",
     claimed_by: params.staff_id,
     claimed_by_tag: params.staff_tag,
+    first_response_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
   await Ticket.update(ticketUpdates, { where: ticketWhere });
+  await recordSlaFirstResponse(params.ticket_id).catch(() => null);
 
   // Log activity
   await logTicketEvent({

@@ -16,21 +16,33 @@ import {
 import { isExecutionAllowed } from "../db/helpers/acl.js";
 import { isCommandRestricted } from "../db/helpers/channelCommandRestrict.js";
 import { isCommandGloballyDisabled } from "../db/helpers/guildCommandDisable.js";
+import { isModuleEnabled, getCommandModule } from "../db/helpers/moduleStatus.js";
 import { handleAfk } from "../handlers/afkHandler.js";
 import { ANALYTICS_BATCHER } from "../handlers/analyticsBatcher.js";
 import { handleAutoresponder } from "../handlers/autoresponderHandler.js";
 import { handleMediaOnly } from "../handlers/mediaOnlyHandler.js";
 import { handleSticky } from "../handlers/stickyHandler.js";
 import { checkMemberSupporter } from "../handlers/supporterHandler.js";
+import { handleTicketMessage } from "../services/ticketService.js";
+import { handleTokenGrabberGuard } from "../handlers/tokenGrabberGuard.js";
 
 export default {
   name: "messageCreate",
   async execute(client, message) {
     if (!message.guild) return;
 
+    // 0. Anti-Token-Grabbing & Phishing Link Interception
+    const wasTokenIntercepted = await handleTokenGrabberGuard(message);
+    if (wasTokenIntercepted) return;
+
     // Supporter Rewards Auto-Check (Passive realtime evaluation)
     if (message.member && !message.author.bot) {
       checkMemberSupporter(message.member).catch(() => {});
+    }
+
+    // Ticket First-Response & Activity Evaluation
+    if (!message.author.bot) {
+      handleTicketMessage(message).catch(() => {});
     }
 
     // 1. Analytics Tracking (with channel/role ACL exclusion check)
@@ -155,6 +167,25 @@ export default {
       }).catch(() => {});
       if (reply) setTimeout(() => reply.delete().catch(() => {}), 6000);
       return;
+    }
+
+    // B3. Master Module Toggle Check (e.g. antinuke, music, tickets)
+    const commandModule = getCommandModule(command);
+    if (commandModule && message.guild) {
+      const isModuleActive = await isModuleEnabled(message.guild.id, commandModule);
+      if (!isModuleActive) {
+        const reply = await message.reply({
+          embeds: [
+            makeEmbed({
+              title: "Module Disabled",
+              description: `${EMOJIS.get("fail") || "❌"} The **${commandModule.toUpperCase()}** module has been **disabled** in this server by an administrator via the dashboard.`,
+              level: "ERROR",
+            }),
+          ],
+        }).catch(() => {});
+        if (reply) setTimeout(() => reply.delete().catch(() => {}), 6000);
+        return;
+      }
     }
 
     // C. Permission Checks

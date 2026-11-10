@@ -946,3 +946,54 @@ export async function loadMusicPlaylist(guildId, playlistId) {
     skipCache: true,
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Anti-Nuke Server Protection
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getAntinukeData(guildId) {
+  return fetchApi(`/api/guilds/${guildId}/antinuke`, { skipCache: true });
+}
+
+export async function updateAntinukeSettings(guildId, payload) {
+  invalidate(`/api/guilds/${guildId}/antinuke`);
+  return fetchApi(`/api/guilds/${guildId}/antinuke/settings`, {
+    method: "PATCH",
+    body: payload,
+    skipCache: true,
+  });
+}
+
+export async function addAntinukeTrustee(guildId, payload) {
+  invalidate(`/api/guilds/${guildId}/antinuke`);
+  return fetchApi(`/api/guilds/${guildId}/antinuke/trustees`, {
+    method: "POST",
+    body: payload,
+    skipCache: true,
+  });
+}
+
+export async function deleteAntinukeTrustee(guildId, trusteeId) {
+  invalidate(`/api/guilds/${guildId}/antinuke`);
+  return fetchApi(`/api/guilds/${guildId}/antinuke/trustees/${trusteeId}`, {
+    method: "DELETE",
+    skipCache: true,
+  });
+}
+
+export async function toggleAntinukeLockdown(guildId, action, reason = "") {
+  invalidate(`/api/guilds/${guildId}/antinuke`);
+  return fetchApi(`/api/guilds/${guildId}/antinuke/lockdown`, {
+    method: "POST",
+    body: { action, reason },
+    skipCache: true,
+  });
+}
+
+export async function rollbackAntinukeIncident(guildId, incidentId) {
+  invalidate(`/api/guilds/${guildId}/antinuke`);
+  return fetchApi(`/api/guilds/${guildId}/antinuke/incidents/${incidentId}/rollback`, {
+    method: "POST",
+    skipCache: true,
+  });
+}

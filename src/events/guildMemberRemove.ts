@@ -1,10 +1,13 @@
-import { Events } from "discord.js";
+import { Events, AuditLogEvent } from "discord.js";
 import { DailyActivitySnapshot, MemberAnalytics, WelcomeConfig } from "../db/models/index.js";
 import { ensureGuild } from "../db/helpers/common.js";
 import { deleteSupporterAnnouncement } from "../handlers/supporterHandler.js";
 import { buildWelcomePayload } from "../utils/welcomeFormatter.js";
 import { sendModLog } from "../utils/modLog.js";
 import { clearMemberWelcomeCache } from "../services/welcomeService.js";
+import { ANTINUKE_AUDIT } from "../services/antinukeAuditResolver.js";
+import { ANTINUKE_SERVICE, ThreatType } from "../services/antinukeService.js";
+import { getAntinukeSettings } from "../db/helpers/antinuke.js";
 
 export default {
   name: Events.GuildMemberRemove,
@@ -14,6 +17,41 @@ export default {
     const guildId = String(member.guild.id);
     const userId = String(member.id);
     const today = new Date().toISOString().split("T")[0];
+
+    // Anti-Nuke Threat Interception: Detect rogue admin mass kicks
+    try {
+      const executor = await ANTINUKE_AUDIT.resolveExecutor(
+        member.guild,
+        AuditLogEvent.MemberKick,
+        member.id
+      );
+
+      if (executor) {
+        const settings = await getAntinukeSettings(guildId);
+        if (settings.enabled) {
+          const immune = await ANTINUKE_SERVICE.isImmune(member.guild, executor, ThreatType.MEMBER_KICK);
+          if (!immune) {
+            const { triggered, count } = ANTINUKE_SERVICE.registerAction(
+              guildId,
+              executor.id,
+              ThreatType.MEMBER_KICK,
+              settings.member_kick_threshold,
+              settings.window_seconds
+            );
+
+            if (triggered) {
+              await ANTINUKE_SERVICE.executeMitigation({
+                guild: member.guild,
+                executorId: executor.id,
+                threatType: ThreatType.MEMBER_KICK,
+                count,
+                details: `Kicked member @${member.user?.tag || member.id}`,
+              });
+            }
+          }
+        }
+      }
+    } catch (_) {}
 
     // Telemetry: Increment daily leaves count
     clearMemberWelcomeCache(guildId, userId);

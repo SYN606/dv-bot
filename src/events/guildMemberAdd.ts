@@ -1,4 +1,4 @@
-import { Events } from "discord.js";
+import { Events, AuditLogEvent } from "discord.js";
 import {
   VerificationConfig,
   DailyActivitySnapshot,
@@ -12,6 +12,9 @@ import { checkMemberSupporter } from "../handlers/supporterHandler.js";
 import { buildWelcomePayload } from "../utils/welcomeFormatter.js";
 import { sendModLog } from "../utils/modLog.js";
 import { dispatchWelcomeOnTrigger } from "../services/welcomeService.js";
+import { ANTINUKE_AUDIT } from "../services/antinukeAuditResolver.js";
+import { ANTINUKE_SERVICE, ThreatType } from "../services/antinukeService.js";
+import { getAntinukeSettings } from "../db/helpers/antinuke.js";
 
 export default {
   name: Events.GuildMemberAdd,
@@ -19,6 +22,39 @@ export default {
     if (!member.guild) return;
 
     const guildId = String(member.guild.id);
+
+    // 0. Anti-Nuke: Intercept unauthorized rogue bot invitations
+    if (member.user.bot) {
+      try {
+        const settings = await getAntinukeSettings(guildId);
+        if (settings.enabled && settings.strict_anti_bot) {
+          const executor = await ANTINUKE_AUDIT.resolveExecutor(
+            member.guild,
+            AuditLogEvent.BotAdd,
+            member.id
+          );
+
+          if (executor) {
+            const immune = await ANTINUKE_SERVICE.isImmune(member.guild, executor, ThreatType.BOT_ADD);
+            if (!immune) {
+              // Neutralize the rogue bot immediately
+              await member.ban({ reason: `[DV-BOT ANTI-NUKE] Unauthorized bot invited by ${executor.tag} (${executor.id})` }).catch(() => {});
+
+              // Neutralize the administrator who invited it
+              await ANTINUKE_SERVICE.executeMitigation({
+                guild: member.guild,
+                executorId: executor.id,
+                threatType: ThreatType.BOT_ADD,
+                count: 1,
+                details: `Invited unauthorized bot @${member.user.tag} (${member.id})`,
+              });
+
+              return; // Halt further onboarding
+            }
+          }
+        }
+      } catch (_) {}
+    }
     const today = new Date().toISOString().split("T")[0];
 
     // 1. Telemetry: Increment daily joins count
