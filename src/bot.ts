@@ -75,7 +75,10 @@ async function main(): Promise<void> {
 }
 
 // Graceful Shutdown
+let isShuttingDown = false;
 async function handleShutdown(signal: string): Promise<void> {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
   logger.warn(`[SHUTDOWN] Received ${signal}. Gracefully stopping bot...`);
 
   // Hard watchdog timeout: prevent hanging processes from blocking deployment or container stops

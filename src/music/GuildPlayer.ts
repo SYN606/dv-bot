@@ -215,8 +215,33 @@ export class GuildPlayer extends EventEmitter {
         track: { encoded: track.encoded },
       });
       return true;
-    } catch (err) {
+    } catch (err: any) {
       logger.error(`[PLAYER] Failed to play track in guild ${this.guildId}:`, err);
+
+      const isSessionError =
+        err?.message?.includes("Session not found") ||
+        err?.message?.includes("404") ||
+        err?.message?.includes("fetch") ||
+        (err?.status === 404 && String(err?.message || "").toLowerCase().includes("session"));
+
+      if (isSessionError && this.manager && this.voiceChannelId) {
+        try {
+          logger.warn(`[PLAYER] Attempting stale session recovery for guild ${this.guildId}...`);
+          const recoveredPlayer = await this.manager.join(this.guildId, this.voiceChannelId, this.textChannelId, false);
+          if (recoveredPlayer?.player) {
+            this.player = recoveredPlayer.player;
+            this.setupListeners();
+            await this.player.playTrack({
+              track: { encoded: track.encoded },
+            });
+            this.state = PlayerState.PLAYING;
+            return true;
+          }
+        } catch (retryErr) {
+          logger.error(`[PLAYER] Session recovery retry failed in guild ${this.guildId}:`, retryErr);
+        }
+      }
+
       this.state = PlayerState.IDLE;
       const next = this.queue.next();
       if (next) await this.playTrack(next);

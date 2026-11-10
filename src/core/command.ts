@@ -39,8 +39,21 @@ export class CommandContext {
     this.interaction = interaction;
     this.message = message;
     this.command = command;
-    this.options = options;
     this.subcommand = subcommand;
+
+    if (interaction?.options) {
+      this.options = new Proxy(options, {
+        get(target: any, prop: any, receiver: any) {
+          if (prop in target) return Reflect.get(target, prop, receiver);
+          if (typeof interaction.options[prop] === "function") {
+            return interaction.options[prop].bind(interaction.options);
+          }
+          return Reflect.get(interaction.options, prop, receiver);
+        },
+      });
+    } else {
+      this.options = options;
+    }
 
     this.isInteraction = !!interaction;
     this.guild = interaction ? interaction.guild : message?.guild;

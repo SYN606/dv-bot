@@ -22,6 +22,7 @@ RestartSec=5s
 # Forward SIGTERM for clean in-flight database flush & Discord disconnect
 KillSignal=SIGTERM
 TimeoutStopSec=30s
+SuccessExitStatus=0 143 SIGTERM
 
 # Security and resource limits
 LimitNOFILE=65536

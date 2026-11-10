@@ -203,5 +203,9 @@ done
 
 EXIT_CODE=$?
 UPTIME=$(( $(date +%s) - START_TIME ))
+# Normalize exit status 143 (SIGTERM graceful shutdown) to 0 so systemd registers successful exit
+if [ "$EXIT_CODE" -eq 143 ]; then
+  EXIT_CODE=0
+fi
 log_deploy "ℹ️ Bot process exited with status $EXIT_CODE (Uptime: ${UPTIME}s)"
 exit "$EXIT_CODE"

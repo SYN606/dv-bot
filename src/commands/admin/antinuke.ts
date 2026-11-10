@@ -169,8 +169,8 @@ export default createCommand({
       });
     }
 
-    const subGroup = ctx.options.getSubcommandGroup(false);
-    const subCommand = ctx.options.getSubcommand();
+    const subGroup = ctx.interaction?.options?.getSubcommandGroup?.(false) || null;
+    const subCommand = ctx.subcommand || ctx.interaction?.options?.getSubcommand?.(false) || ctx.options?.subcommand;
 
     await ctx.defer({ ephemeral: true });
 
@@ -310,7 +310,7 @@ export default createCommand({
     // 3. Emergency Lockdown Command
     // ─────────────────────────────────────────────────────────────────────────
     if (subCommand === "lockdown") {
-      const action = ctx.options.getString("action");
+      const action = ctx.interaction?.options?.getString?.("action") || ctx.options?.action;
       if (action === "on") {
         const success = await ANTINUKE_SERVICE.engageEmergencyLockdown(
           guild,
@@ -357,8 +357,8 @@ export default createCommand({
     // ─────────────────────────────────────────────────────────────────────────
     if (subGroup === "trust") {
       if (subCommand === "bot") {
-        const botUser = ctx.options.getUser("target");
-        const action = ctx.options.getString("action") || "add";
+        const botUser = ctx.interaction?.options?.getUser?.("target") || (ctx.options?.target ? (await ctx.client.users.fetch(ctx.options.target).catch(() => null)) : null);
+        const action = ctx.interaction?.options?.getString?.("action") || ctx.options?.action || "add";
         if (!botUser) return;
 
         if (action === "remove") {
@@ -398,8 +398,8 @@ export default createCommand({
       }
 
       if (subCommand === "add") {
-        const mentionable = ctx.options.getMentionable("target");
-        const tier = ctx.options.getInteger("tier") || 2;
+        const mentionable = ctx.interaction?.options?.getMentionable?.("target") || (ctx.options?.target ? (guild.roles.cache.get(ctx.options.target) || await guild.members.fetch(ctx.options.target).catch(() => null)) : null);
+        const tier = ctx.interaction?.options?.getInteger?.("tier") ?? (ctx.options?.tier !== undefined ? Number(ctx.options.tier) : 2);
         if (!mentionable) return;
 
         const isRole = Boolean((mentionable as any).color !== undefined);
@@ -432,7 +432,7 @@ export default createCommand({
       }
 
       if (subCommand === "remove") {
-        const mentionable = ctx.options.getMentionable("target");
+        const mentionable = ctx.interaction?.options?.getMentionable?.("target") || (ctx.options?.target ? (guild.roles.cache.get(ctx.options.target) || await guild.members.fetch(ctx.options.target).catch(() => null)) : null);
         if (!mentionable) return;
 
         await removeAntinukeTrustee(guild.id, mentionable.id);
@@ -484,7 +484,7 @@ export default createCommand({
     // 5. Rollback Command
     // ─────────────────────────────────────────────────────────────────────────
     if (subCommand === "rollback") {
-      const incidentId = ctx.options.getString("incident_id");
+      const incidentId = ctx.interaction?.options?.getString?.("incident_id") || ctx.options?.incident_id;
       const incident = await getAntinukeIncidentById(guild.id, incidentId);
 
       if (!incident) {
