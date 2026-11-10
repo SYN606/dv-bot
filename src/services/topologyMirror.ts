@@ -211,6 +211,10 @@ class TopologyMirrorService {
     }
   }
 
+  public removeGuild(guildId: string): void {
+    this.topologies.delete(String(guildId));
+  }
+
   /**
    * Recreates an atomically deleted channel with identical name, parent, and overwrites.
    */

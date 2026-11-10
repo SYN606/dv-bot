@@ -53,8 +53,8 @@ export default function AuditLogsHeader({
             <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-white tracking-tight">
               Server Logs & Audit Center
             </h1>
-            <span className="font-samarkan text-sm px-2.5 py-0.5 rounded-full bg-brand-crimson/10 border border-brand-crimson/20 text-brand-crimson">
-              लॉग्स एवं ऑडिट
+            <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-semibold">
+              LIVE AUDIT
             </span>
             {activeTab === "stream" && autoRefresh && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[11px] font-semibold text-emerald-400">

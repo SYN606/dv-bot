@@ -5,7 +5,7 @@ import { PageHeader } from "../ui";
 export default function AdminAccessHeader() {
   return (
     <PageHeader
-      category="पहुँच नियंत्रण"
+      category="ACCESS CONTROL"
       breadcrumb="Dashboard & Bot Access"
       title="Admin & Dashboard Access"
       description="Control which Discord roles and members are authorized to access this web dashboard and configure bot settings."

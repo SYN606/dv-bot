@@ -10,6 +10,7 @@
 // ============================================================================
 
 const CACHE_TTL = 15000; // 15 seconds
+const MAX_CACHE_SIZE = 250;
 
 // Simple TTL cache: url â†’ { data, expires }
 const CACHE = new Map();
@@ -117,6 +118,16 @@ export async function fetchApi(endpoint: string, options: any = {}) {
     })
     .then((data) => {
       if (isGet) {
+        if (CACHE.size >= MAX_CACHE_SIZE) {
+          const now = Date.now();
+          for (const [k, v] of CACHE.entries()) {
+            if (now > v.expires) CACHE.delete(k);
+          }
+          if (CACHE.size >= MAX_CACHE_SIZE) {
+            const oldest = CACHE.keys().next().value;
+            if (oldest) CACHE.delete(oldest);
+          }
+        }
         CACHE.set(url, { data, expires: Date.now() + CACHE_TTL });
         INFLIGHT.delete(url);
       }

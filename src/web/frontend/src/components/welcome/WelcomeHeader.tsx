@@ -69,7 +69,7 @@ export default function WelcomeHeader({
             <UserPlus className="w-3.5 h-3.5" />
             <span>Community Onboarding Engine</span>
             <span className="text-[10px] text-indigo-300/80 font-normal ml-1">
-              • स्वागत एवं विदाई इंजन
+              • Onboarding & Retention Suite
             </span>
           </div>
 

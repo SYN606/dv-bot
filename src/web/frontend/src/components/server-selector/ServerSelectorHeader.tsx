@@ -5,7 +5,7 @@ import { PageHeader, SearchInput, Button, SuperuserBadge } from "../ui";
 export default function ServerSelectorHeader({ search, setSearch, refreshing, onRefresh, user }) {
   return (
     <PageHeader
-      category="डैशबोर्ड"
+      category="SELECT SERVER"
       breadcrumb="Dashboard / Servers"
       title="Your Servers"
       description="Choose a Discord server to configure and manage Digital Vigital bot settings."

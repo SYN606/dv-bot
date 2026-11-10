@@ -29,6 +29,7 @@ export class TicketJobRunner {
         logger.error(`[TICKET JOBS ERROR]: ${err.message}`)
       );
     }, pollIntervalMs);
+    if (this.interval.unref) this.interval.unref();
 
     // Initial check after 5 seconds
     setTimeout(() => {

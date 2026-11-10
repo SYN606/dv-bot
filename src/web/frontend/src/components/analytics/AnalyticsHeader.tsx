@@ -6,7 +6,7 @@ import { PageHeader, Tabs, Button } from "../ui";
 export default function AnalyticsHeader({ timeframe, setTimeframe, data, loading, refresh }) {
   return (
     <PageHeader
-      category="विश्लेषण"
+      category="ANALYTICS"
       breadcrumb="Analytics / Growth"
       title="Server Insights"
       description="Understand message volume, voice activity, growth trends and community engagement."

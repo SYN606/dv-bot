@@ -8,7 +8,6 @@ import ChannelSelector from "../../components/discord/ChannelSelector";
 import UserSelector from "../../components/discord/UserSelector";
 import Switch from "../../components/ui/Switch";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
-import UnsavedChangesBar from "../../components/ui/UnsavedChangesBar";
 import Badge from "../../components/ui/Badge";
 import {
   ShieldAlert,
@@ -856,16 +855,7 @@ export default function AntinukePage({ showToast }) {
         </div>
       )}
 
-      {/* ───────────────────────────────────────────────────────────────────────────── */}
-      {/* 8. Centralized Unsaved Changes Prompt Bar */}
-      {/* ───────────────────────────────────────────────────────────────────────────── */}
-      <UnsavedChangesBar
-        visible={hasChanges}
-        isSaving={actionLoading}
-        onSave={save}
-        onReset={reset}
-        message="Careful — you have unsaved security changes!"
-      />
+
 
       {/* ───────────────────────────────────────────────────────────────────────────── */}
       {/* 9. Centralized ConfirmDialog: Emergency Server Lockdown */}

@@ -13,13 +13,13 @@ export function csrfProtection() {
     try {
       const url = new URL(CONFIG.DASHBOARD_URL);
       allowedOrigins.add(url.origin.toLowerCase());
-    } catch {}
+    } catch { }
   }
   if (CONFIG.DASHBOARD_URL_DEV) {
     try {
       const url = new URL(CONFIG.DASHBOARD_URL_DEV);
       allowedOrigins.add(url.origin.toLowerCase());
-    } catch {}
+    } catch { }
   }
 
   // Common local development origins
@@ -48,11 +48,11 @@ export function csrfProtection() {
     if (origin) {
       try {
         sourceOrigin = new URL(origin).origin.toLowerCase();
-      } catch {}
+      } catch { }
     } else if (referer) {
       try {
         sourceOrigin = new URL(referer).origin.toLowerCase();
-      } catch {}
+      } catch { }
     }
 
     // If an Origin or Referer header was sent by the browser, verify it

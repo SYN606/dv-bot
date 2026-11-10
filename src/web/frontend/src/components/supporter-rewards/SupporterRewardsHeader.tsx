@@ -4,7 +4,7 @@ import { PageHeader, Button } from "../ui";
 export default function SupporterRewardsHeader({ enabled, onToggle, hasChanges, onSave, saving }) {
   return (
     <PageHeader
-      category="समुदाय"
+      category="COMMUNITY REWARDS"
       breadcrumb="Community / Engagement"
       title="Supporter Rewards"
       description="Reward members who represent the server through their Discord status or server clan identity."

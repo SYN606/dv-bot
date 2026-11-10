@@ -4,7 +4,7 @@ import { PageHeader } from "../ui";
 export default function VerificationHeader({ enabled, onToggle }) {
   return (
     <PageHeader
-      category="सुरक्षा"
+      category="SECURITY & VERIFICATION"
       breadcrumb="Security / Access"
       title="Verification Gate"
       description="Configure how new members receive server access to prevent raids and automated accounts."

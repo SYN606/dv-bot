@@ -4,7 +4,7 @@ import { PageHeader } from "../ui";
 export default function MediaOnlyHeader({ activeCount = 0, enabled = true, onToggle }) {
   return (
     <PageHeader
-      category="नियम"
+      category="CHANNEL RULES"
       breadcrumb="Moderation / Media Control"
       title="Media-Only Channels"
       description="Keep selected channels focused on media by automatically removing unsupported text-only messages."
