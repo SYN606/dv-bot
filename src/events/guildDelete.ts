@@ -1,6 +1,6 @@
 import { type Guild } from "discord.js";
 import { logger } from "../utils/logger.js";
-import { topologyMirror } from "../services/topologyMirror.js";
+import { TOPOLOGY_MIRROR } from "../services/topologyMirror.js";
 import { apiCache } from "../web/routes/cache.js";
 import { invalidateAutoresponderRules } from "../handlers/autoresponderHandler.js";
 
@@ -12,7 +12,7 @@ export default {
 
     try {
       // 1. Evict in-memory topology mirror
-      topologyMirror.removeGuild(guild.id);
+      TOPOLOGY_MIRROR.removeGuild(guild.id);
 
       // 2. Clear autoresponder rule compiler cache
       invalidateAutoresponderRules(guild.id);

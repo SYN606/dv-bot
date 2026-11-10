@@ -282,3 +282,5 @@ class TopologyMirrorService {
 }
 
 export const TOPOLOGY_MIRROR = new TopologyMirrorService();
+export const topologyMirror = TOPOLOGY_MIRROR;
+export default TOPOLOGY_MIRROR;
