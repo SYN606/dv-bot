@@ -24,7 +24,7 @@ class AntinukeAuditResolver {
     guild: Guild,
     actionType: AuditLogEvent,
     targetId?: string | null
-  ): Promise<User | null> {
+  ): Promise<any | null> {
     if (!guild) return null;
 
     const cacheKey = `${guild.id}:${actionType}`;

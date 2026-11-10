@@ -11,6 +11,7 @@ import {
 import { makeEmbed, COLORS } from "../core/embeds.js";
 import { logger } from "../utils/logger.js";
 import { sendTicketLog, closeTicket } from "./ticketService.js";
+import { recordSlaFirstResponse } from "../db/helpers/ticketAdvanced.js";
 
 export class TicketJobRunner {
   private client: any;

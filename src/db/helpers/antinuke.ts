@@ -227,9 +227,9 @@ export async function getAntinukeTrustees(guildId: string): Promise<IAntinukeTru
 }
 
 export async function addAntinukeTrustee(
-  guildId: string,
-  data: {
-    targetId: string;
+  guildIdOrPayload: string | Record<string, any>,
+  data?: {
+    targetId?: string;
     targetType?: "user" | "role";
     trustTier?: number;
     bypassChannels?: boolean;
@@ -237,10 +237,21 @@ export async function addAntinukeTrustee(
     bypassMembers?: boolean;
     bypassBots?: boolean;
     bypassWebhooks?: boolean;
+    [key: string]: any;
   }
 ): Promise<IAntinukeTrustee> {
-  const gId = String(guildId);
-  const targetId = String(data.targetId);
+  let gId: string;
+  let payloadInput: Record<string, any>;
+
+  if (typeof guildIdOrPayload === "string") {
+    gId = String(guildIdOrPayload);
+    payloadInput = data || {};
+  } else {
+    payloadInput = guildIdOrPayload || {};
+    gId = String(payloadInput.guild_id || payloadInput.guildId);
+  }
+
+  const targetId = String(payloadInput.targetId || payloadInput.target_id);
   await ensureGuild(gId);
 
   const existing: any = await AntinukeTrustee.findOne({
@@ -250,13 +261,13 @@ export async function addAntinukeTrustee(
   const payload: Record<string, any> = {
     guild_id: gId,
     target_id: targetId,
-    target_type: data.targetType || "user",
-    trust_tier: data.trustTier !== undefined ? Number(data.trustTier) : 2,
-    bypass_channels: data.bypassChannels ? 1 : 0,
-    bypass_roles: data.bypassRoles ? 1 : 0,
-    bypass_members: data.bypassMembers ? 1 : 0,
-    bypass_bots: data.bypassBots ? 1 : 0,
-    bypass_webhooks: data.bypassWebhooks ? 1 : 0,
+    target_type: payloadInput.targetType || payloadInput.target_type || "user",
+    trust_tier: payloadInput.trustTier !== undefined ? Number(payloadInput.trustTier) : (payloadInput.trust_tier !== undefined ? Number(payloadInput.trust_tier) : 2),
+    bypass_channels: (payloadInput.bypassChannels ?? payloadInput.bypass_channels) ? 1 : 0,
+    bypass_roles: (payloadInput.bypassRoles ?? payloadInput.bypass_roles) ? 1 : 0,
+    bypass_members: (payloadInput.bypassMembers ?? payloadInput.bypass_members) ? 1 : 0,
+    bypass_bots: (payloadInput.bypassBots ?? payloadInput.bypass_bots) ? 1 : 0,
+    bypass_webhooks: (payloadInput.bypassWebhooks ?? payloadInput.bypass_webhooks) ? 1 : 0,
   };
 
   let record: any;

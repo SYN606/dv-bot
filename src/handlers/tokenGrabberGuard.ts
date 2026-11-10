@@ -105,7 +105,7 @@ export async function handleTokenGrabberGuard(message: Message): Promise<boolean
   try {
     await message.author.send({ embeds: [alertEmbed] }).catch(async () => {
       // Fallback: Send temporary ephemeral notification in the channel that auto-deletes
-      const reply = await message.channel.send({
+      const reply = await (message.channel as any).send({
         content: `⚠️ <@${message.author.id}>, your message was deleted because it contained a sensitive token or suspicious link. Please check your account security.`,
       }).catch(() => null);
       if (reply) {
