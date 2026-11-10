@@ -3,6 +3,7 @@ import { createCommand } from "../../core/command.js";
 import { makeEmbed, COLORS } from "../../core/embeds.js";
 import { EMOJIS } from "../../core/emojis.js";
 import { MusicPermissionService } from "../../music/MusicPermissionService.js";
+import { PlayerState } from "../../music/GuildPlayer.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("play")
@@ -111,9 +112,16 @@ export default createCommand({
         });
       }
 
+      const isAlreadyActive = Boolean(
+        player.currentTrack !== null ||
+        player.state === PlayerState.PLAYING ||
+        player.state === PlayerState.BUFFERING ||
+        player.state === PlayerState.PAUSED
+      );
+
       if (result.loadType === "playlist") {
-        const added = player.queue.addMany(result.tracks);
-        if (!player.isPlaying && !player.isPaused) {
+        const added = player.queue.addMany(result.tracks, ctx.user);
+        if (!isAlreadyActive) {
           const next = player.queue.next();
           if (next) await player.playTrack(next);
         }
@@ -139,9 +147,9 @@ export default createCommand({
         return await ctx.reply({ content: "Failed to load track data.", ephemeral: true });
       }
 
-      const position = player.queue.add(track);
+      const position = player.queue.add(track, ctx.user);
 
-      if (!player.isPlaying && !player.isPaused) {
+      if (!isAlreadyActive) {
         const next = player.queue.next();
         if (next) await player.playTrack(next);
 
