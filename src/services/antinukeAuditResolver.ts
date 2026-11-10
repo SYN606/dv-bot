@@ -17,6 +17,29 @@ class AntinukeAuditResolver {
   // In-flight request deduplication map
   private inFlight = new Map<string, Promise<GuildAuditLogsEntry | null>>();
 
+  constructor() {
+    const pruneTimer = setInterval(() => this.prune(), 30 * 1000);
+    if (pruneTimer.unref) pruneTimer.unref();
+  }
+
+  private prune(): void {
+    const now = Date.now();
+    for (const [key, batch] of this.auditCache.entries()) {
+      if (now - batch.timestamp > 8000) {
+        this.auditCache.delete(key);
+      }
+    }
+  }
+
+  public removeGuild(guildId: string): void {
+    const prefix = `${guildId}:`;
+    for (const key of this.auditCache.keys()) {
+      if (key.startsWith(prefix)) {
+        this.auditCache.delete(key);
+      }
+    }
+  }
+
   /**
    * Resolves the executor of an administrative action safely with rate-limit deduplication.
    */
@@ -55,6 +78,7 @@ class AntinukeAuditResolver {
         });
 
         const entries = Array.from(auditLogs.entries.values());
+        if (this.auditCache.size >= 100) this.prune();
         this.auditCache.set(cacheKey, { timestamp: Date.now(), entries });
 
         return this.findMatchingEntry(entries, targetId, Date.now());

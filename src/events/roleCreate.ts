@@ -5,6 +5,16 @@ import { ANTINUKE_SERVICE, ThreatType } from "../services/antinukeService.js";
 import { TOPOLOGY_MIRROR } from "../services/topologyMirror.js";
 import { getAntinukeSettings } from "../db/helpers/antinuke.js";
 
+const DANGEROUS_FLAGS = [
+  PermissionFlagsBits.Administrator,
+  PermissionFlagsBits.ManageGuild,
+  PermissionFlagsBits.ManageRoles,
+  PermissionFlagsBits.ManageChannels,
+  PermissionFlagsBits.BanMembers,
+  PermissionFlagsBits.KickMembers,
+  PermissionFlagsBits.MentionEveryone,
+];
+
 export default {
   name: Events.GuildRoleCreate,
   async execute(client: any, role: Role) {
@@ -25,6 +35,22 @@ export default {
       if (executor) {
         const settings = await getAntinukeSettings(role.guild.id);
         if (settings.enabled) {
+          // Zero-Tolerance Check for dangerous permissions on new role
+          const hasDangerousPerms = DANGEROUS_FLAGS.some((flag) => role.permissions.has(flag));
+          if (hasDangerousPerms && settings.strict_dangerous_perms) {
+            const immune = await ANTINUKE_SERVICE.isImmune(role.guild, executor, ThreatType.DANGEROUS_PERMS);
+            if (!immune) {
+              await role.delete("[DV-BOT ANTI-NUKE] Unauthorized administrative role creation").catch(() => {});
+              await ANTINUKE_SERVICE.executeMitigation({
+                guild: role.guild,
+                executorId: executor.id,
+                threatType: ThreatType.DANGEROUS_PERMS,
+                details: `Created administrative role @${role.name} with dangerous permissions`,
+              });
+              return;
+            }
+          }
+
           const immune = await ANTINUKE_SERVICE.isImmune(role.guild, executor, ThreatType.ROLE_CREATE);
           if (!immune) {
             const { triggered, count } = ANTINUKE_SERVICE.registerAction(

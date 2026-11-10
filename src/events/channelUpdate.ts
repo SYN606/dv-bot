@@ -1,5 +1,6 @@
 import { Events, type GuildChannel, AuditLogEvent, PermissionFlagsBits } from "discord.js";
 import { sendModLog } from "../utils/modLog.js";
+import { TOPOLOGY_MIRROR } from "../services/topologyMirror.js";
 
 export default {
   name: Events.ChannelUpdate,
@@ -7,6 +8,7 @@ export default {
     if (!newChannel || !newChannel.guild) return;
 
     try {
+      TOPOLOGY_MIRROR.updateChannel(newChannel);
       const changes: string[] = [];
       const extraFields: Record<string, any> = {
         Channel: `<#${newChannel.id}> (\`#${newChannel.name}\`)`,
