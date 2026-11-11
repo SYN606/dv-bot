@@ -246,15 +246,21 @@ export class MusicManager {
     const meVoiceChannel = guild?.members?.me?.voice?.channelId;
 
     const existing = this.getPlayer(guildId);
-    if (existing && existing.isConnected && meVoiceChannel === voiceChannelId) {
-      if (textChannelId) existing.textChannelId = String(textChannelId);
-      return existing;
-    }
-
-    // Clean up previous player state without sending disconnect packet so Discord joins smoothly
-    if (existing) {
-      existing.clearIdleTimer();
-      this.players.delete(String(guildId));
+    if (existing && existing.state !== PlayerState.DESTROYED) {
+      if (existing.voiceChannelId === voiceChannelId || existing.player) {
+        if (textChannelId) existing.textChannelId = String(textChannelId);
+        if (existing.voiceChannelId !== voiceChannelId) {
+          existing.voiceChannelId = String(voiceChannelId);
+          const shardId = guild?.shardId ?? 0;
+          await this.shoukaku.joinVoiceChannel({
+            guildId: String(guildId),
+            channelId: String(voiceChannelId),
+            shardId,
+            deaf: Boolean(deaf),
+          }).catch((err) => logger.warn(`[MUSIC] Channel switch error:`, err.message));
+        }
+        return existing;
+      }
     }
 
     const node = this.getIdealNode();
@@ -428,7 +434,7 @@ export class MusicManager {
     const nonBotMembers = currentChannel.members ? currentChannel.members.filter((m: any) => !m.user?.bot) : null;
 
     if (nonBotMembers && nonBotMembers.size === 0) {
-      if (!player.mode247) {
+      if (!player.mode247 && !player.isPlaying) {
         player.startIdleTimer();
       }
     } else if (nonBotMembers && nonBotMembers.size > 0) {

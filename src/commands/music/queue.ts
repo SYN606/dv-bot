@@ -63,6 +63,7 @@ export default createCommand({
         { name: "Loop Mode", value: `\`${player.queue.loopMode.toUpperCase()}\``, inline: true },
         { name: "Autoplay", value: player.queue.autoplay ? "`ON`" : "`OFF`", inline: true },
       ],
+      footer: "💡 Tip: Remove a track with /remove <order_no> (e.g. /remove 2 or -rm #2)",
       level: "PRIMARY",
       color: COLORS.PRIMARY,
     });

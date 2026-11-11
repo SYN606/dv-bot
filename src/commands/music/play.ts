@@ -153,9 +153,39 @@ export default createCommand({
         const next = player.queue.next();
         if (next) await player.playTrack(next);
 
-        // If executed via slash interaction, silently dismiss the deferral so only the official Now Playing card appears
-        if (ctx.isInteraction && ctx.interaction?.deferred) {
-          await ctx.interaction.deleteReply().catch(() => {});
+        const { createMusicControlComponents } = await import("../../music/MusicInteractionHandler.js");
+        const activeTrack = next || track;
+        const durationStr = activeTrack.info.isStream
+          ? "🔴 Live Stream"
+          : player.formatTime(activeTrack.info.length);
+
+        const embed = makeEmbed({
+          title: "🎶 Now Playing",
+          description: `[**${activeTrack.info.title}**](${activeTrack.info.uri})\nBy: \`${activeTrack.info.author}\``,
+          fields: [
+            { name: "Duration", value: durationStr, inline: true },
+            { name: "Volume", value: `${player.volume}%`, inline: true },
+            { name: "Loop Mode", value: `\`${player.queue.loopMode.toUpperCase()}\``, inline: true },
+            {
+              name: "Requested By",
+              value: activeTrack.requester ? `<@${activeTrack.requester.id}>` : "`Dashboard`",
+              inline: true,
+            },
+            { name: "Queue", value: `${player.queue.size} songs left`, inline: true },
+            { name: "Filter", value: `\`${player.currentFilter.toUpperCase()}\``, inline: true },
+          ],
+          thumbnail: activeTrack.info.artworkUrl,
+          level: "PRIMARY",
+          color: COLORS.PRIMARY,
+        });
+
+        const components = createMusicControlComponents(guild.id, player.isPaused, player.queue.loopMode);
+        const replyMsg = await ctx.reply({
+          embeds: [embed],
+          components,
+        });
+        if (replyMsg) {
+          player.nowPlayingMessage = replyMsg;
         }
         return;
       }

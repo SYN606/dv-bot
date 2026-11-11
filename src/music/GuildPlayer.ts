@@ -96,8 +96,10 @@ export class GuildPlayer extends EventEmitter {
   }
 
   get isConnected(): boolean {
+    if (!this.player || this.state === PlayerState.DESTROYED) return false;
     const meVoiceChannel = this.guild?.members?.me?.voice?.channelId;
-    return Boolean(this.player && this.state !== PlayerState.DESTROYED && meVoiceChannel);
+    if (meVoiceChannel) return true;
+    return Boolean(this.voiceChannelId);
   }
 
   get currentTrack(): IFormattedTrack | null {
@@ -139,10 +141,8 @@ export class GuildPlayer extends EventEmitter {
 
     // 2. Track End
     this.player.on("end", async (data: any) => {
-      // Guard against 'replaced' and 'cleanup' events.
-      // Lavalink fires 'replaced' on the preceding track when playTrack starts a new one.
-      // Advancing the queue on 'replaced' would chew through the queue and stall playback.
       const reason = String(data?.reason || "").toLowerCase();
+      logger.info(`[PLAYER] Track ended in guild ${this.guildId} (reason: ${reason})`);
       if (reason === "replaced" || reason === "cleanup") {
         return;
       }
@@ -151,24 +151,41 @@ export class GuildPlayer extends EventEmitter {
       this.skipVotes.clear();
       this.emit("trackEnd", this.currentTrack);
 
-      const nextTrack = this.queue.next();
-      if (nextTrack) {
-        await this.playTrack(nextTrack);
-      } else {
+      try {
+        const nextTrack = this.queue.next();
+        if (nextTrack) {
+          logger.info(`[PLAYER] Advancing to next track in queue for guild ${this.guildId}: ${nextTrack.info?.title}`);
+          const played = await this.playTrack(nextTrack);
+          if (played) return;
+
+          // If playing next track failed, attempt subsequent tracks in queue
+          let fallback = this.queue.next();
+          while (fallback) {
+            logger.warn(`[PLAYER] Skipping failed track and trying next: ${fallback.info?.title}`);
+            const fbPlayed = await this.playTrack(fallback);
+            if (fbPlayed) return;
+            fallback = this.queue.next();
+          }
+        }
+
         if (this.queue.autoplay) {
           const autoTrack = await this.resolveAutoplayTrack();
           if (autoTrack) {
             this.queue.add(autoTrack, { id: "autoplay", username: "Autoplay" });
             const queuedAuto = this.queue.next();
             if (queuedAuto) {
-              await this.playTrack(queuedAuto);
-              return;
+              const autoPlayed = await this.playTrack(queuedAuto);
+              if (autoPlayed) return;
             }
           }
         }
 
+        logger.info(`[PLAYER] Queue finished in guild ${this.guildId}. Starting idle timer.`);
         this.startIdleTimer();
         this.emit("queueEnd");
+      } catch (endErr: any) {
+        logger.error(`[PLAYER] Error advancing queue in guild ${this.guildId}:`, endErr);
+        this.startIdleTimer();
       }
     });
 
@@ -208,6 +225,7 @@ export class GuildPlayer extends EventEmitter {
    */
   async playTrack(track: IFormattedTrack): Promise<boolean> {
     if (!this.player || !track) return false;
+    this.clearIdleTimer();
     try {
       this.state = PlayerState.BUFFERING;
       this.queue.current = track;
@@ -224,10 +242,15 @@ export class GuildPlayer extends EventEmitter {
         err?.message?.includes("fetch") ||
         (err?.status === 404 && String(err?.message || "").toLowerCase().includes("session"));
 
-      if (isSessionError && this.manager && this.voiceChannelId) {
+      if (isSessionError && this.musicManager && this.voiceChannelId) {
         try {
           logger.warn(`[PLAYER] Attempting stale session recovery for guild ${this.guildId}...`);
-          const recoveredPlayer = await this.manager.join(this.guildId, this.voiceChannelId, this.textChannelId, false);
+          const recoveredPlayer = await this.musicManager.join({
+            guildId: this.guildId,
+            voiceChannelId: this.voiceChannelId,
+            textChannelId: this.textChannelId,
+            deaf: true,
+          });
           if (recoveredPlayer?.player) {
             this.player = recoveredPlayer.player;
             this.setupListeners();
@@ -243,8 +266,6 @@ export class GuildPlayer extends EventEmitter {
       }
 
       this.state = PlayerState.IDLE;
-      const next = this.queue.next();
-      if (next) await this.playTrack(next);
       return false;
     }
   }
@@ -439,8 +460,24 @@ export class GuildPlayer extends EventEmitter {
     this.clearIdleTimer();
     if (this.mode247) return;
 
+    if (this.isPlaying || this.state === PlayerState.PLAYING || this.state === PlayerState.BUFFERING) {
+      return;
+    }
+
     const timeoutMs = CONFIG.MUSIC_IDLE_TIMEOUT * 1000;
     this.idleTimer = setTimeout(async () => {
+      if (this.isPlaying || this.state === PlayerState.PLAYING || this.state === PlayerState.BUFFERING) {
+        logger.debug(`[PLAYER] Idle timer aborted: playback is active in guild ${this.guildId}`);
+        return;
+      }
+      if (this.queue.current || this.queue.size > 0) {
+        logger.debug(`[PLAYER] Idle timer aborted: queue is not empty in guild ${this.guildId}`);
+        const next = this.queue.current || this.queue.next();
+        if (next) {
+          await this.playTrack(next);
+          return;
+        }
+      }
       logger.info(`[PLAYER] Idle timeout expired for guild ${this.guildId}. Leaving voice channel.`);
       await this.destroy();
     }, timeoutMs);
