@@ -313,11 +313,9 @@ export default function Sidebar({ currentGuild, botInfo, user, mobileOpen, setMo
       group: "CHAT & MEDIA TOOLS",
       items: [
         { id: "message_studio", label: "Message Studio", icon: PenTool, path: `/dashboard/${currentGuild.id}/message-studio` },
-        { id: "confessions", label: "Confessions", icon: MessageSquareHeart, path: `/dashboard/${currentGuild.id}/confessions` },
         { id: "autoresponder", label: "Autoresponder", icon: Bot, path: `/dashboard/${currentGuild.id}/autoresponder` },
         { id: "sticky", label: "Sticky Messages", icon: Pin, path: `/dashboard/${currentGuild.id}/sticky` },
-        { id: "media_only", label: "Media-Only Channels", icon: ImageIcon, path: `/dashboard/${currentGuild.id}/media-only` },
-        { id: "music", label: "Music Player", icon: Music, path: `/dashboard/${currentGuild.id}/music` }
+        { id: "media_only", label: "Media-Only Channels", icon: ImageIcon, path: `/dashboard/${currentGuild.id}/media-only` }
       ]
     },
     {

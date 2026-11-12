@@ -48,11 +48,6 @@ const CATEGORY_META: Record<string, { name: string; emoji: string; description: 
     emoji: "🛠️",
     description: "General utility tools, avatars, server info, and user lookups.",
   },
-  fun: {
-    name: "Fun & Roleplay",
-    emoji: "🎉",
-    description: "Social anime roleplay interactions, ship calculator, and fun commands.",
-  },
 };
 
 const BANNER_GIF = process.env.HELP_BANNER_GIF || null;
@@ -364,7 +359,7 @@ export default createCommand({
       categoriesMap.get(catName)!.push(cmd);
     }
 
-    const PREFERRED_ORDER = ["moderation", "admin", "tickets", "channels", "voice", "analytics", "utility", "fun"];
+    const PREFERRED_ORDER = ["moderation", "admin", "tickets", "channels", "voice", "analytics", "utility"];
     const categoriesList = Array.from(categoriesMap.entries()).sort((a, b) => {
       const keyA = a[1][0]?.category?.toLowerCase() || a[0].toLowerCase();
       const keyB = b[1][0]?.category?.toLowerCase() || b[0].toLowerCase();

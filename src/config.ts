@@ -65,17 +65,6 @@ export interface BotConfig {
   MENTION_GIF_URL: string | null;
   HELP_BANNER_GIF: string | null;
   LOG_LEVEL: string;
-  // Music & Lavalink v4 Configuration
-  MUSIC_ENABLED: boolean;
-  LAVALINK_HOST: string;
-  LAVALINK_PORT: number;
-  LAVALINK_PASSWORD: string;
-  LAVALINK_SECURE: boolean;
-  MUSIC_DEFAULT_VOLUME: number;
-  MUSIC_MAX_VOLUME: number;
-  MUSIC_MAX_QUEUE_SIZE: number;
-  MUSIC_IDLE_TIMEOUT: number;
-  MUSIC_DEFAULT_247: boolean;
   ROOT_DIR: string;
 }
 
@@ -126,19 +115,6 @@ export const CONFIG: BotConfig = {
   MENTION_GIF_URL: process.env.MENTION_GIF_URL || null,
   HELP_BANNER_GIF: process.env.HELP_BANNER_GIF || null,
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
-
-  // Music & Lavalink v4 Configuration
-  MUSIC_ENABLED: (process.env.MUSIC_ENABLED || "true").toLowerCase() === "true",
-  LAVALINK_HOST: process.env.LAVALINK_HOST || "127.0.0.1",
-  LAVALINK_PORT: parseInt(process.env.LAVALINK_PORT || "2333", 10),
-  LAVALINK_PASSWORD: process.env.LAVALINK_PASSWORD || "youshallnotpass",
-  LAVALINK_SECURE: (process.env.LAVALINK_SECURE || "false").toLowerCase() === "true",
-  MUSIC_DEFAULT_VOLUME: Math.min(Math.max(1, parseInt(process.env.MUSIC_DEFAULT_VOLUME || "80", 10)), 150),
-  MUSIC_MAX_VOLUME: Math.min(Math.max(50, parseInt(process.env.MUSIC_MAX_VOLUME || "150", 10)), 200),
-  MUSIC_MAX_QUEUE_SIZE: parseInt(process.env.MUSIC_MAX_QUEUE_SIZE || "250", 10),
-  MUSIC_IDLE_TIMEOUT: parseInt(process.env.MUSIC_IDLE_TIMEOUT || "180", 10), // in seconds
-  MUSIC_DEFAULT_247: (process.env.MUSIC_DEFAULT_247 || "false").toLowerCase() === "true",
-
   ROOT_DIR,
 };
 

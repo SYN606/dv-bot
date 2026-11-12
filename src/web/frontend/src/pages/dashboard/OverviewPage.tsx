@@ -268,10 +268,6 @@ export default function OverviewPage({ showToast }) {
                 active={true} statusText="Ready"
               />
               <ModuleCard 
-                title="Confessions" path={`/dashboard/${guildId}/confessions`} icon={MessageSquareHeart} accent="var(--color-brand-indigo)"
-                active={true} statusText="Configured"
-              />
-              <ModuleCard 
                 title="Autoresponder" path={`/dashboard/${guildId}/autoresponder`} icon={Bot} accent="var(--color-brand-indigo)"
                 active={modules.autoresponder.length > 0} statusText={modules.autoresponder.length > 0 ? `${modules.autoresponder.length} Rules` : "Disabled"}
               />
@@ -282,10 +278,6 @@ export default function OverviewPage({ showToast }) {
               <ModuleCard 
                 title="Media-Only Channels" path={`/dashboard/${guildId}/media-only`} icon={ImageIcon} accent="var(--color-brand-indigo)"
                 active={modules.media.length > 0} statusText={modules.media.length > 0 ? `${modules.media.length} Channels` : "Disabled"}
-              />
-              <ModuleCard 
-                title="Music Player" path={`/dashboard/${guildId}/music`} icon={Music} accent="var(--color-brand-indigo)"
-                active={true} statusText="Active"
               />
             </div>
           </section>

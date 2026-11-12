@@ -38,11 +38,9 @@ export default function CommandPalette({ isOpen, setIsOpen, currentGuild }) {
     { label: "Auto Roles", path: `/dashboard/${currentGuild.id}/autorole`, icon: Award, keywords: "autorole auto roles leaderboard rewards active talkers voice rank" },
     { label: "Supporter Rewards", path: `/dashboard/${currentGuild.id}/supporter`, icon: Trophy, keywords: "supporter booster custom roles rewards perks patron" },
     { label: "Message Studio", path: `/dashboard/${currentGuild.id}/message-studio`, icon: PenTool, keywords: "message studio embed builder webhook announcements creator" },
-    { label: "Anonymous Confessions", path: `/dashboard/${currentGuild.id}/confessions`, icon: MessageSquareHeart, keywords: "confessions confess anonymous review queue word filter" },
     { label: "Autoresponder", path: `/dashboard/${currentGuild.id}/autoresponder`, icon: Bot, keywords: "autoresponder triggers keywords bot replies automation responses" },
     { label: "Sticky Messages", path: `/dashboard/${currentGuild.id}/sticky`, icon: Pin, keywords: "sticky pin messages auto stick channel notice recurring" },
     { label: "Media-Only Channels", path: `/dashboard/${currentGuild.id}/media-only`, icon: ImageIcon, keywords: "media only gallery attachments photos clips channels" },
-    { label: "Music Player", path: `/dashboard/${currentGuild.id}/music`, icon: Music, keywords: "music song play player lavalink volume queue pause resume audio voice" },
     { label: "Command Permissions", path: `/dashboard/${currentGuild.id}/commands`, icon: Terminal, keywords: "commands disable allow channels roles restriction rules command permissions" },
     { label: "Bot Settings", path: `/dashboard/${currentGuild.id}/config`, icon: Sliders, keywords: "settings bot prefix voice role config setup general" },
   ] : [

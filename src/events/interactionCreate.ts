@@ -35,9 +35,7 @@ export default {
     if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
       const customId = interaction.customId;
 
-      if (customId.startsWith("music:")) {
-        return await client.music?.interactionHandler?.handle(interaction);
-      }
+
 
       if (customId === "btn_private_bot_invite") {
         return await interaction.reply({

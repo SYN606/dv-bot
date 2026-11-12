@@ -35,9 +35,8 @@ const AutoRoleRewardsPage = lazy(() => import("../pages/dashboard/AutoRoleReward
 const WarningPunishmentsPage = lazy(() => import("../pages/dashboard/WarningPunishmentsPage"));
 const MessageStudioPage = lazy(() => import("../pages/dashboard/MessageStudioPage"));
 const AuditLogsPage = lazy(() => import("../pages/dashboard/AuditLogsPage"));
-const ConfessionsPage = lazy(() => import("../pages/dashboard/ConfessionsPage"));
 const TicketsPage = lazy(() => import("../pages/dashboard/TicketsPage"));
-const MusicPage = lazy(() => import("../pages/dashboard/MusicPage"));
+
 const AntinukePage = lazy(() => import("../pages/dashboard/AntinukePage"));
 
 export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
@@ -94,9 +93,9 @@ export default function AppRoutes({ user, botInfo, showToast, onUserUpdate }) {
           <Route path="supporter" element={<SupporterRewardsPage showToast={showToast} />} />
           <Route path="autorole" element={<AutoRoleRewardsPage showToast={showToast} />} />
           <Route path="warning-punishments" element={<WarningPunishmentsPage showToast={showToast} />} />
-          <Route path="confessions" element={<ConfessionsPage showToast={showToast} />} />
+
           <Route path="tickets" element={<TicketsPage showToast={showToast} />} />
-          <Route path="music" element={<MusicPage showToast={showToast} />} />
+
           <Route path="antinuke" element={<AntinukePage showToast={showToast} />} />
         </Route>
 
