@@ -59,11 +59,15 @@ export default {
         const openTickets = await Ticket.findAll({
           where: {
             status: { [Op.ne]: "closed" },
+            channel_id: { [Op.ne]: null },
           },
+          attributes: ["id", "channel_id", "first_response_at"],
         });
         const { registerActiveTicketChannel } = await import("../db/helpers/tickets.js");
         for (const t of openTickets) {
-          if (t.channel_id) registerActiveTicketChannel(t.channel_id);
+          if (t.channel_id) {
+            registerActiveTicketChannel(t.channel_id, !t.first_response_at);
+          }
         }
       } catch (_) {}
     }).catch(() => null);

@@ -4,6 +4,8 @@ import { ensureGuild } from "./common.js";
 
 // In-memory bounded cache with 60s TTL to prevent memory leaks and stale reads
 const CACHE_TTL_MS = 60000;
+const MAX_CACHE_ENTRIES = 500;
+
 interface CacheEntry<T> {
   data: T;
   expiresAt: number;
@@ -11,18 +13,51 @@ interface CacheEntry<T> {
 const configCache = new Map<string, CacheEntry<any>>();
 const panelsCache = new Map<string, CacheEntry<any[]>>();
 const ticketCounterMutex = new Map<string, Promise<any>>();
-const activeTicketChannels = new Set<string>();
+export const activeTicketChannels = new Set<string>();
+export const ticketsAwaitingResponse = new Set<string>();
 
-export function registerActiveTicketChannel(channelId: string) {
-  if (channelId) activeTicketChannels.add(channelId);
+function setBoundedCache<T>(cache: Map<string, CacheEntry<T>>, key: string, data: T) {
+  if (cache.size >= MAX_CACHE_ENTRIES) {
+    const now = Date.now();
+    for (const [k, v] of cache.entries()) {
+      if (now >= v.expiresAt) cache.delete(k);
+    }
+    if (cache.size >= MAX_CACHE_ENTRIES) {
+      const oldestKey = cache.keys().next().value;
+      if (oldestKey) cache.delete(oldestKey);
+    }
+  }
+  cache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
+export function registerActiveTicketChannel(channelId: string, awaitingResponse = false) {
+  if (channelId) {
+    activeTicketChannels.add(channelId);
+    if (awaitingResponse) {
+      ticketsAwaitingResponse.add(channelId);
+    }
+  }
 }
 
 export function unregisterActiveTicketChannel(channelId: string) {
-  if (channelId) activeTicketChannels.delete(channelId);
+  if (channelId) {
+    activeTicketChannels.delete(channelId);
+    ticketsAwaitingResponse.delete(channelId);
+  }
+}
+
+export function markTicketResponseReceived(channelId: string) {
+  if (channelId) {
+    ticketsAwaitingResponse.delete(channelId);
+  }
 }
 
 export function isTicketChannelActive(channelId: string): boolean {
   return activeTicketChannels.has(channelId);
+}
+
+export function isTicketAwaitingResponse(channelId: string): boolean {
+  return ticketsAwaitingResponse.has(channelId);
 }
 
 export function formatTicketChannelName(options: {
@@ -79,8 +114,6 @@ export function formatTicketChannelName(options: {
 
   // Discord channel names max limit is 100 characters (cap at 40 for clean UI)
   name = name.slice(0, 40);
-
-  return name || `ticket-${numPadded}`;
 
   return name || `ticket-${numPadded}`;
 }
@@ -164,8 +197,9 @@ export function normalizePanel(record: any) {
 export async function getTicketConfig(guildId: string) {
   const gId = String(guildId);
   const cached = configCache.get(gId);
-  if (cached && Date.now() < cached.expiresAt) {
-    return cached.data;
+  if (cached) {
+    if (Date.now() < cached.expiresAt) return cached.data;
+    configCache.delete(gId);
   }
 
   await ensureGuild(gId);
@@ -186,7 +220,7 @@ export async function getTicketConfig(guildId: string) {
 
   const [record, created]: any = await TicketConfig.findOrCreate({ where, defaults });
   const parsed = normalizeConfig(record);
-  configCache.set(gId, { data: parsed, expiresAt: Date.now() + CACHE_TTL_MS });
+  setBoundedCache(configCache, gId, parsed);
   return parsed;
 }
 
@@ -229,14 +263,15 @@ export const updateTicketConfig = saveTicketConfig;
 export async function getTicketPanels(guildId: string) {
   const gId = String(guildId);
   const cached = panelsCache.get(gId);
-  if (cached && Date.now() < cached.expiresAt) {
-    return cached.data;
+  if (cached) {
+    if (Date.now() < cached.expiresAt) return cached.data;
+    panelsCache.delete(gId);
   }
 
   const where: Record<string, any> = { guild_id: gId };
   const records = await TicketPanel.findAll({ where });
   const parsed = records.map(normalizePanel);
-  panelsCache.set(gId, { data: parsed, expiresAt: Date.now() + CACHE_TTL_MS });
+  setBoundedCache(panelsCache, gId, parsed);
   return parsed;
 }
 

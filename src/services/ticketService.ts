@@ -27,7 +27,9 @@ import {
   formatTicketChannelName,
   registerActiveTicketChannel,
   unregisterActiveTicketChannel,
+  markTicketResponseReceived,
   isTicketChannelActive,
+  isTicketAwaitingResponse,
   initTicketSla,
   recordSlaFirstResponse,
   logTicketEvent,
@@ -37,8 +39,8 @@ import { Ticket } from "../db/models/index.js";
 import { getWarnings } from "../db/helpers/warnings.js";
 import { logger } from "../utils/logger.js";
 
-const activeTicketActions = new Set<string>();
-const inFlightTicketCreations = new Set<string>();
+export const activeTicketActions = new Set<string>();
+export const inFlightTicketCreations = new Set<string>();
 
 /**
  * Sends a real-time event log embed to the configured Ticket Logging Channel.
@@ -354,7 +356,7 @@ export async function openTicketChannel(params: {
 
   // Link channel ID to ticket in DB
   await updateTicket(newTicket.id, { channel_id: ticketChannel.id });
-  registerActiveTicketChannel(ticketChannel.id);
+  registerActiveTicketChannel(ticketChannel.id, true);
 
   // Initialize SLA tracking & event logging
   await initTicketSla({
@@ -506,6 +508,9 @@ export async function claimTicket(params: {
       first_response_at: ticket.first_response_at || new Date().toISOString(),
     });
     await recordSlaFirstResponse(ticketId).catch(() => null);
+    if (ticket.channel_id) {
+      markTicketResponseReceived(ticket.channel_id);
+    }
 
     if (ticket.channel_id) {
       const channel = (await guild.channels.fetch(ticket.channel_id).catch(() => null)) as TextChannel | null;
@@ -568,8 +573,9 @@ export async function generateHtmlTranscript(channel: TextChannel, ticket: any):
     str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
   const messageRows = messageList.map((msg) => {
-    const avatar = msg.author.displayAvatarURL({ size: 64 }) || "https://cdn.discordapp.com/embed/avatars/0.png";
-    const time = msg.createdAt.toLocaleString();
+    const avatar = msg.author?.displayAvatarURL?.({ size: 64 }) || "https://cdn.discordapp.com/embed/avatars/0.png";
+    const time = msg.createdAt ? msg.createdAt.toLocaleString() : new Date().toLocaleString();
+    const authorTag = msg.author?.tag || msg.author?.username || "Unknown User";
     const content = escapeHtml(msg.content || "");
     const embedsHtml = msg.embeds.map((emb) => `
       <div class="embed-box" style="border-left: 4px solid ${emb.hexColor || '#6366f1'};">
@@ -587,7 +593,7 @@ export async function generateHtmlTranscript(channel: TextChannel, ticket: any):
         <img class="avatar" src="${avatar}" alt="" />
         <div class="msg-body">
           <div class="msg-header">
-            <span class="author-name">${escapeHtml(msg.author.tag)}</span>
+            <span class="author-name">${escapeHtml(authorTag)}</span>
             <span class="timestamp">${time}</span>
           </div>
           <div class="msg-content">${content}</div>
@@ -697,13 +703,11 @@ export async function closeTicket(params: {
 
   // Automatically cleanup voice channel if one was active for this ticket
   if (ticket.voice_channel_id) {
-    try {
-      const vcChannel = await guild.channels.fetch(ticket.voice_channel_id).catch(() => null);
-      if (vcChannel) {
-        await vcChannel.delete("Ticket closed - voice channel automatically removed").catch(() => null);
-      }
-      await setTicketVoiceChannel(ticket.id, null);
-    } catch (_) {}
+    await deleteTicketVoiceChannel({
+      guild,
+      ticket,
+      actor: { id: closedById, tag: closedByTag },
+    }).catch(() => null);
   }
 
   // Post to Transcript Channel if configured and enabled
@@ -766,11 +770,11 @@ export async function closeTicket(params: {
     });
 
     const feedbackRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`ticket_feedback:${ticket.id}:1`).setEmoji("⭐").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`ticket_feedback:${ticket.id}:2`).setEmoji("⭐⭐").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`ticket_feedback:${ticket.id}:3`).setEmoji("⭐⭐⭐").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`ticket_feedback:${ticket.id}:4`).setEmoji("⭐⭐⭐⭐").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`ticket_feedback:${ticket.id}:5`).setEmoji("⭐⭐⭐⭐⭐").setStyle(ButtonStyle.Success)
+      new ButtonBuilder().setCustomId(`ticket_feedback:${ticket.id}:1`).setLabel("1 ★").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`ticket_feedback:${ticket.id}:2`).setLabel("2 ★").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`ticket_feedback:${ticket.id}:3`).setLabel("3 ★").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`ticket_feedback:${ticket.id}:4`).setLabel("4 ★").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`ticket_feedback:${ticket.id}:5`).setLabel("5 ★").setStyle(ButtonStyle.Success)
     );
 
     const dmOptions: any = {
@@ -847,17 +851,14 @@ export async function handleTicketMessage(message: any) {
   try {
     if (!message.guild || message.author?.bot) return;
 
-    let ticket: any = null;
-    if (isTicketChannelActive(message.channel?.id)) {
-      ticket = await getTicketByChannel(message.channel.id);
-    } else {
-      ticket = await getTicketByChannel(message.channel.id);
-      if (ticket) {
-        registerActiveTicketChannel(message.channel.id);
-      }
-    }
+    // Fast-path: O(1) in-memory lookup. If this channel is not an active ticket awaiting response, exit immediately!
+    if (!isTicketAwaitingResponse(message.channel?.id)) return;
 
-    if (!ticket || ticket.status === "closed" || ticket.status === "resolved") return;
+    const ticket = await getTicketByChannel(message.channel.id);
+    if (!ticket || ticket.status === "closed" || ticket.status === "resolved") {
+      markTicketResponseReceived(message.channel.id);
+      return;
+    }
 
     // Check if first response has not yet been logged
     if (!ticket.first_response_at) {
@@ -866,11 +867,15 @@ export async function handleTicketMessage(message: any) {
 
       // Mark as first response if message is from staff/other, ticket is claimed, or conversation is active
       if (isStaffOrOther || isClaimed) {
-        await recordSlaFirstResponse(ticket.id).catch(() => null);
-        await updateTicket(ticket.id, {
-          first_response_at: new Date().toISOString(),
-        }).catch(() => null);
+        markTicketResponseReceived(message.channel.id);
+        const now = new Date().toISOString();
+        await Promise.allSettled([
+          recordSlaFirstResponse(ticket.id),
+          updateTicket(ticket.id, { first_response_at: now }),
+        ]);
       }
+    } else {
+      markTicketResponseReceived(message.channel.id);
     }
   } catch (err: any) {
     logger.debug(`[TICKET MSG HANDLER ERROR]: ${err.message}`);
@@ -1031,6 +1036,30 @@ export async function deleteTicketVoiceChannel(params: {
       await vc.delete("Ticket voice channel ended").catch(() => null);
     }
     await setTicketVoiceChannel(ticket.id, null);
+
+    // Remove obsolete VC control buttons from the ticket text channel
+    if (ticket.channel_id) {
+      try {
+        const textChannel = (await guild.channels.fetch(ticket.channel_id).catch(() => null)) as TextChannel | null;
+        if (textChannel && textChannel.isTextBased()) {
+          const recent = await textChannel.messages.fetch({ limit: 20 }).catch(() => null);
+          if (recent) {
+            const targetButtonId = `ticket_delete_vc:${ticket.id}`;
+            for (const [, msg] of recent) {
+              const hasVcButton = msg.components?.some((row: any) =>
+                row.components?.some((comp: any) =>
+                  (comp.customId && comp.customId === targetButtonId) ||
+                  (comp.data?.custom_id && comp.data.custom_id === targetButtonId)
+                )
+              );
+              if (hasVcButton) {
+                await msg.edit({ components: [] }).catch(() => null);
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
 
     if (actor) {
       await logTicketEvent({

@@ -449,7 +449,19 @@ export async function getTicketAnalytics(guildId: string) {
   const gId = String(guildId);
   const where: Record<string, any> = { guild_id: gId };
 
-  const allTickets = await Ticket.findAll({ where });
+  const allTickets = await Ticket.findAll({
+    where,
+    attributes: [
+      "id",
+      "status",
+      "claimed_by",
+      "claimed_by_tag",
+      "feedback_rating",
+      "created_at",
+      "first_response_at",
+      "resolved_at",
+    ],
+  });
   const total = allTickets.length;
 
   let open = 0;

@@ -16,6 +16,7 @@ import { recordSlaFirstResponse } from "../db/helpers/ticketAdvanced.js";
 export class TicketJobRunner {
   private client: any;
   private interval: NodeJS.Timeout | null = null;
+  private initialTimeout: NodeJS.Timeout | null = null;
   private isProcessing = false;
 
   constructor(client: any) {
@@ -33,15 +34,20 @@ export class TicketJobRunner {
     if (this.interval.unref) this.interval.unref();
 
     // Initial check after 5 seconds
-    setTimeout(() => {
+    this.initialTimeout = setTimeout(() => {
       this.processJobs().catch(() => null);
     }, 5000);
+    if (this.initialTimeout.unref) this.initialTimeout.unref();
   }
 
   public stop() {
     if (this.interval) {
       clearInterval(this.interval);
       this.interval = null;
+    }
+    if (this.initialTimeout) {
+      clearTimeout(this.initialTimeout);
+      this.initialTimeout = null;
     }
   }
 

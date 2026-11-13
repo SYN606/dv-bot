@@ -124,12 +124,18 @@ export function makeEmbed(options: MakeEmbedOptions = {}): EmbedBuilder {
   const normalizedLevel = (level || "INFO").toUpperCase();
   const embedColor = (color ?? COLORS[normalizedLevel] ?? COLORS.INFO) as ColorResolvable;
 
-  // Title formatting with severity emoji
+  // Title formatting with severity emoji (avoids duplicating emoji if title already has one)
   let formattedTitle: string | null = null;
   if (title) {
-    const emojiKey = SEVERITY_EMOJI_MAP[normalizedLevel] || "announcement";
-    const emoji = EMOJIS.get(emojiKey);
-    formattedTitle = emoji ? `${emoji} ${title}` : title;
+    const trimmedTitle = String(title).trim();
+    const hasLeadingEmoji = /^(\p{Extended_Pictographic}|<a?:[a-zA-Z0-9_]+:[0-9]+>)/u.test(trimmedTitle);
+    if (hasLeadingEmoji || options.emoji === false) {
+      formattedTitle = trimmedTitle;
+    } else {
+      const emojiKey = SEVERITY_EMOJI_MAP[normalizedLevel] || "announcement";
+      const emoji = EMOJIS.get(emojiKey);
+      formattedTitle = emoji ? `${emoji} ${trimmedTitle}` : trimmedTitle;
+    }
     formattedTitle = safeTruncate(formattedTitle, LIMITS.TITLE);
   }
 

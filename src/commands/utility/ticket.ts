@@ -160,26 +160,68 @@ export default createCommand({
     const config = await getTicketConfig(guild.id);
     const textChannel = channel as TextChannel;
 
-    // 1. CLOSE TICKET
-    if (subcommand === "close") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket || ticket.status === "closed") {
-        return await ctx.reply({
-          content: "❌ This channel is not an active support ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
+    const validSubcommands = new Set<string>([
+      "close", "claim", "add", "remove", "assign", "unassign", "transfer",
+      "priority", "escalate", "note", "rename", "transcript", "resolve", "reopen",
+      "voice", "vc",
+    ]);
 
-      const isOpener = ticket.user_id === user.id;
-      const canManage = canMemberManageTickets(member, config);
+    if (!validSubcommands.has(subcommand)) {
+      return await ctx.reply({
+        content:
+          "**Ticket Commands:**\n" +
+          "• `/ticket close [reason]` - Close ticket and generate transcript\n" +
+          "• `/ticket claim` - Claim this ticket\n" +
+          "• `/ticket assign @staff` - Assign a staff member\n" +
+          "• `/ticket unassign` - Remove staff assignment\n" +
+          "• `/ticket priority <level>` - Set priority (low|normal|high|urgent)\n" +
+          "• `/ticket escalate [reason]` - Escalate to Senior Staff\n" +
+          "• `/ticket note <content>` - Add private staff note\n" +
+          "• `/ticket add @user` - Add user to channel\n" +
+          "• `/ticket remove @user` - Remove user from channel\n" +
+          "• `/ticket transcript` - Export HTML transcript\n" +
+          "• `/ticket voice [create|delete]` - Create or end private ticket voice channel\n" +
+          "• `/ticket resolve [notes]` - Mark resolved",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
 
+    const ticket = await getTicketByChannel(channel.id);
+    if (!ticket) {
+      return await ctx.reply({
+        content: "❌ This channel is not an active support ticket.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    if (ticket.status === "closed" && subcommand !== "reopen") {
+      return await ctx.reply({
+        content: "❌ This ticket is already closed and archived. Use `/ticket reopen` to resume.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    const isOpener = ticket.user_id === user.id;
+    const canManage = canMemberManageTickets(member, config);
+
+    // Permission enforcement: opener-or-staff for close, transcript, voice; staff-only for the rest
+    const openerOrStaff = new Set<string>(["close", "transcript", "voice", "vc"]);
+    if (openerOrStaff.has(subcommand)) {
       if (!isOpener && !canManage) {
         return await ctx.reply({
-          content: "❌ You do not have permission to close this ticket.",
+          content: "❌ You do not have permission to manage this support ticket.",
           flags: MessageFlags.Ephemeral,
         });
       }
+    } else if (!canManage) {
+      return await ctx.reply({
+        content: "❌ You do not have permission to manage support tickets.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
 
+    // 1. CLOSE TICKET
+    if (subcommand === "close") {
       const closeReason = ctx.options.reason || ctx.options._args?.slice(1).join(" ") || "Resolved";
       await ctx.reply({
         content: `🔒 Closing ticket #${ticket.ticket_number}... Archiving transcript and cleaning up.`,
@@ -197,21 +239,6 @@ export default createCommand({
 
     // 2. CLAIM TICKET
     if (subcommand === "claim") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket || ticket.status === "closed") {
-        return await ctx.reply({
-          content: "❌ This channel is not an active support ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (!canMemberManageTickets(member, config)) {
-        return await ctx.reply({
-          content: "❌ You do not have permission to claim support tickets.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       try {
         const updated = await claimTicket({
           guild,
@@ -232,21 +259,6 @@ export default createCommand({
 
     // 3. ADD USER TO TICKET
     if (subcommand === "add") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket || ticket.status === "closed") {
-        return await ctx.reply({
-          content: "❌ This channel is not an active support ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (!canMemberManageTickets(member, config)) {
-        return await ctx.reply({
-          content: "❌ You do not have permission to add members to support tickets.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       const targetUser = ctx.options.user || ctx.options._args?.[1];
       const targetUserId = typeof targetUser === "object" ? targetUser.id : String(targetUser || "").replace(/[<@!>]/g, "");
 
@@ -296,21 +308,6 @@ export default createCommand({
 
     // 4. REMOVE USER FROM TICKET
     if (subcommand === "remove") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket || ticket.status === "closed") {
-        return await ctx.reply({
-          content: "❌ This channel is not an active support ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (!canMemberManageTickets(member, config)) {
-        return await ctx.reply({
-          content: "❌ You do not have permission to remove members from support tickets.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       const targetUser = ctx.options.user || ctx.options._args?.[1];
       const targetUserId = typeof targetUser === "object" ? targetUser.id : String(targetUser || "").replace(/[<@!>]/g, "");
 
@@ -361,21 +358,6 @@ export default createCommand({
 
     // 5. ASSIGN STAFF
     if (subcommand === "assign" || subcommand === "transfer") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket || ticket.status === "closed") {
-        return await ctx.reply({
-          content: "❌ This channel is not an active support ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (!canMemberManageTickets(member, config)) {
-        return await ctx.reply({
-          content: "❌ You do not have permission to assign tickets.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       const targetStaff = ctx.options.staff;
       const targetStaffId = typeof targetStaff === "object" ? targetStaff.id : String(targetStaff || "").replace(/[<@!>]/g, "");
 
@@ -427,21 +409,6 @@ export default createCommand({
 
     // 6. UNASSIGN STAFF
     if (subcommand === "unassign") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket || ticket.status === "closed") {
-        return await ctx.reply({
-          content: "❌ This channel is not an active support ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (!canMemberManageTickets(member, config)) {
-        return await ctx.reply({
-          content: "❌ You do not have permission to unassign tickets.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       await unassignTicketStaff(ticket.id, user.id, user.tag, guild.id);
 
       const unassignEmbed = makeEmbed({
@@ -459,21 +426,6 @@ export default createCommand({
 
     // 7. CHANGE PRIORITY
     if (subcommand === "priority") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket || ticket.status === "closed") {
-        return await ctx.reply({
-          content: "❌ This channel is not an active support ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (!canMemberManageTickets(member, config)) {
-        return await ctx.reply({
-          content: "❌ You do not have permission to change ticket priority.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       const priorityLevel = (ctx.options.level || "normal").toLowerCase();
       await updateTicket(ticket.id, { priority: priorityLevel });
       await initTicketSla({ ticket_id: ticket.id, guild_id: guild.id, priority: priorityLevel });
@@ -509,21 +461,6 @@ export default createCommand({
 
     // 8. ESCALATE TICKET
     if (subcommand === "escalate") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket || ticket.status === "closed") {
-        return await ctx.reply({
-          content: "❌ This channel is not an active support ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (!canMemberManageTickets(member, config)) {
-        return await ctx.reply({
-          content: "❌ You do not have permission to escalate tickets.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       const reason = ctx.options.reason || "Senior staff escalation requested";
       await transitionTicketState({
         guild,
@@ -549,21 +486,6 @@ export default createCommand({
 
     // 9. INTERNAL STAFF NOTE
     if (subcommand === "note") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket) {
-        return await ctx.reply({
-          content: "❌ This channel is not an active support ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (!canMemberManageTickets(member, config)) {
-        return await ctx.reply({
-          content: "❌ You do not have permission to create staff notes.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       const content = ctx.options.content;
       if (!content || !content.trim()) {
         return await ctx.reply({
@@ -588,21 +510,6 @@ export default createCommand({
 
     // 10. RENAME TICKET CHANNEL
     if (subcommand === "rename") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket) {
-        return await ctx.reply({
-          content: "❌ This channel is not an active support ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (!canMemberManageTickets(member, config)) {
-        return await ctx.reply({
-          content: "❌ You do not have permission to rename ticket channels.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       const newName = ctx.options.name.toLowerCase().replace(/[^a-z0-9_-]/g, "-").slice(0, 32);
       await textChannel.setName(newName);
 
@@ -614,21 +521,6 @@ export default createCommand({
 
     // 11. GENERATE TRANSCRIPT DIRECTLY
     if (subcommand === "transcript") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket) {
-        return await ctx.reply({
-          content: "❌ This channel is not an active support ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (!canMemberManageTickets(member, config) && ticket.user_id !== user.id) {
-        return await ctx.reply({
-          content: "❌ You do not have permission to export this transcript.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       await ctx.reply({ content: "⏳ Generating full HTML transcript..." });
       const html = await generateHtmlTranscript(textChannel, ticket);
       const attachment = new AttachmentBuilder(Buffer.from(html, "utf-8"), {
@@ -643,28 +535,6 @@ export default createCommand({
 
     // 12. RESOLVE TICKET
     if (subcommand === "resolve") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket) {
-        return await ctx.reply({
-          content: "❌ This channel is not an active support ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (ticket.status === "closed") {
-        return await ctx.reply({
-          content: "ℹ️ This ticket has already been closed and archived. If you need to make changes or continue working on it, please reopen it first using `/ticket reopen`.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (!canMemberManageTickets(member, config)) {
-        return await ctx.reply({
-          content: "❌ You do not have permission to resolve tickets.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       const notes = ctx.options.notes || "Marked resolved by staff";
       try {
         await transitionTicketState({
@@ -689,21 +559,6 @@ export default createCommand({
 
     // 13. REOPEN TICKET
     if (subcommand === "reopen") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket) {
-        return await ctx.reply({
-          content: "❌ This channel is not a ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (!canMemberManageTickets(member, config)) {
-        return await ctx.reply({
-          content: "❌ You do not have permission to reopen tickets.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       try {
         await transitionTicketState({
           guild,
@@ -726,31 +581,6 @@ export default createCommand({
 
     // 14. TICKET VOICE CHANNEL (VC)
     if (subcommand === "voice" || subcommand === "vc") {
-      const ticket = await getTicketByChannel(channel.id);
-      if (!ticket) {
-        return await ctx.reply({
-          content: "❌ This command can only be used inside an active ticket channel.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      if (ticket.status === "closed") {
-        return await ctx.reply({
-          content: "❌ This ticket is closed.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
-      const isOpener = ticket.user_id === user.id;
-      const canManage = canMemberManageTickets(member, config);
-
-      if (!isOpener && !canManage) {
-        return await ctx.reply({
-          content: "❌ Only the ticket creator or ticket helpers can manage voice channels for this ticket.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-
       const action = (ctx.options.action || ctx.options._args?.[1] || "create").toLowerCase();
 
       if (action === "delete" || action === "remove" || action === "end") {
@@ -829,24 +659,5 @@ export default createCommand({
         });
       }
     }
-
-    // Fallback help
-    return await ctx.reply({
-      content:
-        "**Ticket Commands:**\n" +
-        "• `/ticket close [reason]` - Close ticket and generate transcript\n" +
-        "• `/ticket claim` - Claim this ticket\n" +
-        "• `/ticket assign @staff` - Assign a staff member\n" +
-        "• `/ticket unassign` - Remove staff assignment\n" +
-        "• `/ticket priority <level>` - Set priority (low|normal|high|urgent)\n" +
-        "• `/ticket escalate [reason]` - Escalate to Senior Staff\n" +
-        "• `/ticket note <content>` - Add private staff note\n" +
-        "• `/ticket add @user` - Add user to channel\n" +
-        "• `/ticket remove @user` - Remove user from channel\n" +
-        "• `/ticket transcript` - Export HTML transcript\n" +
-        "• `/ticket voice [create|delete]` - Create or end private ticket voice channel\n" +
-        "• `/ticket resolve [notes]` - Mark resolved",
-      flags: MessageFlags.Ephemeral,
-    });
   },
 });

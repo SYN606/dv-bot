@@ -4,6 +4,7 @@ import { ANTINUKE_AUDIT } from "../services/antinukeAuditResolver.js";
 import { ANTINUKE_SERVICE, ThreatType } from "../services/antinukeService.js";
 import { TOPOLOGY_MIRROR } from "../services/topologyMirror.js";
 import { getAntinukeSettings } from "../db/helpers/antinuke.js";
+import { unregisterActiveTicketChannel } from "../db/helpers/tickets.js";
 
 export default {
   name: Events.ChannelDelete,
@@ -49,8 +50,9 @@ export default {
         }
       }
 
-      // 4. Remove from topology mirror
+      // 4. Remove from topology mirror & active ticket channel tracking
       TOPOLOGY_MIRROR.removeChannel(channel.guild.id, channel.id);
+      unregisterActiveTicketChannel(channel.id);
 
       // 5. Mod Log
       const extraFields: Record<string, any> = {

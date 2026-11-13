@@ -19,6 +19,7 @@ import {
   getTicketPanel,
   getTicketById,
   submitTicketFeedback,
+  unregisterActiveTicketChannel,
 } from "../db/helpers/tickets.js";
 import {
   openTicketChannel,
@@ -28,16 +29,11 @@ import {
   generateHtmlTranscript,
   createTicketVoiceChannel,
   deleteTicketVoiceChannel,
+  inFlightTicketCreations,
 } from "../services/ticketService.js";
 import { transitionTicketState } from "../services/ticketLifecycleService.js";
 import { logger } from "../utils/logger.js";
 
-// Concurrency guard to prevent duplicate rapid clicks
-const pendingTicketCreations = new Set<string>();
-
-/**
- * Unified ticket creation executor to eliminate repeated boilerplate and race conditions.
- */
 async function executeTicketCreation(params: {
   client: any;
   interaction: any;
@@ -50,7 +46,7 @@ async function executeTicketCreation(params: {
   const { client, interaction, guild, member, panel, reasonCategory, reasonDetails } = params;
   const userLockKey = `${guild.id}:${interaction.user.id}`;
 
-  if (pendingTicketCreations.has(userLockKey)) {
+  if (inFlightTicketCreations.has(userLockKey)) {
     if (interaction.deferred || interaction.replied) {
       return await interaction.followUp({
         content: "⏳ Please wait, your ticket is currently being generated...",
@@ -63,7 +59,7 @@ async function executeTicketCreation(params: {
     });
   }
 
-  pendingTicketCreations.add(userLockKey);
+  inFlightTicketCreations.add(userLockKey);
   try {
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -88,7 +84,7 @@ async function executeTicketCreation(params: {
       content: `❌ Could not create ticket: ${err.message || "Unknown error"}`,
     });
   } finally {
-    pendingTicketCreations.delete(userLockKey);
+    inFlightTicketCreations.delete(userLockKey);
   }
 }
 
@@ -392,6 +388,7 @@ export function registerTicketComponents(client: any) {
           actor: { id: interaction.user.id, tag: interaction.user.tag },
         }).catch(() => null);
       }
+      unregisterActiveTicketChannel(channel.id);
       await channel.delete("Ticket channel deleted by staff").catch(() => null);
     }, 3000);
   });
@@ -592,6 +589,11 @@ export function registerTicketComponents(client: any) {
 
     try {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+      // Immediately strip the buttons from the interaction message
+      if (interaction.message) {
+        await interaction.message.edit({ components: [] }).catch(() => null);
+      }
 
       const deleted = await deleteTicketVoiceChannel({
         guild,
