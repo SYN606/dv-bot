@@ -89,24 +89,16 @@ export default createCommand({
       });
     }
 
-    const roleLabel = res.usingVerifiedRole
-      ? `\`@${res.verifiedRoleName}\` (verified members)`
-      : "`@everyone`";
-    const scopeNote = res.usingVerifiedRole
-      ? `-# 🔐 Verification mode active — targeting **@${res.verifiedRoleName}** instead of @everyone.`
-      : `-# 🌐 No verification role configured — targeting **@everyone**.`;
-
     if (res.alreadyHidden) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Already Hidden",
-            description:
-              `${EMOJIS.get("warning") || "⚠️"} ${targetChannel} is already hidden from ${roleLabel}.\n\n` +
-              `${scopeNote}\n-# Use \`/unhide\` to make it visible again.`,
+            description: `${EMOJIS.get("warning") || "⚠️"} ${targetChannel} is already hidden.`,
             level: "WARNING",
             color: COLORS.DARK,
             headerDivider: false,
+            emoji: false,
           }),
         ],
         ephemeral: true,
@@ -118,12 +110,11 @@ export default createCommand({
         makeEmbed({
           author: { name: "Channel Visibility", iconURL: guild.iconURL?.() || undefined },
           title: "🙈 Channel Hidden",
-          description:
-            `${targetChannel} is now **hidden** from ${roleLabel}.\n\n` +
-            `${scopeNote}\n-# Use \`/unhide\` to restore original visibility.`,
+          description: `${targetChannel} is now **hidden**.`,
           level: "WARNING",
           color: COLORS.DARK,
           headerDivider: false,
+          emoji: false,
         }),
       ],
     });

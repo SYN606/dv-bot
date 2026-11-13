@@ -86,7 +86,10 @@ export default createCommand({
       });
     }
 
-    await ctx.defer({ ephemeral: false });
+    // Safety timeout: only defer if Discord API takes longer than 2s to respond, preventing interaction expiration
+    const deferTimer = setTimeout(() => {
+      ctx.defer({ ephemeral: false }).catch(() => {});
+    }, 2000);
 
     try {
       await ModerationService.executeUnban({
@@ -96,6 +99,7 @@ export default createCommand({
         reason,
       });
 
+      clearTimeout(deferTimer);
       return await ctx.reply({
         embeds: [
           makeEmbed({
@@ -106,6 +110,7 @@ export default createCommand({
         ],
       });
     } catch (err: any) {
+      clearTimeout(deferTimer);
       const isUnknownBan = err?.code === 10026 || err?.message?.toLowerCase().includes("unknown ban");
       return await ctx.reply({
         embeds: [
@@ -119,6 +124,8 @@ export default createCommand({
         ],
         ephemeral: true,
       });
+    } finally {
+      clearTimeout(deferTimer);
     }
   },
 });

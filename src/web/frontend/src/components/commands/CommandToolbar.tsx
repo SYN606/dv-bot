@@ -27,8 +27,6 @@ function getCategoryIconSmall(catId) {
       return <Hash className="w-3.5 h-3.5 text-sky-400" />;
     case "utility":
       return <Wrench className="w-3.5 h-3.5 text-fuchsia-400" />;
-    case "fun":
-      return <Sparkles className="w-3.5 h-3.5 text-pink-400" />;
     case "voice":
       return <Volume2 className="w-3.5 h-3.5 text-rose-400" />;
     default:

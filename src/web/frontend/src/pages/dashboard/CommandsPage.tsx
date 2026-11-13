@@ -47,7 +47,7 @@ export default function CommandsPage({ showToast }) {
 
   // Group commands by category preserving scope data
   const categoriesMap = useMemo(() => {
-    const PREFERRED_ORDER = ["moderation", "admin", "channels", "voice", "analytics", "utility", "fun"];
+    const PREFERRED_ORDER = ["moderation", "admin", "channels", "voice", "analytics", "utility"];
     if (modules && modules.length > 0) {
       return [...modules].sort((a, b) => {
         const idxA = PREFERRED_ORDER.indexOf(a.id);

@@ -131,52 +131,7 @@ export default createCommand({
       });
     }
 
-    await ctx.defer({ ephemeral: false });
-
-    const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
-    if (!targetMember) {
-      return await ctx.reply({
-        embeds: [
-          makeEmbed({
-            title: "Member Not Found",
-            description: `${EMOJIS.get("fail") || "❌"} Member <@${targetUserId}> was not found in this server.`,
-            level: "ERROR",
-          }),
-        ],
-        ephemeral: true,
-      });
-    }
-
-    if (!targetMember.moderatable) {
-      return await ctx.reply({
-        embeds: [
-          makeEmbed({
-            title: "Timeout Failed",
-            description: `${EMOJIS.get("fail") || "❌"} I cannot timeout this member. Their role is equal to or higher than my highest role.`,
-            level: "ERROR",
-          }),
-        ],
-        ephemeral: true,
-      });
-    }
-
-    const modMember = ctx.member?.roles?.highest ? ctx.member : (await guild.members.fetch(user.id).catch(() => null));
-    const modHighest = modMember?.roles?.highest?.position ?? 0;
-
-    if (guild.ownerId !== user.id && targetMember.roles.highest.position >= modHighest) {
-      return await ctx.reply({
-        embeds: [
-          makeEmbed({
-            title: "Timeout Failed",
-            description: `${EMOJIS.get("fail") || "❌"} You cannot timeout a member with an equal or higher role than yourself.`,
-            level: "ERROR",
-          }),
-        ],
-        ephemeral: true,
-      });
-    }
-
-    // Smart duration & reason parsing
+    // Smart duration & reason parsing (parsed upfront before Discord REST calls)
     let durationSec = 600; // default 10m
     let reason = "No reason provided";
 
@@ -211,7 +166,57 @@ export default createCommand({
       });
     }
 
+    // Fast-path: check cache first to avoid unnecessary Discord REST API latency
+    const targetMember = guild.members.cache.get(targetUserId) || (await guild.members.fetch(targetUserId).catch(() => null));
+    if (!targetMember) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Member Not Found",
+            description: `${EMOJIS.get("fail") || "❌"} Member <@${targetUserId}> was not found in this server.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    // Hierarchy checks run before deferral for instant, truly ephemeral rejection
+    if (!targetMember.moderatable) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Timeout Failed",
+            description: `${EMOJIS.get("fail") || "❌"} I cannot timeout this member. Their role is equal to or higher than my highest role.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
+    const modMember = ctx.member?.roles?.highest ? ctx.member : (guild.members.cache.get(user.id) || (await guild.members.fetch(user.id).catch(() => null)));
+    const modHighest = modMember?.roles?.highest?.position ?? 0;
+
+    if (guild.ownerId !== user.id && targetMember.roles.highest.position >= modHighest) {
+      return await ctx.reply({
+        embeds: [
+          makeEmbed({
+            title: "Timeout Failed",
+            description: `${EMOJIS.get("fail") || "❌"} You cannot timeout a member with an equal or higher role than yourself.`,
+            level: "ERROR",
+          }),
+        ],
+        ephemeral: true,
+      });
+    }
+
     const durationMs = durationSec * 1000;
+
+    // Safety timeout: only defer if Discord API takes longer than 2s to respond, preventing interaction expiration
+    const deferTimer = setTimeout(() => {
+      ctx.defer({ ephemeral: false }).catch(() => {});
+    }, 2000);
 
     try {
       await ModerationService.executeTimeout({
@@ -222,6 +227,7 @@ export default createCommand({
         reason,
       });
     } catch (err: any) {
+      clearTimeout(deferTimer);
       return await ctx.reply({
         embeds: [
           makeEmbed({
@@ -232,6 +238,8 @@ export default createCommand({
         ],
         ephemeral: true,
       });
+    } finally {
+      clearTimeout(deferTimer);
     }
 
     const readableDuration = formatDuration(durationSec);

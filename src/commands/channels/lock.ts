@@ -131,39 +131,30 @@ export default createCommand({
           makeEmbed({
             author: { name: "Thread Management", iconURL: guild.iconURL?.() || undefined },
             title: "🔒 Thread Locked",
-            description: `${targetChannel} has been **locked** — members cannot send messages in this thread.`,
+            description: `${targetChannel} has been **locked**.`,
             level: "WARNING",
             color: COLORS.DARK,
             headerDivider: false,
+            emoji: false,
           }),
         ],
       });
     }
 
-    const roleLabel = res.usingVerifiedRole
-      ? `\`@${res.verifiedRoleName}\` (verified members)`
-      : "`@everyone`";
-    const scopeNote = res.usingVerifiedRole
-      ? `-# 🔐 Verification mode active — targeting **@${res.verifiedRoleName}** instead of @everyone.`
-      : `-# 🌐 No verification role configured — targeting **@everyone**.`;
-
-    let expiryDesc = "";
-    if (res.expiryUnix) {
-      expiryDesc = `\n${EMOJIS.get("arrow_point") || "➡️"} **Auto-Unlocks:** <t:${res.expiryUnix}:R>`;
-    }
+    const description = res.expiryUnix
+      ? `${targetChannel} has been **locked**.\n\n⏱️ **Auto-Unlocks:** <t:${res.expiryUnix}:R>`
+      : `${targetChannel} has been **locked**.`;
 
     return await ctx.reply({
       embeds: [
         makeEmbed({
           author: { name: "Channel Lockdown", iconURL: guild.iconURL?.() || undefined },
           title: "🔒 Channel Locked",
-          description:
-            `${targetChannel} has been **locked** — ${roleLabel} cannot send messages.\n` +
-            (res.expiryUnix ? `${expiryDesc}\n` : "") +
-            `\n${scopeNote}`,
+          description,
           level: "WARNING",
           color: COLORS.DARK,
           headerDivider: false,
+          emoji: false,
         }),
       ],
     });

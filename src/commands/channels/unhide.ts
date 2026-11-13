@@ -89,24 +89,16 @@ export default createCommand({
       });
     }
 
-    const roleLabel = res.usingVerifiedRole
-      ? `\`@${res.verifiedRoleName}\` (verified members)`
-      : "`@everyone`";
-    const scopeNote = res.usingVerifiedRole
-      ? `-# 🔐 Verification mode active — targeting **@${res.verifiedRoleName}** instead of @everyone.`
-      : `-# 🌐 No verification role configured — targeting **@everyone**.`;
-
     if (res.notHidden) {
       return await ctx.reply({
         embeds: [
           makeEmbed({
             title: "Channel Not Hidden",
-            description:
-              `${EMOJIS.get("info") || "ℹ️"} ${targetChannel} is not currently hidden from ${roleLabel}.\n\n` +
-              `${scopeNote}\n-# No snapshot found. The channel already has normal visibility.`,
+            description: `${EMOJIS.get("info") || "ℹ️"} ${targetChannel} is not currently hidden.`,
             level: "INFO",
             color: COLORS.DARK,
             headerDivider: false,
+            emoji: false,
           }),
         ],
         ephemeral: true,
@@ -118,12 +110,11 @@ export default createCommand({
         makeEmbed({
           author: { name: "Channel Visibility", iconURL: guild.iconURL?.() || undefined },
           title: "👁️ Channel Unhidden",
-          description:
-            `${targetChannel} is now **visible** again to ${roleLabel}.\n\n` +
-            `${scopeNote}\n-# Original permission state has been fully restored.`,
+          description: `${targetChannel} is now **visible**.`,
           level: "SUCCESS",
           color: COLORS.DARK,
           headerDivider: false,
+          emoji: false,
         }),
       ],
     });

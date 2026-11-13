@@ -126,9 +126,8 @@ export default createCommand({
       });
     }
 
-    await ctx.defer({ ephemeral: false });
-
-    const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
+    // Fast-path: check cache first to avoid unnecessary Discord REST API latency
+    const targetMember = guild.members.cache.get(targetUserId) || (await guild.members.fetch(targetUserId).catch(() => null));
     if (!targetMember) {
       return await ctx.reply({
         embeds: [
@@ -156,7 +155,7 @@ export default createCommand({
       });
     }
 
-    // Hierarchy checks
+    // Hierarchy checks run before deferral for instant, truly ephemeral rejection
     if (!targetMember.moderatable) {
       return await ctx.reply({
         embeds: [
@@ -170,7 +169,7 @@ export default createCommand({
       });
     }
 
-    const modMember = ctx.member?.roles?.highest ? ctx.member : (await guild.members.fetch(user.id).catch(() => null));
+    const modMember = ctx.member?.roles?.highest ? ctx.member : (guild.members.cache.get(user.id) || (await guild.members.fetch(user.id).catch(() => null)));
     const modHighest = modMember?.roles?.highest?.position ?? 0;
 
     if (guild.ownerId !== user.id && targetMember.roles.highest.position >= modHighest) {
@@ -196,6 +195,11 @@ export default createCommand({
       }
     }
 
+    // Safety timeout: only defer if Discord API takes longer than 2s to respond, preventing interaction expiration
+    const deferTimer = setTimeout(() => {
+      ctx.defer({ ephemeral: false }).catch(() => {});
+    }, 2000);
+
     try {
       await ModerationService.executeUntimeout({
         guild,
@@ -204,6 +208,7 @@ export default createCommand({
         reason,
       });
     } catch (err: any) {
+      clearTimeout(deferTimer);
       return await ctx.reply({
         embeds: [
           makeEmbed({
@@ -214,6 +219,8 @@ export default createCommand({
         ],
         ephemeral: true,
       });
+    } finally {
+      clearTimeout(deferTimer);
     }
 
     return await ctx.reply({

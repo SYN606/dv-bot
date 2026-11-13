@@ -162,7 +162,6 @@ async function executeAfkReturn({ guild, member, user, channel, message = null, 
     `• **Time Away:** \`${formatDuration(elapsed)}\`\n` +
     `• **Reason:** \`${safeReason}\``;
 
-  const components = [];
   if (storedMentions.length > 0) {
     description += `\n\n**📬 Mentions Received (${storedMentions.length}):**\n`;
     description += storedMentions
@@ -171,31 +170,15 @@ async function executeAfkReturn({ guild, member, user, channel, message = null, 
         const cleanContent = m.content ? m.content.replace(/\r?\n+/g, " ").trim() : "*Attachment*";
         const snippet = cleanContent.length > 50 ? `${cleanContent.slice(0, 47)}...` : cleanContent;
         const timeStr = m.timestamp ? `<t:${m.timestamp}:R>` : "";
-        return `\`${idx + 1}.\` <@${m.author_id}> in <#${m.channel_id}>: *"${snippet}"* ${timeStr}`;
+        const jumpLink = m.message_url && (m.message_url.startsWith("https://") || m.message_url.startsWith("http://"))
+          ? ` • [Jump](${m.message_url})`
+          : "";
+        return `\`${idx + 1}.\` <@${m.author_id}> in <#${m.channel_id}>: *"${snippet}"* ${timeStr}${jumpLink}`;
       })
       .join("\n");
 
     if (storedMentions.length > 5) {
       description += `\n*...and ${storedMentions.length - 5} more mention(s)*`;
-    }
-
-    // Generate Jump Buttons (up to 5 per action row, button label max 80 chars)
-    const buttons = [];
-    storedMentions.slice(0, 5).forEach((m, idx) => {
-      if (m.message_url && (m.message_url.startsWith("https://") || m.message_url.startsWith("http://"))) {
-        const rawChannelName = m.channel_name || `${idx + 1}`;
-        const buttonLabel = `Jump: #${rawChannelName}`.slice(0, 80);
-        buttons.push(
-          new ButtonBuilder()
-            .setLabel(buttonLabel)
-            .setStyle(ButtonStyle.Link)
-            .setURL(m.message_url)
-        );
-      }
-    });
-
-    if (buttons.length > 0) {
-      components.push(new ActionRowBuilder().addComponents(buttons));
     }
   } else {
     description += `\n\n*You received no mentions while you were away.*`;
@@ -222,7 +205,6 @@ async function executeAfkReturn({ guild, member, user, channel, message = null, 
   if (message && typeof message.reply === "function") {
     replyMsg = await message.reply({
       embeds: [embed],
-      components,
       allowedMentions,
     }).catch(async () => {
       // Fallback if reply fails (e.g. original message deleted or embed permission missing)
@@ -237,7 +219,6 @@ async function executeAfkReturn({ guild, member, user, channel, message = null, 
   } else if (channel && typeof channel.send === "function") {
     replyMsg = await channel.send({
       embeds: [embed],
-      components,
       allowedMentions,
     }).catch(async () => {
       return await channel.send({

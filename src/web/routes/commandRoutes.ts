@@ -71,11 +71,6 @@ export const MODULE_METADATA = {
     description: "AFK system, user avatars, banners, ping, and server information",
     icon: "Wrench",
   },
-  fun: {
-    name: "Fun & Roleplay",
-    description: "Social anime roleplay interactions, love compatibility ship calculator, and fun commands",
-    icon: "Sparkles",
-  },
 };
 
 // Helper: Build enriched commands state payload
@@ -213,7 +208,7 @@ export async function getGuildCommandsState(guildId, rawChannelId, client) {
     mod.channelRule = catRule;
   }
 
-  const PREFERRED_ORDER = ["moderation", "admin", "channels", "voice", "analytics", "utility", "fun"];
+  const PREFERRED_ORDER = ["moderation", "admin", "channels", "voice", "analytics", "utility"];
   const modules = Array.from(categoryMap.values()).sort((a, b) => {
     const idxA = PREFERRED_ORDER.indexOf(a.id);
     const idxB = PREFERRED_ORDER.indexOf(b.id);

@@ -26,8 +26,6 @@ function getCategoryIcon(catId) {
       return <Hash className="w-6 h-6 text-sky-400" />;
     case "utility":
       return <Wrench className="w-6 h-6 text-fuchsia-400" />;
-    case "fun":
-      return <Sparkles className="w-6 h-6 text-pink-400" />;
     case "voice":
       return <Volume2 className="w-6 h-6 text-rose-400" />;
     default:

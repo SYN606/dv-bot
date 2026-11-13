@@ -140,11 +140,10 @@ export default createCommand({
       });
     }
 
-    await ctx.defer({ ephemeral: false });
+    // Fast-path: check cache first to avoid unnecessary Discord REST API latency
+    const targetMember = guild.members.cache.get(targetUserId) || (await guild.members.fetch(targetUserId).catch(() => null));
 
-    const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
-
-    // Hierarchy check if user is a member of this guild
+    // Hierarchy check if user is a member of this guild (runs before deferral for instant, truly ephemeral rejection)
     if (targetMember) {
       if (!targetMember.bannable) {
         return await ctx.reply({
@@ -159,7 +158,7 @@ export default createCommand({
         });
       }
 
-      const modMember = ctx.member?.roles?.highest ? ctx.member : (await guild.members.fetch(user.id).catch(() => null));
+      const modMember = ctx.member?.roles?.highest ? ctx.member : (guild.members.cache.get(user.id) || (await guild.members.fetch(user.id).catch(() => null)));
       const modHighest = modMember?.roles?.highest?.position ?? 0;
 
       if (guild.ownerId !== user.id && targetMember.roles.highest.position >= modHighest) {
@@ -176,6 +175,11 @@ export default createCommand({
       }
     }
 
+    // Safety timeout: only defer if Discord API takes longer than 2s to respond, preventing interaction expiration
+    const deferTimer = setTimeout(() => {
+      ctx.defer({ ephemeral: false }).catch(() => {});
+    }, 2000);
+
     try {
       await ModerationService.executeBan({
         guild,
@@ -185,6 +189,7 @@ export default createCommand({
         deleteMessageSeconds,
       });
     } catch (err: any) {
+      clearTimeout(deferTimer);
       return await ctx.reply({
         embeds: [
           makeEmbed({
@@ -195,6 +200,8 @@ export default createCommand({
         ],
         ephemeral: true,
       });
+    } finally {
+      clearTimeout(deferTimer);
     }
 
     let purgeNotice = "";

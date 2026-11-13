@@ -110,32 +110,26 @@ export default createCommand({
           makeEmbed({
             author: { name: "Thread Management", iconURL: guild.iconURL?.() || undefined },
             title: "🔓 Thread Unlocked",
-            description: `${targetChannel} has been **unlocked** — members can chat in this thread again.`,
+            description: `${targetChannel} has been **unlocked**.`,
             level: "SUCCESS",
             color: COLORS.DARK,
             headerDivider: false,
+            emoji: false,
           }),
         ],
       });
     }
-
-    const roleLabel = res.usingVerifiedRole
-      ? `\`@${res.verifiedRoleName}\` (verified members)`
-      : "`@everyone`";
-    const scopeNote = res.usingVerifiedRole
-      ? `-# 🔐 Verification mode active — targeting **@${res.verifiedRoleName}** instead of @everyone.`
-      : `-# 🌐 No verification role configured — targeting **@everyone**.`;
 
     return await ctx.reply({
       embeds: [
         makeEmbed({
           author: { name: "Channel Lockdown", iconURL: guild.iconURL?.() || undefined },
           title: "🔓 Channel Unlocked",
-          description:
-            `${targetChannel} has been **unlocked** — ${roleLabel} can send messages again.\n\n${scopeNote}`,
+          description: `${targetChannel} has been **unlocked**.`,
           level: "SUCCESS",
           color: COLORS.DARK,
           headerDivider: false,
+          emoji: false,
         }),
       ],
     });

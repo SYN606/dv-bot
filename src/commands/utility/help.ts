@@ -239,7 +239,7 @@ const slashBuilder = new SlashCommandBuilder()
   .addStringOption((opt) =>
     opt
       .setName("command")
-      .setDescription("Specific command or category name (e.g. fun, moderation, ban)")
+      .setDescription("Specific command or category name (e.g. moderation, utility, ban)")
       .setRequired(false)
       .setAutocomplete(true)
   );
@@ -250,7 +250,7 @@ export default createCommand({
   category: "Utility",
   aliases: ["h", "commands"],
   usage: "[command|category]",
-  examples: ["/help", "/help command:fun", "/help command:moderation", "/help command:lock", "dvhelp ban", "dvhelp fun"],
+  examples: ["/help", "/help command:utility", "/help command:moderation", "/help command:lock", "dvhelp ban", "dvhelp utility"],
   slashBuilder,
 
   async autocomplete(interaction) {
@@ -303,7 +303,7 @@ export default createCommand({
         });
       }
 
-      // Check if it's a category (e.g. 'fun', 'moderation', 'admin', 'voice', etc.)
+      // Check if it's a category (e.g. 'moderation', 'admin', 'voice', etc.)
       const matchedCat = Object.entries(CATEGORY_META).find(
         ([key, meta]) => key === searchName || meta.name.toLowerCase() === searchName || meta.name.toLowerCase().includes(searchName)
       );
