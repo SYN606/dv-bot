@@ -41,6 +41,7 @@ import { logger } from "../utils/logger.js";
 
 export const activeTicketActions = new Set<string>();
 export const inFlightTicketCreations = new Set<string>();
+export const inFlightVcCreations = new Set<string>();
 
 /**
  * Sends a real-time event log embed to the configured Ticket Logging Channel.
@@ -239,10 +240,10 @@ export async function openTicketChannel(params: {
 }) {
   const { client, guild, member, panel, reasonCategory, reasonDetails } = params;
   const userLockKey = `${guild.id}:${member.id}`;
-  if (inFlightTicketCreations.has(userLockKey)) {
-    throw new Error("A ticket is already being opened for your account. Please wait.");
+  const lockAcquiredBySelf = !inFlightTicketCreations.has(userLockKey);
+  if (lockAcquiredBySelf) {
+    inFlightTicketCreations.add(userLockKey);
   }
-  inFlightTicketCreations.add(userLockKey);
 
   try {
     const config = await getTicketConfig(guild.id);
@@ -470,7 +471,9 @@ export async function openTicketChannel(params: {
 
     return { ticket: newTicket, channel: ticketChannel };
   } finally {
-    inFlightTicketCreations.delete(userLockKey);
+    if (lockAcquiredBySelf) {
+      inFlightTicketCreations.delete(userLockKey);
+    }
   }
 }
 
@@ -894,17 +897,31 @@ export async function createTicketVoiceChannel(params: {
 }) {
   const { guild, member, ticket } = params;
 
-  if (ticket.status === "closed") {
-    throw new Error("Cannot create a voice channel for a closed ticket.");
+  const vcLockKey = `${guild.id}:${ticket.id}`;
+  if (inFlightVcCreations.has(vcLockKey)) {
+    throw new Error("A voice channel is already being created for this ticket. Please wait.");
   }
+  inFlightVcCreations.add(vcLockKey);
 
-  // Check if a voice channel is already active for this ticket
-  if (ticket.voice_channel_id) {
-    const existing = await guild.channels.fetch(ticket.voice_channel_id).catch(() => null);
-    if (existing) {
-      return { voiceChannel: existing, alreadyExists: true };
+  const safetyTimeout = setTimeout(() => {
+    inFlightVcCreations.delete(vcLockKey);
+  }, 15000);
+
+  try {
+    const freshTicket = await getTicketById(ticket.id);
+    const currentTicket = freshTicket || ticket;
+
+    if (currentTicket.status === "closed") {
+      throw new Error("Cannot create a voice channel for a closed ticket.");
     }
-  }
+
+    // Check if a voice channel is already active for this ticket
+    if (currentTicket.voice_channel_id) {
+      const existing = await guild.channels.fetch(currentTicket.voice_channel_id).catch(() => null);
+      if (existing) {
+        return { voiceChannel: existing, alreadyExists: true };
+      }
+    }
 
   const config = await getTicketConfig(guild.id);
   // Find parent category from ticket text channel or config
@@ -1002,11 +1019,13 @@ export async function createTicketVoiceChannel(params: {
   });
 
   // Link voice channel ID in DB
-  await setTicketVoiceChannel(ticket.id, voiceChannel.id);
+  await setTicketVoiceChannel(currentTicket.id, voiceChannel.id);
+  currentTicket.voice_channel_id = voiceChannel.id;
+  ticket.voice_channel_id = voiceChannel.id;
 
   // Log audit event
   await logTicketEvent({
-    ticket_id: ticket.id,
+    ticket_id: currentTicket.id,
     guild_id: guild.id,
     actor_id: member.id,
     actor_tag: member.user.tag,
@@ -1018,6 +1037,10 @@ export async function createTicketVoiceChannel(params: {
   }).catch(() => null);
 
   return { voiceChannel, alreadyExists: false };
+  } finally {
+    clearTimeout(safetyTimeout);
+    inFlightVcCreations.delete(vcLockKey);
+  }
 }
 
 /**
@@ -1036,6 +1059,7 @@ export async function deleteTicketVoiceChannel(params: {
       await vc.delete("Ticket voice channel ended").catch(() => null);
     }
     await setTicketVoiceChannel(ticket.id, null);
+    ticket.voice_channel_id = null;
 
     // Remove obsolete VC control buttons from the ticket text channel
     if (ticket.channel_id) {

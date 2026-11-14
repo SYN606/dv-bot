@@ -18,6 +18,7 @@ import {
   getTicketConfig,
   getTicketPanel,
   getTicketById,
+  updateTicket,
   submitTicketFeedback,
   unregisterActiveTicketChannel,
 } from "../db/helpers/tickets.js";
@@ -29,6 +30,7 @@ import {
   generateHtmlTranscript,
   createTicketVoiceChannel,
   deleteTicketVoiceChannel,
+  activeTicketActions,
   inFlightTicketCreations,
 } from "../services/ticketService.js";
 import { transitionTicketState } from "../services/ticketLifecycleService.js";
@@ -60,6 +62,9 @@ async function executeTicketCreation(params: {
   }
 
   inFlightTicketCreations.add(userLockKey);
+  const safetyTimeout = setTimeout(() => {
+    inFlightTicketCreations.delete(userLockKey);
+  }, 15000);
   try {
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -84,6 +89,7 @@ async function executeTicketCreation(params: {
       content: `❌ Could not create ticket: ${err.message || "Unknown error"}`,
     });
   } finally {
+    clearTimeout(safetyTimeout);
     inFlightTicketCreations.delete(userLockKey);
   }
 }
@@ -345,6 +351,10 @@ export function registerTicketComponents(client: any) {
         rating,
       });
 
+      if (interaction.message) {
+        await interaction.message.edit({ components: [] }).catch(() => null);
+      }
+
       const stars = "⭐".repeat(rating);
       return await interaction.reply({
         content: `🙏 Thank you for your feedback! You rated this support session **${stars}** (${rating}/5).`,
@@ -375,21 +385,43 @@ export function registerTicketComponents(client: any) {
       });
     }
 
+    const deleteActionKey = `delete:${ticketId}`;
+    if (activeTicketActions.has(deleteActionKey)) {
+      return await interaction.reply({
+        content: "⏳ Deletion is already scheduled for this channel.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+    activeTicketActions.add(deleteActionKey);
+
     await interaction.reply({
       content: "🗑️ **Ticket channel will be deleted in 3 seconds...**",
     });
 
     setTimeout(async () => {
-      const ticket = await getTicketById(ticketId);
-      if (ticket?.voice_channel_id) {
-        await deleteTicketVoiceChannel({
-          guild,
-          ticket,
-          actor: { id: interaction.user.id, tag: interaction.user.tag },
-        }).catch(() => null);
+      try {
+        const ticket = await getTicketById(ticketId);
+        if (ticket && ticket.status !== "closed") {
+          await updateTicket(ticketId, {
+            status: "closed",
+            closed_by: interaction.user.id,
+            closed_by_tag: interaction.user.tag,
+            close_reason: "Ticket channel deleted by staff",
+            closed_at: new Date().toISOString(),
+          }).catch(() => null);
+        }
+        if (ticket?.voice_channel_id) {
+          await deleteTicketVoiceChannel({
+            guild,
+            ticket,
+            actor: { id: interaction.user.id, tag: interaction.user.tag },
+          }).catch(() => null);
+        }
+        unregisterActiveTicketChannel(channel.id);
+        await channel.delete("Ticket channel deleted by staff").catch(() => null);
+      } finally {
+        activeTicketActions.delete(deleteActionKey);
       }
-      unregisterActiveTicketChannel(channel.id);
-      await channel.delete("Ticket channel deleted by staff").catch(() => null);
     }, 3000);
   });
 
@@ -416,6 +448,10 @@ export function registerTicketComponents(client: any) {
         nextStatus: "reopened",
         actor: { id: interaction.user.id, tag: interaction.user.tag },
       });
+
+      if (interaction.message) {
+        await interaction.message.edit({ components: [] }).catch(() => null);
+      }
 
       return await interaction.reply({
         content: `🔓 Ticket has been reopened by <@${interaction.user.id}>.`,

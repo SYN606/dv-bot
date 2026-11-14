@@ -8,6 +8,7 @@ import {
   updateTicket,
   logTicketEvent,
   recordSlaResolved,
+  registerActiveTicketChannel,
 } from "../db/helpers/tickets.js";
 import { makeEmbed, COLORS } from "../core/embeds.js";
 import { logger } from "../utils/logger.js";
@@ -114,6 +115,7 @@ export async function transitionTicketState(params: {
             ReadMessageHistory: true,
           }).catch(() => null);
         }
+        registerActiveTicketChannel(ticket.channel_id, true);
       } catch (_) {}
     }
   }
