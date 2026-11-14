@@ -3,6 +3,7 @@ import { createCommand } from "../../core/command.js";
 import { makeEmbed } from "../../core/embeds.js";
 import { setAfkStatus } from "../../db/helpers/afk.js";
 import { CONFIG } from "../../config.js";
+import { extractAfkMedia, resolveDirectMediaUrl, formatAfkDescription } from "../../utils/afkMedia.js";
 
 const slashBuilder = new SlashCommandBuilder()
   .setName("afk")
@@ -30,7 +31,13 @@ export default createCommand({
     }
 
     const rawReason = ctx.options.reason || ctx.options.raw || "AFK";
-    const reason = rawReason.slice(0, 200).replace(/[`\r\n]+/g, " ").trim() || "AFK";
+    const { cleanText, mediaUrl } = extractAfkMedia(rawReason, ctx.message?.attachments);
+    const resolvedMediaUrl = await resolveDirectMediaUrl(mediaUrl);
+
+    // Save reason into database. If media was extracted, preserve it in afk_reason so mention notifications can render it.
+    const reasonToSave = resolvedMediaUrl && !cleanText.includes(resolvedMediaUrl)
+      ? (cleanText && cleanText.toLowerCase() !== "afk" ? `${cleanText} ${resolvedMediaUrl}` : resolvedMediaUrl)
+      : cleanText;
 
     let originalNick = ctx.member?.nickname || null;
     const botMember = ctx.guild.members?.me;
@@ -55,24 +62,24 @@ export default createCommand({
       }
     }
 
-    await setAfkStatus(ctx.user.id, ctx.guild.id, reason, originalNick);
+    await setAfkStatus(ctx.user.id, ctx.guild.id, reasonToSave, originalNick);
 
     const avatar = typeof ctx.user.displayAvatarURL === "function"
       ? ctx.user.displayAvatarURL({ size: 256 })
       : undefined;
 
+    const displayName = ctx.member?.displayName || ctx.user.displayName || ctx.user.username;
+    const description = formatAfkDescription(ctx.user.id, cleanText);
+
     const embed = makeEmbed({
       author: {
-        name: "Away From Keyboard",
+        name: displayName,
         iconURL: avatar,
       },
-      title: `${ctx.user.username} is now AFK`,
-      description:
-        `• **Reason:** \`${reason}\`\n\n` +
-        `-# Sending a message in this server will clear your AFK status and show any mentions you received.`,
-      thumbnail: avatar,
-      image: CONFIG.AFK_IMAGE_URL || null,
+      description,
+      image: resolvedMediaUrl || CONFIG.AFK_IMAGE_URL || null,
       level: "SUCCESS",
+      emoji: false,
       headerDivider: false,
     });
 
@@ -80,7 +87,7 @@ export default createCommand({
       embeds: [embed],
     }).catch(async () => {
       return await ctx.reply({
-        content: `✅ **${ctx.user.username}** is now AFK: \`${reason}\``,
+        content: description,
       });
     });
   },

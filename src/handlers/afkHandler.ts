@@ -3,6 +3,7 @@ import { addAfkMention, getAfkStatus, isUserAfkQuick, removeAfkStatus } from "..
 import { makeEmbed, COLORS } from "../core/embeds.js";
 import { EMOJIS } from "../core/emojis.js";
 import { CONFIG } from "../config.js";
+import { extractAfkMedia } from "../utils/afkMedia.js";
 
 // In-flight locks for returning users: `${guildId}:${userId}` -> expiresAt timestamp (ms)
 const returningUserLocks = new Map();
@@ -76,6 +77,7 @@ async function sendAfkDmNotification(user, targetAfk, message, now) {
   }
 
   const safeReason = (targetAfk.afk_reason || "AFK").replace(/[`\r\n]+/g, " ").slice(0, 150);
+  const { cleanText: cleanReason } = extractAfkMedia(safeReason);
 
   const dmEmbed = makeEmbed({
     author: {
@@ -93,8 +95,9 @@ async function sendAfkDmNotification(user, targetAfk, message, now) {
     image: CONFIG.MENTION_GIF_URL || null,
     level: "INFO",
     color: COLORS.DARK,
+    emoji: false,
     footer: {
-      text: `AFK in ${currentGuildName}: ${safeReason}`,
+      text: `AFK in ${currentGuildName}: ${cleanReason}`,
     },
     headerDivider: false,
   });
@@ -155,12 +158,13 @@ async function executeAfkReturn({ guild, member, user, channel, message = null, 
     : undefined;
   const guildName = guild.name || "this server";
   const authorName = user.username || user.tag || "User";
-  const safeReason = (authorAfk.afk_reason || "AFK").replace(/[`\r\n]+/g, " ").slice(0, 200);
+  const rawReason = (authorAfk.afk_reason || "AFK").replace(/[`\r\n]+/g, " ").slice(0, 200);
+  const { cleanText: cleanReason, mediaUrl } = extractAfkMedia(rawReason);
 
   let description =
     `<@${userId}>, your AFK status in **${guildName}** has been removed.\n\n` +
     `• **Time Away:** \`${formatDuration(elapsed)}\`\n` +
-    `• **Reason:** \`${safeReason}\``;
+    `• **Reason:** \`${cleanReason}\``;
 
   if (storedMentions.length > 0) {
     description += `\n\n**📬 Mentions Received (${storedMentions.length}):**\n`;
@@ -192,9 +196,10 @@ async function executeAfkReturn({ guild, member, user, channel, message = null, 
     title: `${authorName} is no longer AFK`,
     description,
     thumbnail: authorAvatar,
-    image: CONFIG.AFK_IMAGE_URL || null,
+    image: mediaUrl || CONFIG.AFK_IMAGE_URL || null,
     level: "SUCCESS",
     color: COLORS.DARK,
+    emoji: false,
     headerDivider: false,
   });
 
@@ -364,10 +369,14 @@ export async function handleAfk(message, { skipAuthorReturn = false } = {}) {
       const lastMentioned = afkMentionCooldown.get(cdKey) || 0;
       if (now - lastMentioned >= MENTION_COOLDOWN_MS) {
         afkMentionCooldown.set(cdKey, now);
+        const { cleanText: cleanReason, mediaUrl } = extractAfkMedia(safeReason);
         afkMentions.push({
           userId,
-          reason: safeReason,
+          reason: cleanReason,
+          mediaUrl,
           duration: formatDuration(elapsed),
+          avatar: user.displayAvatarURL?.({ dynamic: true, size: 256 }),
+          name: user.displayName || user.username || "User",
         });
       }
     }
@@ -378,22 +387,45 @@ export async function handleAfk(message, { skipAuthorReturn = false } = {}) {
     }
 
     if (afkMentions.length > 0) {
-      const description = afkMentions.length === 1
-        ? `${EMOJIS.get("arrow_point") || "👉"} <@${afkMentions[0].userId}> is currently AFK: **${afkMentions[0].reason}**\n\n*Went AFK ${afkMentions[0].duration} ago.*`
-        : afkMentions
-            .map(
-              (m) =>
-                `• <@${m.userId}>: **${m.reason}** *(AFK for ${m.duration})*`
-            )
-            .join("\n");
+      let embed;
+      if (afkMentions.length === 1) {
+        const m = afkMentions[0];
+        const isCustom = m.reason && m.reason.toLowerCase() !== "afk";
+        const description = isCustom
+          ? `<@${m.userId}> is currently AFK: **${m.reason}**\n\n*Went AFK ${m.duration} ago.*`
+          : `<@${m.userId}> is currently AFK.\n\n*Went AFK ${m.duration} ago.*`;
 
-      const embed = makeEmbed({
-        title: afkMentions.length === 1 ? "User is AFK" : "AFK Members Mentioned",
-        description,
-        level: "WARNING",
-        color: COLORS.DARK,
-        headerDivider: false,
-      });
+        embed = makeEmbed({
+          author: {
+            name: `${m.name} is AFK`,
+            iconURL: m.avatar,
+          },
+          description,
+          image: m.mediaUrl || null,
+          level: "WARNING",
+          color: COLORS.DARK,
+          emoji: false,
+          headerDivider: false,
+        });
+      } else {
+        const description = afkMentions
+          .map((m) => {
+            const isCustom = m.reason && m.reason.toLowerCase() !== "afk";
+            return isCustom
+              ? `• <@${m.userId}>: **${m.reason}** *(AFK for ${m.duration})*`
+              : `• <@${m.userId}> *(AFK for ${m.duration})*`;
+          })
+          .join("\n");
+
+        embed = makeEmbed({
+          title: "AFK Members Mentioned",
+          description,
+          level: "WARNING",
+          color: COLORS.DARK,
+          emoji: false,
+          headerDivider: false,
+        });
+      }
 
       const reply = await message.reply({
         embeds: [embed],
@@ -401,7 +433,9 @@ export async function handleAfk(message, { skipAuthorReturn = false } = {}) {
       }).catch(async () => {
         if (message.channel && typeof message.channel.send === "function") {
           return await message.channel.send({
-            content: `${EMOJIS.get("arrow_point") || "👉"} The mentioned user is currently AFK.`,
+            content: afkMentions.length === 1
+              ? `<@${afkMentions[0].userId}> is currently AFK: **${afkMentions[0].reason}**`
+              : `The mentioned user(s) are currently AFK.`,
             allowedMentions: { parse: [] },
           }).catch(() => null);
         }
