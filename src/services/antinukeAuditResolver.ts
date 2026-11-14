@@ -8,7 +8,7 @@ import { logger } from "../utils/logger.js";
 
 interface CachedAuditBatch {
   timestamp: number;
-  entries: GuildAuditLogsEntry[];
+  entries: any[];
 }
 
 class AntinukeAuditResolver {
@@ -63,25 +63,43 @@ class AntinukeAuditResolver {
     // 2. If a request for this guild & action is already in-flight, piggyback on it
     if (this.inFlight.has(cacheKey)) {
       const entry = await this.inFlight.get(cacheKey);
-      if (entry?.executor) return entry.executor;
+      if (entry?.executor) {
+        if (!targetId || entry.targetId === targetId || (entry.target as any)?.id === targetId) {
+          return entry.executor;
+        }
+      }
     }
 
     // 3. Dispatch fresh audit log query
     const fetchPromise = (async (): Promise<GuildAuditLogsEntry | null> => {
       try {
-        // Pacing delay (150ms) to allow Discord audit logs to write
-        await new Promise((r) => setTimeout(r, 150));
+        // Pacing delay (200ms) to allow Discord audit logs to write
+        await new Promise((r) => setTimeout(r, 200));
 
         const auditLogs = await guild.fetchAuditLogs({
           type: actionType,
-          limit: 6,
+          limit: 8,
         });
 
         const entries = Array.from(auditLogs.entries.values());
         if (this.auditCache.size >= 100) this.prune();
         this.auditCache.set(cacheKey, { timestamp: Date.now(), entries });
 
-        return this.findMatchingEntry(entries, targetId, Date.now());
+        let match = this.findMatchingEntry(entries, targetId, Date.now());
+        if (!match && targetId) {
+          // Retry once with a brief 300ms delay in case Discord audit log has not propagated yet
+          await new Promise((r) => setTimeout(r, 300));
+          const freshLogs = await guild.fetchAuditLogs({
+            type: actionType,
+            limit: 8,
+          }).catch(() => null);
+          if (freshLogs) {
+            const freshEntries: any[] = Array.from(freshLogs.entries.values());
+            this.auditCache.set(cacheKey, { timestamp: Date.now(), entries: freshEntries });
+            match = this.findMatchingEntry(freshEntries, targetId, Date.now());
+          }
+        }
+        return match;
       } catch (_) {
         return null;
       } finally {
@@ -95,14 +113,14 @@ class AntinukeAuditResolver {
   }
 
   private findMatchingEntry(
-    entries: GuildAuditLogsEntry[],
+    entries: any[],
     targetId?: string | null,
     now: number = Date.now()
-  ): GuildAuditLogsEntry | null {
+  ): any | null {
     for (const entry of entries) {
       const entryAgeMs = now - entry.createdTimestamp;
-      // Must be recent (under 12 seconds old)
-      if (entryAgeMs > 12000) continue;
+      // Must be recent (under 15 seconds old)
+      if (entryAgeMs > 15000) continue;
 
       if (targetId) {
         if (entry.targetId === targetId || (entry.target as any)?.id === targetId) {
@@ -112,7 +130,7 @@ class AntinukeAuditResolver {
         return entry;
       }
     }
-    return entries[0] || null;
+    return targetId ? null : (entries[0] || null);
   }
 }
 

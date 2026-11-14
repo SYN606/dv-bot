@@ -63,6 +63,13 @@ export default {
       } catch (_) {}
 
       if (addedRoles.size > 0 || removedRoles.size > 0) {
+        // Resolve the moderator/executor who added or removed the roles
+        const executor = await ANTINUKE_AUDIT.resolveExecutor(
+          newMember.guild,
+          AuditLogEvent.MemberRoleUpdate,
+          newMember.id
+        );
+
         // Anti-Nuke: Zero-tolerance check for unauthorized administrative role grants
         if (addedRoles.size > 0) {
           const dangerousAddedRoles = addedRoles.filter((r) =>
@@ -72,36 +79,28 @@ export default {
           if (dangerousAddedRoles.size > 0) {
             try {
               const settings = await getAntinukeSettings(newMember.guild.id);
-              if (settings.enabled && settings.strict_dangerous_perms) {
-                const executor = await ANTINUKE_AUDIT.resolveExecutor(
+              if (settings.enabled && settings.strict_dangerous_perms && executor) {
+                const immune = await ANTINUKE_SERVICE.isImmune(
                   newMember.guild,
-                  AuditLogEvent.MemberRoleUpdate,
-                  newMember.id
+                  executor,
+                  ThreatType.DANGEROUS_PERMS
                 );
 
-                if (executor) {
-                  const immune = await ANTINUKE_SERVICE.isImmune(
-                    newMember.guild,
-                    executor,
-                    ThreatType.DANGEROUS_PERMS
-                  );
+                if (!immune) {
+                  // 1. Instantly strip the dangerous role(s) from the target member
+                  await newMember.roles.remove(
+                    dangerousAddedRoles,
+                    "[DV-BOT ANTI-NUKE] Unauthorized administrative role assignment reverted."
+                  ).catch(() => {});
 
-                  if (!immune) {
-                    // 1. Instantly strip the dangerous role(s) from the target member
-                    await newMember.roles.remove(
-                      dangerousAddedRoles,
-                      "[DV-BOT ANTI-NUKE] Unauthorized administrative role assignment reverted."
-                    ).catch(() => {});
-
-                    // 2. Mitigate the rogue moderator who granted the role
-                    await ANTINUKE_SERVICE.executeMitigation({
-                      guild: newMember.guild,
-                      executorId: executor.id,
-                      threatType: ThreatType.DANGEROUS_PERMS,
-                      details: `Unauthorized grant of privileged role(s) (${dangerousAddedRoles.map((r) => '@' + r.name).join(', ')}) to @${newMember.user.tag || newMember.user.username}`,
-                    });
-                    return;
-                  }
+                  // 2. Mitigate the rogue moderator who granted the role
+                  await ANTINUKE_SERVICE.executeMitigation({
+                    guild: newMember.guild,
+                    executorId: executor.id,
+                    threatType: ThreatType.DANGEROUS_PERMS,
+                    details: `Unauthorized grant of privileged role(s) (${dangerousAddedRoles.map((r) => '@' + r.name).join(', ')}) to @${newMember.user.tag || newMember.user.username}`,
+                  });
+                  return;
                 }
               }
             } catch (_) {}
@@ -125,6 +124,7 @@ export default {
           eventType: "member_roles_updated",
           title: "Member Roles Updated",
           level: "INFO",
+          actor: executor || null,
           target: newMember.user,
           description: `Roles were modified for <@${newMember.id}>.`,
           extraFields,
