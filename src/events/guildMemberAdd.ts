@@ -151,25 +151,52 @@ export default {
       console.error("[WELCOME GATEKEEPER ERROR]:", err);
     }
 
-    // 7. Mod Log: Member Joined Dispatch
+    // 7. Mod Log: Member / Bot Joined Dispatch
     try {
       const createdAgoMs = Date.now() - member.user.createdTimestamp;
       const createdDays = Math.floor(createdAgoMs / (1000 * 60 * 60 * 24));
       const isNewAccount = createdDays < 7;
 
-      await sendModLog({
-        guild: member.guild,
-        category: "MEMBERS",
-        title: "Member Joined",
-        level: isNewAccount ? "WARNING" : "SUCCESS",
-        target: member.user,
-        description: `<@${member.id}> joined the server.`,
-        extraFields: {
-          "Member Count": `${member.guild.memberCount || "N/A"} members`,
-          "Account Created": `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>${isNewAccount ? " ⚠️ (New Account)" : ""}`,
-          Bot: member.user.bot ? "Yes" : "No",
-        },
-      });
+      if (member.user.bot) {
+        let botInviter: any = null;
+        try {
+          botInviter = await ANTINUKE_AUDIT.resolveExecutor(
+            member.guild,
+            AuditLogEvent.BotAdd,
+            member.id
+          );
+        } catch (_) {}
+
+        await sendModLog({
+          guild: member.guild,
+          category: "MEMBERS",
+          eventType: "bot_added",
+          title: "Bot Added",
+          level: "WARNING",
+          actor: botInviter || null,
+          target: member.user,
+          description: `Bot <@${member.id}> was added to the server.`,
+          extraFields: {
+            "Member Count": `${member.guild.memberCount || "N/A"} members`,
+            "Account Created": `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`,
+            "Bot Application": "Yes",
+          },
+        });
+      } else {
+        await sendModLog({
+          guild: member.guild,
+          category: "MEMBERS",
+          eventType: "member_joined",
+          title: "Member Joined",
+          level: isNewAccount ? "WARNING" : "SUCCESS",
+          target: member.user,
+          description: `<@${member.id}> joined the server.`,
+          extraFields: {
+            "Member Count": `${member.guild.memberCount || "N/A"} members`,
+            "Account Created": `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>${isNewAccount ? " ⚠️ (New Account)" : ""}`,
+          },
+        });
+      }
     } catch (_) {}
   },
 };

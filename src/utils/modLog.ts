@@ -198,6 +198,12 @@ const ALIAS_MAP: Record<string, string> = {
   message_updated: "message_edited",
   messages_bulk_deleted: "messages_bulk_deleted",
   message_purge: "messages_bulk_deleted",
+  member_timeout: "member_timeout",
+  member_untimeout: "member_untimeout",
+  member_nickname_updated: "member_nickname_updated",
+  member_kicked: "member_kicked",
+  member_unbanned: "member_unbanned",
+  bot_added: "bot_added",
 };
 
 /**
@@ -424,7 +430,10 @@ export async function sendModLog({
         description.includes("was banned by") ||
         description.includes("was kicked by") ||
         description.includes("was timed out by") ||
-        description.includes("was warned by");
+        description.includes("was warned by") ||
+        description.includes("Roles were modified for") ||
+        (description.startsWith("Member <@") && description.includes("was banned")) ||
+        (description.startsWith("Channel `") && (description.includes("was created") || description.includes("was deleted")));
 
       if (!isRedundant) {
         embed.setDescription(description);

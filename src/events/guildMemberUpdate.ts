@@ -33,6 +33,73 @@ export default {
       await checkGuildTag(newMember, true);
     }
 
+    // 1. Nickname Change Logging
+    if (nicknameChanged) {
+      try {
+        const executor = await ANTINUKE_AUDIT.resolveExecutor(
+          newMember.guild,
+          AuditLogEvent.MemberUpdate,
+          newMember.id
+        );
+
+        await sendModLog({
+          guild: newMember.guild,
+          category: "NICKNAME",
+          eventType: "member_nickname_updated",
+          title: "Nickname Changed",
+          level: "INFO",
+          actor: executor || newMember.user,
+          target: newMember.user,
+          extraFields: {
+            "Old Nickname": `\`${oldMember.nickname || oldMember.user.displayName || "None"}\``,
+            "New Nickname": `\`${newMember.nickname || newMember.user.displayName || "Reset to Username"}\``,
+          },
+        });
+      } catch (_) {}
+    }
+
+    // 2. Timeout & Untimeout Logging (Native Discord UI & API)
+    const timeoutChanged = oldMember.communicationDisabledUntilTimestamp !== newMember.communicationDisabledUntilTimestamp;
+    if (timeoutChanged) {
+      try {
+        const executor = await ANTINUKE_AUDIT.resolveExecutor(
+          newMember.guild,
+          AuditLogEvent.MemberUpdate,
+          newMember.id
+        );
+
+        const wasTimedOut = Boolean(oldMember.communicationDisabledUntilTimestamp && oldMember.communicationDisabledUntilTimestamp > Date.now());
+        const isNowTimedOut = Boolean(newMember.communicationDisabledUntilTimestamp && newMember.communicationDisabledUntilTimestamp > Date.now());
+
+        if (!wasTimedOut && isNowTimedOut) {
+          const expiresTimestamp = Math.floor(newMember.communicationDisabledUntilTimestamp! / 1000);
+          await sendModLog({
+            guild: newMember.guild,
+            category: "TIMEOUT",
+            eventType: "member_timeout",
+            title: "Member Timed Out",
+            level: "WARNING",
+            actor: executor || null,
+            target: newMember.user,
+            extraFields: {
+              Expires: `<t:${expiresTimestamp}:R>`,
+              Until: `<t:${expiresTimestamp}:f>`,
+            },
+          });
+        } else if (wasTimedOut && !isNowTimedOut) {
+          await sendModLog({
+            guild: newMember.guild,
+            category: "TIMEOUT",
+            eventType: "member_untimeout",
+            title: "Timeout Removed",
+            level: "SUCCESS",
+            actor: executor || null,
+            target: newMember.user,
+          });
+        }
+      } catch (_) {}
+    }
+
     // Discord Membership Screening & Onboarding Completion Detection
     if (oldMember.pending && !newMember.pending) {
       try {

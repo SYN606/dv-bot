@@ -18,22 +18,23 @@ export default {
     const userId = String(member.id);
     const today = new Date().toISOString().split("T")[0];
 
+    let kickExecutor: any = null;
     // Anti-Nuke Threat Interception: Detect rogue admin mass kicks
     try {
-      const executor = await ANTINUKE_AUDIT.resolveExecutor(
+      kickExecutor = await ANTINUKE_AUDIT.resolveExecutor(
         member.guild,
         AuditLogEvent.MemberKick,
         member.id
       );
 
-      if (executor) {
+      if (kickExecutor) {
         const settings = await getAntinukeSettings(guildId);
         if (settings.enabled) {
-          const immune = await ANTINUKE_SERVICE.isImmune(member.guild, executor, ThreatType.MEMBER_KICK);
+          const immune = await ANTINUKE_SERVICE.isImmune(member.guild, kickExecutor, ThreatType.MEMBER_KICK);
           if (!immune) {
             const { triggered, count } = ANTINUKE_SERVICE.registerAction(
               guildId,
-              executor.id,
+              kickExecutor.id,
               ThreatType.MEMBER_KICK,
               settings.member_kick_threshold,
               settings.window_seconds
@@ -42,7 +43,7 @@ export default {
             if (triggered) {
               await ANTINUKE_SERVICE.executeMitigation({
                 guild: member.guild,
-                executorId: executor.id,
+                executorId: kickExecutor.id,
                 threatType: ThreatType.MEMBER_KICK,
                 count,
                 details: `Kicked member @${member.user?.tag || member.id}`,
@@ -117,19 +118,38 @@ export default {
         ? member.roles.cache.filter((r: any) => r.id !== member.guild.id).map((r: any) => `<@&${r.id}>`).slice(0, 8).join(", ")
         : null;
 
-      await sendModLog({
-        guild: member.guild,
-        category: "MEMBERS",
-        title: "Member Left",
-        level: "INFO",
-        target: member.user || null,
-        description: `<@${member.id}> has left the server.`,
-        extraFields: {
-          "Joined Server": joinedAgo,
-          "Roles Held": rolesList || "*None*",
-          "Remaining Members": `${member.guild.memberCount || "N/A"} members`,
-        },
-      });
+      if (kickExecutor) {
+        await sendModLog({
+          guild: member.guild,
+          category: "KICK",
+          eventType: "member_kicked",
+          title: "Member Kicked",
+          level: "WARNING",
+          actor: kickExecutor,
+          target: member.user || null,
+          description: `<@${member.id}> was kicked from the server.`,
+          extraFields: {
+            "Joined Server": joinedAgo,
+            "Roles Held": rolesList || "*None*",
+            "Remaining Members": `${member.guild.memberCount || "N/A"} members`,
+          },
+        });
+      } else {
+        await sendModLog({
+          guild: member.guild,
+          category: "MEMBERS",
+          eventType: "member_left",
+          title: "Member Left",
+          level: "INFO",
+          target: member.user || null,
+          description: `<@${member.id}> has left the server.`,
+          extraFields: {
+            "Joined Server": joinedAgo,
+            "Roles Held": rolesList || "*None*",
+            "Remaining Members": `${member.guild.memberCount || "N/A"} members`,
+          },
+        });
+      }
     } catch (_) {}
   },
 };
